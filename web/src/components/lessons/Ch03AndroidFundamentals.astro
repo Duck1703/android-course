@@ -1,0 +1,290 @@
+---
+// Lesson thật — Chapter 3: Android Fundamentals.
+// Code trích từ aaf-materials/03-android-fundamentals/projects/final/ và projects/starter/ (code thật, không phải paraphrase)
+// theo Quyết định #7 (docs/PROJECT_PLAN.md): user đã đồng ý dùng code thật, tự nhận rủi ro license.
+// Nội dung giải thích tự viết tiếng Việt, diễn giải theo content/book/ch03-android-fundamentals.md — không copy nguyên văn sách.
+// Chapter này CHƯA có ViewModel — chỉ dùng remember { mutableStateOf(...) } trực tiếp trong Activity.
+import { Code } from "astro:components";
+
+const AAF_FINAL_KT = "aaf-materials/03-android-fundamentals/projects/final/app/src/main/java/com/kodeco/chat/MainActivity.kt";
+const AAF_FINAL_STRINGS = "aaf-materials/03-android-fundamentals/projects/final/app/src/main/res/values/strings.xml";
+const AAF_FINAL_MANIFEST = "aaf-materials/03-android-fundamentals/projects/final/app/src/main/AndroidManifest.xml";
+
+const activityDeclarationCode = `class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {`;
+
+const uiBodyCode = `      Column {
+        val context = LocalContext.current
+        var chatInputText by remember { mutableStateOf(context.getString(R.string.chat_entry_default)) }
+        var chatOutputText by remember { mutableStateOf(context.getString(R.string.chat_display_default)) }
+        Text(text = chatOutputText)
+
+        OutlinedTextField(
+          value = chatInputText,
+          onValueChange = {
+            chatInputText = it
+          },
+          label = { Text(text = stringResource(id = R.string.chat_entry_label)) }
+        )
+
+        Button(onClick = {
+          chatOutputText = chatInputText
+          chatInputText = ""
+        }) {
+          Text(text = stringResource(id = R.string.send_button))
+
+        }
+      }
+    }
+  }
+}`;
+
+const stringsXmlCode = `<resources>
+    <string name="app_name">Kodeco Chat</string>
+    <string name="chat_display_default">Messages will display here</string>
+    <string name="chat_entry_default">Type your text here</string>
+    <string name="send_button">Send</string>
+    <string name="chat_entry_label">Enter Chat Text</string>
+</resources>`;
+
+const contextGetStringCode = `val context = LocalContext.current
+var chatInputText by remember { mutableStateOf(context.getString(R.string.chat_entry_default)) }
+var chatOutputText by remember { mutableStateOf(context.getString(R.string.chat_display_default)) }`;
+
+const labelStringResourceCode = `label = { Text(text = stringResource(id = R.string.chat_entry_label)) }`;
+
+const buttonStringResourceCode = `Text(text = stringResource(id = R.string.send_button))`;
+
+const manifestActivityCode = `<activity
+    android:name=".MainActivity"
+    android:exported="true"
+    android:label="@string/app_name"
+    android:theme="@style/Theme.KodecoChat">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent-filter>
+</activity>`;
+
+const debugBreakpointCode = `Button(onClick = {
+  chatOutputText = chatInputText
+  chatInputText = ""
+}) {`;
+---
+
+<section class="lesson">
+	<div class="callout">
+		<strong>App minh hoạ chapter này:</strong> vẫn là "Kodeco Chat", nhưng ở chapter 3 app mới chỉ có
+		đúng 1 màn hình (<code>MainActivity</code>) với 1 ô nhập chữ và 1 nút Send — <strong>chưa có
+		ViewModel</strong>, state được lưu trực tiếp bằng <code>remember {`{ mutableStateOf(...) }`}</code> ngay
+		trong Activity. Trọng tâm chapter này không phải Compose (học sâu ở chapter 5), mà là hiểu
+		<strong>Activity, Manifest, string resource và cách debug cơ bản</strong>.
+	</div>
+
+	<h2 id="activity">1. Activity là gì?</h2>
+	<p>
+		Một app Android thường gồm nhiều màn hình, mỗi màn hình đảm nhận một việc cụ thể — ví dụ màn hình đăng
+		nhập, màn hình cài đặt... Mỗi màn hình như vậy thường được xây trên nền một <strong>Activity</strong>.
+		App "Kodeco Chat" ở chapter này chỉ có duy nhất 1 Activity: <code>MainActivity</code>.
+	</p>
+	<p>
+		<code>MainActivity</code> kế thừa (extends) từ <code>ComponentActivity</code> — lớp có sẵn của Android
+		cung cấp khả năng hiển thị nội dung lên màn hình. <code>onCreate()</code> là hàm đầu tiên Android gọi
+		khi Activity được tạo, đóng vai trò như "điểm bắt đầu" (entry point) của màn hình đó.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_FINAL_KT}</code> (dòng 50-53)
+	</p>
+	<Code code={activityDeclarationCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Vài chi tiết đáng chú ý: từ khoá <code>override</code> nghĩa là bạn đang viết lại (ghi đè) một hàm đã có
+		sẵn ở lớp cha (<code>ComponentActivity</code>) theo cách riêng của mình. Dòng
+		<code>super.onCreate(savedInstanceState)</code> bắt buộc phải gọi trước — đây là cách "báo" cho Android
+		biết để nó chạy phần khởi tạo nội bộ trước khi code của bạn chạy tiếp. Cuối cùng,
+		<code>setContent {`{ }`}</code> là nơi bạn "gắn" giao diện Compose vào Activity — mọi thứ bên trong cặp
+		dấu <code>{`{ }`}</code> đó sẽ trở thành nội dung hiển thị trên màn hình.
+	</p>
+
+	<h2 id="lifecycle">2. Vòng đời Activity: onCreate() chạy khi nào?</h2>
+	<p>
+		Một điểm dễ hiểu nhầm: <code>onCreate()</code> <strong>không</strong> chạy lại mỗi lần bạn mở app lên từ
+		nền (background). Nó chỉ chạy khi Android thật sự <strong>tạo mới</strong> Activity — ví dụ lần đầu tiên
+		mở app, hoặc sau khi hệ thống đã huỷ hẳn Activity (để giải phóng bộ nhớ) rồi bạn quay lại app đó. Nếu bạn
+		chỉ chuyển sang app khác rồi quay lại trong khi Activity vẫn còn sống, Android sẽ gọi các hàm khác trong
+		vòng đời (ví dụ <code>onPause()</code>, <code>onResume()</code>) chứ không gọi lại <code>onCreate()</code>.
+	</p>
+	<p>
+		<code>onCreate()</code> chỉ là một điểm trong chuỗi các hàm mà Android gọi theo thứ tự trong suốt "vòng
+		đời" (lifecycle) của một Activity — chapter này chưa đi sâu vào toàn bộ chuỗi đó, chỉ cần nhớ:
+		<code>onCreate()</code> là nơi thiết lập giao diện ban đầu, còn phần còn lại của lifecycle sẽ gặp lại ở
+		các chapter sau.
+	</p>
+	<div class="callout note">
+		Muốn tìm hiểu sâu hơn ngay bây giờ, sách có gợi ý trang tài liệu chính thức:
+		<a href="https://developer.android.com/guide/components/activities/activity-lifecycle" target="_blank" rel="noopener">
+			developer.android.com — Activity lifecycle</a>.
+	</div>
+
+	<h2 id="ui-co-ban">3. Dựng giao diện cơ bản: Column, state, OutlinedTextField, Button</h2>
+	<p>
+		Bên trong <code>setContent {`{ }`}</code>, giao diện được mô tả bằng các Composable function (hàm mô tả
+		giao diện — học kỹ ở chapter 5). Ở đây chỉ cần biết sơ: <code>Column</code> xếp các thành phần theo chiều
+		dọc; <code>OutlinedTextField</code> là ô nhập chữ có viền; <code>Button</code> là nút bấm; <code>Text</code>
+		hiển thị chữ. <code>remember {`{ mutableStateOf(...) }`}</code> dùng để "nhớ" một giá trị (state — trạng
+		thái) qua các lần Compose vẽ lại giao diện, để khi giá trị đổi thì giao diện tự cập nhật theo.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_FINAL_KT}</code> (dòng 54-78)
+	</p>
+	<Code code={uiBodyCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Luồng hoạt động: gõ chữ vào <code>OutlinedTextField</code> sẽ cập nhật <code>chatInputText</code> qua
+		<code>onValueChange</code>; bấm <code>Button</code> sẽ gán <code>chatOutputText = chatInputText</code>
+		(đưa chữ vừa gõ lên phần hiển thị phía trên) rồi xoá trắng ô nhập. Đây là logic UI đơn giản nhất có thể —
+		chưa lưu trữ, chưa gọi mạng, chỉ để làm quen với Activity trước.
+	</p>
+
+	<h2 id="strings-xml">4. Tách chuỗi cứng ra strings.xml (String resource)</h2>
+	<p>
+		Nếu viết thẳng chuỗi tiếng Anh như <code>"Type your text here"</code> ngay trong code Kotlin, app sẽ khó
+		hỗ trợ thêm ngôn ngữ khác sau này — phải lục lại từng chỗ có chuỗi cứng để dịch. Giải pháp của Android là
+		<strong>String resource</strong>: gom toàn bộ text vào 1 file XML riêng tên <code>strings.xml</code>, mỗi
+		chuỗi có 1 <code>name</code> để tham chiếu từ code.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_FINAL_STRINGS}</code> (dòng 34-40)
+	</p>
+	<Code code={stringsXmlCode} lang="xml" theme="github-dark" />
+	<p>
+		Trong code Kotlin/Compose, mỗi chuỗi được truy cập qua "lớp R" (Resource) tự sinh ra lúc build, dạng
+		<code>R.string.tên_chuỗi</code>. Có 2 cách lấy chuỗi ra tuỳ vị trí trong code:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_FINAL_KT}</code> (dòng 55-57)
+	</p>
+	<Code code={contextGetStringCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>Context</code> là một interface (giao diện lập trình) chứa thông tin chung về môi trường app đang
+		chạy; <code>LocalContext.current</code> là cách Compose UI lấy ra <code>Context</code> hiện tại.
+		<code>context.getString(R.string.chat_entry_default)</code> được dùng ở đây thay vì
+		<code>stringResource()</code> vì 2 dòng này nằm trong phần "tính giá trị ban đầu" của
+		<code>remember {`{ }`}</code> — một vị trí mà Compose <strong>không cho phép</strong> gọi trực tiếp một
+		Composable function như <code>stringResource()</code> (Android Studio sẽ báo lỗi ngay khi gõ).
+	</p>
+	<p>
+		Ngược lại, ở những chỗ đang nằm trực tiếp trong một Composable function (như bên trong
+		<code>Text {`{ }`}</code>), dùng <code>stringResource(id = ...)</code> là bình thường:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_FINAL_KT}</code> (dòng 65)
+	</p>
+	<Code code={labelStringResourceCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Nguồn: <code>{AAF_FINAL_KT}</code> (dòng 72)
+	</p>
+	<Code code={buttonStringResourceCode} lang="kotlin" theme="github-dark" />
+	<p class="hint">
+		Ghi nhớ ngắn gọn: đang ở bên trong một Composable function → dùng <code>stringResource(id = ...)</code>.
+		Đang ở trong 1 đoạn code Kotlin bình thường không phải Composable (ví dụ lambda tính giá trị ban đầu của
+		<code>remember</code>) → dùng <code>context.getString(...)</code>.
+	</p>
+
+	<h2 id="manifest">5. AndroidManifest.xml — vai trò của Manifest và Intent</h2>
+	<p>
+		Mỗi app Android bắt buộc phải có 1 file tên chính xác <code>AndroidManifest.xml</code>. Đây là nơi khai
+		báo cho hệ thống Android biết mọi thứ cần thiết về app: tên package, các Activity mà app có, quyền
+		(permission) cần xin, theme sử dụng... Thiếu file này, Android sẽ không chạy được app.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_FINAL_MANIFEST}</code> (dòng 48-58, bên trong thẻ <code>&lt;application&gt;</code>)
+	</p>
+	<Code code={manifestActivityCode} lang="xml" theme="github-dark" />
+	<p>
+		Mỗi Activity trong app cần có 1 thẻ <code>&lt;activity&gt;</code> tương ứng trong Manifest — đây là cách
+		Android chỉ chạy đúng những Activity thuộc về app của bạn. Thẻ <code>&lt;intent-filter&gt;</code> bên
+		trong, với <code>&lt;action android:name="android.intent.action.MAIN" /&gt;</code> và
+		<code>&lt;category android:name="android.intent.category.LAUNCHER" /&gt;</code>, đánh dấu
+		<code>MainActivity</code> là màn hình sẽ chạy đầu tiên khi người dùng bấm mở app từ màn hình chính (home
+		screen/launcher).
+	</p>
+	<p>
+		<strong>Intent</strong> là một đối tượng dùng để mô tả "một hành động sẽ xảy ra" — ví dụ mở 1 Activity
+		khác, mở 1 app khác, hoặc chia sẻ dữ liệu. Chính bản thân việc hệ điều hành Android mở app của bạn cũng đi
+		qua 1 Intent. App hiện tại chỉ có 1 Activity nên chưa cần tự tạo Intent, nhưng khái niệm này sẽ cần ngay
+		khi app có màn hình thứ 2 để điều hướng qua lại.
+	</p>
+
+	<h2 id="debug">6. Debug cơ bản: breakpoint và Logcat</h2>
+	<p>
+		Nút "Run" chỉ giúp build và chạy app — nếu có lỗi xảy ra lúc app đang chạy (runtime), bạn sẽ không thấy
+		chi tiết gì. Cạnh nút Run có 1 nút hình con bọ (biểu tượng debug); chạy app bằng nút này sẽ bật chế độ
+		<em>debug</em>, cho phép đặt <strong>breakpoint</strong> — điểm dừng tạm thời trên 1 dòng code.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_FINAL_KT}</code> (dòng 68-71, bên trong <code>onClick</code> của <code>Button</code>)
+	</p>
+	<Code code={debugBreakpointCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Ví dụ đặt breakpoint ngay tại dòng <code>chatInputText = ""</code>: khi app đang chạy ở chế độ debug, gõ
+		chữ vào ô nhập rồi bấm Send, Android Studio sẽ <strong>tạm dừng</strong> ngay tại dòng đó, cho phép bạn
+		xem giá trị hiện tại của các biến (<code>chatInputText</code>, <code>chatOutputText</code>...) trước khi
+		cho code chạy tiếp. Ngoài ra, khu vực <strong>Logcat</strong> trong Android Studio hiển thị toàn bộ log —
+		giống như "nhật ký" của app, rất hữu ích để tìm nguyên nhân khi app bị lỗi hoặc crash.
+	</p>
+
+	<div class="callout note">
+		<strong>Ghi chú:</strong> giao diện Android Studio (vị trí nút Debug, tên các panel như Logcat/Problems)
+		có thể thay đổi nhẹ theo từng phiên bản IDE so với ảnh chụp trong sách — nhưng khái niệm Activity, vòng
+		đời, string resource, Manifest và breakpoint vẫn giữ nguyên.
+	</div>
+</section>
+
+<style>
+	.lesson h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.lesson p {
+		line-height: 1.65;
+		color: #2d3748;
+	}
+	.lesson code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+		font-size: 0.88em;
+	}
+	.src {
+		font-size: 0.82rem;
+		color: #718096;
+		margin: 0.8rem 0 0.3rem;
+	}
+	.hint {
+		font-size: 0.88rem;
+		color: #4a5568;
+		background: #f7fafc;
+		border-left: 3px solid #cbd5e0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 4px;
+	}
+	.callout {
+		background: #ebf8ff;
+		border: 1px solid #bee3f8;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		font-size: 0.9rem;
+		color: #2c5282;
+		margin: 1.4rem 0;
+	}
+	.callout.note {
+		background: #fffaf0;
+		border-color: #feebc8;
+		color: #7b341e;
+	}
+</style>

@@ -1,0 +1,252 @@
+---
+// Lesson Chapter 7: Advanced Architecture (Repository pattern + Ditto SDK).
+// Code trích từ aaf-materials/07-advanced-architecture/projects/final/ (real code, không phải paraphrase)
+// theo Quyết định #7 (docs/PROJECT_PLAN.md): user đã đồng ý dùng code thật, tự nhận rủi ro license.
+// Nội dung giải thích tự viết tiếng Việt, diễn giải theo content/book/ch07-advanced-architecture.md — không copy nguyên văn sách.
+// Chapter 7 là chapter cuối mạch app "Kodeco Chat" (ch5 → ch6 → ch7, package com.kodeco.chat).
+import { Code } from "astro:components";
+
+const AAF_BASE = "aaf-materials/07-advanced-architecture/projects/final/app/src/main/java/com/kodeco/chat";
+
+const repositoryInterfaceCode = `interface Repository {
+
+  fun getDittoSdkVersion(): String
+
+  // rooms
+  fun getAllPublicRooms(): Flow<List<ChatRoom>>
+
+  // messages
+  fun getAllMessagesForRoom(chatRoom: ChatRoom): Flow<List<Message>>
+  suspend fun createMessageForRoom(
+    userId: String,
+    message: Message,
+    chatRoom: ChatRoom,
+    attachment: DittoAttachment?
+  )
+
+  // users
+  suspend fun addUser(user: User)
+  fun getAllUsers(): Flow<List<User>>
+  suspend fun saveCurrentUser(userId: String, firstName: String, lastName: String)
+
+  // rooms
+  suspend fun createRoom(name: String, isPrivate: Boolean = false, userId: String = "Ditto System")
+  suspend fun publicRoomForId(roomId: String): ChatRoom
+}`;
+
+const singletonCode = `  companion object {
+    @Volatile
+    private var instance: RepositoryImpl? = null
+
+    fun getInstance() =
+      instance ?: synchronized(this) {
+        instance ?: RepositoryImpl().also { instance = it }
+      }
+  }`;
+
+const getAllUsersFromDittoCode = `  private fun getAllUsersFromDitto() {
+    ditto.let { ditto: Ditto ->
+      usersCollection = ditto.store.collection(usersKey)
+      usersSubscription = usersCollection.findAll().subscribe()
+      usersLiveQuery = usersCollection.findAll().observeLocal { docs, _ ->
+        this.usersDocs = docs
+        allUsers.value = docs.map { User(it) }
+      }
+    }
+  }`;
+
+const dittoHandlerCode = `class DittoHandler {
+  companion object {
+    lateinit var ditto: Ditto
+  }
+}`;
+
+const setupDittoCode = `  private fun setupDitto() {
+    val androidDependencies = DefaultAndroidDittoDependencies(applicationContext)
+    DittoLogger.minimumLogLevel = DittoLogLevel.DEBUG
+    ditto = Ditto(
+      androidDependencies,
+      DittoIdentity.OnlinePlayground(
+        androidDependencies,
+        appId = BuildConfig.DITTO_APP_ID,
+        token = BuildConfig.DITTO_TOKEN
+      )
+    )
+    ditto.startSync()
+  }`;
+---
+
+<section class="lesson">
+	<div class="callout">
+		<strong>App minh hoạ chapter này:</strong> vẫn là "Kodeco Chat" — chapter cuối trong mạch chapter 5 → 6 → 7
+		(package <code>com.kodeco.chat</code>). Ở chapter 6, app đã có <code>ViewModel</code> và <code>Flow</code>
+		nhưng tin nhắn vẫn là dữ liệu giả cố định. Chapter 7 thay dữ liệu giả bằng <strong>Repository pattern</strong>
+		kết hợp <strong>Ditto SDK</strong>, để tin nhắn đồng bộ thật giữa nhiều thiết bị mà không cần 1 server
+		backend truyền thống.
+	</div>
+
+	<h2 id="repository-pattern">1. Repository pattern — vì sao cần 1 lớp đứng giữa</h2>
+	<p>
+		Có lúc app cần lấy dữ liệu từ database cục bộ, có lúc từ mạng, có lúc phải kết hợp cả hai. Nếu để
+		<code>ViewModel</code> tự viết hết chi tiết "lấy dữ liệu bằng cách nào", class đó sẽ phình to và khó
+		test. Ý tưởng của <strong>Repository pattern</strong>: ViewModel chỉ cần nói "đưa dữ liệu cho tôi" thông
+		qua 1 <code>Flow</code>, còn việc dữ liệu đó thật ra đến từ đâu (network, database, hay như chapter này —
+		Ditto) là chuyện của 1 lớp trung gian gọi là <em>repository</em>. Cách làm phổ biến: viết 1
+		<code>interface</code> liệt kê mọi hàm ViewModel cần, rồi 1 class khác cài đặt chi tiết thật cho
+		interface đó.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/data/repository/Repository.kt</code> (dòng 46–70)
+	</p>
+	<Code code={repositoryInterfaceCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Để ý: interface này không có dòng nào nhắc tới Ditto. Mọi hàm chỉ mô tả "cần dữ liệu gì" (
+		<code>getAllUsers()</code>, <code>getAllMessagesForRoom()</code>...) hoặc "cần làm gì với dữ liệu" (
+		<code>createMessageForRoom()</code>, <code>createRoom()</code>...), không mô tả "làm bằng cách nào".
+		Hàm trả <code>Flow&lt;...&gt;</code> nghĩa là dữ liệu có thể thay đổi theo thời gian và nơi gọi có thể
+		lắng nghe liên tục; hàm đánh dấu <code>suspend</code> là hàm bất đồng bộ (chạy trong coroutine, không
+		làm đứng UI trong lúc chờ). Vì ViewModel chỉ phụ thuộc vào interface này, sau này muốn đổi hẳn cách lưu
+		dữ liệu (đổi từ Ditto sang thứ khác) thì chỉ cần sửa phần implement, ViewModel không phải sửa gì.
+	</p>
+
+	<h2 id="repositoryimpl">2. RepositoryImpl — nơi thật sự nói chuyện với Ditto</h2>
+	<p>
+		<code>RepositoryImpl</code> là class implement interface <code>Repository</code> ở trên. Vì cả app chỉ
+		nên có <strong>1 nguồn dữ liệu dùng chung</strong> (không phải mỗi màn hình tự tạo 1 kết nối Ditto
+		riêng), <code>RepositoryImpl</code> áp dụng <em>singleton pattern</em> (đảm bảo toàn app chỉ có đúng 1
+		instance) bằng <code>companion object</code> và hàm <code>getInstance()</code>:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/data/repository/RepositoryImpl.kt</code> (dòng 84–92)
+	</p>
+	<Code code={singletonCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>@Volatile</code> và <code>synchronized(this)</code> để phòng trường hợp nhiều thread cùng gọi
+		<code>getInstance()</code> lần đầu tiên cùng lúc — chỉ 1 instance duy nhất được tạo ra, tránh việc lỡ tạo
+		ra 2-3 instance khác nhau rồi mỗi nơi trong app "nhìn thấy" 1 bản dữ liệu khác nhau.
+	</p>
+	<p>
+		Một hàm tiêu biểu cho thấy Repository lấy dữ liệu từ Ditto như thế nào — <code>getAllUsers()</code> (khai
+		báo ở interface) trả thẳng ra 1 <code>Flow</code>, và hàm riêng dưới đây chạy nền để liên tục đổ dữ liệu
+		mới vào Flow đó mỗi khi Ditto đồng bộ được gì mới:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/data/repository/RepositoryImpl.kt</code> (dòng 316–325)
+	</p>
+	<Code code={getAllUsersFromDittoCode} lang="kotlin" theme="github-dark" />
+	<p>
+		3 bước diễn ra ở đây: <code>ditto.store.collection(usersKey)</code> lấy ra 1 "collection" tên "users"
+		trong Ditto (hiểu nôm na như 1 cái bảng dữ liệu); <code>.findAll().subscribe()</code> đăng ký nhận đồng
+		bộ toàn bộ collection này từ các thiết bị khác đang ở gần; và <code>.observeLocal &#123; docs, _ -&gt; ... &#125;</code>
+		là callback chạy lại mỗi khi dữ liệu cục bộ đổi (do thiết bị khác vừa đồng bộ tới, hoặc chính app này vừa
+		ghi thêm) — map từng document thành object <code>User</code> rồi gán vào <code>allUsers.value</code>. Nhờ
+		đây là 1 <code>MutableStateFlow</code>, mọi nơi đang lắng nghe (ViewModel, rồi UI) tự động nhận dữ liệu
+		mới mà không cần ai chủ động "hỏi lại". Hàm <code>createMessageForRoom()</code> làm việc tương tự theo
+		chiều ngược lại — dùng <code>collection.upsert(doc)</code> để ghi 1 tin nhắn mới vào Ditto
+		(<em>upsert</em> = ghi mới nếu chưa có, cập nhật nếu đã có).
+	</p>
+
+	<h2 id="ditto-sdk">3. Ditto SDK — database đồng bộ ngang hàng (P2P), không cần server</h2>
+	<p>
+		Ditto là 1 SDK đa nền tảng cho phép nhiều thiết bị tự đồng bộ dữ liệu <strong>trực tiếp với nhau</strong>
+		— kiểu <em>P2P (peer-to-peer)</em> — qua Bluetooth, Wi-Fi... mà không bắt buộc phải có Internet hay 1
+		server cloud ở giữa. Dữ liệu luôn có sẵn ngay trên máy (<em>local-first</em>), đồng bộ với thiết bị khác
+		chỉ là "cộng thêm" khi có điều kiện, không phải điều kiện bắt buộc để app chạy được. Trong Kodeco Chat,
+		Ditto thay thế hoàn toàn vai trò của 1 backend server truyền thống.
+	</p>
+	<p>
+		Vì cũng chỉ nên có 1 instance Ditto dùng chung toàn app, <code>DittoHandler.kt</code> đóng vai trò 1 "cái
+		hộp" toàn cục để chứa instance đó:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/DittoHandler.kt</code> (dòng 39–43)
+	</p>
+	<Code code={dittoHandlerCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>lateinit var ditto: Ditto</code> nghĩa là biến này sẽ được gán giá trị <em>sau</em>, không có giá
+		trị ngay lúc khai báo. Vì nằm trong <code>companion object</code>, biến này truy cập được từ bất kỳ đâu
+		trong app qua <code>DittoHandler.ditto</code> (thực tế <code>RepositoryImpl</code> và
+		<code>MainActivity</code> import thẳng <code>DittoHandler.Companion.ditto</code> cho gọn). Bản thân file
+		này không có hàm khởi tạo nào — nó chỉ là chỗ chứa. Việc thật sự <strong>tạo ra và khởi động</strong>
+		Ditto nằm ở hàm <code>setupDitto()</code> trong <code>MainActivity.kt</code>, được gọi 1 lần lúc app
+		khởi động:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/MainActivity.kt</code> (dòng 91–103)
+	</p>
+	<Code code={setupDittoCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>DittoIdentity.OnlinePlayground(...)</code> xác thực app với tài khoản Ditto.live bằng
+		<code>appId</code>/<code>token</code> lấy từ <code>BuildConfig</code> (2 khoá bí mật được nạp từ file
+		cấu hình riêng, không hard-code thẳng vào code để tránh lộ ra ngoài khi chia sẻ project).
+		<code>ditto.startSync()</code> bắt đầu quá trình tìm và đồng bộ với các thiết bị khác quanh đó. Sau dòng
+		này, biến <code>ditto</code> trong <code>DittoHandler</code> mới thật sự "sống" và <code>RepositoryImpl</code>
+		mới gọi được <code>ditto.store...</code> như ở mục 2.
+	</p>
+
+	<h2 id="luong-du-lieu">4. Ghép lại — luồng dữ liệu từ Ditto tới màn hình</h2>
+	<p>
+		Tổng kết cả chương: <code>MainActivity</code> khởi động Ditto (mục 3) → <code>RepositoryImpl</code> lắng
+		nghe Ditto và map dữ liệu thô thành các <code>Flow</code> của model Kotlin quen thuộc như
+		<code>User</code>, <code>Message</code> (mục 2) → <code>MainViewModel</code> gộp (<code>combine</code>)
+		các Flow đó lại thành 1 danh sách tin nhắn kèm thông tin người gửi → Compose UI (đã học ở chapter 5, 6)
+		lắng nghe Flow từ ViewModel và tự vẽ lại mỗi khi có tin nhắn mới. Mỗi tầng chỉ cần biết tầng ngay cạnh
+		mình — UI không biết gì về Ditto, và Repository không biết gì về cách UI hiển thị dữ liệu. Đó chính là
+		giá trị cốt lõi mà Repository pattern mang lại.
+	</p>
+
+	<div class="callout note">
+		<strong>Ghi chú phiên bản:</strong> sách dùng Ditto SDK bản 4.5.0 (bản mới nhất tại thời điểm viết sách).
+		Các API cụ thể như <code>DittoIdentity.OnlinePlayground</code>, <code>ditto.store.collection(...)</code>
+		có thể đã đổi ở bản Ditto hiện tại — nên xem phần này là ví dụ minh hoạ đúng ý tưởng Repository pattern +
+		P2P/local-first, cần kiểm tra lại tài liệu Ditto mới nhất (docs.ditto.live) trước khi áp dụng vào app
+		thật.
+	</div>
+</section>
+
+<style>
+	.lesson h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.lesson p {
+		line-height: 1.65;
+		color: #2d3748;
+	}
+	.lesson code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+		font-size: 0.88em;
+	}
+	.src {
+		font-size: 0.82rem;
+		color: #718096;
+		margin: 0.8rem 0 0.3rem;
+	}
+	.hint {
+		font-size: 0.88rem;
+		color: #4a5568;
+		background: #f7fafc;
+		border-left: 3px solid #cbd5e0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 4px;
+	}
+	.callout {
+		background: #ebf8ff;
+		border: 1px solid #bee3f8;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		font-size: 0.9rem;
+		color: #2c5282;
+		margin: 1.4rem 0;
+	}
+	.callout.note {
+		background: #fffaf0;
+		border-color: #feebc8;
+		color: #7b341e;
+	}
+</style>

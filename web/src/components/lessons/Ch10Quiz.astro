@@ -1,0 +1,212 @@
+---
+// Quiz + bài tập nhỏ cho lesson Chapter 10 — Room Database.
+// Câu hỏi bám theo docs/LEARNING_MAP.md (mục Chapter 10 > Gợi ý Exercise/Quiz), tự viết đáp án + giải thích.
+// Quiz chấm bằng vanilla JS phía client (đúng tinh thần "gần như 0 JS trừ chỗ cần tương tác" trong CLAUDE.md).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. <code>@Dao</code> dùng để làm gì?</legend>
+			<label><input type="radio" name="q1" value="a" /> Vẽ giao diện danh sách công thức trên màn hình</label>
+			<label><input type="radio" name="q1" value="b" /> Định nghĩa các hàm truy vấn/thêm/sửa/xoá dữ liệu trong database</label>
+			<label><input type="radio" name="q1" value="c" /> Lưu ảnh công thức xuống bộ nhớ máy</label>
+			<p class="explain" hidden>
+				<code>@Dao</code> đánh dấu 1 interface là Data Access Object — nơi khai báo các hàm đọc/ghi dữ liệu
+				(<code>@Query</code>, <code>@Insert</code>, <code>@Update</code>, <code>@Delete</code>). Room tự sinh
+				code cài đặt thật cho các hàm này lúc build, bạn không phải tự viết.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. Room khác <code>SharedPreferences</code> ở điểm nào?</legend>
+			<label><input type="radio" name="q2" value="a" /> Room chỉ dùng được cho app không cần mạng internet</label>
+			<label><input type="radio" name="q2" value="b" /> <code>SharedPreferences</code> nhanh hơn Room trong mọi trường hợp</label>
+			<label><input type="radio" name="q2" value="c" /> Room lưu dữ liệu có cấu trúc, nhiều bản ghi và hỗ trợ truy vấn phức tạp; <code>SharedPreferences</code> chỉ hợp lưu vài cặp key-value đơn giản</label>
+			<p class="explain" hidden>
+				<code>SharedPreferences</code> hợp để lưu vài giá trị cài đặt đơn giản (ví dụ: đã bật dark mode hay
+				chưa). Còn muốn lưu <em>nhiều</em> công thức, mỗi công thức nhiều field, và cần lọc/tìm theo điều
+				kiện (ví dụ <code>WHERE id = :id</code>) thì Room phù hợp hơn hẳn — đó chính là lý do Recipe Finder
+				dùng Room để lưu bookmark thay vì <code>SharedPreferences</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. <code>@Insert(onConflict = OnConflictStrategy.IGNORE)</code> làm gì khi thêm 1 recipe đã tồn tại sẵn (trùng <code>id</code>)?</legend>
+			<label><input type="radio" name="q3" value="a" /> Bỏ qua, giữ nguyên dòng cũ, không báo lỗi</label>
+			<label><input type="radio" name="q3" value="b" /> Ghi đè hoàn toàn dòng cũ bằng dữ liệu mới</label>
+			<label><input type="radio" name="q3" value="c" /> App bị crash vì vi phạm khoá chính (primary key)</label>
+			<p class="explain" hidden>
+				<code>OnConflictStrategy.IGNORE</code> nghĩa là nếu đã có sẵn 1 dòng trùng khoá chính, Room sẽ bỏ qua
+				lệnh insert mới, không ghi đè và không ném lỗi. Đây là lựa chọn hợp lý cho <code>addRecipe()</code> —
+				bookmark lại 1 công thức đã bookmark rồi thì không cần làm gì thêm.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" hidden></p>
+	</form>
+
+	<h2>Bài tập nhỏ</h2>
+	<div class="exercise">
+		<p>
+			Mở project <code>aaf-materials/10-room-db/projects/final/</code> bằng Android Studio, vào file
+			<code>data/database/RecipeDao.kt</code>, tìm hàm sau (khoảng dòng 49-50):
+		</p>
+		<pre><code>@Query("SELECT * FROM recipes WHERE id = :id")
+suspend fun findRecipeById(id: Int): RecipeDb</code></pre>
+		<p>
+			Chỉ nhìn chữ ký hàm (không cần chạy code), hãy đoán: hàm này trả về <strong>1 recipe duy nhất</strong>
+			hay <strong>1 danh sách nhiều recipe</strong>? Kết quả có thể là <code>null</code> (không tìm thấy) hay
+			luôn phải có giá trị? Ghi câu trả lời của bạn ra giấy/note trước khi mở gợi ý bên dưới.
+		</p>
+		<details>
+			<summary>Gợi ý nếu chưa chắc đáp án</summary>
+			<p>
+				Kiểu trả về là <code>RecipeDb</code> — không phải <code>List&lt;RecipeDb&gt;</code> — nên hàm này trả
+				về đúng <strong>1 object duy nhất</strong>, không phải danh sách. Kiểu <code>RecipeDb</code> cũng
+				không có dấu <code>?</code> phía sau (không phải <code>RecipeDb?</code>), nghĩa là theo khai báo
+				Kotlin, hàm "hứa" luôn trả về 1 giá trị hợp lệ — nếu câu <code>SELECT</code> không tìm thấy dòng nào
+				khớp <code>id</code>, Room sẽ ném lỗi (exception) thay vì trả về <code>null</code> êm xuôi.
+			</p>
+			<p>
+				So sánh với <code>getAllRecipes(): List&lt;RecipeDb&gt;</code> ngay bên dưới trong cùng file — trả
+				về danh sách, không bao giờ <code>null</code>, chỉ có thể là danh sách rỗng nếu chưa có recipe nào
+				được lưu.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>
+
+<style>
+	.quiz h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.intro {
+		color: #718096;
+		font-size: 0.9rem;
+	}
+	fieldset {
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		margin-bottom: 1rem;
+		background: #fff;
+	}
+	fieldset.correct {
+		border-color: #68d391;
+		background: #f0fff4;
+	}
+	fieldset.incorrect {
+		border-color: #fc8181;
+		background: #fff5f5;
+	}
+	legend {
+		font-weight: 600;
+		font-size: 0.92rem;
+		padding: 0 0.3rem;
+	}
+	label {
+		display: block;
+		font-size: 0.9rem;
+		margin: 0.35rem 0;
+		color: #2d3748;
+	}
+	.explain {
+		margin-top: 0.6rem;
+		font-size: 0.85rem;
+		color: #4a5568;
+		border-top: 1px dashed #e2e8f0;
+		padding-top: 0.5rem;
+	}
+	button[type="submit"] {
+		background: #2b6cb0;
+		color: #fff;
+		border: none;
+		padding: 0.55rem 1.1rem;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	button[type="submit"]:hover {
+		background: #2c5282;
+	}
+	#quiz-score {
+		margin-top: 0.8rem;
+		font-weight: 600;
+		color: #2d3748;
+	}
+	.exercise {
+		background: #fff;
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 1rem 1.2rem;
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: #2d3748;
+	}
+	.exercise pre {
+		background: #1a202c;
+		color: #e2e8f0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.85rem;
+	}
+	.exercise code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+	}
+	.exercise pre code {
+		background: none;
+		padding: 0;
+	}
+	details {
+		margin-top: 0.8rem;
+		font-size: 0.88rem;
+	}
+	details summary {
+		cursor: pointer;
+		color: #2b6cb0;
+	}
+</style>

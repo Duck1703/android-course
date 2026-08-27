@@ -1,0 +1,335 @@
+---
+// Quiz + bài tập nhỏ cho lesson Chapter 6 — Advanced Jetpack Compose.
+// Câu hỏi lấy ý từ docs/LEARNING_MAP.md (mục Chapter 6 > Gợi ý Exercise/Quiz), tự viết đáp án + giải thích.
+// 2 code ví dụ stateful/stateless ở câu 1-2 là code tự viết đơn giản (không trích từ aaf-materials).
+// Bài tập sắp xếp thứ tự MVI dựa trên luồng dữ liệu thật của MainViewModel (xem lesson chính, mục 5).
+// Quiz chấm bằng vanilla JS phía client (đúng tinh thần "gần như 0 JS trừ chỗ cần tương tác" trong CLAUDE.md).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="a">
+			<legend>1. Composable dưới đây là stateful hay stateless?</legend>
+			<pre><code>{`@Composable
+fun Counter() {
+  var count by remember { mutableStateOf(0) }
+  Button(onClick = { count++ }) {
+    Text("Đã bấm: \$count lần")
+  }
+}`}</code></pre>
+			<label><input type="radio" name="q1" value="a" /> Stateful — vì <code>count</code> được giữ ngay bên trong bằng <code>remember</code></label>
+			<label><input type="radio" name="q1" value="b" /> Stateless — vì có dùng <code>Button</code></label>
+			<label><input type="radio" name="q1" value="c" /> Không đủ thông tin để xác định</label>
+			<p class="explain" hidden>
+				Đúng là <strong>stateful</strong>. <code>Counter()</code> tự giữ dữ liệu <code>count</code> bên
+				trong bằng <code>remember {"{"} mutableStateOf(0) {"}"}</code> — không nhận state từ bên ngoài qua
+				tham số nào cả, nên bản thân nó vừa giữ vừa tự cập nhật state.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>2. Còn composable này thì sao?</legend>
+			<pre><code>{`@Composable
+fun Counter(
+  count: Int,
+  onIncrement: () -> Unit
+) {
+  Button(onClick = onIncrement) {
+    Text("Đã bấm: \$count lần")
+  }
+}`}</code></pre>
+			<label><input type="radio" name="q2" value="a" /> Stateful — vì vẫn có <code>Button</code> và hiển thị số đếm</label>
+			<label><input type="radio" name="q2" value="b" /> Stateless — vì <code>count</code> và <code>onIncrement</code> đều được truyền vào từ tham số, composable không tự giữ dữ liệu</label>
+			<label><input type="radio" name="q2" value="c" /> Không xác định được vì thiếu <code>remember</code></label>
+			<p class="explain" hidden>
+				Đúng là <strong>stateless</strong>. Đây là ví dụ của <em>state hoisting</em>: giá trị hiện tại
+				(<code>count</code>) và sự kiện thay đổi (<code>onIncrement</code>) đều đến từ composable cha —
+				<code>Counter()</code> ở đây chỉ lo hiển thị, không giữ state riêng, nên dễ test và tái sử dụng hơn
+				bản ở câu 1.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. <code>StateFlow</code> khác <code>Flow</code> thường ở điểm nào?</legend>
+			<label><input type="radio" name="q3" value="a" /> <code>StateFlow</code> luôn giữ sẵn một giá trị "hiện tại" và có tính lifecycle-aware khi dùng với <code>collectAsStateWithLifecycle()</code>, còn <code>Flow</code> thường thì không</label>
+			<label><input type="radio" name="q3" value="b" /> <code>StateFlow</code> chỉ dùng được trong Activity, <code>Flow</code> dùng được ở mọi nơi khác</label>
+			<label><input type="radio" name="q3" value="c" /> <code>StateFlow</code> và <code>Flow</code> hoàn toàn giống nhau, chỉ khác tên gọi</label>
+			<p class="explain" hidden>
+				<code>StateFlow</code> mở rộng từ <code>Flow</code>, luôn có sẵn giá trị hiện tại (không như
+				<code>Flow</code> thường vốn chỉ "phát" giá trị mới mà không tự giữ giá trị cũ), và khi kết hợp
+				với <code>collectAsStateWithLifecycle()</code> phía Compose thì chỉ cập nhật UI khi màn hình đang ở
+				trạng thái active — tránh lãng phí khi app chạy nền.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" hidden></p>
+	</form>
+
+	<h2>Bài tập: Sắp xếp luồng dữ liệu MVI</h2>
+	<div class="exercise">
+		<p>
+			4 bước dưới đây bị xáo trộn, mô tả luồng dữ liệu theo kiến trúc MVI trong <code>MainViewModel</code>
+			của Kodeco Chat (xem lại mục 5 ở lesson chính). Với mỗi bước, chọn số thứ tự đúng (1 đến 4) rồi bấm
+			"Kiểm tra thứ tự":
+		</p>
+		<ul class="order-list" id="mvi-order">
+			<li data-correct="3">
+				<select>
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>ViewModel cập nhật <code>StateFlow</code></span>
+			</li>
+			<li data-correct="4">
+				<select>
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>UI hiển thị lại</span>
+			</li>
+			<li data-correct="1">
+				<select>
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>User bấm nút gửi tin nhắn</span>
+			</li>
+			<li data-correct="2">
+				<select>
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>ViewModel nhận sự kiện, xử lý logic</span>
+			</li>
+		</ul>
+		<button type="button" id="check-order">Kiểm tra thứ tự</button>
+		<p id="order-result" hidden></p>
+		<details>
+			<summary>Gợi ý / đáp án đúng</summary>
+			<p>
+				Thứ tự đúng: <strong>User bấm nút gửi tin nhắn</strong> (1) →
+				<strong>ViewModel nhận sự kiện, xử lý logic</strong> (2) →
+				<strong>ViewModel cập nhật StateFlow</strong> (3) → <strong>UI hiển thị lại</strong> (4). Đây chính
+				là vòng lặp Intent → xử lý → cập nhật State → UI vẽ lại đã học ở mục 5.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+
+	const checkOrderBtn = document.getElementById("check-order");
+	const orderResultEl = document.getElementById("order-result");
+
+	checkOrderBtn?.addEventListener("click", () => {
+		const items = document.querySelectorAll("#mvi-order li");
+		let correctCount = 0;
+
+		items.forEach((li) => {
+			const correctValue = li.getAttribute("data-correct");
+			const select = li.querySelector("select");
+			const picked = select?.value;
+
+			li.classList.remove("correct", "incorrect");
+			if (picked && picked === correctValue) {
+				correctCount++;
+				li.classList.add("correct");
+			} else {
+				li.classList.add("incorrect");
+			}
+		});
+
+		if (orderResultEl) {
+			orderResultEl.textContent = `Kết quả: ${correctCount}/${items.length} bước đúng vị trí.`;
+			orderResultEl.removeAttribute("hidden");
+		}
+	});
+</script>
+
+<style>
+	.quiz h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.intro {
+		color: #718096;
+		font-size: 0.9rem;
+	}
+	fieldset {
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		margin-bottom: 1rem;
+		background: #fff;
+	}
+	fieldset.correct {
+		border-color: #68d391;
+		background: #f0fff4;
+	}
+	fieldset.incorrect {
+		border-color: #fc8181;
+		background: #fff5f5;
+	}
+	legend {
+		font-weight: 600;
+		font-size: 0.92rem;
+		padding: 0 0.3rem;
+	}
+	label {
+		display: block;
+		font-size: 0.9rem;
+		margin: 0.35rem 0;
+		color: #2d3748;
+	}
+	.explain {
+		margin-top: 0.6rem;
+		font-size: 0.85rem;
+		color: #4a5568;
+		border-top: 1px dashed #e2e8f0;
+		padding-top: 0.5rem;
+	}
+	button[type="submit"],
+	#check-order {
+		background: #2b6cb0;
+		color: #fff;
+		border: none;
+		padding: 0.55rem 1.1rem;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	button[type="submit"]:hover,
+	#check-order:hover {
+		background: #2c5282;
+	}
+	#quiz-score,
+	#order-result {
+		margin-top: 0.8rem;
+		font-weight: 600;
+		color: #2d3748;
+	}
+	.exercise {
+		background: #fff;
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 1rem 1.2rem;
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: #2d3748;
+	}
+	.exercise pre {
+		background: #1a202c;
+		color: #e2e8f0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.85rem;
+	}
+	.exercise code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+	}
+	.exercise pre code {
+		background: none;
+		padding: 0;
+	}
+	fieldset pre {
+		background: #1a202c;
+		color: #e2e8f0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.85rem;
+		margin: 0.6rem 0;
+	}
+	fieldset pre code {
+		background: none;
+		padding: 0;
+	}
+	details {
+		margin-top: 0.8rem;
+		font-size: 0.88rem;
+	}
+	details summary {
+		cursor: pointer;
+		color: #2b6cb0;
+	}
+	.order-list {
+		list-style: none;
+		padding: 0;
+		margin: 0.8rem 0;
+	}
+	.order-list li {
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+		padding: 0.5rem 0.7rem;
+		border: 1px solid #e2e8f0;
+		border-radius: 8px;
+		margin-bottom: 0.5rem;
+		background: #f7fafc;
+	}
+	.order-list li.correct {
+		border-color: #68d391;
+		background: #f0fff4;
+	}
+	.order-list li.incorrect {
+		border-color: #fc8181;
+		background: #fff5f5;
+	}
+	.order-list select {
+		font-size: 0.88rem;
+		padding: 0.25rem 0.4rem;
+		border-radius: 6px;
+		border: 1px solid #cbd5e0;
+	}
+</style>

@@ -1,0 +1,203 @@
+---
+// Quiz + bài tập nhỏ cho lesson Chapter 3: Android Fundamentals.
+// Câu hỏi bám theo mục "Concept cần giải thích" cho chapter 3 trong docs/LEARNING_MAP.md:
+// vòng đời Activity, phân biệt Manifest/strings.xml, intent-filter MAIN/LAUNCHER,
+// stringResource() vs context.getString(). Đáp án + giải thích tự viết.
+// Quiz chấm bằng vanilla JS phía client (đúng tinh thần "gần như 0 JS trừ chỗ cần tương tác" trong CLAUDE.md).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. <code>onCreate()</code> của một Activity chạy khi nào?</legend>
+			<label><input type="radio" name="q1" value="a" /> Mỗi lần người dùng mở lại app từ chế độ chạy nền (background)</label>
+			<label><input type="radio" name="q1" value="b" /> Chỉ khi Android thực sự tạo mới Activity (ví dụ lần đầu mở app, hoặc sau khi Activity đã bị hệ thống huỷ hoàn toàn)</label>
+			<label><input type="radio" name="q1" value="c" /> Mỗi lần người dùng gõ chữ vào <code>OutlinedTextField</code></label>
+			<p class="explain" hidden>
+				<code>onCreate()</code> chỉ chạy khi Android <strong>tạo mới</strong> Activity. Nếu Activity vẫn còn
+				sống (chỉ bị đưa xuống nền rồi quay lại), Android gọi các hàm khác trong vòng đời như
+				<code>onPause()</code>/<code>onResume()</code>, không gọi lại <code>onCreate()</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>2. <code>AndroidManifest.xml</code> và <code>strings.xml</code> khác nhau ở điểm nào?</legend>
+			<label><input type="radio" name="q2" value="a" /> <code>strings.xml</code> chứa toàn bộ text hiển thị của app; <code>AndroidManifest.xml</code> khai báo Activity/permission/thông tin app cho hệ thống Android</label>
+			<label><input type="radio" name="q2" value="b" /> Cả 2 file đều dùng để lưu chuỗi văn bản, chỉ khác tên gọi</label>
+			<label><input type="radio" name="q2" value="c" /> <code>AndroidManifest.xml</code> dùng để lưu code Kotlin, còn <code>strings.xml</code> dùng để lưu Compose UI</label>
+			<p class="explain" hidden>
+				<code>strings.xml</code> là nơi gom text để dễ dịch đa ngôn ngữ. <code>AndroidManifest.xml</code> là
+				file bắt buộc khai báo cho hệ thống Android biết app có những Activity nào, quyền gì, theme gì —
+				2 file phục vụ 2 mục đích hoàn toàn khác nhau.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. Vì sao <code>MainActivity</code> là màn hình chạy đầu tiên khi mở app từ launcher?</legend>
+			<label><input type="radio" name="q3" value="a" /> Vì <code>AndroidManifest.xml</code> khai báo <code>&lt;intent-filter&gt;</code> với action <code>MAIN</code> và category <code>LAUNCHER</code> cho Activity đó</label>
+			<label><input type="radio" name="q3" value="b" /> Vì tên file bắt đầu bằng chữ "Main"</label>
+			<label><input type="radio" name="q3" value="c" /> Vì <code>MainActivity</code> nằm ở dòng code đầu tiên trong project</label>
+			<p class="explain" hidden>
+				Tên file không quyết định gì cả — Android xác định Activity khởi động dựa vào thẻ
+				<code>&lt;intent-filter&gt;</code> chứa <code>&lt;action android:name="android.intent.action.MAIN" /&gt;</code>
+				và <code>&lt;category android:name="android.intent.category.LAUNCHER" /&gt;</code> trong Manifest.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>4. Khi nào nên dùng <code>context.getString(...)</code> thay vì <code>stringResource(...)</code>?</legend>
+			<label><input type="radio" name="q4" value="a" /> Khi đoạn code đó không nằm trực tiếp trong một Composable function (ví dụ trong lambda tính giá trị ban đầu của <code>remember</code>)</label>
+			<label><input type="radio" name="q4" value="b" /> Khi muốn chuỗi hiển thị bằng tiếng Anh thay vì tiếng Việt</label>
+			<label><input type="radio" name="q4" value="c" /> Hai hàm hoàn toàn giống nhau, dùng hàm nào cũng được</label>
+			<p class="explain" hidden>
+				<code>stringResource()</code> là 1 Composable function nên chỉ gọi được từ bên trong một Composable
+				function khác. Ở những chỗ không phải Composable — ví dụ lambda tính giá trị ban đầu của
+				<code>remember &#123; ... &#125;</code> — phải dùng <code>context.getString(...)</code> thay thế.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" hidden></p>
+	</form>
+
+	<h2>Bài tập nhỏ</h2>
+	<div class="exercise">
+		<p>
+			Mở project <code>aaf-materials/03-android-fundamentals/projects/starter/</code> bằng Android Studio,
+			vào file <code>app/src/main/java/com/kodeco/chat/MainActivity.kt</code>, tìm hàm <code>Greeting</code>
+			(dòng 66–72) — chuỗi hiển thị đang được viết cứng ngay trong code (dòng 69):
+		</p>
+		<pre><code>text = "Hello $name!",</code></pre>
+		<p>
+			Thực hiện các bước sau để chuyển chuỗi này ra <code>strings.xml</code> — giống cách bản
+			<code>final</code> của chapter này đã làm với các chuỗi khác:
+		</p>
+		<ol>
+			<li>
+				Mở <code>app/src/main/res/values/strings.xml</code> (cùng thư mục <code>starter</code>, hiện chỉ
+				có đúng 1 chuỗi <code>app_name</code> ở dòng 35–37), thêm 1 dòng mới vào bên trong thẻ
+				<code>&lt;resources&gt;</code>:
+				<pre><code>&lt;string name="greeting_message"&gt;Hello %1$s!&lt;/string&gt;</code></pre>
+				<code>%1$s</code> là chỗ trống để nhét tham số vào (ở đây là tên người dùng).
+			</li>
+			<li>
+				Trong <code>MainActivity.kt</code>, thêm import <code>androidx.compose.ui.res.stringResource</code>,
+				rồi đổi dòng <code>text = "Hello $name!",</code> thành:
+				<pre><code>text = stringResource(id = R.string.greeting_message, name),</code></pre>
+			</li>
+			<li>
+				Chạy lại <code>GreetingPreview</code> (hoặc chạy app thật) để kiểm tra chữ hiển thị vẫn đúng
+				"Hello Fuad!" như trước khi đổi.
+			</li>
+		</ol>
+		<details>
+			<summary>Gợi ý nếu chưa rõ vì sao cần <code>%1$s</code></summary>
+			<p>
+				Chuỗi gốc không phải text cố định — nó có phần thay đổi được (tên người dùng). Nếu chỉ viết
+				<code>&lt;string name="greeting_message"&gt;Hello!&lt;/string&gt;</code> thì sẽ mất phần tên.
+				<code>%1$s</code> là cú pháp định dạng chuỗi (string format) của Android: <code>%1</code> nghĩa là
+				"tham số thứ 1", còn <code>s</code> nghĩa là "kiểu chuỗi (string)". Hàm
+				<code>stringResource(id, ...)</code> có overload (biến thể) nhận thêm tham số để tự động điền vào
+				các chỗ <code>%1$s</code>, <code>%2$s</code>... trong resource.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>("input[name=\"" + name + "\"]:checked");
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = "Kết quả: " + correct + "/" + fieldsets.length + " câu đúng.";
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>
+
+<style>
+	.quiz h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.intro { color: #718096; font-size: 0.9rem; }
+	fieldset {
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		margin-bottom: 1rem;
+		background: #fff;
+	}
+	fieldset.correct { border-color: #68d391; background: #f0fff4; }
+	fieldset.incorrect { border-color: #fc8181; background: #fff5f5; }
+	legend { font-weight: 600; font-size: 0.92rem; padding: 0 0.3rem; }
+	label { display: block; font-size: 0.9rem; margin: 0.35rem 0; color: #2d3748; }
+	.explain {
+		margin-top: 0.6rem;
+		font-size: 0.85rem;
+		color: #4a5568;
+		border-top: 1px dashed #e2e8f0;
+		padding-top: 0.5rem;
+	}
+	button[type="submit"] {
+		background: #2b6cb0;
+		color: #fff;
+		border: none;
+		padding: 0.55rem 1.1rem;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	button[type="submit"]:hover { background: #2c5282; }
+	#quiz-score { margin-top: 0.8rem; font-weight: 600; color: #2d3748; }
+	.exercise {
+		background: #fff;
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 1rem 1.2rem;
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: #2d3748;
+	}
+	.exercise pre {
+		background: #1a202c;
+		color: #e2e8f0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.85rem;
+	}
+	.exercise code { background: #edf2f7; padding: 0.1rem 0.35rem; border-radius: 4px; }
+	.exercise pre code { background: none; padding: 0; }
+	.exercise ol { padding-left: 1.2rem; }
+	.exercise li { margin-bottom: 0.7rem; }
+	details { margin-top: 0.8rem; font-size: 0.88rem; }
+	details summary { cursor: pointer; color: #2b6cb0; }
+</style>

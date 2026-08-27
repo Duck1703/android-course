@@ -1,0 +1,280 @@
+---
+// Lesson Chapter 10: Room Database.
+// Code trích từ aaf-materials/10-room-db/projects/final/ (real code, không phải paraphrase)
+// theo Quyết định #7 (docs/PROJECT_PLAN.md): user đã đồng ý dùng code thật, tự nhận rủi ro license.
+// Nội dung giải thích tự viết tiếng Việt, diễn giải theo content/book/ch10-room-database.md — không copy nguyên văn sách.
+import { Code } from "astro:components";
+
+const AAF_BASE_DB = "aaf-materials/10-room-db/projects/final/app/src/main/java/com/kodeco/recipefinder/data/database";
+const AAF_BASE_DATA = "aaf-materials/10-room-db/projects/final/app/src/main/java/com/kodeco/recipefinder/data";
+
+const recipeDbCode = `@Parcelize
+@Entity(tableName = "recipes")
+data class RecipeDb(
+  @PrimaryKey(autoGenerate = false)
+  @ColumnInfo(name = "id")
+  var id: Int,
+  @ColumnInfo(name = "title")
+  var title: String,
+  @ColumnInfo(name = "image")
+  var image: String?,
+  @ColumnInfo(name = "summary")
+  var summary: String = "",
+  // ... còn các field: instructions, sourceUrl, preparationMinutes,
+  // cookingMinutes, readyInMinutes, servings (đều có giá trị mặc định)
+) : Parcelable`;
+
+const recipeDaoCode = `@Dao
+interface RecipeDao {
+  @Insert(onConflict = OnConflictStrategy.IGNORE)
+  suspend fun addRecipe(recipe: RecipeDb)
+
+  @Query("SELECT * FROM recipes WHERE id = :id")
+  suspend fun findRecipeById(id: Int): RecipeDb
+
+  @Query("SELECT * FROM recipes")
+  suspend fun getAllRecipes(): List<RecipeDb>
+
+  @Update
+  suspend fun updateRecipeDetails(recipe: RecipeDb)
+
+  @Delete
+  suspend fun deleteRecipe(recipe: RecipeDb)
+
+  @Query("DELETE FROM recipes WHERE id = :recipeId")
+  suspend fun deleteRecipeById(recipeId: Int)
+}`;
+
+const recipeDatabaseCode = `@Database(entities = [RecipeDb::class, IngredientDb::class], version = 1, exportSchema = false)
+abstract class RecipeDatabase : RoomDatabase() {
+
+  abstract fun recipeDao(): RecipeDao
+  abstract fun ingredientDao(): IngredientDao
+
+  companion object {
+    @Volatile
+    private var INSTANCE: RecipeDatabase? = null
+
+    fun getInstance(context: Context): RecipeDatabase {
+      // chỉ 1 thread được vào khối code này tại 1 thời điểm
+      synchronized(this) {
+        var instance = INSTANCE
+
+        if (instance == null) {
+          instance = Room.databaseBuilder(
+            context.applicationContext,
+            RecipeDatabase::class.java,
+            "recipe_database"
+          ).fallbackToDestructiveMigration()
+            .build()
+
+          INSTANCE = instance
+        }
+        return instance
+      }
+    }
+  }
+}`;
+
+const recipeRepositoryCode = `class RecipeRepository(recipeDatabase: RecipeDatabase) {
+  private val recipeDao: RecipeDao = recipeDatabase.recipeDao()
+  private val ingredientDao: IngredientDao = recipeDatabase.ingredientDao()
+
+  suspend fun findAllRecipes(): List<RecipeDb> {
+    return recipeDao.getAllRecipes()
+  }
+
+  suspend fun findRecipeIngredients(recipeId: Int): List<IngredientDb> {
+    return ingredientDao.findIngredientsByRecipe(recipeId)
+  }
+
+  suspend fun insertRecipe(recipe: RecipeDb) {
+    recipeDao.addRecipe(recipe)
+  }
+
+  suspend fun deleteRecipe(recipe: RecipeDb) {
+    recipeDao.deleteRecipe(recipe)
+  }
+
+  // ... còn findBookmarkById, findRecipeById, findAllIngredients,
+  // insertIngredients, deleteRecipeById, deleteIngredient(s), deleteRecipeIngredients
+}`;
+---
+
+<section class="lesson">
+	<div class="callout">
+		<strong>App minh hoạ chapter này:</strong> vẫn là "Recipe Finder" — nhưng từ chapter này app có thể
+		<em>bookmark</em> (lưu lại) công thức yêu thích và gom nguyên liệu thành danh sách "đi chợ" (Groceries).
+		Toàn bộ dữ liệu đó phải được lưu lại thật sự trên máy — tắt app, mở lại vẫn còn — và đó là việc của
+		<strong>Room</strong>.
+	</div>
+
+	<h2 id="vi-sao-room">1. Vì sao dùng Room thay vì SQLite thuần?</h2>
+	<p>
+		Android cho phép app lưu dữ liệu bằng <strong>SQLite</strong> — một hệ quản trị database (cơ sở dữ liệu)
+		gọn nhẹ, chạy thẳng trên máy, không cần server, dữ liệu nằm trong 1 file ngay trên điện thoại. Vấn đề là
+		dùng SQLite trực tiếp khá tốn công: câu lệnh SQL phải viết dưới dạng chuỗi text (dễ gõ sai mà không ai
+		báo lỗi lúc code), và bạn phải tự viết code chuyển đổi qua lại giữa 1 dòng dữ liệu (row) trong database và
+		1 object Kotlin.
+	</p>
+	<p>
+		<strong>Room</strong> là thư viện do Google phát hành, phủ thêm 1 lớp "dễ dùng" lên trên SQLite mà app vẫn
+		đang dùng bên dưới. Room được xây từ 3 thành phần chính, và cả 3 đều xuất hiện trong app Recipe Finder ở
+		chapter này:
+	</p>
+	<ul>
+		<li><strong>Entity</strong> — mô tả 1 "bảng" dữ liệu.</li>
+		<li><strong>DAO</strong> (Data Access Object) — nơi khai báo các hàm đọc/ghi dữ liệu.</li>
+		<li><strong>Database</strong> — lớp trung tâm, "cổng vào" của cả database.</li>
+	</ul>
+	<p>
+		Ngoài 3 thành phần này, code mẫu còn thêm 1 lớp <strong>Repository</strong> đứng giữa Room và phần còn lại
+		của app — không phải khái niệm riêng của Room, nhưng rất hay đi kèm với Room trong thực tế (xem mục 5).
+	</p>
+
+	<h2 id="entity">2. Entity — định nghĩa 1 "bảng" dữ liệu</h2>
+	<p>
+		Một <strong><code>@Entity</code></strong> là 1 class Kotlin bình thường, chỉ khác là được đánh dấu để Room
+		biết: "class này tương ứng với 1 bảng trong database". Mỗi property của class trở thành 1 cột
+		(column), mỗi object tạo ra tương ứng 1 dòng (row) trong bảng đó. Đây là <code>RecipeDb</code> — bảng lưu
+		công thức đã bookmark:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE_DB}/RecipeDb.kt</code> (dòng 43-67, rút gọn bớt field lặp cấu trúc tương tự)
+	</p>
+	<Code code={recipeDbCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>@Entity(tableName = "recipes")</code> đặt tên bảng là <code>recipes</code>. <code>@PrimaryKey</code>
+		đánh dấu <code>id</code> là khoá chính — mỗi dòng phải có 1 giá trị <code>id</code> duy nhất, dùng để phân
+		biệt các dòng với nhau (giống số CMND, không ai trùng ai). <code>@ColumnInfo(name = "...")</code> đặt tên
+		cột trong database, có thể khác tên property Kotlin nếu muốn. Riêng <code>@Parcelize</code> không thuộc về
+		Room — đây là annotation của Kotlin giúp tự sinh code để "gói" object lại khi cần truyền giữa các màn hình
+		trong app, không liên quan tới việc lưu database.
+	</p>
+
+	<h2 id="dao">3. DAO — nơi định nghĩa truy vấn database</h2>
+	<p>
+		<strong>DAO</strong> (Data Access Object — "đối tượng truy cập dữ liệu") là 1 <code>interface</code> liệt
+		kê các hàm đọc/ghi dữ liệu. Bạn chỉ viết chữ ký hàm và câu lệnh SQL (nếu cần) — Room tự sinh code cài đặt
+		(implementation) thật sự lúc build app. Theo nguyên tắc, <strong>toàn bộ app chỉ nên "chạm" vào database
+		qua DAO</strong>, không nơi nào khác được tự ý viết SQL riêng.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE_DB}/RecipeDao.kt</code> (dòng 44-63)
+	</p>
+	<Code code={recipeDaoCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>@Dao</code> đánh dấu đây là 1 DAO. Các hàm bên trong tương ứng với 4 nhóm thao tác cơ bản với dữ
+		liệu, gọi tắt là <strong>CRUD</strong> (Create — tạo, Read — đọc, Update — sửa, Delete — xoá):
+		<code>@Insert</code> thêm 1 dòng mới (<code>OnConflictStrategy.IGNORE</code> nghĩa là nếu đã có sẵn dòng
+		trùng khoá chính thì bỏ qua, không ghi đè, không báo lỗi), <code>@Query</code> cho viết thẳng câu lệnh SQL
+		— Room kiểm tra cú pháp SQL ngay lúc biên dịch (build) thay vì phải chạy app mới phát hiện lỗi gõ sai tên
+		bảng/cột, <code>@Update</code> và <code>@Delete</code> tự động sửa/xoá dựa theo khoá chính của object
+		truyền vào. Mọi hàm đều đánh dấu <code>suspend</code> — nghĩa là hàm bất đồng bộ (asynchronous), chạy
+		trong 1 coroutine, để việc đọc/ghi ổ đĩa (có thể mất chút thời gian) không làm đứng giao diện app.
+	</p>
+
+	<h2 id="database">4. Database — điểm truy cập chính, dùng theo kiểu Singleton</h2>
+	<p>
+		Lớp <strong><code>@Database</code></strong> là "cổng vào" tổng của cả database: nó liệt kê toàn bộ
+		Entity (bảng) mà database quản lý, và khai báo có những DAO nào để lấy ra dùng.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE_DB}/RecipeDatabase.kt</code> (dòng 42-74; đã bỏ đoạn comment giải thích
+		<code>@Volatile</code> và dịch comment bên trong <code>synchronized</code> sang tiếng Việt — phần code
+		Kotlin giữ nguyên như file thật)
+	</p>
+	<Code code={recipeDatabaseCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>@Database(entities = [RecipeDb::class, IngredientDb::class], version = 1, ...)</code> khai báo
+		database này gồm 2 bảng, đang ở phiên bản schema (cấu trúc bảng) số 1. Class phải kế thừa
+		<code>RoomDatabase</code> và khai <code>abstract</code> — Room sẽ tự sinh phần cài đặt thật, bạn chỉ khai
+		báo có những DAO nào (<code>recipeDao()</code>, <code>ingredientDao()</code>).
+	</p>
+	<p>
+		Phần <code>companion object</code> bên dưới không phải là yêu cầu bắt buộc của Room, mà là 1 pattern
+		(khuôn mẫu) rất phổ biến gọi là <strong>Singleton</strong> — đảm bảo cả app chỉ tạo <em>duy nhất 1</em>
+		object <code>RecipeDatabase</code>, dùng chung mọi nơi, vì tạo mới connection tới database nhiều lần khá
+		tốn tài nguyên. <code>getInstance()</code> kiểm tra nếu chưa có <code>INSTANCE</code> nào thì mới tạo mới
+		bằng <code>Room.databaseBuilder(...)</code>, còn không thì trả về cái đã tạo sẵn.
+	</p>
+
+	<h2 id="repository">5. Repository — lớp trung gian giữa Room và phần còn lại của app</h2>
+	<p>
+		<code>RecipeRepository</code> không phải thành phần của Room, mà là 1 lớp do project tự viết, đứng giữa
+		2 DAO (<code>RecipeDao</code>, <code>IngredientDao</code>) và các <code>ViewModel</code> phía trên. Lý do
+		thêm lớp này: nếu sau này đổi cách lưu dữ liệu (ví dụ đổi từ Room sang 1 giải pháp khác), chỉ cần sửa bên
+		trong Repository — phần <code>ViewModel</code> và giao diện phía trên hoàn toàn không cần biết, không cần
+		sửa theo.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE_DATA}/RecipeRepository.kt</code> (dòng 43-101, chỉ giữ vài hàm tiêu biểu — các hàm
+		find/insert/delete còn lại có cấu trúc tương tự)
+	</p>
+	<Code code={recipeRepositoryCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Nhìn kỹ sẽ thấy các hàm ở đây rất "mỏng" — hầu hết chỉ gọi thẳng xuống hàm tương ứng của DAO (ví dụ
+		<code>insertRecipe()</code> gọi <code>recipeDao.addRecipe()</code>). Đó là chủ đích: Repository không tự
+		xử lý logic phức tạp, nó chỉ đứng ra làm "cửa duy nhất" để phần còn lại của app lấy/lưu dữ liệu, mà không
+		cần biết dữ liệu thật sự nằm ở Room hay bất kỳ đâu khác.
+	</p>
+
+	<div class="callout note">
+		<strong>Ghi chú phiên bản:</strong> sách dùng Room 2.5.2 (2023) — code mẫu thật trong
+		<code>aaf-materials/10-room-db/.../gradle/libs.versions.toml</code> cũng đúng bản 2.5.2, không lệch. Tại thời
+		điểm 2026-08-27, nhánh Room 2.x đã lên bản ổn định 2.8.4 và đang ở chế độ bảo trì (chỉ vá lỗi), còn
+		<strong>Room 3.0 đã ra bản ổn định</strong> (mới nhất 3.0.2, 26-08-2026) trong package mới
+		<code>androidx.room3</code>, tập trung hỗ trợ Kotlin Multiplatform. Room 3.0 có một số thay đổi lớn (bắt buộc
+		KSP, bỏ API <code>SupportSQLite</code>, mọi thao tác database đều dựa trên coroutine) nên Google hướng dẫn
+		migrate theo 2 bước riêng, và 2 phiên bản có thể cùng tồn tại trong 1 project. Dù vậy, các annotation cốt lõi
+		<code>@Entity</code>/<code>@Dao</code>/<code>@Database</code> và pattern Repository ở trên vẫn giữ nguyên cách
+		dùng trên cả Room 2.8.x và Room 3.x — phần bạn học ở chapter này không bị lỗi thời.
+	</div>
+</section>
+
+<style>
+	.lesson h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.lesson p {
+		line-height: 1.65;
+		color: #2d3748;
+	}
+	.lesson code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+		font-size: 0.88em;
+	}
+	.src {
+		font-size: 0.82rem;
+		color: #718096;
+		margin: 0.8rem 0 0.3rem;
+	}
+	.hint {
+		font-size: 0.88rem;
+		color: #4a5568;
+		background: #f7fafc;
+		border-left: 3px solid #cbd5e0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 4px;
+	}
+	.callout {
+		background: #ebf8ff;
+		border: 1px solid #bee3f8;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		font-size: 0.9rem;
+		color: #2c5282;
+		margin: 1.4rem 0;
+	}
+	.callout.note {
+		background: #fffaf0;
+		border-color: #feebc8;
+		color: #7b341e;
+	}
+</style>

@@ -1,0 +1,214 @@
+---
+// Quiz + bài tập nhỏ cho lesson Chapter 4: Gradle Basics.
+// Câu hỏi lấy ý từ docs/LEARNING_MAP.md (mục Chapter 4 > Gợi ý Exercise/Quiz), tự viết đáp án + giải thích.
+// Quiz chấm bằng vanilla JS phía client (đúng tinh thần "gần như 0 JS trừ chỗ cần tương tác" trong CLAUDE.md).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. Khác biệt chính giữa build type <code>debug</code> và <code>release</code> là gì?</legend>
+			<label><input type="radio" name="q1" value="a" /> <code>debug</code> chạy nhanh hơn <code>release</code> vì có nhiều tính năng hơn</label>
+			<label><input type="radio" name="q1" value="b" /> <code>debug</code> dùng khi đang phát triển/thử nghiệm (không tối ưu, dễ debug); <code>release</code> dùng khi phát hành (có thể minify/obfuscate code, bắt buộc ký signing)</label>
+			<label><input type="radio" name="q1" value="c" /> Cả 2 hoàn toàn giống nhau, chỉ khác mỗi cái tên</label>
+			<p class="explain" hidden>
+				<code>debug</code> có <code>isDebuggable = true</code>, không bật <code>isMinifyEnabled</code>, và
+				Android Studio tự ký giúp. <code>release</code> có <code>isDebuggable = false</code>, có thể bật
+				<code>isMinifyEnabled</code> để rút gọn/làm rối code, và bắt buộc phải có <code>signingConfig</code>
+				hợp lệ trước khi phát hành.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>2. Vì sao <strong>không</strong> nên commit file <code>keys.properties</code> lên Git?</legend>
+			<label><input type="radio" name="q2" value="a" /> Vì file quá nặng, làm chậm tốc độ clone repo</label>
+			<label><input type="radio" name="q2" value="b" /> Vì nó chứa thông tin ký app (mật khẩu keystore...) — lộ ra thì ai cũng có thể giả mạo là chủ sở hữu app</label>
+			<label><input type="radio" name="q2" value="c" /> Vì Git không hỗ trợ định dạng file <code>.properties</code></label>
+			<p class="explain" hidden>
+				<code>keys.properties</code> chứa <code>storeFile</code>, <code>storePassword</code>,
+				<code>keyAlias</code>, <code>keyPassword</code> — đây là "chìa khoá" chứng minh bạn là chủ app. Vì
+				vậy file này luôn nằm trong <code>.gitignore</code>, không bao giờ được đẩy lên kho mã nguồn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>3. Version Catalog (<code>libs.versions.toml</code>) giúp ích gì?</legend>
+			<label><input type="radio" name="q3" value="a" /> Tự động đăng app lên Google Play Store</label>
+			<label><input type="radio" name="q3" value="b" /> Gom version + thư viện + plugin vào đúng 1 file, tránh version rải rác nhiều nơi và dễ quên cập nhật</label>
+			<label><input type="radio" name="q3" value="c" /> Thay thế hoàn toàn Android Gradle Plugin (AGP)</label>
+			<p class="explain" hidden>
+				Version Catalog không thay thế AGP — nó chỉ là nơi khai báo tập trung version của dependency/plugin,
+				giúp mọi module trong project tham chiếu version theo kiểu type-safe thay vì gõ tay version ở nhiều
+				chỗ khác nhau.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" hidden></p>
+	</form>
+
+	<h2>Bài tập nhỏ</h2>
+	<div class="exercise">
+		<p>
+			Đây là trích đoạn thật từ mục <code>[versions]</code> trong file
+			<code>aaf-materials/04-gradle-basics-a-look-behind-the-curtain/projects/final/gradle/libs.versions.toml</code>
+			(dòng 1–10):
+		</p>
+		<pre><code>[versions]
+# Plugin versions
+android-gradle-plugin = "8.2.0"
+kotlin = "1.9.10"
+
+# Dependency versions
+activity-compose = "1.8.2"
+androidx-compose-bom = "2023.10.00"
+core-ktx = "1.12.0"
+lifecycle-runtime-ktx = "2.6.2"</code></pre>
+		<p>
+			Nhìn vào đoạn trên, hãy tự trả lời: <strong>Kotlin</strong> đang dùng version bao nhiêu? Và
+			<strong>Compose BOM</strong> (<code>androidx-compose-bom</code>) đang dùng version bao nhiêu?
+		</p>
+		<details>
+			<summary>Gợi ý / đáp án</summary>
+			<p>
+				<code>kotlin = "1.9.10"</code> (dòng 4) và <code>androidx-compose-bom = "2023.10.00"</code> (dòng 8).
+				Nhờ khai báo tập trung kiểu này, nếu sau này muốn nâng cấp Kotlin, chỉ cần sửa đúng 1 dòng ở đây —
+				mọi chỗ khác trong project tham chiếu qua <code>version.ref = "kotlin"</code> sẽ tự động dùng version
+				mới, không cần sửa tay từng file.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>
+
+<style>
+	.quiz h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.intro {
+		color: #718096;
+		font-size: 0.9rem;
+	}
+	fieldset {
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		margin-bottom: 1rem;
+		background: #fff;
+	}
+	fieldset.correct {
+		border-color: #68d391;
+		background: #f0fff4;
+	}
+	fieldset.incorrect {
+		border-color: #fc8181;
+		background: #fff5f5;
+	}
+	legend {
+		font-weight: 600;
+		font-size: 0.92rem;
+		padding: 0 0.3rem;
+	}
+	label {
+		display: block;
+		font-size: 0.9rem;
+		margin: 0.35rem 0;
+		color: #2d3748;
+	}
+	.explain {
+		margin-top: 0.6rem;
+		font-size: 0.85rem;
+		color: #4a5568;
+		border-top: 1px dashed #e2e8f0;
+		padding-top: 0.5rem;
+	}
+	button[type="submit"] {
+		background: #2b6cb0;
+		color: #fff;
+		border: none;
+		padding: 0.55rem 1.1rem;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	button[type="submit"]:hover {
+		background: #2c5282;
+	}
+	#quiz-score {
+		margin-top: 0.8rem;
+		font-weight: 600;
+		color: #2d3748;
+	}
+	.exercise {
+		background: #fff;
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 1rem 1.2rem;
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: #2d3748;
+	}
+	.exercise pre {
+		background: #1a202c;
+		color: #e2e8f0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.85rem;
+	}
+	.exercise code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+	}
+	.exercise pre code {
+		background: none;
+		padding: 0;
+	}
+	details {
+		margin-top: 0.8rem;
+		font-size: 0.88rem;
+	}
+	details summary {
+		cursor: pointer;
+		color: #2b6cb0;
+	}
+</style>

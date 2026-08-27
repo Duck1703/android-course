@@ -1,0 +1,315 @@
+---
+// Lesson Chapter 6 — Advanced Jetpack Compose.
+// Tiếp nối Chapter 5, vẫn app "Kodeco Chat" (package com.kodeco.chat) — lần này nối UI với ViewModel thật.
+// Code trích từ aaf-materials/06-advanced-jetpack-compose/projects/final/ (real code, không phải paraphrase)
+// theo Quyết định #7 (docs/PROJECT_PLAN.md): user đã đồng ý dùng code thật, tự nhận rủi ro license.
+// Nội dung giải thích tự viết tiếng Việt, diễn giải theo content/book/ch06-advanced-jetpack-compose.md — không copy nguyên văn sách.
+import { Code } from "astro:components";
+
+const AAF_BASE = "aaf-materials/06-advanced-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat";
+
+const messagesStateCode = `private val _messages: MutableList<MessageUiModel> = initialMessages.toMutableStateList()
+
+private val _messagesFlow: MutableStateFlow<List<MessageUiModel>> by lazy {
+  MutableStateFlow(emptyList())
+}
+val messages = _messagesFlow.asStateFlow()`;
+
+const jumpToBottomCode = `@Composable
+fun JumpToBottom(
+  enabled: Boolean,
+  onClicked: () -> Unit,
+  modifier: Modifier = Modifier
+) {
+  // Show Jump to Bottom button
+  val transition = updateTransition(
+    if (enabled) Visibility.VISIBLE else Visibility.GONE,
+    label = "JumpToBottom visibility animation"
+  )
+  val bottomOffset by transition.animateDp(label = "JumpToBottom offset animation") {
+    if (it == Visibility.GONE) {
+      (-32).dp
+    } else {
+      32.dp
+    }
+  }
+  if (bottomOffset > 0.dp) {
+    ExtendedFloatingActionButton(
+      icon = {
+        Icon(
+          imageVector = Icons.Filled.ArrowDownward,
+          modifier = Modifier.height(18.dp),
+          contentDescription = null
+        )
+      },
+      text = {
+        Text(text = stringResource(id = R.string.jumpBottom))
+      },
+      onClick = onClicked,
+      containerColor = MaterialTheme.colorScheme.surface,
+      contentColor = MaterialTheme.colorScheme.primary,
+      modifier = modifier
+        .offset(x = 0.dp, y = -bottomOffset)
+        .height(36.dp)
+    )
+  }
+}`;
+
+const viewModelUserIdCode = `class MainViewModel : ViewModel() {
+  /**
+   * hard coding the userID here
+   * ideally you would generate this on first app launch, then store it for future use
+   * see chapter 8 to see how you would store a value like this in Data Store
+   * for example
+   * \`userID = userPreferencesRepository.fetchInitialPreferences().currentUserId\`
+   */
+  private val userId = UUID.randomUUID().toString()
+  var currentUserId = MutableStateFlow(userId)`;
+
+const chatRoomCode = `@Immutable
+data class ChatRoom(
+  val id: String,
+  val name: String,
+  val createdOn: Instant? = Clock.System.now(),
+  val messagesCollectionId: String,
+  val isPrivate: Boolean = false,
+  val collectionID: String?,
+  val createdBy: String
+)`;
+
+const currentRoomCode = `private val emptyChatRoom = ChatRoom(
+  id = "public",
+  name = "Android Apprentice",
+  createdOn = Clock.System.now(),
+  messagesCollectionId = DEFAULT_PUBLIC_ROOM_MESSAGES_COLLECTION_ID,
+  isPrivate = false,
+  collectionID = "public",
+  createdBy = "Kodeco User"
+)
+
+private val _currentChatRoom = MutableStateFlow(emptyChatRoom)
+val currentRoom = _currentChatRoom.asStateFlow()`;
+
+const mviFlowCode = `fun onCreateNewMessageClick(messageText: String, photoUri: Uri?) {
+  val currentMoment: Instant = Clock.System.now()
+  val message = Message(
+    UUID.randomUUID().toString(),
+    currentMoment,
+    currentRoom.value.id,
+    messageText,
+    userId,
+    photoUri
+  )
+
+  if (message.photoUri == null) {
+    viewModelScope.launch(Dispatchers.Default) {
+      createMessageForRoom(message, currentRoom.value)
+    }
+  }
+}
+
+suspend fun createMessageForRoom(message: Message, chatRoom: ChatRoom) {
+  val user = User(userId)
+  val messageUIModel = MessageUiModel(message, user)
+  // Add to the beginning of the list
+  _messages.add(0, messageUIModel)
+  _messagesFlow.emit(_messages)
+}`;
+---
+
+<section class="lesson">
+	<div class="callout">
+		<strong>Tiếp nối Chapter 5:</strong> vẫn là app "Kodeco Chat" (package <code>com.kodeco.chat</code>), nhưng
+		UI không còn dựng từ dữ liệu giả cứng nữa. Ở chapter này, bạn nối UI với một <code>ViewModel</code> thật,
+		học cách quản lý <em>state</em> (trạng thái) đúng cách, và làm quen với kiến trúc MVI.
+	</div>
+
+	<h2 id="state">1. State và Recomposition</h2>
+	<p>
+		Trong bất kỳ app nào cũng có những giá trị có thể <em>thay đổi theo thời gian</em> — ví dụ danh sách tin
+		nhắn trong đoạn chat. Compose gọi đó là <strong>State</strong> (trạng thái). Vì Compose theo phong cách
+		<em>declarative</em> (khai báo giao diện thay vì tự tay ra lệnh sửa từng View như code Android cũ), cách
+		duy nhất để cập nhật UI là gọi lại composable với state mới. Mỗi lần điều đó xảy ra gọi là một lần
+		<strong>recomposition</strong> — Compose tự vẽ lại đúng phần UI phụ thuộc vào state đã đổi.
+	</p>
+	<p>
+		Trong <code>MainViewModel</code> của Kodeco Chat, danh sách tin nhắn hiển thị trên UI chính là một state
+		được bọc trong kiểu <code>StateFlow</code>:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/viewmodel/MainViewModel.kt</code> (dòng 74–79)
+	</p>
+	<Code code={messagesStateCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>_messagesFlow</code> là biến <code>private</code>, chỉ ViewModel được phép sửa (bằng cách
+		<code>emit()</code> giá trị mới). <code>messages</code> là bản công khai, chỉ đọc
+		(<code>asStateFlow()</code>) — UI Compose sẽ "lắng nghe" biến này. Mỗi khi có giá trị mới, UI tự
+		recompose để hiển thị tin nhắn mới, không cần dòng code nào chủ động "ra lệnh" vẽ lại màn hình.
+	</p>
+
+	<h2 id="stateful-stateless">2. Composable Stateful vs Stateless</h2>
+	<p>
+		Một composable tự giữ dữ liệu bên trong bằng <code>remember {"{"} mutableStateOf(...) {"}"}</code> được
+		gọi là <strong>stateful</strong> — viết nhanh, nhưng khó tái sử dụng và khó test vì dữ liệu bị "khoá cứng"
+		bên trong. Cách khắc phục là kỹ thuật <em>state hoisting</em> (đẩy state ra ngoài): thay vì tự giữ dữ liệu,
+		composable nhận 2 tham số — giá trị hiện tại (<code>value</code>) và một sự kiện báo khi cần đổi giá trị
+		(kiểu <code>onValueChange</code>). Composable như vậy gọi là <strong>stateless</strong> — bản thân nó không
+		giữ state riêng, ai gọi nó phải tự lo giữ và cập nhật state.
+	</p>
+	<p>
+		<code>JumpToBottom</code> — nút "cuộn xuống cuối" trong màn hình chat — là một ví dụ stateless rõ ràng: nó
+		không tự biết đang hiện hay ẩn, cũng không tự biết phải làm gì khi bị bấm, mà nhận tất cả qua tham số:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/conversation/JumpToBottom.kt</code> (dòng 63–101)
+	</p>
+	<Code code={jumpToBottomCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>enabled</code> và <code>onClicked</code> là 2 tham số đã được hoisted — composable cha
+		(<code>Messages()</code> trong <code>Conversation.kt</code>) tự tính khi nào nút nên hiện (dựa vào vị trí
+		cuộn) và điều gì xảy ra khi bấm, rồi truyền cả hai xuống đây. <code>JumpToBottom</code> chỉ lo phần hiển
+		thị (đoạn animation ẩn/hiện bằng <code>updateTransition</code>), không quan tâm <em>tại sao</em>
+		<code>enabled</code> là <code>true</code> hay <code>false</code>. Nhờ vậy composable này dễ test (chỉ cần
+		truyền thẳng <code>enabled = true/false</code>, không cần dựng cả màn hình chat) và có thể tái dùng ở nơi
+		khác nếu cần.
+	</p>
+
+	<h2 id="viewmodel">3. ViewModel — tách dữ liệu ra khỏi Composable</h2>
+	<p>
+		Vấn đề khi giữ state ngay trong composable hoặc Activity: mỗi lần xoay màn hình (hay bất kỳ
+		<em>configuration change</em> nào khác), Android huỷ và tạo lại Activity từ đầu — state theo đó cũng mất
+		theo. Android cung cấp sẵn <strong>ViewModel</strong>, một class được thiết kế để "sống sót" qua những lần
+		huỷ-tạo-lại đó, tách hẳn phần dữ liệu và logic ra khỏi UI.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/viewmodel/MainViewModel.kt</code> (dòng 59–68)
+	</p>
+	<Code code={viewModelUserIdCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>userId</code> là một UUID ngẫu nhiên đại diện cho người dùng trên thiết bị này (tạm thời tạo mới mỗi
+		lần app khởi động — sách hẹn ở Chapter 9 "Data Store" sẽ học cách lưu lại giá trị này để không bị đổi mỗi
+		lần mở app; comment ngay trong code thật ở trên lại ghi "see chapter 8" — số chương này bị lệch so với sách,
+		chương đúng theo nội dung sách là Chapter 9). <code>currentUserId</code> bọc <code>userId</code> trong <code>MutableStateFlow</code> để UI
+		có thể quan sát nếu cần biết "mình" đang là ai. Một lợi ích khác của <code>ViewModel</code> là
+		<code>viewModelScope</code> — coroutine chạy trong scope này tự động bị huỷ khi <code>ViewModel</code>
+		biến mất, tránh rò rỉ bộ nhớ (một vấn đề kinh điển của Android đời cũ khi một tác vụ bất đồng bộ vẫn chạy
+		dù màn hình đã đóng).
+	</p>
+
+	<h2 id="chatroom">4. Hỗ trợ nhiều phòng chat với ChatRoom</h2>
+	<p>
+		Hiện tại Kodeco Chat chỉ có một phòng chat công khai ("Android Apprentice"), nhưng kiến trúc đã chuẩn bị
+		sẵn cho việc có nhiều phòng (ví dụ nhắn tin riêng giữa hai người) bằng data class <code>ChatRoom</code>:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/data/model/ChatRoom.kt</code> (dòng 41–50)
+	</p>
+	<Code code={chatRoomCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Mỗi phòng chat có <code>id</code>, tên hiển thị (<code>name</code>), thời điểm tạo, cờ
+		<code>isPrivate</code> (phòng riêng hay công khai)... Annotation <code>@Immutable</code> là gợi ý cho
+		Compose biết object này sau khi tạo sẽ không đổi nội dung bên trong — giúp Compose tối ưu, biết chắc khi
+		nào thật sự cần recompose.
+	</p>
+	<p>
+		<code>MainViewModel</code> giữ một <code>StateFlow</code> tên <code>currentRoom</code>, hiện đang trỏ vào
+		một phòng mặc định:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/viewmodel/MainViewModel.kt</code> (dòng 81–92)
+	</p>
+	<Code code={currentRoomCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>emptyChatRoom</code> là phòng chat mặc định dùng tạm — chapter này chưa có màn hình tạo/chọn phòng.
+		Nhờ tách riêng <code>ChatRoom</code> khỏi <code>Message</code>, sau này muốn thêm màn hình danh sách phòng
+		chat hay chuyển phòng, chỉ cần thay đổi giá trị của <code>_currentChatRoom</code> mà không phải sửa lại
+		toàn bộ cấu trúc dữ liệu tin nhắn.
+	</p>
+
+	<h2 id="mvi">5. MVI — luồng dữ liệu một chiều</h2>
+	<p>
+		<strong>MVI</strong> (Model-View-Intent) là kiến trúc mà Kodeco Chat áp dụng cho luồng dữ liệu: Model đại
+		diện cho state của app, View là UI được vẽ dựa theo state đó, còn Intent là hành động của người dùng (ví
+		dụ bấm nút gửi) — sinh ra sự kiện gửi tới Model xử lý. Toàn bộ luồng chỉ đi <em>một chiều</em>:
+		<strong>Intent (hành động người dùng) → ViewModel xử lý → cập nhật Model (State) → View tự vẽ lại</strong>.
+		Đây là điểm khác biệt so với cách làm cũ, nơi UI có thể bị sửa trực tiếp từ nhiều chỗ khác nhau trong code
+		— dễ khiến state ở nhiều nguồn không đồng bộ và sinh lỗi khó debug.
+	</p>
+	<p>
+		Toàn bộ vòng lặp này thể hiện rõ trong cặp hàm xử lý khi người dùng bấm gửi tin nhắn:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/viewmodel/MainViewModel.kt</code> (dòng 103–127)
+	</p>
+	<Code code={mviFlowCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>onCreateNewMessageClick()</code> chính là nơi nhận "Intent" (người dùng bấm gửi) — tạo một
+		<code>Message</code> mới rồi giao việc thật sự cho <code>createMessageForRoom()</code>, chạy trong
+		<code>viewModelScope.launch(...)</code> để không chặn giao diện trong lúc xử lý.
+		<code>createMessageForRoom()</code> thêm tin nhắn mới vào đầu danh sách
+		(<code>_messages.add(0, messageUIModel)</code>) rồi <code>emit()</code> giá trị mới vào
+		<code>_messagesFlow</code> — đây chính là bước "cập nhật Model". Vì UI đang collect từ <code>messages</code>
+		(bản công khai của <code>_messagesFlow</code>), Compose tự nhận state mới và recompose — khép kín vòng lặp
+		Intent → xử lý → cập nhật State → UI vẽ lại, không có bước nào "nhảy tắt" hay đi ngược chiều.
+	</p>
+	<p>
+		<code>StateFlow</code> chính là kiểu <code>Flow</code> đặc biệt, luôn giữ sẵn một giá trị "hiện tại" và có
+		tính <em>lifecycle-aware</em> khi dùng cùng <code>collectAsStateWithLifecycle()</code> phía UI — khác với
+		<code>Flow</code> thường vốn không tự có sẵn giá trị hiện tại và cần quản lý thêm.
+	</p>
+
+	<div class="callout note">
+		<strong>Ghi chú phiên bản:</strong> sách hướng dẫn thêm dependency
+		<code>androidx.lifecycle:lifecycle-runtime-compose</code> (bản 2.6.2 tại thời điểm sách viết) để dùng
+		<code>collectAsStateWithLifecycle()</code> trong <code>MainActivity</code>. Tính đến hiện tại các thư viện
+		Compose/Lifecycle đã lên phiên bản mới hơn nhiều, nhưng khái niệm cốt lõi — ViewModel, StateFlow, MVI, và
+		state hoisting — vẫn giữ nguyên, chênh lệch chỉ nằm ở version công cụ.
+	</div>
+</section>
+
+<style>
+	.lesson h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.lesson p {
+		line-height: 1.65;
+		color: #2d3748;
+	}
+	.lesson code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+		font-size: 0.88em;
+	}
+	.src {
+		font-size: 0.82rem;
+		color: #718096;
+		margin: 0.8rem 0 0.3rem;
+	}
+	.hint {
+		font-size: 0.88rem;
+		color: #4a5568;
+		background: #f7fafc;
+		border-left: 3px solid #cbd5e0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 4px;
+	}
+	.callout {
+		background: #ebf8ff;
+		border: 1px solid #bee3f8;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		font-size: 0.9rem;
+		color: #2c5282;
+		margin: 1.4rem 0;
+	}
+	.callout.note {
+		background: #fffaf0;
+		border-color: #feebc8;
+		color: #7b341e;
+	}
+</style>

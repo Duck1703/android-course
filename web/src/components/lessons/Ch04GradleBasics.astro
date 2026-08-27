@@ -1,0 +1,328 @@
+---
+// Lesson Chapter 4: Gradle Basics: A Look Behind the Curtain.
+// Code trích từ aaf-materials/04-gradle-basics-a-look-behind-the-curtain/projects/final/ (real code)
+// theo Quyết định #7 (docs/PROJECT_PLAN.md): user đã đồng ý dùng code thật, tự nhận rủi ro license.
+// Chapter này không có Composable/UI — tập trung vào Gradle build system, build types, signing, Version Catalog.
+// Nội dung giải thích tự viết tiếng Việt, diễn giải theo content/book/ch04-gradle-basics-a-look-behind-the-curtain.md
+// — không copy nguyên văn sách.
+import { Code } from "astro:components";
+
+const AAF_BASE = "aaf-materials/04-gradle-basics-a-look-behind-the-curtain/projects/final";
+
+const rootBuildGradleCode = `// Top-level build file where you can add configuration options common to all sub-projects/modules.
+plugins {
+  alias(libs.plugins.android.application) apply false
+  alias(libs.plugins.kotlin.android) apply false
+}`;
+
+const starterRootBuildGradleCode = `plugins {
+  id("com.android.application") version "8.2.0" apply false
+  id("org.jetbrains.kotlin.android") version "1.9.10" apply false
+}`;
+
+const androidBlockCode = `android {
+  namespace = "com.kodeco.chat"
+  compileSdk = 34
+
+  defaultConfig {
+    applicationId = "com.kodeco.chat"
+    minSdk = 30
+    targetSdk = 34
+    versionCode = 1
+    versionName = "1.0"
+
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+  }`;
+
+const buildTypesCode = `  buildTypes {
+    release {
+      isMinifyEnabled = false
+      proguardFiles(
+          getDefaultProguardFile("proguard-android-optimize.txt"),
+          "proguard-rules.pro"
+      )
+      signingConfig = signingConfigs.getByName("release")
+    }
+    debug {
+      applicationIdSuffix = ".debug"
+    }
+  }`;
+
+const signingConfigsCode = `  signingConfigs {
+    create("release") {
+      keyAlias = keysProperties["keyAlias"] as String
+      keyPassword = keysProperties["keyPassword"] as String
+      storeFile = file(keysProperties["storeFile"] as String)
+      storePassword = keysProperties["storePassword"] as String
+    }
+  }`;
+
+const keysPropertiesLoadCode = `import java.io.FileInputStream
+import java.util.Properties
+
+// ...
+
+val keysPropertiesFile: File = rootProject.file("keys.properties")
+val keysProperties = Properties()
+
+keysProperties.load(FileInputStream(keysPropertiesFile))`;
+
+const keysPropertiesFileCode = `storeFile = "path to your keystore file"
+storePassword = "your store password"
+keyAlias = "your key alias"
+keyPassword = "your key password"`;
+
+const gitignoreCode = `# Keystore confidential information
+keys.properties`;
+
+const versionsSectionCode = `[versions]
+# Plugin versions
+android-gradle-plugin = "8.2.0"
+kotlin = "1.9.10"
+
+# Dependency versions
+activity-compose = "1.8.2"
+androidx-compose-bom = "2023.10.00"
+core-ktx = "1.12.0"
+lifecycle-runtime-ktx = "2.6.2"
+
+# Instrumented tests versions
+androidx-junit = "1.1.5"
+espresso-core = "3.5.1"
+
+# Unit tests versions
+junit = "4.13.2"`;
+
+const bundlesSectionCode = `[bundles]
+androidx = ["androidx-activity-compose", "androidx-core-ktx", "androidx-lifecycle-runtime-ktx"]
+compose = ["androidx-compose-material3", "androidx-compose-ui-ui-graphics", "androidx-compose-ui-ui", "androidx-compose-ui-ui-tooling-preview"]
+compose-debug = ["androidx-compose-ui-ui-tooling", "androidx-compose-ui-ui-test-manifest"]
+instrumented-tests = ["androidx-junit", "androidx-espresso-core", "androidx-compose-ui-ui-test-junit4"]
+unit-tests = ["junit"]`;
+
+const dependenciesBlockCode = `dependencies {
+  val composeBom = platform(libs.androidx.compose.bom)
+
+  implementation(composeBom)
+  implementation(libs.bundles.androidx)
+  implementation(libs.bundles.compose)
+
+  testImplementation(libs.bundles.unit.tests)
+  androidTestImplementation(composeBom)
+  androidTestImplementation(libs.bundles.instrumented.tests)
+
+  debugImplementation(libs.bundles.compose.debug)
+}`;
+---
+
+<section class="lesson">
+	<div class="callout">
+		<strong>App minh hoạ chapter này:</strong> vẫn là "Kodeco Chat" (đã gặp từ chapter 2) — nhưng lần này ta
+		không nhìn vào UI, mà "mở nắp capo" xem Gradle build app này ra sao: 2 file <code>build.gradle.kts</code>,
+		cách quản lý version tập trung, và cách ký app trước khi phát hành.
+	</div>
+
+	<h2 id="gradle-la-gi">1. Gradle là gì, và có mấy loại file build.gradle.kts?</h2>
+	<p>
+		<strong>Gradle</strong> là hệ thống build (build system) — công cụ tự động hoá việc biên dịch code và đóng
+		gói resources (ảnh, layout, chuỗi văn bản...) thành 1 file duy nhất để cài lên máy. Android dùng thêm
+		<em>Android Gradle Plugin (AGP)</em> chạy trên nền Gradle để hiểu riêng cấu trúc 1 project Android. Kết quả
+		build có thể là file <code>.apk</code> (cài thẳng lên máy) hoặc <code>.aab</code> (gửi lên Google Play để họ
+		tự tạo ra bản <code>.apk</code> tối ưu cho từng loại máy).
+	</p>
+	<p>
+		Một project Android luôn có <strong>2 cấp</strong> file cấu hình Gradle: file <code>build.gradle.kts</code>
+		ở gốc project (<em>top-level</em>, áp dụng cho toàn bộ project) và 1 file <code>build.gradle.kts</code> riêng
+		cho từng <em>module</em> (<em>module-level</em>, ví dụ module <code>app</code>). Đuôi <code>.kts</code>
+		nghĩa là file viết bằng Kotlin (gọi là Kotlin DSL) — cách viết mới Google khuyến khích, thay cho
+		<code>.gradle</code> viết bằng Groovy trước đây.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/build.gradle.kts</code> (dòng 1–5, toàn bộ file top-level)
+	</p>
+	<Code code={rootBuildGradleCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>plugins {"{"}  {"}"}</code> ở top-level chỉ <em>khai báo</em> plugin cần dùng cho cả project (thêm
+		<code>apply false</code> để không áp dụng ngay ở đây), còn module nào cần dùng thật sự thì tự khai báo lại
+		trong file <code>build.gradle.kts</code> của module đó.
+	</p>
+	<div class="callout note">
+		<strong>Lưu ý về nguồn code trích:</strong> file trên nằm trong thư mục <code>projects/final/</code> — tức
+		là <em>kết quả sau khi làm xong cả chương</em>, nên plugin đã được khai báo qua
+		<code>alias(libs.plugins...)</code> (Version Catalog, xem mục 4). Ở project <code>starter/</code> (điểm bắt
+		đầu chương), cùng file này còn viết theo cách cũ, chưa dùng Version Catalog:
+	</div>
+	<p class="src">
+		Nguồn: <code>aaf-materials/04-gradle-basics-a-look-behind-the-curtain/projects/starter/build.gradle.kts</code>
+		(dòng 2–5)
+	</p>
+	<Code code={starterRootBuildGradleCode} lang="kotlin" theme="github-dark" />
+
+	<h2 id="android-block">2. Khối <code>android {"{"} {"}"}</code>: cấu hình app & Build Types</h2>
+	<p>
+		Trong file <code>build.gradle.kts</code> của module <code>app</code>, khối <code>android {"{"} {"}"}</code>
+		là nơi khai báo mọi thứ đặc thù cho Android: <code>namespace</code> (tên gói dùng để truy cập resource),
+		<code>compileSdk</code> (biên dịch bằng API của phiên bản Android nào), và bên trong
+		<code>defaultConfig {"{"} {"}"}</code> là các giá trị mặc định áp dụng cho mọi phiên bản build:
+		<code>applicationId</code> (định danh app, dùng để đăng/publish lên Play Store),
+		<code>minSdk</code>/<code>targetSdk</code> (phiên bản Android thấp nhất hỗ trợ / phiên bản đã test kỹ nhất)
+		và <code>versionCode</code>/<code>versionName</code> (số phiên bản app).
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/app/build.gradle.kts</code> (dòng 14–26)
+	</p>
+	<Code code={androidBlockCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Bên trong <code>android {"{"} {"}"}</code> còn có khối <code>buildTypes {"{"} {"}"}</code> — nơi định nghĩa
+		các <strong>build type</strong> (phiên bản build). Gradle luôn có sẵn 2 build type mặc định:
+		<code>debug</code> (có <code>isDebuggable = true</code>, dùng khi đang code/thử nghiệm) và
+		<code>release</code> (<code>isDebuggable = false</code>, dùng khi phát hành thật). Khai báo lại chúng trong
+		file chỉ để <em>tuỳ chỉnh</em> thêm — thuộc tính nào không đổi thì vẫn giữ giá trị mặc định.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/app/build.gradle.kts</code> (dòng 35–47)
+	</p>
+	<Code code={buildTypesCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Khác biệt chính giữa 2 build type ở đoạn code này: <code>release</code> bật sẵn chỗ cấu hình
+		<code>isMinifyEnabled</code> (bật lên thì code sẽ được rút gọn/làm rối — obfuscate — để giảm dung lượng và
+		khó dịch ngược hơn khi phát hành) và gắn <code>signingConfig</code> (bắt buộc phải ký mới phát hành được, xem
+		mục 3). Còn <code>debug</code> chỉ thêm hậu tố <code>.debug</code> vào <code>applicationId</code> — mẹo nhỏ
+		để không lỡ tay đăng nhầm bản debug lên Play Store, vì nhìn App ID có ".debug" là biết ngay bản sai.
+	</p>
+
+	<h2 id="signing">3. Ký app (signing) trước khi phát hành</h2>
+	<p>
+		Android bắt buộc mỗi app phải có <strong>chữ ký số (certificate)</strong> để xác nhận ai là chủ sở hữu, mới
+		được cài lên máy hoặc đăng lên Play Store. Với build <code>debug</code>, Android Studio tự ký giúp bạn bằng
+		1 khoá mặc định. Nhưng với build <code>release</code>, bạn phải tự tạo <em>keystore</em> (file chứa khoá ký)
+		và khai báo trong <code>signingConfigs {"{"} {"}"}</code>:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/app/build.gradle.kts</code> (dòng 27–34)
+	</p>
+	<Code code={signingConfigsCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Thay vì gõ thẳng mật khẩu vào file này (rất nguy hiểm nếu file bị đưa lên GitHub công khai), project đọc
+		4 giá trị đó (<code>keyAlias</code>, <code>keyPassword</code>, <code>storeFile</code>,
+		<code>storePassword</code>) từ 1 file riêng tên <code>keys.properties</code> ở gốc project, thông qua đoạn
+		code này ở đầu <code>app/build.gradle.kts</code>:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/app/build.gradle.kts</code> (dòng 1–2, 9–12)
+	</p>
+	<Code code={keysPropertiesLoadCode} lang="kotlin" theme="github-dark" />
+	<p>
+		File <code>keys.properties</code> thật trong project mẫu chỉ chứa <em>giá trị mẫu (placeholder)</em>, không
+		phải secret thật — nhưng cho thấy đúng định dạng cần có:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/keys.properties</code> (dòng 33–36)
+	</p>
+	<Code code={keysPropertiesFileCode} lang="toml" theme="github-dark" />
+	<p>
+		Vì file này chứa thông tin nhạy cảm, nó được liệt vào <code>.gitignore</code> để Git không bao giờ commit nó
+		lên kho mã nguồn:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/.gitignore</code> (dòng 12–13)
+	</p>
+	<Code code={gitignoreCode} lang="toml" theme="github-dark" />
+	<p class="hint">
+		Vì sao phải giữ keystore/password an toàn tuyệt đối? Vì sau khi app đã publish lên Play Store, mọi bản cập
+		nhật sau này <strong>bắt buộc</strong> phải ký bằng đúng keystore đó — mất file hoặc quên mật khẩu đồng nghĩa
+		không thể cập nhật app cũ được nữa. Và nếu lộ keystore ra ngoài, người khác có thể giả mạo là chủ app của
+		bạn để phát hành bản cập nhật độc hại.
+	</p>
+
+	<h2 id="version-catalog">4. Version Catalog: quản lý version tập trung trong <code>libs.versions.toml</code></h2>
+	<p>
+		Nếu khai báo version của từng thư viện rải rác ngay trong <code>dependencies {"{"} {"}"}</code>, project
+		càng lớn càng khó kiểm soát: dễ quên cập nhật, dễ trùng lặp, khó biết thư viện nào đang dùng version nào.
+		<strong>Version Catalog</strong> giải quyết việc này bằng cách gom hết version + thư viện + plugin vào
+		<strong>đúng 1 file</strong>: <code>gradle/libs.versions.toml</code>. Mọi module trong project có thể tham
+		chiếu tới catalog này theo kiểu type-safe (gõ sai tên sẽ báo lỗi ngay, không phải đợi build xong mới biết).
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/gradle/libs.versions.toml</code> (dòng 1–17, mục <code>[versions]</code>)
+	</p>
+	<Code code={versionsSectionCode} lang="toml" theme="github-dark" />
+	<p>
+		Ngoài <code>[versions]</code>, file còn có mục <code>[libraries]</code> (khai báo <code>group</code>/
+		<code>name</code> từng thư viện, tham chiếu version qua <code>version.ref</code>) và
+		<code>[plugins]</code> (tương tự, cho các plugin). Mục cuối, <code>[bundles]</code>, cho phép gom nhiều thư
+		viện hay đi chung với nhau thành 1 "bó" — chỉ cần khai báo 1 dòng là kéo theo cả bó:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/gradle/libs.versions.toml</code> (dòng 42–47, mục <code>[bundles]</code>)
+	</p>
+	<Code code={bundlesSectionCode} lang="toml" theme="github-dark" />
+	<p>
+		Nhờ vậy, khối <code>dependencies {"{"} {"}"}</code> trong <code>app/build.gradle.kts</code> gọn hẳn — thay
+		vì liệt kê từng thư viện với version, chỉ cần gọi tên bundle:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/app/build.gradle.kts</code> (dòng 63–75)
+	</p>
+	<Code code={dependenciesBlockCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đây cũng chính là lý do khối <code>plugins {"{"} {"}"}</code> ở file top-level ngay mục 1 dùng được cú pháp
+		<code>alias(libs.plugins.android.application)</code> — <code>libs</code> là "cửa vào" catalog mà Gradle tự
+		sinh ra từ đúng file <code>libs.versions.toml</code> này.
+	</p>
+
+	<div class="callout note">
+		<strong>Ghi chú phiên bản:</strong> code mẫu thực tế (<code>aaf-materials</code>) dùng Kotlin 1.9.10 /
+		Android Gradle Plugin 8.2.0 — còn sách lại ví dụ bằng AGP 8.1.4 (chênh 1 bản vá nhỏ so với code thật, Kotlin
+		thì cả 2 đều 1.9.10). Tính đến 2026-08-27, bản ổn định mới nhất là Kotlin 2.4.x / AGP 9.2.0 — khái niệm build
+		type, signing và Version Catalog ở trên vẫn còn nguyên giá trị với Gradle hiện tại, chênh lệch chủ yếu ở số
+		version công cụ.
+	</div>
+</section>
+
+<style>
+	.lesson h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.lesson p {
+		line-height: 1.65;
+		color: #2d3748;
+	}
+	.lesson code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+		font-size: 0.88em;
+	}
+	.src {
+		font-size: 0.82rem;
+		color: #718096;
+		margin: 0.8rem 0 0.3rem;
+	}
+	.hint {
+		font-size: 0.88rem;
+		color: #4a5568;
+		background: #f7fafc;
+		border-left: 3px solid #cbd5e0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 4px;
+	}
+	.callout {
+		background: #ebf8ff;
+		border: 1px solid #bee3f8;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		font-size: 0.9rem;
+		color: #2c5282;
+		margin: 1.4rem 0;
+	}
+	.callout.note {
+		background: #fffaf0;
+		border-color: #feebc8;
+		color: #7b341e;
+	}
+</style>

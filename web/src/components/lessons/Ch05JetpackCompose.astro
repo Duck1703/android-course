@@ -1,0 +1,316 @@
+---
+// Lesson thật đầu tiên (Task 7) — Chapter 5: Jetpack Compose.
+// Code trích từ aaf-materials/05-jetpack-compose/projects/final/ (real code, không phải paraphrase)
+// theo Quyết định #7 (docs/PROJECT_PLAN.md): user đã đồng ý dùng code thật, tự nhận rủi ro license.
+// Nội dung giải thích tự viết tiếng Việt, diễn giải theo content/book/ch05-jetpack-compose.md — không copy nguyên văn sách.
+import { Code } from "astro:components";
+
+const AAF_BASE = "aaf-materials/05-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat";
+
+const mainActivityCode = `class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {
+      KodecochatTheme {
+        ConversationContent(
+          uiState = exampleUiState
+        )
+      }
+    }
+  }
+}`;
+
+const conversationContentCode = `@Composable
+fun ConversationContent(uiState: ConversationUiState) {
+  val scrollState = rememberLazyListState()
+  ...
+
+  Surface() {
+    Box(modifier = Modifier.fillMaxSize()) {
+      Column(
+        Modifier
+          .fillMaxSize()
+      ) {
+        Messages(
+          messages = uiState.messages,
+          modifier = Modifier.weight(1f)
+        )
+        UserInput(onMessageSent = {})
+      }
+      // Channel name bar floats above the messages
+      ChannelNameBar(channelName = "Android Apprentice")
+    }
+  }
+}`;
+
+const modifierChainCode = `Image(
+  modifier = Modifier
+    .clickable(onClick = { onAuthorClick(msg.message.userId) })
+    .padding(horizontal = 16.dp)
+    .size(42.dp)
+    .border(1.5.dp, borderColor, CircleShape)
+    .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
+    .clip(CircleShape)
+    .align(Alignment.Top),
+  painter = painterResource(id = authorImageId),
+  contentScale = ContentScale.Crop,
+  contentDescription = null
+)`;
+
+const messagesCode = `@Composable
+fun Messages(
+  messages: List<MessageUiModel>,
+  modifier: Modifier = Modifier
+) {
+  Box(modifier = modifier) {
+    LazyColumn(
+      contentPadding =
+        WindowInsets.statusBars.add(WindowInsets(top = 90.dp)).asPaddingValues(),
+      modifier = Modifier.fillMaxSize()
+    ) {
+      itemsIndexed(
+        items = messages,
+        key = { _, message -> message.id }
+      ) { index, content ->
+        val prevAuthor = messages.getOrNull(index - 1)?.message?.userId
+        val nextAuthor = messages.getOrNull(index + 1)?.message?.userId
+        val isFirstMessageByAuthor = prevAuthor != content.message.userId
+        val isLastMessageByAuthor = nextAuthor != content.message.userId
+        MessageUi(
+          onAuthorClick = { },
+          msg = content,
+          authorId = "me",
+          userId = messages.getOrNull(index)?.message?.userId ?: "",
+          isFirstMessageByAuthor = isFirstMessageByAuthor,
+          isLastMessageByAuthor = isLastMessageByAuthor,
+        )
+      }
+    }
+  }
+}`;
+
+const previewCode = `@Preview
+@Composable
+fun KodecochatAppBarPreview() {
+  KodecochatTheme {
+    KodecochatAppBar(title = { Text("Preview!") })
+  }
+}`;
+
+const fakeDataCode = `private val sampleMessageTexts = listOf(
+  Message(
+    roomId = "Android Apprentice",
+    createdOn = Instant.parse("2023-11-16T05:48:01Z"),
+    text = "Hey what do you think of this new Android Apprentice book...",
+    userId = "other"
+  ),
+  Message(
+    roomId = "Android Apprentice",
+    createdOn = Instant.parse("2023-11-17T05:48:01Z"),
+    text = "it's pretty awesome. I learned how to make some cool apps...",
+    userId = "me"
+  ),
+  Message(roomId = "Android Apprentice", text = "Wow!", userId = "other"),
+)
+
+private val meUser = User(id = "me", firstName = "Fuad", lastName = "Kamal")
+private val otherUser = User(id = "other", firstName = "Sally", lastName = "Walden")
+
+val exampleUiState = ConversationUiState(
+  initialMessages = listOf(
+    MessageUiModel(message = sampleMessageTexts[0], user = otherUser, id = "0"),
+    MessageUiModel(message = sampleMessageTexts[1], user = meUser, id = "1"),
+    MessageUiModel(message = sampleMessageTexts[2], user = otherUser, id = "2")
+  ),
+  channelName = "#Android Apprentice",
+)`;
+---
+
+<section class="lesson">
+	<div class="callout">
+		<strong>App minh hoạ chapter này:</strong> "Kodeco Chat" — 1 màn hình chat đơn giản, chưa kết nối mạng
+		thật, chỉ hiển thị dữ liệu giả (<code>FakeData.kt</code>) để tập trung học riêng Compose UI.
+	</div>
+
+	<h2 id="composable">1. Composable function là gì?</h2>
+	<p>
+		Trong Jetpack Compose, giao diện được mô tả bằng các <strong>hàm</strong> đánh dấu annotation
+		<code>@Composable</code> — gọi là <em>Composable function</em>. Thay vì kéo-thả layout XML như cách làm
+		cũ (View system), bạn viết code Kotlin mô tả "giao diện trông như thế nào" và Compose tự vẽ ra màn hình.
+		Điểm bắt đầu của app là <code>ComponentActivity.setContent { }</code> — nơi bạn "gắn" cây Composable gốc
+		vào Activity.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/MainActivity.kt</code> (dòng 44–55)
+	</p>
+	<Code code={mainActivityCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>KodecochatTheme { }</code> bọc ngoài cùng để áp màu/font riêng của app (định nghĩa trong
+		<code>theme/Themes.kt</code>, dòng 109 — không thuộc phạm vi 6 mục dưới đây). Bên trong gọi
+		<code>ConversationContent(uiState = exampleUiState)</code> — một Composable khác, nhận dữ liệu giả làm
+		tham số. Đây chính là ý tưởng cốt lõi: <strong>Composable lồng Composable</strong> để dựng UI phức tạp
+		từ những khối nhỏ, độc lập, dễ tái sử dụng.
+	</p>
+
+	<h2 id="layout-group">2. Layout Group: Column, Row, Box, Surface</h2>
+	<p>
+		4 "khối xếp hình" cơ bản nhất của Compose: <code>Column</code> xếp các thành phần con theo chiều dọc,
+		<code>Row</code> xếp theo chiều ngang, <code>Box</code> chồng các thành phần con lên nhau (thành phần
+		khai báo sau vẽ đè lên trên), <code>Surface</code> tạo một "nền" có màu nền/hình dạng (dùng theo Material
+		Design). Composable <code>ConversationContent</code> dưới đây dùng cả 4 loại cùng lúc:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/conversation/Conversation.kt</code> (dòng 95–119; file thật khai báo 4 biến
+		state ở dòng 98–101, ở đây chỉ giữ lại dòng đầu rồi thay 3 dòng còn lại bằng <code>...</code> vì chưa
+		dùng tới trong mục này)
+	</p>
+	<Code code={conversationContentCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc từ ngoài vào trong: <code>Surface</code> (nền chung) → <code>Box</code> (để 2 thứ chồng lên nhau) →
+		bên trong Box có <code>Column</code> (xếp dọc: danh sách tin nhắn ở trên, ô nhập liệu ở dưới) và
+		<code>ChannelNameBar</code> (thanh tên kênh) — vì cùng nằm trong <code>Box</code>, thanh tên kênh
+		"nổi" đè lên phần trên cùng của danh sách tin nhắn thay vì chiếm riêng 1 hàng.
+	</p>
+
+	<h2 id="modifier">3. Modifier — chỉnh cách render</h2>
+	<p>
+		<code>Modifier</code> là cách Compose thêm "thuộc tính" cho 1 Composable: kích thước, khoảng cách, viền,
+		bo góc, có thể bấm được hay không... Các Modifier được <strong>nối chuỗi</strong> bằng dấu chấm, và
+		<strong>thứ tự nối rất quan trọng</strong> — mỗi Modifier áp dụng lên kết quả của Modifier ngay trước nó.
+		Ví dụ đoạn code vẽ avatar người dùng trong bong bóng chat:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/conversation/Conversation.kt</code> (dòng 207–219, trong hàm <code>MessageUi</code>)
+	</p>
+	<Code code={modifierChainCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Thứ tự ở đây: cho phép bấm (<code>clickable</code>) → thêm khoảng đệm 16dp quanh (<code>padding</code>) →
+		ép kích thước 42dp (<code>size</code>) → vẽ 2 lớp viền tròn (<code>border</code> × 2) → cắt thành hình
+		tròn (<code>clip</code>) → căn lên trên cùng trong Row cha (<code>align</code>). Đổi thứ tự
+		<code>padding</code> và <code>size</code> cho nhau sẽ ra kết quả khác — đây là điểm hay gây nhầm lẫn khi
+		mới học Compose.
+	</p>
+
+	<h2 id="lazycolumn">4. Danh sách cuộn được: LazyColumn</h2>
+	<p>
+		Muốn hiển thị 1 danh sách dài (ví dụ hàng trăm tin nhắn) mà không bị chậm máy, Compose có
+		<code>LazyColumn</code> (và <code>LazyRow</code> cho chiều ngang) — chỉ thật sự "vẽ" những item đang hiện
+		trên màn hình, thay vì vẽ hết toàn bộ danh sách như <code>Column</code> thường. Tương tự vai trò của
+		<code>RecyclerView</code> ở View system cũ.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/conversation/Conversation.kt</code> (dòng 146–183, hàm <code>Messages</code>; đã bỏ
+		comment và 1 tham số bị comment sẵn trong file thật, và gộp biến <code>userId</code> ở dòng 167 vào thẳng
+		chỗ dùng nó cho gọn — phần logic giữ nguyên)
+	</p>
+	<Code code={messagesCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>itemsIndexed</code> lặp qua từng tin nhắn kèm chỉ số (<code>index</code>), cho phép so sánh với tin
+		nhắn trước/sau để quyết định có hiện lại tên/ảnh đại diện hay không (gộp các tin nhắn liên tiếp cùng 1
+		người thành 1 nhóm — giống cách các app chat thật vẫn làm).
+	</p>
+
+	<h2 id="preview">5. @Preview — xem UI không cần chạy app</h2>
+	<p>
+		Thêm annotation <code>@Preview</code> phía trên 1 Composable cho phép Android Studio vẽ thử giao diện
+		ngay trong khung soạn thảo, <strong>không cần build và cài app lên máy ảo/thiết bị thật</strong> — tiết
+		kiệm rất nhiều thời gian khi chỉnh sửa UI nhỏ (đổi màu, đổi khoảng cách...).
+	</p>
+	<p class="src">
+		Nguồn: <code>aaf-materials/05-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat/components/KodecochatAppBar.kt</code>
+		(dòng 82–88)
+	</p>
+	<Code code={previewCode} lang="kotlin" theme="github-dark" />
+	<p class="hint">
+		Composable dùng cho <code>@Preview</code> không được nhận tham số bắt buộc — vì Android Studio sẽ tự gọi
+		hàm này để vẽ thử, không có ai truyền tham số thật vào cả. Đó là lý do <code>KodecochatAppBarPreview</code>
+		không nhận tham số, mà chỉ gọi lại <code>KodecochatAppBar</code> với dữ liệu giả cứng sẵn.
+	</p>
+
+	<h2 id="fakedata">6. Dữ liệu giả để dựng UI trước</h2>
+	<p>
+		Ở chapter 5, app <strong>chưa có <code>ViewModel</code> hay kết nối mạng thật</strong> (2 phần đó học ở
+		chapter 6 và 8) — mục tiêu chỉ là tập trung dựng đúng giao diện. Vì vậy toàn bộ tin nhắn hiển thị đến từ
+		1 file dữ liệu giả viết tay:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/data/FakeData.kt</code> (dòng 43–75; đã rút gọn nội dung text 2 tin nhắn đầu — file
+		thật có emoji và link, và gộp biến <code>initialMessages</code> ở dòng 66–70 vào thẳng
+		<code>exampleUiState</code> để đọc liền mạch hơn)
+	</p>
+	<Code code={fakeDataCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>exampleUiState</code> chính là giá trị được truyền vào <code>ConversationContent(uiState = ...)</code>
+		ở mục 1 — khép lại vòng: <code>MainActivity</code> khởi động → nạp dữ liệu giả → dựng cây Composable →
+		hiển thị màn hình chat.
+	</p>
+
+	<div class="callout note">
+		<strong>Ghi chú phiên bản.</strong> Code mẫu chapter này dùng Kotlin <code>1.9.10</code> và Android Gradle
+		Plugin <code>8.2.0</code> (xem <code>aaf-materials/05-jetpack-compose/projects/final/gradle/libs.versions.toml</code>).
+		Tính đến 27-08-2026, bản ổn định hiện tại là <strong>Kotlin 2.4</strong> (2.4.0 ra tháng 6-2026, 2.4.20 dự
+		kiến tháng 9-2026) và <strong>AGP 9.3</strong> (9.3.0 ra tháng 7-2026). Toàn bộ khái niệm
+		Composable/Modifier/LazyColumn/<code>@Preview</code> ở trên <strong>vẫn đúng nguyên vẹn</strong> — nhưng có
+		một điểm về cách <em>cấu hình</em> Compose đã thật sự đổi:
+		<ul>
+			<li>
+				File <code>app/build.gradle.kts</code> của project mẫu (dòng 76–78) khai báo
+				<code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code>. Từ
+				<strong>Kotlin 2.0</strong> trở đi, Compose compiler được phát hành kèm luôn trong Kotlin, nên không
+				còn phiên bản riêng nào để trỏ tới — khối <code>composeOptions</code> này bị bỏ, thay bằng plugin
+				<code>org.jetbrains.kotlin.plugin.compose</code> (dùng đúng version Kotlin của project). Riêng
+				<code>buildFeatures &#123; compose = true &#125;</code> thì vẫn giữ, vì đó là thiết lập của AGP chứ
+				không phải của compiler.
+			</li>
+		</ul>
+		Nói cách khác: phần bạn học ở chapter này không lỗi thời, chỉ có <strong>cách khai báo Compose trong file
+		Gradle</strong> là đã thay đổi nếu bạn tạo project mới bằng Android Studio hiện nay.
+	</div>
+</section>
+
+<style>
+	.lesson h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.lesson p {
+		line-height: 1.65;
+		color: #2d3748;
+	}
+	.lesson code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+		font-size: 0.88em;
+	}
+	.src {
+		font-size: 0.82rem;
+		color: #718096;
+		margin: 0.8rem 0 0.3rem;
+	}
+	.hint {
+		font-size: 0.88rem;
+		color: #4a5568;
+		background: #f7fafc;
+		border-left: 3px solid #cbd5e0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 4px;
+	}
+	.callout {
+		background: #ebf8ff;
+		border: 1px solid #bee3f8;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		font-size: 0.9rem;
+		color: #2c5282;
+		margin: 1.4rem 0;
+	}
+	.callout.note {
+		background: #fffaf0;
+		border-color: #feebc8;
+		color: #7b341e;
+	}
+</style>

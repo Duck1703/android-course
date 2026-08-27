@@ -1,0 +1,200 @@
+---
+// Quiz + bài tập nhỏ cho lesson Chapter 11 — Advanced Storage (chapter cuối cùng).
+// Câu hỏi bám theo docs/LEARNING_MAP.md (mục Chapter 11 > Gợi ý Exercise/Quiz), tự viết đáp án + giải thích.
+// Quiz chấm bằng vanilla JS phía client (đúng tinh thần "gần như 0 JS trừ chỗ cần tương tác" trong CLAUDE.md).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="a">
+			<legend>1. SQLCipher dùng để mã hoá gì trong project này?</legend>
+			<label><input type="radio" name="q1" value="a" /> Cả file database SQLite/Room — toàn bộ nội dung mã hoá bằng passcode</label>
+			<label><input type="radio" name="q1" value="b" /> Chỉ mã hoá các trường nhạy như password/email trong table</label>
+			<label><input type="radio" name="q1" value="c" /> Mã hoá truyền qua mạng (network encryption / HTTPS)</label>
+			<p class="explain" hidden>
+				SQLCipher là một phiên bản được mã hoá của SQLite — nó mã hóa toàn bộ file database bằng passcode.
+				Trong project, <code>SupportFactory(SQLiteDatabase.getBytes(passCode))</code> được gắn vào Room qua
+				<code>.openHelperFactory()</code>, biến toàn bộ database thành phiên bản đã mã hoá.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. <code>SecurePrefs</code> khác <code>Prefs</code> (Data Store) ở chapter 9 ở điểm nào?</legend>
+			<label><input type="radio" name="q2" value="a" /> <code>SecurePrefs</code> dùng SQLCipher thay vì DataStore</label>
+			<label><input type="radio" name="q2" value="b" /> <code>SecurePrefs</code> lưu trữ dữ liệu trên server cloud</label>
+			<label><input type="radio" name="q2" value="c" /> <code>SecurePrefs</code> dùng <code>EncryptedSharedPreferences</code> để tự động mã hoá key và value</label>
+			<p class="explain" hidden>
+				<code>SecurePrefs</code> dùng <code>EncryptedSharedPreferences</code> từ thư viện <code>androidx.security-crypto</code>
+				— dữ liệu được mã hoá tự động trước khi ghi xuống file, khác với <code>Prefs</code> ở chapter 9 chỉ lưu plain text
+				qua DataStore. Cả hai đều dùng API key-value tương tự, chỉ khác ở lớp lưu trữ phía dưới.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>3. Tại sao passcode của database được sinh ngẫu nhiên thay vì hard-code trong code?</legend>
+			<label><input type="radio" name="q3" value="a" /> Để mỗi lần build app lại tạo passcode khác nhau, tránh conflict version</label>
+			<label><input type="radio" name="q3" value="b" /> Để tránh kẻ xấu decompile app ra lấy được passcode cố định trong source code</label>
+			<label><input type="radio" name="q3" value="c" /> Vì SQLCipher yêu cầu passcode phải là chuỗi ngẫu nhiên, không chấp nhận hard-code</label>
+			<p class="explain" hidden>
+				Nếu hard-code (viết cứng) mật khẩu trong code, kẻ xấu có thể decompile (dịch ngược) app ra và đọc thấy
+				passcode ngay trong nguồn — mọi bảo mật đều vô dụng. Sinh passcode ngẫu nhiên mỗi lần cài app đầu tiên, rồi lưu
+				đã mã hoá qua <code>SecurePrefs</code>, ngăn chặn việc lộ passcode qua việc đọc source.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" hidden></p>
+	</form>
+
+	<h2>Bài tập nhỏ</h2>
+	<div class="exercise">
+		<p>
+			Đọc lại đoạn code khởi tạo ở <code>RecipeApp.onCreate()</code> (lesson Chương 11, mục 4). Hỏi: nếu lần
+			đầu mở app, <code>securePrefs.hasKey(RecipeDatabase.PASSCODE_KEY)</code> trả về <code>false</code>, đoạn code
+			sẽ thực hiện bước nào tiếp theo?
+		</p>
+		<details>
+			<summary>Gợi ý</summary>
+			<p>
+				Điều kiện <code>if (!securePrefs.hasKey(...))</code> — tức là chưa có key — sẽ vào nhánh
+				<code>true</code>: gọi <code>RecipeDatabase.getPassCode(15)</code> để sinh passcode mới (15 ký tự), rồi
+				<code>securePrefs.saveString(...)</code> để lưu lại. Lần mở sau, <code>hasKey</code> sẽ trả về
+				<code>true</code>, vào nhánh <code>else</code> → lấy passcode đã lưu ra dùng lại. Nhờ vậy database chỉ
+				mã hoá 1 lần, các lần mở sau dùng lại đúng passcode để giải mã.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>
+
+<style>
+	.quiz h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.intro {
+		color: #718096;
+		font-size: 0.9rem;
+	}
+	fieldset {
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		margin-bottom: 1rem;
+		background: #fff;
+	}
+	fieldset.correct {
+		border-color: #68d391;
+		background: #f0fff4;
+	}
+	fieldset.incorrect {
+		border-color: #fc8181;
+		background: #fff5f5;
+	}
+	legend {
+		font-weight: 600;
+		font-size: 0.92rem;
+		padding: 0 0.3rem;
+	}
+	label {
+		display: block;
+		font-size: 0.9rem;
+		margin: 0.35rem 0;
+		color: #2d3748;
+	}
+	.explain {
+		margin-top: 0.6rem;
+		font-size: 0.85rem;
+		color: #4a5568;
+		border-top: 1px dashed #e2e8f0;
+		padding-top: 0.5rem;
+	}
+	button[type="submit"] {
+		background: #2b6cb0;
+		color: #fff;
+		border: none;
+		padding: 0.55rem 1.1rem;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	button[type="submit"]:hover {
+		background: #2c5282;
+	}
+	#quiz-score {
+		margin-top: 0.8rem;
+		font-weight: 600;
+		color: #2d3748;
+	}
+	.exercise {
+		background: #fff;
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 1rem 1.2rem;
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: #2d3748;
+	}
+	.exercise pre {
+		background: #1a202c;
+		color: #e2e8f0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.85rem;
+	}
+	.exercise code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+	}
+	.exercise pre code {
+		background: none;
+		padding: 0;
+	}
+	details {
+		margin-top: 0.8rem;
+		font-size: 0.88rem;
+	}
+	details summary {
+		cursor: pointer;
+		color: #2b6cb0;
+	}
+</style>

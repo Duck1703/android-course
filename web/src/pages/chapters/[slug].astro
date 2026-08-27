@@ -1,0 +1,105 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ProgressToggle from "../../components/ProgressToggle.astro";
+import { ALL_CHAPTERS, SECTIONS } from "../../data/chapters";
+import { LESSONS } from "../../data/lessons";
+
+export function getStaticPaths() {
+	return ALL_CHAPTERS.map((ch) => ({
+		params: { slug: ch.slug },
+		props: { chapter: ch },
+	}));
+}
+
+const { chapter } = Astro.props;
+const section = SECTIONS.find((s) => s.chapters.some((c) => c.slug === chapter.slug));
+
+// Task 10 — registry: mỗi chapter đã có lesson đăng ký cặp {Lesson, Quiz} trong data/lessons.ts.
+// Chapter chưa có trong registry vẫn hiện placeholder — không cần sửa file này khi thêm lesson mới.
+const entry = LESSONS[chapter.slug];
+const Lesson = entry?.Lesson;
+const Quiz = entry?.Quiz;
+---
+
+<BaseLayout title={`Chapter ${chapter.number}: ${chapter.title}`}>
+	<p class="crumb">{section?.title}</p>
+	<h1>Chapter {chapter.number}: {chapter.title}</h1>
+	<p class="summary">{chapter.summaryVi}</p>
+
+	<div class="source-box">
+		<strong>Nguồn tham chiếu</strong>
+		<ul>
+			<li>Sách: <em>Android Fundamentals by Tutorials</em>, Chapter {chapter.number}</li>
+			<li>
+				Project mẫu Android:
+				<code>aaf-materials/{chapter.aafFolder}/</code>
+				{!chapter.hasProject && <span class="hint"> (chapter này không có project Android thật)</span>}
+			</li>
+		</ul>
+	</div>
+
+	<ProgressToggle slug={chapter.slug} />
+
+	{
+		Lesson && Quiz ? (
+			<>
+				<Lesson />
+				<Quiz />
+			</>
+		) : (
+			<div class="placeholder">
+				<p>📝 Nội dung bài học chi tiết cho chapter này đang được biên soạn.</p>
+				<p class="hint">
+					Xem tiến độ tại <code>docs/PROJECT_PLAN.md</code>. Bài học sẽ gồm: giải thích khái niệm, code thật từ
+					project mẫu (kèm chỉ rõ file), và bài tập/quiz nhỏ. Xem <code>/chapters/ch05-jetpack-compose/</code>
+					để xem ví dụ lesson đầy đủ đầu tiên.
+				</p>
+			</div>
+		)
+	}
+</BaseLayout>
+
+<style>
+	.crumb {
+		font-size: 0.78rem;
+		color: #a0aec0;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		margin-bottom: 0.2rem;
+	}
+	.summary {
+		color: #4a5568;
+		font-size: 1.02rem;
+	}
+	.source-box {
+		margin-top: 1.5rem;
+		padding: 1rem 1.2rem;
+		background: #fff;
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		font-size: 0.88rem;
+	}
+	.source-box ul {
+		margin: 0.4rem 0 0;
+		padding-left: 1.2rem;
+	}
+	.source-box code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+	}
+	.hint {
+		color: #a0aec0;
+		font-size: 0.8rem;
+	}
+	.placeholder {
+		margin-top: 1.5rem;
+		padding: 1.2rem;
+		border: 1px dashed #cbd5e0;
+		border-radius: 10px;
+		color: #718096;
+	}
+	.placeholder p {
+		margin: 0.3rem 0;
+	}
+</style>

@@ -1,0 +1,200 @@
+---
+// Quiz + bài tập nhỏ cho lesson Chapter 7 — Advanced Architecture (Repository pattern + Ditto SDK).
+// Câu hỏi bám theo docs/LEARNING_MAP.md + nội dung lesson Ch07AdvancedArchitecture.astro.
+// Quiz chấm bằng vanilla JS phía client (đúng tinh thần "gần như 0 JS trừ chỗ cần tương tác" trong CLAUDE.md).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>1. Repository pattern giúp ích gì trong kiến trúc MVVM này?</legend>
+			<label><input type="radio" name="q1" value="a" /> Tự động sinh code SQLite từ interface Repository</label>
+			<label><input type="radio" name="q1" value="b" /> Thay thế hoàn toàn ViewModel bằng một class duy nhất</label>
+			<label><input type="radio" name="q1" value="c" /> Tách ViewModel tránh biết bề ngoài nguồn dữ liệu (network/database/Ditto), giúp test và thay đổi nguồn dễ dàng</label>
+			<p class="explain" hidden>
+				Repository pattern tạo ra 1 lớp trung gian: ViewModel chỉ giao tiếp với 1 interface, còn việc dữ liệu
+				đến từ đâu (ở đây là Ditto P2P, có thể đổi thành mạng) là việc của phần implement. Nhờ vậy ViewModel
+				được tách biệt, dễ test, và có thể đổi nguồn dữ liệu mà không sửa ViewModel.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>2. Tại sao <code>RepositoryImpl</code> dùng <code>@Volatile</code> + <code>synchronized()</code> trong singleton?</legend>
+			<label><input type="radio" name="q2" value="a" /> Để code chạy nhanh hơn khi truy cập từ nhiều thread</label>
+			<label><input type="radio" name="q2" value="b" /> Để đảm bảo chỉ tạo ra duy nhất 1 instance ngay cả khi nhiều thread gọi <code>getInstance()</code> cùng lúc</label>
+			<label><input type="radio" name="q2" value="c" /> Để tuân thủ chuẩn kết nối P2P của Ditto SDK</label>
+			<p class="explain" hidden>
+				<code>@Volatile</code> đảm bảo mọi thread đọc giá trị <code>INSTANCE</code> luôn thấy bản cập nhật mới
+				nhất từ bộ nhớ chính; <code>synchronized(this)</code> ngăn chặn 2 thread cùng tạo instance đồng thời.
+				Hai kết cặp này đảm bảo duy nhất 1 <code>RepositoryImpl</code> trong toàn app dù đa thread.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. Ditto SDK có đặc tính nào so với database server truyền thống?</legend>
+			<label><input type="radio" name="q3" value="a" /> Đồng bộ P2P trực tiếp giữa các thiết bị, không cần server backend, dữ liệu luôn available local-first</label>
+			<label><input type="radio" name="q3" value="b" /> Lưu trữ dữ liệu cloud-first, yêu cầu Internet để đọc bất kỳ record nào</label>
+			<label><input type="radio" name="q3" value="c" /> Chỉ hỗ trợ đồng bộ một chiều từ thiết bị qua trình duyệt</label>
+			<p class="explain" hidden>
+				Ditto đồng bộ <em>peer-to-peer</em> qua Bluetooth/Wi-Fi — thiết bị gần nhau tự đồng bộ trực tiếp,
+				không cần server giữa. Dữ liệu luôn available trên máy ngay (local-first), thêm đồng bộ ra thiết bị khác
+				chỉ là "bonus" khi có kết nối — khác hoàn toàn với database phụ thuộc server truyền thống.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" hidden></p>
+	</form>
+
+	<h2>Bài tập nhỏ</h2>
+	<div class="exercise">
+		<p>
+		>Nhìn vào luồng dữ liệu trong mục 4: <code>Ditto → Repository → ViewModel → UI</code>. Hỏi: vai trò của
+			<code>MainViewModel</code> trong chuỗi này là gì? Nó nhận từ Repository ở dạng gì, và gửi tới UI ở dạng
+			gì?
+		</p>
+		<details>
+			<summary>Gợi ý</summary>
+			<p>
+				<code>Repository</code> cung cấp 1 hoặc nhiều <code>Flow</code> (ví dụ <code>getAllUsers()</code>,
+				<code>getAllMessagesForRoom()</code>) — các Flow này chứa model thô từ Ditto như <code>User</code>,
+				<code>Message</code>. <code>MainViewModel</code> <strong>kết hợp</strong> (<code>combine</code>) các Flow
+				đó lại thành 1 luồng dữ liệu duy nhất chứa đủ thông tin UI cần (tin nhắn + thông tin người gửi), rồi
+				tạo thành <code>StateFlow</code> mà Compose sẽ <code>collectAsState</code> để vẽ lại mỗi khi có tin mới.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>
+
+<style>
+	.quiz h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.intro {
+		color: #718096;
+		font-size: 0.9rem;
+	}
+	fieldset {
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		margin-bottom: 1rem;
+		background: #fff;
+	}
+	fieldset.correct {
+		border-color: #68d391;
+		background: #f0fff4;
+	}
+	fieldset.incorrect {
+		border-color: #fc8181;
+		background: #fff5f5;
+	}
+	legend {
+		font-weight: 600;
+		font-size: 0.92rem;
+		padding: 0 0.3rem;
+	}
+	label {
+		display: block;
+		font-size: 0.9rem;
+		margin: 0.35rem 0;
+		color: #2d3748;
+	}
+	.explain {
+		margin-top: 0.6rem;
+		font-size: 0.85rem;
+		color: #4a5568;
+		border-top: 1px dashed #e2e8f0;
+		padding-top: 0.5rem;
+	}
+	button[type="submit"] {
+		background: #2b6cb0;
+		color: #fff;
+		border: none;
+		padding: 0.55rem 1.1rem;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	button[type="submit"]:hover {
+		background: #2c5282;
+	}
+	#quiz-score {
+		margin-top: 0.8rem;
+		font-weight: 600;
+		color: #2d3748;
+	}
+	.exercise {
+		background: #fff;
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 1rem 1.2rem;
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: #2d3748;
+	}
+	.exercise pre {
+		background: #1a202c;
+		color: #e2e8f0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.85rem;
+	}
+	.exercise code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+	}
+	.exercise pre code {
+		background: none;
+		padding: 0;
+	}
+	details {
+		margin-top: 0.8rem;
+		font-size: 0.88rem;
+	}
+	details summary {
+		cursor: pointer;
+		color: #2b6cb0;
+	}
+</style>

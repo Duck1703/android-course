@@ -1,0 +1,235 @@
+---
+// Lesson Chapter 9: Data Store — tiếp mạch app "Recipe Finder" (com.kodeco.recipefinder) từ chapter 8.
+// Code trích từ aaf-materials/09-data-store/projects/final/ (real code, không phải paraphrase)
+// theo Quyết định #7 (docs/PROJECT_PLAN.md): user đã đồng ý dùng code thật, tự nhận rủi ro license.
+// Nội dung giải thích tự viết tiếng Việt, diễn giải theo content/book/ch09-data-store.md — không copy nguyên văn sách.
+import { Code } from "astro:components";
+
+const AAF_BASE = "aaf-materials/09-data-store/projects/final/app/src/main/java/com/kodeco/recipefinder";
+
+const prefsCode = `class Prefs(val context: Context) {
+  private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "recipes")
+
+  suspend fun saveString(key: String, value: String) {
+    val prefKey = stringPreferencesKey(key)
+    context.dataStore.edit { prefs ->
+      prefs[prefKey] = value
+    }
+  }
+
+  suspend fun getString(key: String): String? {
+    val prefKey = stringPreferencesKey(key)
+    return context.dataStore.data.first()[prefKey]
+  }
+
+  suspend fun saveInt(key: String, value: Int) {
+    val prefKey = intPreferencesKey(key)
+    context.dataStore.edit { prefs ->
+      prefs[prefKey] = value
+    }
+  }
+
+  suspend fun getInt(key: String): Int? {
+    val prefKey = intPreferencesKey(key)
+    return context.dataStore.data.first()[prefKey]
+  }
+
+  suspend fun hasKey(key: String): Boolean {
+    val prefKey = stringPreferencesKey(key)
+    return context.dataStore.data.first().contains(prefKey)
+  }
+}`;
+
+const recipeAppCode = `class RecipeApp : Application() {
+  lateinit var prefs: Prefs
+
+  override fun onCreate() {
+    super.onCreate()
+    // Install a Timber tree.
+    if (BuildConfig.DEBUG) {
+      plant(Timber.DebugTree())
+    }
+
+    prefs = Prefs(this)
+  }
+}`;
+
+const localPrefsProviderCode = `val LocalPrefsProvider =
+  compositionLocalOf<Prefs> { error("No prefs provided") }
+
+// ... (bên trong onCreate của MainActivity, sau khi tạo navController)
+
+CompositionLocalProvider(
+  LocalNavigatorProvider provides navController,
+  LocalPrefsProvider provides (application as RecipeApp).prefs,
+  // TODO: Add Repository
+) {`;
+
+const mainScreenCode = `const val CURRENT_INDEX_KEY = "CURRENT_INDEX_KEY"
+
+@Composable
+fun MainScreen() {
+  val selectedIndex = remember {
+    mutableIntStateOf(0)
+  }
+  val prefs = LocalPrefsProvider.current
+  val scope = rememberCoroutineScope()
+  LaunchedEffect(Unit) {
+    scope.launch {
+      val currentIndex = prefs.getInt(CURRENT_INDEX_KEY)
+      if (currentIndex != null) {
+        selectedIndex.intValue = currentIndex
+      }
+    }
+  }`;
+---
+
+<section class="lesson">
+	<div class="callout">
+		<strong>App minh hoạ chapter này:</strong> vẫn là "Recipe Finder" (<code>com.kodeco.recipefinder</code>) —
+		từ chapter này app sẽ nhớ danh sách từ khoá tìm kiếm gần đây và nhớ tab người dùng đang xem, kể cả sau khi
+		tắt và mở lại app.
+	</div>
+
+	<h2 id="save-data">1. Ba cách lưu dữ liệu & vì sao chọn key-value cho dữ liệu nhỏ</h2>
+	<p>
+		Có 3 cách chính để lưu dữ liệu xuống máy Android: tự ghi 1 file định dạng riêng (ví dụ JSON — linh hoạt
+		nhưng phải tự lo đọc/ghi đúng thứ tự); dùng 1 thư viện có sẵn để lưu dữ liệu đơn giản dạng cặp
+		<em>key-value</em> (chuỗi, số, boolean...) vào 1 vị trí dùng chung; hoặc dùng database SQLite khi dữ liệu
+		nhiều, có quan hệ với nhau, cần truy vấn phức tạp (học ở chapter Room kế tiếp). Dữ liệu key-value kiểu này
+		sẽ <strong>mất khi user gỡ (uninstall) app</strong> — khác với dữ liệu đồng bộ lên server.
+	</p>
+	<p>
+		Android từng có sẵn <code>SharedPreferences</code> cho việc lưu key-value, nhưng interface này đã bị
+		đánh dấu <em>deprecated</em> (không khuyến khích dùng cho code mới). Thư viện thay thế hiện tại là
+		<strong>DataStore</strong> (cụ thể ở đây là Preferences DataStore) — vẫn lưu key-value, nhưng dựa trên
+		<code>Flow</code>/coroutine của Kotlin thay vì API đồng bộ cũ. Toàn bộ phần đọc/ghi được Recipe Finder gói
+		lại trong 1 class riêng tên <code>Prefs</code>, để phần còn lại của app không phải đụng trực tiếp vào API
+		của DataStore.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/data/Prefs.kt</code> (dòng 12–43)
+	</p>
+	<Code code={prefsCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>private val Context.dataStore: DataStore&lt;Preferences&gt; by preferencesDataStore(name = "recipes")</code>
+		là 1 extension property gắn thêm vào <code>Context</code>, dùng delegated property (từ khoá <code>by</code>)
+		để Android tự tạo/mở 1 file DataStore tên "recipes" — chỉ tạo đúng 1 lần rồi tái sử dụng. Các hàm
+		<code>saveString</code>/<code>getString</code>/<code>saveInt</code>/<code>getInt</code> đều là hàm
+		<code>suspend</code> vì đọc/ghi của DataStore luôn bất đồng bộ (phải gọi từ trong coroutine).
+		<code>stringPreferencesKey(key)</code>/<code>intPreferencesKey(key)</code> bọc 1 chuỗi key thô thành
+		"khoá có kiểu" để DataStore biết đang lưu/đọc đúng kiểu dữ liệu nào.
+		<code>context.dataStore.edit &#123; ... &#125;</code> mở khối chỉnh sửa để ghi; <code>data.first()</code>
+		lấy giá trị hiện tại — chỉ lấy 1 lần rồi dừng, không tiếp tục lắng nghe thay đổi về sau. Hàm
+		<code>hasKey</code> chỉ đơn giản kiểm tra khoá đã tồn tại hay chưa bằng <code>.contains(prefKey)</code>.
+	</p>
+
+	<h2 id="prefs-class">2. Chỉ nên có đúng 1 <code>Prefs</code> cho cả app</h2>
+	<p>
+		Sách lưu ý 1 điều quan trọng: <strong>không nên tạo nhiều hơn 1 instance DataStore cùng trỏ tới 1 file
+		preference</strong> — dễ gây lỗi khó debug. Vì vậy Recipe Finder chỉ tạo đúng 1 instance của
+		<code>Prefs</code> khi app khởi động, ở class kế thừa <code>Application</code> (chạy trước mọi Activity,
+		sống suốt vòng đời app):
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/RecipeApp.kt</code> (dòng 9–21)
+	</p>
+	<Code code={recipeAppCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>lateinit var prefs: Prefs</code> khai báo biến sẽ được gán giá trị sau (không thể gán ngay lúc khai
+		báo vì cần <code>Context</code> của app). <code>prefs = Prefs(this)</code> trong <code>onCreate()</code>
+		tạo instance <code>Prefs</code> duy nhất, dùng lại cho toàn bộ app — không có nơi nào khác trong Recipe
+		Finder được phép tự tạo thêm 1 <code>Prefs</code> khác.
+	</p>
+
+	<h2 id="composition-local">3. LocalPrefsProvider — phát <code>Prefs</code> xuống cây Composable</h2>
+	<p>
+		Có <code>prefs</code> rồi, nhưng làm sao đưa nó tới hàng chục Composable con (màn hình danh sách công thức,
+		màn hình chi tiết, màn hình groceries...) mà không phải truyền tham số <code>prefs: Prefs</code> thủ công
+		qua từng hàm? Compose có cơ chế <strong>CompositionLocal</strong> — tạo ra 1 "kênh phát" giá trị mà bất kỳ
+		Composable nào nằm bên dưới nơi nó được cung cấp (<em>provide</em>) đều đọc được, không cần truyền qua
+		tham số. Đây là 1 kiểu <em>dependency injection</em> (tự động đưa 1 đối tượng cần dùng tới nơi cần dùng,
+		thay vì tự tay khởi tạo lại) làm thủ công bằng tay — sách chưa dùng tới các thư viện DI như Hilt/Koin/Dagger.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/MainActivity.kt</code> (dòng 30–31 khai báo; dòng 44–48 cung cấp giá trị thật, đã
+		lược phần ở giữa)
+	</p>
+	<Code code={localPrefsProviderCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>compositionLocalOf&lt;Prefs&gt; &#123; error("No prefs provided") &#125;</code> tạo ra 1
+		CompositionLocal tên <code>LocalPrefsProvider</code> — giá trị mặc định là 1 lỗi crash app, buộc phải
+		"cung cấp" giá trị thật trước khi bất kỳ Composable nào cố đọc nó. Trong <code>onCreate</code> của
+		<code>MainActivity</code>, <code>CompositionLocalProvider(...)</code> cung cấp instance <code>prefs</code>
+		thật — lấy từ <code>RecipeApp</code> đã tạo ở mục 2 — cho toàn bộ cây Composable bên trong
+		<code>NavHost</code>.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/ui/MainScreen.kt</code> (dòng 22–38, rút gọn phần dựng UI bottom bar bên dưới)
+	</p>
+	<Code code={mainScreenCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Ở phía "tiêu thụ" (consume), Composable chỉ cần gọi <code>LocalPrefsProvider.current</code> là lấy ngay
+		được instance <code>Prefs</code> — không cần biết nó được tạo ở đâu. Đây chính là cách <code>MainScreen</code>
+		khôi phục tab đã chọn lần trước: <code>LaunchedEffect(Unit)</code> chạy đúng 1 lần khi Composable xuất hiện
+		lần đầu, đọc <code>prefs.getInt(CURRENT_INDEX_KEY)</code>, nếu có giá trị đã lưu thì cập nhật lại
+		<code>selectedIndex</code>. Ngược lại, khi user bấm sang tab khác, phần <code>onclick</code> của mỗi
+		<code>BottomItem</code> gọi <code>prefs.saveInt(CURRENT_INDEX_KEY, 0)</code> cho tab Recipes (MainScreen.kt
+		dòng 46–49) hoặc <code>prefs.saveInt(CURRENT_INDEX_KEY, 1)</code> cho tab Groceries (dòng 56–59) — đúng ví
+		dụ kinh điển "nhớ tab người dùng đang xem lần cuối" của SharedPreferences/DataStore.
+	</p>
+
+	<div class="callout note">
+		<strong>Ghi chú phiên bản:</strong> DataStore Preferences (<code>androidx.datastore:datastore-preferences</code>)
+		vẫn là thư viện được Google khuyến nghị cho dữ liệu key-value tính đến nay — không có thay đổi API lớn so
+		với nội dung sách. <code>SharedPreferences</code> vẫn còn hoạt động trên mọi phiên bản Android (không bị gỡ
+		bỏ), chỉ là không còn được khuyến khích dùng cho code viết mới.
+	</div>
+</section>
+
+<style>
+	.lesson h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.lesson p {
+		line-height: 1.65;
+		color: #2d3748;
+	}
+	.lesson code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+		font-size: 0.88em;
+	}
+	.src {
+		font-size: 0.82rem;
+		color: #718096;
+		margin: 0.8rem 0 0.3rem;
+	}
+	.hint {
+		font-size: 0.88rem;
+		color: #4a5568;
+		background: #f7fafc;
+		border-left: 3px solid #cbd5e0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 4px;
+	}
+	.callout {
+		background: #ebf8ff;
+		border: 1px solid #bee3f8;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		font-size: 0.9rem;
+		color: #2c5282;
+		margin: 1.4rem 0;
+	}
+	.callout.note {
+		background: #fffaf0;
+		border-color: #feebc8;
+		color: #7b341e;
+	}
+</style>

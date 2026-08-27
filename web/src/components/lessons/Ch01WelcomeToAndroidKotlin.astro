@@ -1,0 +1,169 @@
+---
+// Task 11 — Lesson Chapter 1: tổng quan cách một Android app được tổ chức.
+// Chapter này không có project Android thật; ví dụ XML bên dưới là trích đoạn minh hoạ trong EPUB.
+// Nội dung tiếng Việt được diễn giải từ content/book/ch01-welcome-to-android-kotlin.md.
+import { Code } from "astro:components";
+
+const manifestCode = `<?xml version="1.0" encoding="utf-8"?>
+<manifest ... >
+  <!-- // 1 -->
+  <application ... >
+    <!-- // 2 -->
+    <activity
+      android:name=".MainActivity"
+      android:exported="true"
+      android:label="@string/app_name"
+      android:theme="@style/SplashTheme">
+      <!-- // 3 -->
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+    ...
+  </application>
+</manifest>`;
+---
+
+<section class="lesson">
+	<div class="callout">
+		<strong>Phạm vi chapter:</strong> Đây là bài tổng quan để bạn nhìn thấy các mảnh chính của một Android app.
+		Thư mục tài liệu đi kèm chỉ có file <code>.keep</code>, không có project <code>starter</code> hay
+		<code>final</code> để chạy. Vì vậy bài này dùng đúng một trích đoạn XML Manifest từ EPUB, không tạo code Kotlin
+		giả.
+	</div>
+
+	<h2 id="android-kotlin">1. Android và vai trò của Kotlin</h2>
+	<p>
+		Android app có thể được viết bằng ngôn ngữ được nền tảng hỗ trợ trực tiếp như <strong>Java</strong> hoặc
+		<strong>Kotlin</strong>. Một hướng khác là dùng framework đa nền tảng như React Native hoặc Flutter để chia sẻ
+		một phần code giữa Android và iOS. Mỗi hướng có ưu và nhược điểm riêng; cuốn sách chọn Kotlin để đi theo cách
+		phát triển Android native (trực tiếp trên nền tảng Android).
+	</p>
+	<p>
+		Ở chapter này bạn chỉ cần nhớ Kotlin là ngôn ngữ sẽ được dùng trong các bài sau. Cú pháp biến, hàm hay class
+		chưa được dạy ở đây. Sách cũng nêu một lý do quan trọng cho lựa chọn này: Kotlin là ngôn ngữ
+		<strong>được Google khuyến nghị chính thức cho Android từ năm 2019</strong> — nên tài liệu, thư viện và ví dụ
+		mới hầu như đều viết bằng Kotlin.
+	</p>
+	<p class="src">
+		Nguồn nội dung: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 19–27)
+	</p>
+
+	<h2 id="components">2. Security sandbox và 4 app component</h2>
+	<p>
+		Mỗi app chạy trong một <strong>security sandbox (vùng cô lập bảo mật)</strong>. Hiểu đơn giản: app không tự ý
+		đọc dữ liệu của app khác hoặc dùng phần nhạy cảm của thiết bị; quyền truy cập phải được hệ thống cho phép.
+	</p>
+	<p>Bên trong vùng đó, Android nhận biết bốn loại <strong>component (thành phần)</strong> chính:</p>
+	<ul class="component-list">
+		<li><strong>Activity:</strong> nơi thường cung cấp màn hình để người dùng tương tác.</li>
+		<li><strong>Service:</strong> thực hiện công việc nền và không cung cấp giao diện trực tiếp.</li>
+		<li><strong>Content Provider:</strong> quản lý dữ liệu và có thể cho app khác truy cập khi được phép.</li>
+		<li><strong>Broadcast Receiver:</strong> nhận sự kiện được hệ thống hoặc app khác phát đi.</li>
+	</ul>
+	<p>
+		Để yêu cầu Android mở hoặc kết nối với component, app thường dùng <strong>Intent (thông điệp yêu cầu hành
+		động)</strong>. Riêng Content Provider được truy cập thông qua <strong>Content Resolver (cầu nối tới dữ
+		liệu)</strong>.
+	</p>
+	<p class="src">
+		Nguồn nội dung: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 29–49)
+	</p>
+
+	<h2 id="manifest">3. Manifest — “nhãn thông tin” của app</h2>
+	<p>
+		Android cần biết app có những component nào và component nào được phép làm gì. Thông tin đó được khai báo
+		trong <code>AndroidManifest.xml</code>. Trích đoạn dưới đây mô tả một <code>MainActivity</code> có thể được mở
+		từ biểu tượng app.
+	</p>
+	<p class="src">
+		Nguồn code: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 55–76). Dấu
+		<code>...</code> cho biết đây là trích đoạn minh hoạ, không phải file hoàn chỉnh để build. Sách còn có thêm 1
+		dòng comment ngay trên <code>&lt;intent-filter&gt;</code> (dòng 67:
+		<em>“Specifies the kind of Intents the Activity can respond to”</em> — mô tả loại Intent mà Activity này phản hồi
+		được); ở đây đã bỏ dòng đó vì ý của nó được giải thích bằng tiếng Việt ở mục 3 bên dưới.
+	</p>
+	<Code code={manifestCode} lang="xml" theme="github-dark" />
+	<ol>
+		<li><code>&lt;application&gt;</code> là phần tử cha chứa các component của app.</li>
+		<li><code>&lt;activity android:name=".MainActivity"&gt;</code> khai báo Activity tên <code>MainActivity</code>.</li>
+		<li>
+			Cặp <code>MAIN</code> và <code>LAUNCHER</code> trong <code>&lt;intent-filter&gt;</code> cho Android biết đây là
+			Activity khởi động khi người dùng bấm biểu tượng app.
+		</li>
+	</ol>
+	<p>
+		Manifest còn là nơi khai báo quyền người dùng và tính năng phần cứng mà app cần. Vì vậy bạn có thể hình dung
+		nó giống một “nhãn thông tin” giúp hệ thống biết app gồm những gì trước khi chạy.
+	</p>
+	<p class="src">
+		Nguồn giải thích: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 78–86)
+	</p>
+
+	<h2 id="resources">4. Resources — phần không phải code</h2>
+	<p>
+		Một app không chỉ có code. Ảnh, âm thanh, animation, màu và chuỗi văn bản đều là
+		<strong>resource (tài nguyên)</strong>. Android có thể chọn resource phù hợp theo ngôn ngữ, kích thước màn hình
+		hoặc độ phân giải của thiết bị. Nhờ đó cùng một app có thể thích nghi với nhiều thiết bị mà không cần nhét mọi
+		trường hợp vào code.
+	</p>
+	<p class="src">
+		Nguồn nội dung: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 88–94)
+	</p>
+
+	<h2 id="gradle">5. Gradle ghép mọi thứ thành app</h2>
+	<p>
+		Khi code đã sẵn sàng, resource đã được chuẩn bị và component đã được khai báo, project cần một
+		<strong>build system (hệ thống tạo bản chạy)</strong>. Sách dùng Gradle cùng Android Gradle Plugin để biên dịch
+		code, xử lý resource và tạo phiên bản app có thể cài đặt hoặc phát hành.
+	</p>
+	<p>
+		Bạn chưa cần nhớ cú pháp Gradle ở chapter này. Chỉ cần hình dung luồng tổng quát:
+		<strong>code + resources + Manifest → Gradle build → file app</strong>. Chapter 4 sẽ đi sâu hơn vào phần build.
+	</p>
+	<p class="src">
+		Nguồn nội dung: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 96–104)
+	</p>
+</section>
+
+<style>
+	.lesson h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.lesson p,
+	.lesson li {
+		line-height: 1.65;
+		color: #2d3748;
+	}
+	.lesson code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+		font-size: 0.88em;
+	}
+	.component-list {
+		padding-left: 1.3rem;
+	}
+	.component-list li {
+		margin-bottom: 0.35rem;
+	}
+	.src {
+		font-size: 0.82rem;
+		color: #718096 !important;
+		margin: 0.8rem 0 0.3rem;
+	}
+	.callout {
+		background: #ebf8ff;
+		border-left: 4px solid #4299e1;
+		padding: 0.8rem 1rem;
+		border-radius: 0 6px 6px 0;
+		font-size: 0.9rem;
+		line-height: 1.6;
+		color: #2c5282;
+	}
+</style>

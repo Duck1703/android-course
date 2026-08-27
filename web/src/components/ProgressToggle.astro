@@ -1,0 +1,59 @@
+---
+// Task 9 — nút đánh dấu "đã học" cho 1 chapter, lưu vào localStorage (không cần backend).
+interface Props {
+	slug: string;
+}
+const { slug } = Astro.props;
+---
+
+<div class="progress-toggle">
+	<button id="progress-btn" data-slug={slug} type="button">☐ Đánh dấu đã học chapter này</button>
+</div>
+
+<script>
+	import { isDone, toggleDone } from "../lib/progress";
+
+	const btn = document.getElementById("progress-btn") as HTMLButtonElement | null;
+
+	function render() {
+		if (!btn?.dataset.slug) return;
+		const done = isDone(btn.dataset.slug);
+		btn.textContent = done ? "☑ Đã học — bấm để bỏ đánh dấu" : "☐ Đánh dấu đã học chapter này";
+		btn.classList.toggle("done", done);
+	}
+
+	btn?.addEventListener("click", () => {
+		if (!btn.dataset.slug) return;
+		toggleDone(btn.dataset.slug);
+		render();
+		document
+			.querySelectorAll<HTMLAnchorElement>(`nav a[data-slug="${btn.dataset.slug}"]`)
+			.forEach((a) => a.classList.toggle("done", isDone(btn.dataset.slug!)));
+	});
+
+	render();
+</script>
+
+<style>
+	.progress-toggle {
+		margin: 1.2rem 0 0;
+	}
+	#progress-btn {
+		background: #fff;
+		border: 1px solid #cbd5e0;
+		color: #4a5568;
+		padding: 0.5rem 0.9rem;
+		border-radius: 8px;
+		font-size: 0.85rem;
+		cursor: pointer;
+	}
+	#progress-btn:hover {
+		border-color: #2b6cb0;
+		color: #2b6cb0;
+	}
+	#progress-btn.done {
+		background: #f0fff4;
+		border-color: #68d391;
+		color: #276749;
+	}
+</style>

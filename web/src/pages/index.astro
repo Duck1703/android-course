@@ -1,0 +1,129 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { SECTIONS } from "../data/chapters";
+---
+
+<BaseLayout title="Trang chủ">
+	<h1>Học Android bằng tiếng Việt</h1>
+	<p class="lead">
+		Website học <strong>Kotlin</strong>, <strong>Android</strong> và <strong>Jetpack Compose</strong> cho
+		người mới bắt đầu, dựa theo sách <em>Android Fundamentals by Tutorials</em> (Kodeco) và project mẫu đi kèm sách.
+		Mỗi bài học đều trỏ ngược được về đúng chapter và file code gốc.
+	</p>
+
+	<p class="progress-summary" id="progress-summary" hidden></p>
+
+	{
+		SECTIONS.map((section) => (
+			<section class="section-block">
+				<h2>{section.title}</h2>
+				<div class="cards">
+					{section.chapters.map((ch) => (
+						<a class="card" href={`/chapters/${ch.slug}/`} data-slug={ch.slug}>
+							<span class="badge">Chapter {ch.number}</span>
+							<strong>{ch.title}</strong>
+							<span class="summary">{ch.summaryVi}</span>
+						</a>
+					))}
+				</div>
+			</section>
+		))
+	}
+
+	<p class="note">
+		Trạng thái hiện tại: sườn website (sidebar + trang chủ) đã sẵn sàng. Nội dung bài học chi tiết cho từng
+		chapter đang được biên soạn dần — xem <code>docs/PROJECT_PLAN.md</code> để biết tiến độ.
+	</p>
+</BaseLayout>
+
+<script>
+	// Task 9 — tóm tắt tiến độ đọc từ localStorage, đánh dấu card chapter đã học.
+	import { getDoneSlugs } from "../lib/progress";
+
+	const doneSlugs = getDoneSlugs();
+	const done = new Set(doneSlugs);
+	const cards = document.querySelectorAll<HTMLAnchorElement>(".card[data-slug]");
+
+	cards.forEach((card) => {
+		if (card.dataset.slug && done.has(card.dataset.slug)) card.classList.add("done");
+	});
+
+	const summary = document.getElementById("progress-summary");
+	if (summary) {
+		summary.textContent = `Bạn đã đánh dấu đã học ${doneSlugs.length}/${cards.length} chapter.`;
+		summary.hidden = false;
+	}
+</script>
+
+<style>
+	.lead {
+		color: #4a5568;
+		line-height: 1.6;
+		max-width: 640px;
+	}
+	.section-block {
+		margin-top: 2rem;
+	}
+	.section-block h2 {
+		font-size: 1rem;
+		color: #2d3748;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.4rem;
+	}
+	.cards {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		gap: 0.9rem;
+		margin-top: 0.9rem;
+	}
+	.card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		padding: 0.9rem 1rem;
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		background: #fff;
+		text-decoration: none;
+		color: inherit;
+		transition: border-color 0.15s, transform 0.15s;
+	}
+	.card:hover {
+		border-color: #2b6cb0;
+		transform: translateY(-2px);
+	}
+	.card.done {
+		border-color: #68d391;
+		background: #f0fff4;
+	}
+	.badge {
+		font-size: 0.72rem;
+		color: #2b6cb0;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+	.card.done .badge::after {
+		content: " · ✓ đã học";
+		color: #276749;
+	}
+	.card strong {
+		font-size: 0.95rem;
+	}
+	.summary {
+		font-size: 0.82rem;
+		color: #718096;
+		line-height: 1.4;
+	}
+	.note {
+		margin-top: 2.5rem;
+		font-size: 0.82rem;
+		color: #a0aec0;
+	}
+	.progress-summary {
+		font-size: 0.85rem;
+		color: #2b6cb0;
+		font-weight: 600;
+		margin-top: -0.4rem;
+	}
+</style>

@@ -1,0 +1,219 @@
+---
+// Lesson Chapter 8 — Networking.
+import { Code } from "astro:components";
+
+const AAF_BASE = "aaf-materials/08-networking/projects/final/app/src/main/java/com/kodeco/recipefinder";
+
+const queryRecipesCode = `fun queryRecipes(
+  query: String,
+  offset: Int,
+  number: Int = PAGE_SIZE
+) {
+  viewModelScope.launch {
+    try {
+      val response = spoonacularService.queryRecipes(query, offset, number)
+      _recipeListState.value = response.recipes
+      _queryState.value =
+        QueryState(query, offset, number, response.totalResults)
+    } catch (e: Exception) {
+      Timber.e(e, "Problems getting Recipes")
+      _recipeListState.value = listOf()
+    }
+  }
+}`;
+
+const queryRecipeDetailCode = `suspend fun queryRecipe(
+  id: Int,
+) {
+  viewModelScope.launch(Dispatchers.Default) {
+    try {
+      val spoonacularRecipe = spoonacularService.queryRecipe(id)
+      _recipeState.value = spoonacularRecipe
+    } catch (e: Exception) {
+      Timber.e(e, "Problems getting Recipe for id $id")
+      _recipeState.value = null
+    }
+  }
+}`;
+
+const stateFlowFieldCode = `private val _recipeListState = MutableStateFlow<List<Recipe>>(listOf())
+val recipeListState = _recipeListState.asStateFlow()`;
+
+const collectFlowCode = `scope.launch {
+  viewModel.recipeListState.collect { state ->
+    recipeListState.value = state
+  }
+}`;
+
+const spoonacularInterfaceCode = `const val apiKey = "<Replace with API Key>"
+
+interface SpoonacularService {
+  @GET("recipes/complexSearch?&apiKey=$apiKey")
+  suspend fun queryRecipes(
+    @Query("query") query: String,
+    @Query("offset") offset: Int,
+    @Query("number") number: Int = PAGE_SIZE
+  ): SearchRecipesResponse
+
+  @GET("recipes/{id}/information?includeNutrition=false&apiKey=$apiKey")
+  suspend fun queryRecipe(@Path("id") id: Int): RecipeInformationResponse
+}`;
+
+const retrofitInstanceCode = `object RetrofitInstance {
+  private const val BASE_URL = "https://api.spoonacular.com/"
+
+  private fun provideMoshi(): Moshi =
+    Moshi
+      .Builder()
+      .build()
+
+  private val retrofit: Retrofit by lazy {
+    Retrofit.Builder()
+      .baseUrl(BASE_URL)
+      .addConverterFactory(MoshiConverterFactory.create(provideMoshi()))
+      .build()
+  }
+
+  val spoonacularService: SpoonacularService by lazy {
+    retrofit.create(SpoonacularService::class.java)
+  }
+}`;
+---
+
+<section class="lesson">
+  <div class="callout">
+    <strong>App minh hoạ chapter này đổi rồi:</strong> từ đây trở đi, app "Recipe Finder" — app tìm công thức nấu ăn, gọi API thật (Spoonacular) qua mạng.
+  </div>
+
+  <h2 id="coroutine">1. Coroutine — chạy tác vụ mạng không làm treo giao diện</h2>
+  <p class="src">Nguồn: <code>{AAF_BASE}/viewmodels/RecipeViewModel.kt</code> (dòng 95–111)</p>
+  <Code code={queryRecipesCode} lang="kotlin" theme="github-dark" />
+  <p>
+    Gọi API luôn phải chờ mạng phản hồi. Nếu chạy thẳng trên main thread (luồng vẽ giao diện), app sẽ "đứng hình"
+    trong lúc chờ. <code>viewModelScope.launch { }</code> mở 1 coroutine — tác vụ chạy nền, không chặn giao diện —
+    để gọi <code>spoonacularService.queryRecipes(...)</code> rồi cập nhật kết quả khi có phản hồi.
+  </p>
+
+  <h2 id="stateflow">2. StateFlow — thay thế LiveData</h2>
+  <p class="src">Nguồn: <code>{AAF_BASE}/viewmodels/RecipeViewModel.kt</code> (dòng 73–74)</p>
+  <Code code={stateFlowFieldCode} lang="kotlin" theme="github-dark" />
+  <p>
+    Cặp biến private/public quen thuộc: <code>_recipeListState</code> (private, chỉ ViewModel được sửa) và
+    <code>recipeListState</code> (public, chỉ đọc qua <code>asStateFlow()</code>). Đây là cách <code>Flow</code> báo
+    cho giao diện biết "có dữ liệu mới rồi" — vai trò giống <code>LiveData</code> trước đây, nhưng là API mới hơn,
+    hoạt động tốt cùng coroutine.
+  </p>
+  <p class="hint">
+    Chữ "thay thế" là cách nói của sách (mục Key Points chapter 8: <em>"Flows replace LiveData"</em>). Nói chính xác
+    hơn: <code>LiveData</code> <strong>chưa bị deprecated (chưa bị đánh dấu ngừng hỗ trợ)</strong> và vẫn chạy bình
+    thường tính đến 27-08-2026 — chỉ là code Kotlin/Compose mới hầu như luôn chọn <code>StateFlow</code>, vì nó là
+    API sinh ra từ coroutine nên ghép với <code>suspend</code>/Compose gọn hơn. Nếu bạn gặp project cũ dùng
+    <code>LiveData</code>, đó không phải code sai.
+  </p>
+
+  <h2 id="collect">3. Lắng nghe Flow trong giao diện (collect)</h2>
+  <p class="src">Nguồn: <code>{AAF_BASE}/ui/recipes/RecipeList.kt</code> (dòng 75–79)</p>
+  <Code code={collectFlowCode} lang="kotlin" theme="github-dark" />
+  <p>
+    <code>collect</code> là hàm <code>suspend</code>, nên cần chạy trong 1 coroutine scope (ở đây là
+    <code>scope.launch { }</code>, mở bên trong <code>LaunchedEffect</code> khi Composable xuất hiện). Mỗi khi
+    <code>viewModel.recipeListState</code> có giá trị mới, khối <code>collect</code> chạy lại và cập nhật state cục
+    bộ của giao diện.
+  </p>
+
+  <h2 id="retrofit-interface">4. Retrofit — khai báo API bằng interface</h2>
+  <p class="src">Nguồn: <code>{AAF_BASE}/network/SpoonacularService.kt</code> (dòng 47–59)</p>
+  <Code code={spoonacularInterfaceCode} lang="kotlin" theme="github-dark" />
+  <p>
+    Retrofit hoạt động bằng cách khai báo 1 <code>interface</code> với annotation. <code>@GET("...")</code> khai
+    báo path + phương thức HTTP; <code>@Query</code> gắn tham số hàm vào query string trên URL;
+    <code>@Path("id")</code> thay thế <code>&#123;id&#125;</code> trong URL bằng giá trị thật truyền vào. Retrofit tự
+    sinh code gọi mạng dựa trên khai báo này — không cần tự viết code HTTP thủ công.
+  </p>
+  <p class="hint">
+    <strong>Chú ý dòng đầu:</strong> <code>"&lt;Replace with API Key&gt;"</code> là <strong>chỗ trống</strong>, không
+    phải key thật. Muốn chạy được app, bạn phải tự đăng ký 1 API key miễn phí ở spoonacular.com rồi dán vào đúng dòng
+    47 của <code>SpoonacularService.kt</code> — nếu không, mọi lời gọi mạng sẽ thất bại và danh sách công thức luôn
+    trống. Sách cũng tự cảnh báo (chapter 8, phần "Using Your API Key"): viết cứng API key trong source như thế này
+    chỉ để cho gọn khi học, <strong>không bao giờ được commit key lên repo công khai</strong>; cách Google gợi ý là
+    dùng thư viện <code>secrets-gradle-plugin</code> để tách key ra khỏi code.
+  </p>
+
+  <h2 id="retrofit-instance">5. RetrofitInstance — tạo Retrofit + Moshi 1 lần duy nhất</h2>
+  <p class="src">Nguồn: <code>{AAF_BASE}/network/SpoonacularService.kt</code> (dòng 61–79)</p>
+  <Code code={retrofitInstanceCode} lang="kotlin" theme="github-dark" />
+  <p>
+    <code>Moshi</code> chuyển đổi JSON (dữ liệu server trả về) thành object Kotlin. <code>Retrofit.Builder()</code>
+    ghép base URL + Moshi lại thành 1 instance Retrofit. Từ khoá <code>by lazy</code> nghĩa là instance này chỉ được
+    tạo khi dùng lần đầu, sau đó dùng lại mãi — không tạo mới mỗi lần gọi API.
+  </p>
+
+  <h2 id="query-detail">6. Gọi API lấy chi tiết 1 công thức</h2>
+  <p class="src">Nguồn: <code>{AAF_BASE}/viewmodels/RecipeViewModel.kt</code> (dòng 117–129)</p>
+  <Code code={queryRecipeDetailCode} lang="kotlin" theme="github-dark" />
+  <p>
+    Tương tự <code>queryRecipes</code>, nhưng ở đây sách cho chạy trên <code>Dispatchers.Default</code> — dispatcher
+    (bộ điều phối luồng) dùng chung cho các tác vụ tốn CPU. Nếu gọi lỗi (mạng chập chờn, ID không tồn tại...), khối
+    <code>catch</code> ghi log bằng Timber và set state về <code>null</code> để giao diện biết là không lấy được dữ
+    liệu.
+  </p>
+  <p class="hint">
+    <strong>2 điểm trong code thật đáng để ý (đọc code có phê phán, đừng copy nguyên xi):</strong>
+  </p>
+  <ul>
+    <li>
+      Hàm được khai báo <code>suspend</code> nhưng bên trong lại mở thêm
+      <code>viewModelScope.launch &#123; ... &#125;</code> — <strong>dư một lớp</strong>. Một hàm
+      <code>suspend</code> đã chạy được trong coroutine của người gọi rồi; mở <code>launch</code> nữa khiến hàm trả
+      về ngay lập tức, người gọi không thật sự chờ kết quả. Hoặc bỏ <code>suspend</code> (giống
+      <code>queryRecipes</code> ở mục 1 — hàm này không có <code>suspend</code>), hoặc bỏ <code>launch</code> và
+      <code>await</code> thẳng.
+    </li>
+    <li>
+      <code>Dispatchers.Default</code> là dispatcher cho việc <em>tính toán nặng CPU</em>, còn gọi mạng là
+      <strong>I/O</strong> — chỗ này thường dùng <code>Dispatchers.IO</code>. Thực tế vẫn chạy đúng, vì Retrofit +
+      OkHttp tự chuyển việc gọi mạng sang thread pool riêng của nó, nên tham số dispatcher ở đây gần như không ảnh
+      hưởng gì. Nhưng nếu bạn tự viết code chờ I/O thủ công thì chọn sai dispatcher sẽ chiếm chỗ của các tác vụ CPU
+      khác.
+    </li>
+  </ul>
+
+  <div class="callout note">
+    <strong>Ghi chú phiên bản.</strong> Các thư viện mạng trong chapter này thuộc nhóm <strong>ổn định nhất, ít lỗi
+    thời nhất</strong> của cả sách — code gần như copy sang project mới vẫn dùng được. Đối chiếu
+    <code>aaf-materials/08-networking/projects/final/gradle/libs.versions.toml</code> với bản mới nhất trên Maven
+    Central (tra ngày 27-08-2026):
+    <ul>
+      <li>
+        <strong>Retrofit</strong> <code>2.9.0</code> (2020) → mới nhất <strong>3.0.0</strong> (15-05-2025), và nhánh
+        2.x cuối là <strong>2.12.0</strong> (cùng ngày). Bản 3.0.0 chỉ nâng OkHttp từ 3.14 lên 4.12 (kéo theo phụ
+        thuộc Kotlin) và <strong>giữ tương thích nhị phân với 2.x</strong> — toàn bộ annotation
+        <code>@GET</code>/<code>@Query</code>/<code>@Path</code> học ở đây <strong>không đổi gì</strong>.
+      </li>
+      <li>
+        <strong>Moshi</strong> <code>1.15.0</code> → mới nhất ổn định <strong>1.15.2</strong> (05-12-2024), chỉ là bản
+        sửa nhỏ. Có <code>2.0.0-alpha.1</code> (28-01-2026, viết lại bằng Kotlin) nhưng chưa ổn định.
+      </li>
+      <li>
+        <strong>Timber</strong> <code>5.0.1</code> — vẫn đang là bản mới nhất từ 2021, không có gì phải đổi.
+      </li>
+      <li>
+        Ngược lại, phần <strong>Kotlin <code>1.9.10</code> và AGP <code>8.2.0</code></strong> trong file này thì đã
+        cũ (hiện tại: <strong>Kotlin 2.4</strong>, <strong>AGP 9.3</strong>) — giống các chapter khác. Xem ghi chú chi
+        tiết ở lesson Chapter 5.
+      </li>
+    </ul>
+  </div>
+</section>
+
+<style>
+.lesson h2 { margin: 2rem 0 0.5rem; font-size: 1.15rem; color: #1a202c; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.35rem; }
+.lesson p { line-height: 1.65; color: #2d3748; }
+.lesson code { background: #edf2f7; padding: 0.1rem 0.35rem; border-radius: 4px; }
+.lesson ul { line-height: 1.65; color: #2d3748; font-size: 0.92rem; }
+.lesson li { margin: 0.45rem 0; }
+.src { font-size: 0.82rem; color: #718096; margin: 0.8rem 0 0.3rem; }
+.hint { font-size: 0.88rem; color: #4a5568; background: #f7fafc; border-left: 3px solid #cbd5e0; padding: 0.6rem 0.9rem; border-radius: 4px; }
+.callout { background: #ebf8ff; border: 1px solid #bee3f8; border-radius: 10px; padding: 0.9rem 1.1rem; font-size: 0.9rem; color: #2c5282; margin: 1.4rem 0; }
+.callout.note { background: #fffaf0; border-color: #feebc8; color: #7b341e; }
+</style>

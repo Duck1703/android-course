@@ -1,0 +1,198 @@
+---
+// Quiz + bài tập nhỏ cho lesson Chapter 9 — Data Store.
+// Câu hỏi bám theo docs/LEARNING_MAP.md (mục Chapter 9 > Gợi ý Exercise/Quiz), tự viết đáp án + giải thích.
+// Quiz chấm bằng vanilla JS phía client (đúng tinh thần "gần như 0 JS trừ chỗ cần tương tác" trong CLAUDE.md).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>1. Tại sao dự án này bỏ <code>SharedPreferences</code> (cũ) mà chuyển sang DataStore?</legend>
+			<label><input type="radio" name="q1" value="a" /> Vì DataStore hỗ trợ lưu dữ liệu dạng file lớn hơn</label>
+			<label><input type="radio" name="q1" value="b" /> Vì DataStore cho phép lưu dữ liệu có kiểu tĩnh (static typing) tốt hơn</label>
+			<label><input type="radio" name="q1" value="c" /> Vì SharedPreferences đã bị deprecated; DataStore là thay thế hiện tại dựa trên coroutine/Flow</label>
+			<p class="explain" hidden>
+				<code>SharedPreferences</code> đã được Google đánh dấu <em>deprecated</em> (không còn khuyến khích dùng
+				code mới), thay thế bằng <strong>DataStore</strong> — vẫn lưu key-value nhưng dựa trên coroutine/Flow,
+				hỗ trợ đọc/ghi bất đồng bộ sạch hơn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>2. Các hàm <code>saveString</code>/<code>getString</code>/<code>saveInt</code> trong <code>Prefs</code> đều là hàm <code>suspend</code> — tại sao?</legend>
+			<label><input type="radio" name="q2" value="a" /> Vì đọc/ghi DataStore luôn bất đồng bộ, phải gọi từ trong coroutine</label>
+			<label><input type="radio" name="q2" value="b" /> Vì Kotlin yêu cầu mọi hàm trong class Prefs đều phải là suspend</label>
+			<label><input type="radio" name="q2" value="c" /> Để tránh block main thread — hàm suspend giúp code chạy nhanh hơn</label>
+			<p class="explain" hidden>
+				DataStore thực hiện đọc/ghi trên background thread thông qua coroutine — do đó các hàm phải là hàm
+				<code>suspend</code> để gọi được từ trong coroutine, không chặn giao diện.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>3. <code>CompositionLocalProvider</code> dùng để làm gì trong kiến trúc này?</legend>
+			<label><input type="radio" name="q3" value="a" /> Tự động sinh instance DataStore khi app khởi động</label>
+			<label><input type="radio" name="q3" value="b" /> Phân phát (provide) một đối tượng xuống toàn bộ cây Composable, nơi nào cần gọi <code>LocalPrefsProvider.current</code></label>
+			<label><input type="radio" name="q3" value="c" /> Lưu trữ dữ liệu key-value thay cho DataStore</label>
+			<p class="explain" hidden>
+				<code>CompositionLocalProvider</code> "cung cấp" giá trị (ở đây là instance <code>Prefs</code>) cho một
+				cây Composable — bất kỳ Composable nào trong cây đó chỉ cần gọi <code>LocalPrefsProvider.current</code>
+				là nhận được giá trị, không cần truyền tham số thủ công qua từng hàm.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" hidden></p>
+	</form>
+
+	<h2>Bài tập nhỏ</h2>
+	<div class="exercise">
+		<p>
+			Mở <code>aaf-materials/09-data-store/projects/final/</code>, tìm hàm <code>getInt</code> trong
+			<code>data/Prefs.kt</code>. Hãy suy luận: nếu gọi <code>prefs.getInt("CURRENT_INDEX_KEY")</code> khi chưa
+			bao giờ lưu giá trị cho key này, giá trị trả về là gì?
+		</p>
+		<details>
+			<summary>Gợi ý</summary>
+			<p>
+				<code>getInt()</code> trong <code>Prefs</code> dùng <code>dataStore.data.first()[prefKey]</code> — kiểu trả về
+				là <code>Int?</code> (có dấu <code>?</code>), nghĩa là có thể trả về <code>null</code> nếu key chưa tồn tại.
+				Do đó kết quả sẽ là <code>null</code>, và đoạn code trong <code>MainScreen.kt</code> đã xử lý đúng bằng cách
+				kiểm tra <code>if (currentIndex != null)</code>.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>
+
+<style>
+	.quiz h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.intro {
+		color: #718096;
+		font-size: 0.9rem;
+	}
+	fieldset {
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		margin-bottom: 1rem;
+		background: #fff;
+	}
+	fieldset.correct {
+		border-color: #68d391;
+		background: #f0fff4;
+	}
+	fieldset.incorrect {
+		border-color: #fc8181;
+		background: #fff5f5;
+	}
+	legend {
+		font-weight: 600;
+		font-size: 0.92rem;
+		padding: 0 0.3rem;
+	}
+	label {
+		display: block;
+		font-size: 0.9rem;
+		margin: 0.35rem 0;
+		color: #2d3748;
+	}
+	.explain {
+		margin-top: 0.6rem;
+		font-size: 0.85rem;
+		color: #4a5568;
+		border-top: 1px dashed #e2e8f0;
+		padding-top: 0.5rem;
+	}
+	button[type="submit"] {
+		background: #2b6cb0;
+		color: #fff;
+		border: none;
+		padding: 0.55rem 1.1rem;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	button[type="submit"]:hover {
+		background: #2c5282;
+	}
+	#quiz-score {
+		margin-top: 0.8rem;
+		font-weight: 600;
+		color: #2d3748;
+	}
+	.exercise {
+		background: #fff;
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 1rem 1.2rem;
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: #2d3748;
+	}
+	.exercise pre {
+		background: #1a202c;
+		color: #e2e8f0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.85rem;
+	}
+	.exercise code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+	}
+	.exercise pre code {
+		background: none;
+		padding: 0;
+	}
+	details {
+		margin-top: 0.8rem;
+		font-size: 0.88rem;
+	}
+	details summary {
+		cursor: pointer;
+		color: #2b6cb0;
+	}
+</style>

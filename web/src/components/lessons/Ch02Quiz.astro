@@ -1,0 +1,232 @@
+---
+// Quiz + bài tập nhỏ cho lesson Chapter 2 (Getting Started With Android Studio).
+// Câu hỏi tự soạn theo docs/LEARNING_MAP.md (mục Chapter 2 > Gợi ý Exercise/Quiz): "bước nào tạo AVD",
+// "file nào là entry point", + 1 câu tìm lỗi trong đoạn MainActivity.kt giả lập (không phải code thật, không
+// cần citation).
+// Quiz chấm bằng vanilla JS phía client (đúng tinh thần "gần như 0 JS trừ chỗ cần tương tác" trong CLAUDE.md).
+
+const brokenMainActivityCode = `class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    KodecoChatTheme {
+      Greeting("Android")
+    }
+  }
+}`;
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. Bước nào tạo AVD (Android Virtual Device — máy ảo Android)?</legend>
+			<label><input type="radio" name="q1" value="a" /> Bấm nút Run App (tam giác xanh) trên thanh công cụ</label>
+			<label><input type="radio" name="q1" value="b" /> Mở Device Manager, bấm nút "+", chọn phần cứng rồi chọn System Image (phiên bản Android)</label>
+			<label><input type="radio" name="q1" value="c" /> Vào Settings ‣ System trên điện thoại thật rồi bật USB Debugging</label>
+			<p class="explain" hidden>
+				Đúng — AVD được tạo qua bảng <code>Device Manager</code>: bấm "+", chọn thiết bị muốn giả lập (ví
+				dụ Pixel 7 Pro), rồi chọn System Image (phiên bản Android sẽ chạy trên máy ảo). Đáp án c là cách
+				chuẩn bị 1 thiết bị <em>thật</em>, không phải máy ảo.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>2. File nào là điểm khởi đầu (entry point) của 1 app Android Compose mới tạo?</legend>
+			<label><input type="radio" name="q2" value="a" /> <code>build.gradle.kts</code></label>
+			<label><input type="radio" name="q2" value="b" /> <code>MainActivity.kt</code></label>
+			<label><input type="radio" name="q2" value="c" /> <code>AndroidManifest.xml</code></label>
+			<p class="explain" hidden>
+				<code>MainActivity.kt</code> chứa Activity chạy đầu tiên khi mở app (kế thừa
+				<code>ComponentActivity</code>), với <code>onCreate()</code> và <code>setContent &#123; &#125;</code>
+				— nơi giao diện Compose được gắn vào app. <code>build.gradle.kts</code> chỉ là file cấu hình build.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. Đoạn <code>MainActivity.kt</code> dưới đây bị lỗi biên dịch. Lỗi vì thiếu gì?</legend>
+			<pre class="quiz-code"><code>{brokenMainActivityCode}</code></pre>
+			<label><input type="radio" name="q3" value="a" /> Thiếu <code>setContent &#123; &#125;</code> bao quanh phần giao diện Compose (<code>KodecoChatTheme &#123; ... &#125;</code>)</label>
+			<label><input type="radio" name="q3" value="b" /> Thiếu <code>import androidx.compose.material3.Text</code></label>
+			<label><input type="radio" name="q3" value="c" /> Thiếu dấu <code>;</code> ở cuối dòng <code>Greeting("Android")</code></label>
+			<p class="explain" hidden>
+				Đúng là thiếu <code>setContent &#123; &#125;</code>. <code>KodecoChatTheme &#123; ... &#125;</code>
+				là lời gọi Composable, chỉ được phép gọi bên trong 1 ngữ cảnh Composable (như
+				<code>setContent &#123; &#125;</code>, hoặc bên trong 1 hàm <code>@Composable</code> khác). Gọi
+				thẳng trong <code>onCreate()</code> — 1 hàm bình thường — sẽ báo lỗi biên dịch. Kotlin cũng không
+				bắt buộc dấu <code>;</code> cuối dòng nên đáp án c không đúng.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" hidden></p>
+	</form>
+
+	<h2>Bài tập nhỏ</h2>
+	<div class="exercise">
+		<p>
+			Mở file thật <code>aaf-materials/02-getting-started-with-android-studio/projects/final/app/src/main/java/com/kodeco/chat/MainActivity.kt</code>
+			bằng Android Studio (hoặc trình soạn thảo bất kỳ), tìm dòng 25:
+		</p>
+		<pre><code>Greeting("Fuad")</code></pre>
+		<p>
+			Đổi <code>"Fuad"</code> thành tên của bạn, ví dụ <code>Greeting("Minh")</code>. Muốn xem trước kết quả
+			ngay trong Android Studio mà không cần chạy app, mở phần <code>GreetingPreview</code> ở dòng 42–46 và
+			đổi luôn giá trị <code>Greeting("Fuad")</code> ở đó, rồi bấm "Build & Refresh" trên khung
+			<code>@Preview</code> (hoặc chạy app thật nếu bạn đã cài Android Studio và có máy ảo/thiết bị).
+		</p>
+		<details>
+			<summary>Gợi ý nếu chưa chắc sửa đúng chỗ</summary>
+			<p>
+				File có 2 chỗ chứa <code>"Fuad"</code>: 1 ở dòng 25 (bên trong <code>onCreate</code>, quyết định
+				chữ hiện lên khi chạy app thật) và 1 ở dòng 44 (bên trong <code>GreetingPreview</code>, chỉ ảnh
+				hưởng khung xem trước <code>@Preview</code>). Sửa dòng 25 để app thật đổi chữ; sửa dòng 44 để khung
+				Preview đổi chữ. Muốn cả 2 nơi đồng bộ, sửa cả hai.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>
+
+<style>
+	.quiz h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.intro {
+		color: #718096;
+		font-size: 0.9rem;
+	}
+	fieldset {
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		margin-bottom: 1rem;
+		background: #fff;
+	}
+	fieldset.correct {
+		border-color: #68d391;
+		background: #f0fff4;
+	}
+	fieldset.incorrect {
+		border-color: #fc8181;
+		background: #fff5f5;
+	}
+	legend {
+		font-weight: 600;
+		font-size: 0.92rem;
+		padding: 0 0.3rem;
+	}
+	label {
+		display: block;
+		font-size: 0.9rem;
+		margin: 0.35rem 0;
+		color: #2d3748;
+	}
+	.explain {
+		margin-top: 0.6rem;
+		font-size: 0.85rem;
+		color: #4a5568;
+		border-top: 1px dashed #e2e8f0;
+		padding-top: 0.5rem;
+	}
+	button[type="submit"] {
+		background: #2b6cb0;
+		color: #fff;
+		border: none;
+		padding: 0.55rem 1.1rem;
+		border-radius: 8px;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	button[type="submit"]:hover {
+		background: #2c5282;
+	}
+	#quiz-score {
+		margin-top: 0.8rem;
+		font-weight: 600;
+		color: #2d3748;
+	}
+	.exercise {
+		background: #fff;
+		border: 1px solid #e2e8f0;
+		border-radius: 10px;
+		padding: 1rem 1.2rem;
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: #2d3748;
+	}
+	.exercise pre {
+		background: #1a202c;
+		color: #e2e8f0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.85rem;
+	}
+	.exercise code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+	}
+	.exercise pre code {
+		background: none;
+		padding: 0;
+	}
+	fieldset pre.quiz-code {
+		background: #1a202c;
+		color: #e2e8f0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 6px;
+		overflow-x: auto;
+		font-size: 0.85rem;
+		margin: 0.6rem 0;
+	}
+	fieldset pre.quiz-code code {
+		background: none;
+		padding: 0;
+	}
+	details {
+		margin-top: 0.8rem;
+		font-size: 0.88rem;
+	}
+	details summary {
+		cursor: pointer;
+		color: #2b6cb0;
+	}
+</style>

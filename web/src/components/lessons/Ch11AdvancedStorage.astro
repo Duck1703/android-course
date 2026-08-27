@@ -1,0 +1,355 @@
+---
+// Lesson Chapter 11 — Advanced Storage (chapter CUỐI CÙNG của sách).
+// Code trích từ aaf-materials/11-advanced-storage/projects/final/ (real code, không phải paraphrase)
+// và so sánh với aaf-materials/10-room-db/projects/final/ để làm rõ điểm khác biệt trước/sau khi mã hoá,
+// theo Quyết định #7 (docs/PROJECT_PLAN.md): user đã đồng ý dùng code thật, tự nhận rủi ro license.
+// Nội dung giải thích tự viết tiếng Việt, diễn giải theo content/book/ch11-advanced-storage.md — không copy nguyên văn sách.
+import { Code } from "astro:components";
+
+const AAF_BASE = "aaf-materials/11-advanced-storage/projects/final/app/src/main/java/com/kodeco/recipefinder";
+const AAF_CH10_BASE = "aaf-materials/10-room-db/projects/final/app/src/main/java/com/kodeco/recipefinder";
+
+const securePrefsInitCode = `class SecurePrefs(context: Context) {
+  private val prefs: SharedPreferences
+
+  init {
+    val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+
+    prefs = EncryptedSharedPreferences.create(
+      "encrypted_preferences", // fileName
+      masterKeyAlias, // masterKeyAlias
+      context, // context
+      EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, // prefKeyEncryptionScheme
+      EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM // prefvalueEncryptionScheme
+    )
+  }`;
+
+const securePrefsMethodsCode = `fun saveString(key: String, value: String) {
+  prefs.edit().putString(key, value).apply()
+}
+
+fun getString(key: String): String? {
+  return prefs.getString(key, null)
+}
+
+fun saveInt(key: String, value: Int) {
+  prefs.edit().putInt(key, value).apply()
+}
+
+fun getInt(key: String): Int {
+  return prefs.getInt(key, 0)
+}
+
+fun hasKey(key: String): Boolean {
+  return prefs.contains(key)
+}`;
+
+const ch10GetInstanceCode = `fun getInstance(context: Context): RecipeDatabase {
+  // only one thread of execution at a time can enter this block of code
+  synchronized(this) {
+    var instance = INSTANCE
+
+    if (instance == null) {
+      instance = Room.databaseBuilder(
+        context.applicationContext,
+        RecipeDatabase::class.java,
+        "recipe_database"
+      ).fallbackToDestructiveMigration()
+        .build()
+
+      INSTANCE = instance
+    }
+    return instance
+  }
+}`;
+
+const ch11ImportsCode = `import net.sqlcipher.database.SQLiteDatabase
+import net.sqlcipher.database.SupportFactory
+import kotlin.random.Random`;
+
+const ch11CompanionObjectCode = `companion object {
+    const val PASSCODE_KEY = "PASSCODE_KEY"
+
+    /*The value of a volatile variable will never be cached, and all writes and reads will be done to and from the main memory.
+    This helps make sure the value of INSTANCE is always up-to-date and the same for all execution threads.
+    It means that changes made by one thread to INSTANCE are visible to all other threads immediately.*/
+    @Volatile
+    private var INSTANCE: RecipeDatabase? = null
+
+    fun getPassCode(stringSize: Int): String {
+      val randomString = StringBuilder()
+      val random = Random.Default
+      for (i in 0 until stringSize) {
+        randomString.append('a' + random.nextInt(26))
+      }
+      return randomString.toString()
+    }
+
+    fun getInstance(context: Context, passCode: CharArray): RecipeDatabase {
+      // only one thread of execution at a time can enter this block of code
+      synchronized(this) {
+        var instance = INSTANCE
+
+        if (instance == null) {
+          val supportFactory = SupportFactory(SQLiteDatabase.getBytes(passCode))
+          instance = Room.databaseBuilder(
+            context.applicationContext,
+            RecipeDatabase::class.java,
+            "recipe_database"
+          )
+            .openHelperFactory(supportFactory)
+            .fallbackToDestructiveMigration()
+            .build()
+
+          INSTANCE = instance
+        }
+        return instance
+      }
+    }
+  }`;
+
+const recipeAppWiringCode = `securePrefs = SecurePrefs(this)
+val randomPassCode: String
+if (!securePrefs.hasKey(RecipeDatabase.PASSCODE_KEY)) {
+  randomPassCode = RecipeDatabase.getPassCode(15)
+  securePrefs.saveString(RecipeDatabase.PASSCODE_KEY, randomPassCode)
+} else {
+  randomPassCode = securePrefs.getString(RecipeDatabase.PASSCODE_KEY)!!
+}
+
+repository = RecipeRepository(
+  RecipeDatabase.getInstance(this, randomPassCode.toCharArray())
+)`;
+
+const localPrefsProviderCode = `val LocalPrefsProvider =
+  compositionLocalOf<SecurePrefs> { error("No prefs provided") }`;
+---
+
+<section class="lesson">
+	<div class="callout">
+		<strong>App minh hoạ chapter này:</strong> "Recipe Finder" — cũng là app đã dùng ở các chapter Room
+		Database, ViewModel, Navigation trước đó. Đây là <strong>chapter cuối cùng của sách</strong>: không thêm
+		tính năng mới cho người dùng, mà mã hoá lại toàn bộ dữ liệu đã lưu ở chapter trước (SharedPreferences và
+		Room database) để chúng an toàn hơn khi nằm trên máy.
+	</div>
+
+	<h2 id="why-encrypt">1. Vì sao dữ liệu lưu trên máy vẫn cần mã hoá?</h2>
+	<p>
+		Ở các chapter trước, app lưu dữ liệu bằng <code>SharedPreferences</code> (tìm kiếm đã lưu, màn hình đang
+		mở) và <code>Room</code> database (danh sách công thức, bookmark). Cả hai đều là file thường nằm trong thư
+		mục riêng của app trên máy — về lý thuyết chỉ app đó đọc được. Nhưng "chỉ app đọc được" không có nghĩa là
+		<strong>an toàn tuyệt đối</strong>: nếu máy bị mất, bị root, hoặc ai đó lấy được quyền truy cập hệ thống
+		file (kể cả không có mạng, không cần hack qua Internet), họ có thể mở trực tiếp các file này bằng công cụ
+		đọc file thông thường và thấy hết nội dung dạng chữ rõ ràng (plain text). <strong>Mã hoá
+		(encryption)</strong> giải quyết đúng vấn đề này: dữ liệu trong file bị biến thành một chuỗi vô nghĩa nếu
+		không có đúng khoá giải mã, cho dù ai đó có mở được file.
+	</p>
+	<p>
+		Android hỗ trợ mã hoá ở 2 lớp lưu trữ đã học: <em>Preferences</em> qua thư viện Security
+		(<code>androidx.security-crypto</code>) và <em>database SQLite/Room</em> qua thư viện SQLCipher. Phần dưới
+		đi qua từng phần, dựa trên code thật trong <code>RecipeFinder</code>.
+	</p>
+
+	<h2 id="encrypted-prefs">2. EncryptedSharedPreferences — mã hoá Preferences</h2>
+	<p>
+		Thư viện Security cung cấp class <code>EncryptedSharedPreferences</code> — vẫn dùng API quen thuộc của
+		<code>SharedPreferences</code> (đọc/ghi bằng key-value như cũ) nhưng dữ liệu được mã hoá tự động trước khi
+		ghi xuống file. Class <code>SecurePrefs</code> đóng vai trò thay thế cho class <code>Prefs</code> thường
+		(không mã hoá) đã dùng ở các chapter trước.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/data/SecurePrefs.kt</code> (dòng 41–54)
+	</p>
+	<Code code={securePrefsInitCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Khối <code>init</code> làm 2 việc: (1) lấy hoặc tạo một <strong>master key</strong> — chìa khoá gốc dùng để
+		mã hoá/giải mã, được lưu an toàn trong <em>Android Keystore</em> (một kho khoá được hệ điều hành bảo vệ
+		riêng, tách khỏi vùng nhớ thường của app); (2) gọi <code>EncryptedSharedPreferences.create()</code> để tạo
+		ra một <code>SharedPreferences</code> đã mã hoá sẵn, đặt tên file là <code>encrypted_preferences</code>.
+		Tham số <code>AES256_SIV</code>/<code>AES256_GCM</code> là tên các thuật toán mã hoá cụ thể cho key và cho
+		value — chi tiết thuật toán không cần nhớ, chỉ cần hiểu đây là các "công thức mã hoá" đã được thư viện
+		chọn sẵn ở mức an toàn cao.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/data/SecurePrefs.kt</code> (dòng 56–74)
+	</p>
+	<Code code={securePrefsMethodsCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Tên hàm giữ đúng như class <code>Prefs</code> cũ (<code>saveString</code>/<code>getString</code>/
+		<code>saveInt</code>/<code>getInt</code>/<code>hasKey</code>), nên nơi gọi gần như không phải sửa gì — chỉ
+		đổi kiểu tham số từ <code>Prefs</code> sang <code>SecurePrefs</code> (xem
+		<code>viewmodels/RecipeViewModel.kt</code> dòng 75). Nhưng <strong>chữ ký không giống hệt</strong>: có 2
+		điểm khác thật sự, đều là hệ quả của việc đổi lớp lưu trữ bên dưới.
+	</p>
+	<ul>
+		<li>
+			<strong>Không còn <code>suspend</code>.</strong> Ở chapter 9, mọi hàm của <code>Prefs</code> đều là
+			<code>suspend</code> vì DataStore đọc/ghi bất đồng bộ. <code>EncryptedSharedPreferences</code> lại dùng
+			API <code>SharedPreferences</code> đời cũ (<code>edit().putString(...).apply()</code>) — không phải hàm
+			<code>suspend</code>, <code>apply()</code> tự ghi xuống file ở background nên người gọi không cần chờ.
+			Code trong <code>RecipeViewModel</code> vẫn gọi bên trong
+			<code>viewModelScope.launch &#123; ... &#125;</code> nên
+			không lỗi, nhưng lý do "buộc phải dùng coroutine" học ở chapter 9 đã không còn đúng ở đây.
+		</li>
+		<li>
+			<strong><code>getInt</code> đổi kiểu trả về.</strong> <code>Prefs.getInt</code> ở chapter 9 trả về
+			<code>Int?</code> (có thể <code>null</code> khi chưa lưu gì); <code>SecurePrefs.getInt</code> trả về
+			<code>Int</code>, tự thay <code>null</code> bằng giá trị mặc định <code>0</code>. Hệ quả nhỏ thấy được
+			trong code thật: <code>ui/MainScreen.kt</code> (dòng 68) vẫn giữ nguyên phép kiểm tra
+			<code>if (currentIndex != null)</code> viết từ chapter trước — với kiểu <code>Int</code> không thể
+			<code>null</code>, điều kiện này giờ luôn đúng, tức đoạn kiểm tra đã trở thành dư thừa.
+		</li>
+	</ul>
+
+	<h2 id="sqlcipher">3. SQLCipher — mã hoá Room Database</h2>
+	<p>
+		Room bản thân không có tính năng mã hoá — bên dưới nó vẫn là SQLite lưu file bình thường. Để mã hoá,
+		project dùng thư viện <strong>SQLCipher</strong> — thư viện "bọc" quanh SQLite, mã hoá toàn bộ nội dung
+		file database bằng một <em>passcode</em> (giống mật khẩu). So sánh trực tiếp sẽ thấy rõ khác biệt. Đây là
+		<code>getInstance()</code> ở chapter 10 (Room database, <strong>chưa mã hoá</strong>):
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_CH10_BASE}/data/database/RecipeDatabase.kt</code> (dòng 55–72)
+	</p>
+	<Code code={ch10GetInstanceCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Chỉ cần <code>context</code>, mở thẳng database tên <code>"recipe_database"</code> bằng
+		<code>Room.databaseBuilder()</code>. Không có khái niệm mật khẩu nào cả. Bây giờ đến bản ở chapter 11
+		(<strong>đã mã hoá</strong>) — trước hết là các import mới cần thêm:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/data/database/RecipeDatabase.kt</code> (dòng 40–42)
+	</p>
+	<Code code={ch11ImportsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/data/database/RecipeDatabase.kt</code> (dòng 50–89)
+	</p>
+	<Code code={ch11CompanionObjectCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Khác biệt chính so với chapter 10: (1) <code>getInstance()</code> giờ nhận thêm tham số
+		<code>passCode: CharArray</code> — mật khẩu để mở database; (2) hàm <code>getPassCode(stringSize)</code>
+		tự sinh một chuỗi <strong>ngẫu nhiên</strong> gồm toàn chữ cái làm passcode, thay vì hard-code (viết cứng)
+		một mật khẩu cố định trong code — vì nếu hard-code, ai decompile (dịch ngược) app ra vẫn đọc được passcode
+		ngay trong source; (3) <code>SupportFactory(SQLiteDatabase.getBytes(passCode))</code> tạo ra một
+		"factory" biết cách mở SQLite bằng SQLCipher với đúng passcode, rồi được gắn vào Room qua
+		<code>.openHelperFactory(supportFactory)</code> — đây là dòng duy nhất thật sự "bật" tính năng mã hoá cho
+		Room.
+	</p>
+
+	<h2 id="wiring">4. Nối dây: lưu passcode bằng SecurePrefs, dùng lại mỗi lần mở app</h2>
+	<p>
+		Passcode ngẫu nhiên chỉ có tác dụng nếu app <strong>nhớ lại đúng passcode đó</strong> ở lần mở tiếp theo —
+		nếu không, Room sẽ không mở được database cũ (sai mật khẩu). Vì vậy passcode được lưu bằng chính
+		<code>SecurePrefs</code> vừa học ở mục 2 (mã hoá lồng mã hoá: passcode của database cũng được cất trong
+		Preferences đã mã hoá). Việc này nằm trong <code>RecipeApp.onCreate()</code>:
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/RecipeApp.kt</code> (dòng 58–69)
+	</p>
+	<Code code={recipeAppWiringCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Logic ở đây: nếu <code>SecurePrefs</code> <strong>chưa có</strong> passcode (lần đầu mở app) → sinh
+		passcode mới bằng <code>getPassCode(15)</code> rồi lưu lại; nếu <strong>đã có</strong> → lấy passcode cũ ra
+		dùng lại. Nhờ vậy passcode chỉ sinh ra đúng 1 lần cho mỗi lần cài app, và được giữ nguyên xuyên suốt các
+		lần mở sau.
+	</p>
+	<p class="hint">
+		Sách hướng dẫn đặt đoạn code này trong <code>MainActivity</code>, nhưng trong code thật của project, đoạn
+		khởi tạo <code>securePrefs</code> và <code>repository</code> nằm trong <code>RecipeApp.onCreate()</code>
+		(class <code>Application</code>) — hợp lý hơn vì đây là nơi khởi tạo 1 lần duy nhất cho toàn app, không
+		phụ thuộc vòng đời của riêng 1 Activity. <code>MainActivity</code> chỉ còn việc đọc lại
+		<code>securePrefs</code> qua <code>(application as RecipeApp).securePrefs</code> rồi đưa vào
+		<code>CompositionLocalProvider</code> để các Composable con dùng được.
+	</p>
+	<p class="src">
+		Nguồn: <code>{AAF_BASE}/MainActivity.kt</code> (dòng 66–67)
+	</p>
+	<Code code={localPrefsProviderCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đây là thay đổi 1 dòng nhưng thể hiện rõ ý tưởng: mọi nơi trong app trước đây khai báo kiểu
+		<code>Prefs</code>, giờ đổi hết sang <code>SecurePrefs</code> — bản thân cách dùng (đọc/ghi key-value)
+		không đổi, chỉ có <strong>nơi lưu trữ thật sự</strong> phía dưới là đã được mã hoá.
+	</p>
+
+	<div class="callout note">
+		<strong>Ghi chú phiên bản — chapter này có nhiều kiến thức đã cũ nhất trong cả sách.</strong> Hai thư viện
+		trung tâm của chapter đều đã bị chính tác giả của chúng khai tử, tính đến 27-08-2026:
+		<ul>
+			<li>
+				<strong>Encrypted Preferences.</strong> Sách và code mẫu dùng
+				<code>androidx.security:security-crypto</code> bản <code>1.0.0</code> với API
+				<code>MasterKeys.getOrCreate()</code>. Bản mới hơn (1.1.0-alpha) từng đổi sang class
+				<code>MasterKey</code> (builder pattern), nhưng rồi <strong>toàn bộ API của thư viện bị đánh dấu
+				deprecated ở bản 1.1.0-alpha07 (09-04-2025)</strong> và bản stable cuối cùng
+				<strong>1.1.0 (30-07-2025)</strong> phát hành với các API đã deprecated sẵn — nghĩa là
+				<code>EncryptedSharedPreferences</code>, <code>EncryptedFile</code>, <code>MasterKey</code>/
+				<code>MasterKeys</code> đều không còn được phát triển tiếp. Ghi chú phát hành của Google nêu lý do:
+				chuyển sang dùng API sẵn có của hệ điều hành và dùng <em>Android Keystore</em> trực tiếp; trang
+				"Security checklist" của Android khuyên dùng Android Keystore để giữ khoá kết hợp thư viện
+				<strong>Tink</strong> để mã hoá. Không có class nào thay thế 1-đổi-1 cho
+				<code>EncryptedSharedPreferences</code> — phải tự mã hoá giá trị rồi mới ghi (DataStore hay
+				SharedPreferences đều chỉ là nơi lưu, tự chúng không mã hoá).
+			</li>
+			<li>
+				<strong>SQLCipher.</strong> Code mẫu dùng <code>net.zetetic:android-database-sqlcipher</code> bản
+				4.4.0 với import <code>net.sqlcipher.database.SupportFactory</code>. Thư viện này
+				<strong>đã bị Zetetic khai tử chính thức (công bố 31-08-2023, cùng bản SQLCipher 4.5.5)</strong>,
+				thay bằng <code>net.zetetic:sqlcipher-android</code>. Khi migrate: package đổi từ
+				<code>net.sqlcipher.database</code> sang <code>net.zetetic.database.sqlcipher</code>, và
+				<code>SupportFactory</code> đổi tên thành <code>SupportOpenHelperFactory</code>. Bản SQLCipher mới
+				nhất là <strong>4.18.0 (18-08-2026)</strong>, đã hỗ trợ Room 3.
+			</li>
+		</ul>
+		Dù vậy, phần <em>ý tưởng</em> của chapter vẫn đúng nguyên: vì sao dữ liệu trên máy cần mã hoá, vai trò của
+		Android Keystore, không bao giờ hard-code passcode, và cách gắn một lớp mã hoá vào Room qua
+		<code>openHelperFactory()</code>. Chỉ có <strong>tên class và toạ độ thư viện cụ thể</strong> là đã lỗi thời —
+		cần tra lại tài liệu hiện hành nếu bạn viết code mới, đừng copy nguyên xi code chapter này vào app thật.
+	</div>
+</section>
+
+<style>
+	.lesson h2 {
+		margin-top: 2.2rem;
+		font-size: 1.15rem;
+		color: #1a202c;
+		border-bottom: 1px solid #e2e8f0;
+		padding-bottom: 0.35rem;
+	}
+	.lesson p {
+		line-height: 1.65;
+		color: #2d3748;
+	}
+	.lesson code {
+		background: #edf2f7;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+		font-size: 0.88em;
+	}
+	.src {
+		font-size: 0.82rem;
+		color: #718096;
+		margin: 0.8rem 0 0.3rem;
+	}
+	.hint {
+		font-size: 0.88rem;
+		color: #4a5568;
+		background: #f7fafc;
+		border-left: 3px solid #cbd5e0;
+		padding: 0.6rem 0.9rem;
+		border-radius: 4px;
+	}
+	.callout {
+		background: #ebf8ff;
+		border: 1px solid #bee3f8;
+		border-radius: 10px;
+		padding: 0.9rem 1.1rem;
+		font-size: 0.9rem;
+		color: #2c5282;
+		margin: 1.4rem 0;
+	}
+	.callout.note {
+		background: #fffaf0;
+		border-color: #feebc8;
+		color: #7b341e;
+	}
+</style>
