@@ -16,7 +16,7 @@ Node.js là phần mềm giúp máy bạn chạy được website này.
 2. Bấm tải bản có chữ **LTS** (bản ổn định).
 3. Cài như cài phần mềm bình thường: bấm Next → Next → Finish.
 
-> Máy này đang có Node **v22.14.0** và nó chạy được. Nếu bạn cài mới thì lấy bản LTS mới nhất, cũng ổn.
+> Máy này đang có Node **v22.23.2** và đã kiểm tra chạy tốt. Nếu bạn cài mới thì lấy bản LTS mới nhất, cũng ổn.
 
 ### Bước 2: Mở cửa sổ dòng lệnh đúng thư mục
 
