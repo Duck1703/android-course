@@ -1,0 +1,542 @@
+---
+// Quiz + bài tập cho Chương 3.1 — Activity, onCreate() và giao diện đầu tiên.
+// Tách từ quiz gộp Ch03Quiz.astro theo cùng ranh giới với 4 chương nhỏ của Chương 3.
+// Kế thừa 7 câu đầu của quiz gộp, viết lại lời dẫn cho đứng độc lập và bỏ mọi cách nhắc tới tài liệu in:
+//   q1 (onCreate chạy khi nào) -> câu 2 · q2 (dấu ? của Bundle?) -> câu 3 · q3 (setContent làm gì) -> câu 4 ·
+//   q4 (xoay máy mất chữ) -> câu 10 · q5 (by cần getValue/setValue) -> câu 7 ·
+//   q6 (OutlinedTextField có tự giữ chữ) -> câu 8 · q7 (đảo thứ tự 2 dòng onClick) -> câu 9.
+//   Chỉ câu 9 giữ 4 lựa chọn, vì cả 4 đều dạy đúng một điều đáng dạy: mức độ của lỗi này — không crash,
+//   không lỗi biên dịch, chỉ sai kết quả. Các câu còn lại rút về 3 lựa chọn.
+// Viết mới 4 câu cho mục 1–3 và mục 7: câu 1 (Activity trong bốn app component, vì sao là điểm vào) ·
+//   câu 5 (Column xếp con theo chiều nào, bỏ nó thì sao) · câu 6 (vì sao Text tự cập nhật — recomposition) ·
+//   câu 11 (Fragment giải quyết vấn đề gì, cái giá phải trả).
+// Câu 8–19 của quiz gộp thuộc phạm vi mục 8–27 nên chuyển sang quiz của Chương 3.2/3.3/3.4
+//   (strings.xml, lớp R, debug, manifest, intent-filter, permission, theme) — không câu nào bị mất.
+// Đã tự mở file đếm lại trước khi khẳng định trong bài tập 1:
+//   starter/app/src/main/java/com/kodeco/chat/MainActivity.kt — import dòng 37–47 (11 dòng);
+//   final/.../MainActivity.kt — import dòng 36–48 (13 dòng);
+//   4 dòng có ở cả hai bên: android.os.Bundle · androidx.activity.ComponentActivity ·
+//     androidx.activity.compose.setContent · androidx.compose.material3.Text;
+//   7 dòng chỉ bản starter có: fillMaxSize (40), MaterialTheme (41), Surface (42), Composable (44),
+//     Modifier (45), Preview (46), KodecoChatTheme (47);
+//   9 dòng chỉ bản final có: Column (39), Button (40), OutlinedTextField (41), getValue (43),
+//     mutableStateOf (44), remember (45), setValue (46), LocalContext (47), stringResource (48).
+// Đáp án rải đều: a 4 câu (3, 5, 7, 11) · b 3 câu (4, 8, 10) · c 3 câu (1, 2, 6) · d 1 câu (9).
+// Chấm bằng vanilla JS phía client; file này không có bài sắp thứ tự nên script chỉ chấm phần MCQ.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		11 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau khi chấm — kể cả ở câu bạn
+		làm đúng, nên đọc hết: phần nói <em>vì sao các đáp án còn lại sai</em> mới là chỗ dạy thêm, và phần lớn các đáp án sai
+		ở đây là lỗi thật mà người mới học Compose hay mất cả buổi tối để tìm.
+	</p>
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>
+				1. Activity là một trong bốn app component của Android (Chương 1.2, mục 4). Nó đóng vai gì — và vì sao gọi nó là
+				<strong>điểm vào</strong> (entry point) của app?
+			</legend>
+			<label>
+				<input type="radio" name="q1" value="a" /> Là giao diện của một màn hình; gọi là điểm vào vì giao diện là thứ hệ
+				điều hành dựng ra trước nhất rồi mới chạy code của bạn
+			</label>
+			<label>
+				<input type="radio" name="q1" value="b" /> Là hàm khởi động của app do bạn tự viết; gọi là điểm vào vì Android đi
+				tìm hàm <code>main()</code> nằm bên trong nó để chạy
+			</label>
+			<label>
+				<input type="radio" name="q1" value="c" /> Là thành phần do hệ điều hành quản lý, gắn với một cửa sổ; gọi là điểm
+				vào vì Android tạo nó rồi gọi các hàm vòng đời của nó
+			</label>
+			<p class="explain" hidden>
+				Activity <strong>không phải</strong> giao diện — giao diện là thứ bạn <em>đổ vào</em> nó, bằng
+				<code>setContent</code> ở câu 4. Ba vai trò của nó ở mục 2: điểm vào, chủ của một cửa sổ, và đơn vị mà hệ thống có
+				quyền huỷ rồi tạo lại. Đáp án b là chỗ người quen lập trình máy tính hay hiểu sai nhất, và nó đảo ngược đúng điều
+				quan trọng: app Android <em>không có</em> hàm <code>main()</code> do bạn viết. Bạn không điều khiển thời điểm app
+				bắt đầu chạy — bạn chỉ khai báo "khi hệ thống gọi tới hàm này thì làm việc này". Đáp án a lẫn "thứ người dùng
+				thấy" với "thứ hệ điều hành quản lý"; hệ quả của việc lẫn hai thứ này là câu 10.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. <code>onCreate()</code> của một Activity chạy vào lúc nào?</legend>
+			<label>
+				<input type="radio" name="q2" value="a" /> Mỗi lần người dùng chuyển sang app khác rồi mở lại app này từ chế độ
+				chạy nền, vì giao diện phải được dựng lại từ đầu
+			</label>
+			<label>
+				<input type="radio" name="q2" value="b" /> Mỗi lần state đổi và Compose vẽ lại phần giao diện đang đọc state đó
+			</label>
+			<label>
+				<input type="radio" name="q2" value="c" /> Mỗi lần Android tạo mới một instance Activity: mở app lần đầu, xoay
+				máy, hoặc bị huỷ
+			</label>
+			<p class="explain" hidden>
+				Bảng bốn tình huống ở mục 4 trả lời trọn câu này: <code>onCreate()</code> chỉ chạy khi hệ thống thật sự
+				<em>tạo mới</em> một instance Activity. Đáp án a là cách hiểu sai phổ biến nhất — nếu Activity vẫn còn sống thì
+				quay lại app chỉ gọi <code>onPause()</code> → <code>onResume()</code>, object Activity còn nguyên và mọi biến còn
+				nguyên. Đáp án b lẫn hai nhịp thời gian rất khác nhau: <code>onCreate()</code> là code Kotlin thường, chạy đúng
+				một lần cho mỗi instance; còn recomposition là việc của Compose bên trong <code>setContent</code> và xảy ra rất
+				nhiều lần — mỗi ký tự bạn gõ là một lần.
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>
+				3. Trong <code>onCreate(savedInstanceState: Bundle?)</code>, dấu <code>?</code> sau <code>Bundle</code> nói lên
+				điều gì?
+			</legend>
+			<label>
+				<input type="radio" name="q3" value="a" /> Giá trị có thể là <code>null</code> — lần đầu mở app thì không có
+				trạng thái cũ nào để phục hồi
+			</label>
+			<label>
+				<input type="radio" name="q3" value="b" /> Tham số này là tuỳ chọn: gọi <code>onCreate()</code> mà không truyền gì
+				cũng được, khi đó Kotlin tự dùng giá trị mặc định
+			</label>
+			<label>
+				<input type="radio" name="q3" value="c" /> Kiểu dữ liệu của tham số chưa được xác định trong code, hệ thống sẽ
+				quyết định nó là kiểu gì vào lúc app đang chạy
+			</label>
+			<p class="explain" hidden>
+				Dấu <code>?</code> trong Kotlin đánh dấu kiểu <em>nullable</em> (có thể null), và ở đây nó mang một ý nghĩa rất cụ
+				thể: hệ thống chỉ đưa cho bạn một <code>Bundle</code> có nội dung khi nó <em>đang phục hồi</em> một Activity từng
+				bị huỷ ngoài ý muốn người dùng — hai tình huống 3 và 4 trong bảng ở mục 4. Đáp án b lẫn "có thể null" với "có thể
+				bỏ trống": Kotlin có tham số mặc định, nhưng đó là chuyện khác hẳn — <code>onCreate()</code> do hệ thống gọi và
+				luôn truyền đủ tham số. Đáp án c là kiểu generic hoặc suy luận kiểu, không liên quan gì tới dấu <code>?</code>.
+				Chương 3 chưa đọc tham số này, nó chỉ được truyền thẳng cho <code>super</code> — nhưng biết nó có mặt để làm gì
+				thì lúc đọc code người khác bạn không bỏ qua nó.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>4. <code>setContent &#123; ... &#125;</code> làm gì cho Activity?</legend>
+			<label>
+				<input type="radio" name="q4" value="a" /> Nạp file layout XML của màn hình rồi hiển thị nó lên cửa sổ mà Activity
+				đang giữ, sau đó trả quyền điều khiển lại cho <code>onCreate()</code>
+			</label>
+			<label>
+				<input type="radio" name="q4" value="b" /> Dựng mọi thứ trong khối ngoặc thành nội dung gốc của Activity, và mở
+				ranh giới vào vùng Compose
+			</label>
+			<label>
+				<input type="radio" name="q4" value="c" /> Khai báo Activity với hệ điều hành để hệ thống biết màn hình nào được mở
+				đầu tiên khi người dùng bấm icon app
+			</label>
+			<p class="explain" hidden>
+				Hai việc trong một dòng: nội dung bên trong ngoặc trở thành <em>root view</em> của Activity, và cặp
+				<code>&#123; &#125;</code> đó chính là chỗ đất Kotlin thường đổi thành đất Compose. Nhớ chính xác vị trí ranh giới
+				rất đáng: nó nằm ở dấu <code>&#123;</code> của <code>setContent</code>, không phải của <code>onCreate</code> — đó
+				là lý do gọi được Composable ở đây dù <code>onCreate()</code> là một hàm Kotlin hoàn toàn bình thường. Đáp án a là
+				<code>setContentView(R.layout.activity_main)</code> của thời View-based: tên gần giống tới mức dễ đọc nhầm, nhưng
+				project này không có <code>res/layout/</code> nào cả (mục 7.1). Đáp án c là việc của
+				<code>AndroidManifest.xml</code> — Chương 3.3, mục 15.
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>
+				5. <code>Column</code> bọc ba thành phần của giao diện. Nó xếp các "con" của mình theo chiều nào, và nếu bỏ hẳn nó
+				đi thì sao?
+			</legend>
+			<label>
+				<input type="radio" name="q5" value="a" /> Xếp dọc theo thứ tự viết trong code; bỏ nó thì ba thành phần cùng vẽ ở
+				một chỗ và đè lên nhau
+			</label>
+			<label>
+				<input type="radio" name="q5" value="b" /> Xếp dọc theo thứ tự viết trong code; bỏ nó thì Compose vẫn tự xếp dọc
+				như cũ, chỉ mất phần căn lề và giãn cách
+			</label>
+			<label>
+				<input type="radio" name="q5" value="c" /> Xếp dọc theo thứ tự viết trong code; bỏ nó thì app đổ ngay khi mở, vì
+				<code>setContent</code> chỉ nhận đúng một thành phần gốc
+			</label>
+			<p class="explain" hidden>
+				Cả ba lựa chọn nói đúng nửa đầu, nên câu này chỉ xét nửa sau — và đó mới là chỗ đáng biết.
+				<code>Column</code> là một <em>layout group</em>: bản thân nó không hiển thị gì, việc của nó là xếp chỗ cho các con
+				thành một cột dọc <strong>theo đúng thứ tự bạn viết</strong> — đổi thứ tự ba dòng code là đổi thứ tự trên màn hình,
+				không cần sửa file nào khác. Bỏ nó đi thì các thành phần <em>không</em> tự xếp hàng (đáp án b): chúng cùng được vẽ ở
+				gốc của vùng chứa và đè lên nhau, bạn sẽ thấy chữ và ô nhập nằm lẫn vào nhau. Cũng không có gì đổ (đáp án c):
+				<code>setContent</code> nhận cả một khối Composable, viết bao nhiêu thành phần cạnh nhau trong đó cũng biên dịch và
+				chạy được — chỉ là hiển thị sai. Đây là kiểu lỗi im lặng thứ hai bạn gặp trong chương này, cùng họ với câu 8 và câu
+				9: không cảnh báo, chỉ sai ở mắt thường.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				6. <code>Text(text = chatOutputText)</code> chỉ được viết một lần trong code. Vì sao chữ trên màn hình lại đổi theo
+				mà không ai gọi lại nó?
+			</legend>
+			<label>
+				<input type="radio" name="q6" value="a" /> Vì <code>onClick</code> của nút Send gọi lại toàn bộ
+				<code>setContent</code> sau khi gán giá trị mới
+			</label>
+			<label>
+				<input type="radio" name="q6" value="b" /> Vì <code>Text</code> giữ một tham chiếu tới biến, nên đọc biến ở lần vẽ
+				đầu là đủ để về sau luôn thấy giá trị mới nhất
+			</label>
+			<label>
+				<input type="radio" name="q6" value="c" /> Vì Compose ghi nhận rằng <code>Text</code> có đọc state đó, nên khi giá
+				trị đổi nó tự gọi lại đúng chỗ này
+			</label>
+			<p class="explain" hidden>
+				Đây là vòng lặp phản ứng ở mục 6.3, gồm bốn nhịp: bấm nút → <code>onClick</code> gán state → Compose đánh dấu vùng
+				<em>đang đọc</em> state đó là cần vẽ lại → hàm <code>Text</code> được gọi lại với giá trị mới. Chữ "đang đọc" là
+				chìa khoá: Compose biết được nhờ theo dõi việc <em>đọc</em> state, nên nó vẽ lại đúng phần cần vẽ chứ không vẽ lại
+				cả màn hình. Đáp án a mô tả một cách làm thô hơn nhiều và cũng không đúng: <code>setContent</code> chỉ chạy một
+				lần trong <code>onCreate()</code>, còn recomposition là cơ chế nhỏ và có chọn lọc bên trong nó. Đáp án b là cách
+				nghĩ theo kiểu "biến trỏ tới biến" và sẽ dẫn bạn tới kết luận sai rằng <code>var</code> Kotlin thường cũng đủ —
+				câu 7 giải thích vì sao cần hơn thế.
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>
+				7. Viết <code>var x by remember &#123; mutableStateOf(...) &#125;</code> thì phải import cả
+				<code>getValue</code> và <code>setValue</code>. Vì sao?
+			</legend>
+			<label>
+				<input type="radio" name="q7" value="a" /> Vì <code>by</code> cần hai hàm đó để biến phép đọc và phép gán biến
+				thành lời gọi vào object <code>MutableState</code> bên dưới
+			</label>
+			<label>
+				<input type="radio" name="q7" value="b" /> Vì <code>remember</code> dùng hai hàm đó để lưu giá trị lại rồi đọc ra
+				ở mỗi lần Compose vẽ lại giao diện
+			</label>
+			<label>
+				<input type="radio" name="q7" value="c" /> Vì Compose quy định mọi file có state phải import đủ bốn thứ từ package
+				<code>runtime</code>, nếu thiếu thì không build được
+			</label>
+			<p class="explain" hidden>
+				<code>by</code> là <em>property delegate</em> của Kotlin: nó giấu chữ <code>.value</code> đi, nhưng để giấu được
+				thì Kotlin cần đúng hai hàm mở rộng <code>getValue</code> (khi bạn đọc biến) và <code>setValue</code> (khi bạn gán
+				biến) nằm trong tầm nhìn của file. Nhớ chi tiết này để đọc được đúng thông báo lỗi: thiếu chúng, IDE báo kiểu "type
+				mismatch" hoặc "delegate must have getValue method" — nghe như lỗi kiểu dữ liệu nên rất dễ đi sửa sai chỗ, trong
+				khi việc cần làm chỉ là thêm một dòng import. Đáp án b gán việc của <code>by</code> cho
+				<code>remember</code>: <code>remember</code> giữ object qua các lần recomposition, nhưng nó làm việc đó bên trong,
+				không qua hai hàm này — bỏ <code>by</code> mà viết <code>.value</code> thì <code>remember</code> vẫn chạy y nguyên.
+				Đáp án c biến một cơ chế cụ thể của Kotlin thành một luật vô cớ; Compose không có luật số lượng import nào.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>8. <code>OutlinedTextField</code> có tự giữ chữ mà người dùng gõ vào nó không?</legend>
+			<label>
+				<input type="radio" name="q8" value="a" /> Có — nó là ô nhập nên tự quản lý nội dung của mình, giống
+				<code>EditText</code> thời XML hoặc thẻ <code>&lt;input&gt;</code> của web
+			</label>
+			<label>
+				<input type="radio" name="q8" value="b" /> Không — nó chỉ vẽ đúng những gì <code>value</code> đang chứa và báo giá
+				trị mới ra ngoài qua <code>onValueChange</code>
+			</label>
+			<label>
+				<input type="radio" name="q8" value="c" /> Có, nhưng chỉ giữ được tới lần recomposition kế tiếp, sau đó chữ trong ô
+				nhập bị xoá và phải gõ lại từ đầu
+			</label>
+			<p class="explain" hidden>
+				Ô nhập trong Compose <strong>không giữ trạng thái nào cả</strong>: state nằm ở bên ngoài, nó chỉ hiển thị. Đó là
+				hình dạng chung của mọi thành phần nhập liệu trong Compose (checkbox, slider, switch, dropdown) — một tham số nhận
+				state vào, một callback đẩy giá trị mới ra. Hệ quả rất cụ thể: truyền <code>value</code> mà bỏ trống
+				<code>onValueChange</code> thì ô nhập không gõ được gì, <em>mà không có lỗi nào</em> — build thành công, bàn phím
+				hiện lên, con trỏ nháy, chỉ là chữ không bao giờ xuất hiện. Đáp án a là kỳ vọng mang từ <code>EditText</code> hoặc
+				thẻ <code>&lt;input&gt;</code> của web sang, và nó chính là nguyên nhân của cái bẫy vừa nói. Đáp án c nghe có vẻ
+				hiểu biết vì nhắc tới recomposition, nhưng nó tự mâu thuẫn: nếu component có tự giữ chữ thì mỗi lần vẽ lại nó đã
+				mất chữ và ô nhập không thể hoạt động ngay từ ký tự thứ hai.
+			</p>
+		</fieldset>
+		<fieldset data-answer="d">
+			<legend>
+				9. <code>onClick</code> của nút Send có hai dòng: <code>chatOutputText = chatInputText</code> rồi
+				<code>chatInputText = ""</code>. Đảo thứ tự hai dòng này thì hiện tượng là gì?
+			</legend>
+			<label>
+				<input type="radio" name="q9" value="a" /> Kết quả không đổi, vì Compose nhìn cả khối <code>onClick</code> rồi tự
+				sắp xếp lại các phép gán state cho hợp lý
+			</label>
+			<label>
+				<input type="radio" name="q9" value="b" /> App crash ngay khi bấm nút, vì <code>chatOutputText</code> nhận vào một
+				chuỗi rỗng trong khi nó không được phép rỗng
+			</label>
+			<label>
+				<input type="radio" name="q9" value="c" /> Code không biên dịch được, vì trình biên dịch Kotlin phát hiện một biến
+				bị đọc sau khi vừa bị xoá trắng
+			</label>
+			<label>
+				<input type="radio" name="q9" value="d" /> App chạy bình thường nhưng vùng hiển thị luôn trống, vì ô nhập bị xoá
+				<em>trước khi</em> giá trị được chép sang
+			</label>
+			<p class="explain" hidden>
+				Bốn lựa chọn ở đây cố tình xếp theo bốn mức nghiêm trọng khác nhau, vì biết đúng <em>mức</em> của một lỗi mới biết
+				đi tìm nó ở đâu. Đây là mức khó chịu nhất: build được, chạy được, không crash, chỉ sai kết quả — nên trình biên
+				dịch không giúp gì và Logcat trống trơn. Đáp án a là cách hiểu sai đáng nói nhất: bên trong <code>onClick</code>
+				bạn đang ở đất Kotlin thường, hai dòng đó chạy lần lượt từ trên xuống như mọi code Kotlin khác. Compose không sắp
+				xếp lại và không "hiểu ý" bạn — nó chỉ vào cuộc <em>sau khi</em> cả khối <code>onClick</code> chạy xong, thấy state
+				đã đổi rồi vẽ lại. Phần mô tả giao diện phía trên có tính khai báo, còn <code>onClick</code> thì không, và đây là
+				chỗ hai tính chất đó nằm cạnh nhau trong cùng một file. Hai đáp án còn lại loại được bằng cùng một lý lẽ: chuỗi rỗng
+				là một <code>String</code> hoàn toàn hợp lệ nên không có gì để crash (b), và trình biên dịch không hề xét
+				<em>ý nghĩa</em> của thứ tự hai phép gán, nó chỉ xét cú pháp và kiểu dữ liệu (c).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				10. Bạn gõ một câu, bấm Send, rồi <strong>xoay ngang máy</strong>. Chữ vừa hiện lên biến mất. Nguyên nhân là gì?
+			</legend>
+			<label>
+				<input type="radio" name="q10" value="a" /> <code>remember</code> có giới hạn thời gian sống: quá một khoảng là nó
+				nhả giá trị ra cho hệ thống thu hồi bộ nhớ
+			</label>
+			<label>
+				<input type="radio" name="q10" value="b" /> Xoay máy là một thay đổi cấu hình nên Android huỷ rồi tạo lại Activity,
+				<code>onCreate()</code> chạy lại và hai state được khởi tạo lại
+			</label>
+			<label>
+				<input type="radio" name="q10" value="c" /> Xoay máy làm Compose vẽ lại toàn bộ giao diện, và mỗi lần vẽ lại thì
+				<code>mutableStateOf(...)</code> tạo ra một ô nhớ mới với giá trị ban đầu
+			</label>
+			<p class="explain" hidden>
+				Mặc định Android <em>huỷ và tạo lại</em> Activity mỗi khi cấu hình thiết bị thay đổi, và xoay màn hình là một thay
+				đổi cấu hình — đúng tình huống 4 trong bảng ở mục 4. Instance cũ mất, <code>onCreate()</code> chạy lại từ đầu, hai
+				lời gọi <code>remember &#123; mutableStateOf(...) &#125;</code> tạo ô nhớ mới với giá trị ban đầu. Đáp án c là chỗ
+				dễ lẫn nhất và đáng tách cho rõ: <code>remember</code> <strong>có</strong> giữ giá trị qua các lần recomposition —
+				nếu không thì ô nhập đã không gõ được ký tự thứ hai. Việc nó không giữ được là qua chuyện Activity bị dựng lại, một
+				chuyện hoàn toàn khác và ở tầng cao hơn. Đáp án a bịa cho <code>remember</code> một cơ chế hết hạn không tồn tại.
+				Đây không phải bug cần sửa ở chương này mà là hạn chế cần quan sát; cách chữa thật đi theo ba bậc ở các chương sau:
+				<code>rememberSaveable</code> và ViewModel (<strong>Chương 6.2</strong>), DataStore (<strong>Chương 9</strong>),
+				database Room (<strong>Chương 10</strong>).
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>11. Fragment ra đời để giải quyết vấn đề gì — và cái giá phải trả là gì?</legend>
+			<label>
+				<input type="radio" name="q11" value="a" /> Giải quyết việc tái sử dụng một mảnh giao diện ở nhiều nơi; giá phải
+				trả là thêm một vòng đời thứ hai lồng bên trong
+			</label>
+			<label>
+				<input type="radio" name="q11" value="b" /> Giải quyết việc <code>findViewById</code> hay trả về
+				<code>null</code> mà không báo lỗi biên dịch; giá phải trả là phải sinh thêm một class binding cho mỗi file layout
+			</label>
+			<label>
+				<input type="radio" name="q11" value="c" /> Giải quyết việc cập nhật giao diện mỗi khi dữ liệu đổi; giá phải trả là
+				cả cây view bị đo và đặt lại sau mỗi lần dữ liệu thay đổi
+			</label>
+			<p class="explain" hidden>
+				Ý tưởng ban đầu rất hợp lý: một mảnh giao diện tự định nghĩa và tự quản lý layout của mình, dùng lại được ở nhiều
+				nơi — trên máy tính bảng hiện hai Fragment cạnh nhau, trên điện thoại hiện lần lượt. Cái giá thì cụ thể: Fragment có
+				vòng đời <em>riêng</em> lồng bên trong vòng đời Activity, với những cặp hàm rất dễ nhầm
+				(<code>onCreateView()</code> / <code>onDestroyView()</code> tách rời khỏi <code>onCreate()</code> /
+				<code>onDestroy()</code>), và một Fragment có thể bị huỷ view mà bản thân nó vẫn sống — sinh ra một họ lỗi khó truy:
+				giữ tham chiếu tới view đã bị huỷ, hoặc thao tác giao diện lúc Fragment chưa gắn vào Activity nào nên chưa có
+				<code>Context</code>. Đó là lý do câu "với Compose bạn không cần Fragment nữa" đáng giá hơn vẻ ngoài: bạn bớt cả một
+				vòng đời phải theo dõi. Đáp án b mô tả View Binding, giải pháp cho một vấn đề khác hẳn (mục 7.1). Đáp án c mô tả
+				đúng nhược điểm của mô hình ra lệnh thời XML, nhưng thứ giải quyết nó là mô hình khai báo của Compose — câu 6 — chứ
+				không phải Fragment.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+	<h2>Bài tập</h2>
+	<p class="intro">
+		Hai bài dưới đây không kiểm tra việc bạn nhớ chữ. Bài 1 luyện một kỹ năng dùng được suốt đời làm nghề: đọc danh sách
+		<code>import</code> để đoán ra kiến trúc của một file trước khi đọc thân hàm. Bài 2 buộc bạn phát biểu lại ba khái
+		niệm của chương này thành câu đúng-sai, vì chỗ hiểu nửa vời thường chỉ lộ ra khi phải nói thành lời.
+	</p>
+
+	<div class="exercise">
+		<h3>Bài tập 1 — Đọc hai danh sách <code>import</code> cạnh nhau</h3>
+		<p>
+			Mở hai file <code>MainActivity.kt</code> trong
+			<code>aaf-materials/03-android-fundamentals/projects/</code>: bản <code>starter</code> (danh sách
+			<code>import</code> nằm ở <strong>dòng 37–47</strong>, tổng 11 dòng) và bản <code>final</code> (<strong>dòng
+			36–48</strong>, tổng 13 dòng). Đặt cạnh nhau và trả lời:
+		</p>
+		<ol>
+			<li>Những dòng <code>import</code> nào có ở <em>cả hai</em> bản?</li>
+			<li>
+				Chỉ ra <strong>4 khác biệt</strong> lớn nhất. Với mỗi khác biệt, nói rõ nó tiết lộ điều gì về giao diện mới — chỉ
+				dựa vào tên import, chưa đọc thân hàm.
+			</li>
+			<li>
+				Bản final nhiều hơn 2 dòng nhưng thực tế đã bỏ đi 7 dòng và thêm vào 9 dòng. Vì sao con số chênh lệch lại nhỏ đến
+				thế, và điều đó nói gì về mức độ thay đổi của file?
+			</li>
+			<li>
+				<strong>Phần thực hành:</strong> hai dòng import đã mất cho biết bản final không còn khung xem trước giao diện nào.
+				Hãy tự viết lại một hàm <code>@Preview</code> cho giao diện chat mới, thêm vào cuối
+				<code>MainActivity.kt</code> bản final, rồi mở bảng Preview của Android Studio để kiểm tra.
+			</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>Câu 1 — có ở cả hai bản, đúng 4 dòng:</strong> <code>android.os.Bundle</code> ·
+				<code>androidx.activity.ComponentActivity</code> · <code>androidx.activity.compose.setContent</code> ·
+				<code>androidx.compose.material3.Text</code>. Ba dòng đầu chính là bộ khung Activity Compose ở mục 3 — chúng không
+				đổi vì bộ khung đó không phụ thuộc vào việc bạn vẽ giao diện gì bên trong. Dòng thứ tư còn lại vì cả hai bản đều
+				hiển thị chữ, chỉ khác nguồn chữ.
+			</p>
+			<p>
+				<strong>Câu 2 — bốn khác biệt và điều mỗi khác biệt tiết lộ:</strong>
+			</p>
+			<ol>
+				<li>
+					<strong>Mất <code>Preview</code> (starter dòng 46) và <code>Composable</code> (dòng 44).</strong> Bản final
+					không import hai thứ này nữa, nghĩa là file không còn hàm <code>@Composable</code> nào được định nghĩa riêng và
+					không còn khung xem trước giao diện. Suy ra đúng: cả <code>Greeting()</code> lẫn
+					<code>@Preview fun GreetingPreview()</code> đã bị xoá, toàn bộ giao diện giờ viết thẳng trong
+					<code>setContent</code>. Hệ quả thực tế: mở file này trong Android Studio thì bảng preview trống trơn.
+				</li>
+				<li>
+					<strong>Mất <code>KodecoChatTheme</code> (dòng 47), <code>MaterialTheme</code> (41),
+					<code>Surface</code> (42), <code>Modifier</code> + <code>fillMaxSize</code> (45, 40).</strong> Năm dòng này đi
+					cùng nhau vì chúng phục vụ đúng một việc: bọc giao diện trong theme Compose rồi phủ một nền kín màn hình theo màu
+					của theme. Không còn chúng nghĩa là giao diện mới <em>không</em> nằm trong theme Compose nào — nó rơi về bộ màu
+					mặc định của Material 3. Đây là chỗ đáng chú ý nhất trong cả bài, và <strong>Chương 3.4, mục 22</strong> mổ kỹ
+					nó.
+				</li>
+				<li>
+					<strong>Thêm <code>Column</code> (final dòng 39), <code>Button</code> (40),
+					<code>OutlinedTextField</code> (41).</strong> Ba dòng này vẽ ra hình dạng của giao diện mới trước khi bạn đọc
+					một dòng thân hàm: có một layout xếp dọc, bên trong có ô nhập chữ và một nút bấm. Riêng
+					<code>Column</code> đến từ package <code>androidx.compose.foundation.layout</code>, còn hai cái kia từ
+					<code>material3</code> — khác package vì khác vai: một cái xếp chỗ, hai cái kia là thành phần thiết kế.
+				</li>
+				<li>
+					<strong>Thêm bốn dòng <code>runtime</code>: <code>getValue</code> (43), <code>mutableStateOf</code> (44),
+					<code>remember</code> (45), <code>setValue</code> (46) — cộng thêm <code>LocalContext</code> (47) và
+					<code>stringResource</code> (48).</strong> Bốn dòng runtime nói rằng giao diện mới <em>có state</em>, và có đủ
+					<code>getValue</code> + <code>setValue</code> nghĩa là state được khai bằng từ khoá <code>by</code> (câu 7 của
+					quiz). Hai dòng cuối là dấu vết của việc chữ được đọc từ resource chứ không viết cứng — chủ đề
+					<strong>Chương 3.2, mục 8–12</strong>. Nói cách khác, chỉ nhìn import bạn đã biết file này có trạng thái thay
+					đổi được và lấy chữ từ <code>strings.xml</code>.
+				</li>
+			</ol>
+			<p>
+				<strong>Câu 3 — vì sao chênh lệch chỉ 2 dòng:</strong> vì 7 dòng bỏ và 9 dòng thêm gần như triệt tiêu nhau về số
+				lượng, dù chúng nói về hai giao diện hoàn toàn khác nhau. Điều rút ra rất thực dụng: <em>số dòng thay đổi không
+				đo được mức độ thay đổi</em>. Một commit đổi 2 dòng có thể vô hại, cũng có thể tháo cả theme của app ra như ở đây.
+				Thứ đáng đọc là <em>tên</em> của những dòng đã đổi, không phải con số ở cột thống kê.
+			</p>
+			<p>
+				<strong>Câu 4 — viết lại <code>@Preview</code>:</strong> cần thêm lại đúng hai import đã mất
+				(<code>androidx.compose.runtime.Composable</code> và
+				<code>androidx.compose.ui.tooling.preview.Preview</code>), rồi thêm một hàm mới ở <em>ngoài</em> class
+				<code>MainActivity</code>, sau dấu <code>&#125;</code> đóng class:
+			</p>
+			<pre><code>@Preview(showBackground = true)
+@Composable
+fun ChatScreenPreview() &#123;
+  Column &#123;
+    Text(text = "Messages will display here")
+    OutlinedTextField(
+      value = "Type your text here",
+      onValueChange = &#123; &#125;,
+      label = &#123; Text(text = "Enter Chat Text") &#125;
+    )
+    Button(onClick = &#123; &#125;) &#123;
+      Text(text = "Send")
+    &#125;
+  &#125;
+&#125;</code></pre>
+			<p>
+				Ba điểm đáng chú ý khi làm bài này. Thứ nhất, hàm preview phải nằm <strong>ngoài</strong> class Activity: nó là một
+				hàm cấp file, và công cụ preview gọi nó trực tiếp mà không tạo Activity nào cả. Thứ hai, ở đây chữ được viết cứng
+				thay vì gọi <code>stringResource</code> — làm vậy để preview không phụ thuộc vào tài nguyên, và cũng để bạn thấy
+				preview là môi trường <em>riêng</em>, không phải app đang chạy. Thứ ba, <code>onValueChange = &#123; &#125;</code>
+				trong preview là chấp nhận được vì không ai gõ chữ vào một bức hình tĩnh — nhưng đúng cùng dòng đó trong app thật
+				thì lại là cái bẫy ở câu 8 của quiz. Cùng một dòng code, một chỗ đúng một chỗ sai, tuỳ chỗ nó được đặt vào.
+			</p>
+		</details>
+	</div>
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 2 — Năm phát biểu: đúng hay sai, và vì sao</h3>
+		<p>
+			Năm câu dưới đây nói về <code>onCreate()</code>, <code>setContent</code> và recomposition. Với mỗi câu, tự trả lời
+			<strong>đúng</strong> hay <strong>sai</strong>, rồi viết một câu lý do — phần lý do quan trọng hơn phần đúng/sai, vì
+			hai câu trong số này sai ở một chữ duy nhất.
+		</p>
+		<ol>
+			<li><code>onCreate()</code> chạy đúng một lần trong suốt thời gian người dùng dùng app.</li>
+			<li>Mỗi lần recomposition xảy ra thì <code>setContent</code> được gọi lại.</li>
+			<li>Gọi được hàm <code>@Composable</code> bên trong <code>onCreate()</code> vì <code>onCreate()</code> nằm trong một
+				Activity của app Compose.</li>
+			<li>Bỏ dòng <code>super.onCreate(savedInstanceState)</code> thì app vẫn chạy, chỉ mất khả năng phục hồi trạng thái.</li>
+			<li>Recomposition chỉ vẽ lại những phần giao diện có đọc state vừa thay đổi.</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>1. SAI.</strong> Nó chạy một lần cho <em>mỗi instance Activity</em>, không phải một lần cho cả phiên dùng
+				app. Xoay máy một lần là có thêm một lần <code>onCreate()</code>; hệ thống huỷ Activity ở nền để lấy bộ nhớ rồi bạn
+				quay lại cũng vậy. Đây đúng là câu 2 của quiz nhìn từ hướng khác, và cũng là gốc rễ của hiện tượng ở câu 10.
+			</p>
+			<p>
+				<strong>2. SAI.</strong> Hai thứ ở hai tầng khác nhau. <code>setContent</code> được gọi một lần, trong
+				<code>onCreate()</code>; recomposition xảy ra bên trong nội dung mà <code>setContent</code> đã dựng, và xảy ra rất
+				nhiều lần — mỗi ký tự bạn gõ vào ô nhập là một lần. Nếu recomposition mà gọi lại <code>setContent</code> thì mọi
+				<code>remember</code> đã bị khởi tạo lại và ô nhập không thể gõ được ký tự thứ hai.
+			</p>
+			<p>
+				<strong>3. SAI — và đây là câu sai ở một chữ duy nhất.</strong> Lý do đúng không phải "vì đang ở trong Activity
+				Compose", mà vì đoạn code đó nằm trong <em>lambda truyền cho <code>setContent</code></em>, và lambda ấy đã được đánh
+				dấu <code>@Composable</code> từ trong định nghĩa của chính <code>setContent</code>. Ranh giới nằm ở dấu
+				<code>&#123;</code> của <code>setContent</code>, không ở dấu <code>&#123;</code> của <code>onCreate</code>. Phát
+				biểu sai kiểu này vô hại cho tới khi bạn gặp một lỗi biên dịch ở đúng chỗ vượt ranh giới — và
+				<strong>Chương 3.2, mục 11</strong> cho bạn gặp đúng lỗi đó.
+			</p>
+			<p>
+				<strong>4. SAI.</strong> Gọi <code>super.onCreate()</code> là <strong>bắt buộc</strong>, không phải tuỳ chọn: hệ
+				thống cần thiết lập một số thứ nội bộ trước khi code của bạn chạy, và bỏ dòng đó thì app đổ ngay khi mở, không phải
+				chỉ "mất khả năng phục hồi". Nửa sau của phát biểu còn lẫn thêm một chuyện khác: việc phục hồi trạng thái gắn với
+				tham số <code>savedInstanceState</code>, mà Chương 3 thì chưa đọc tham số này ở đâu cả.
+			</p>
+			<p>
+				<strong>5. ĐÚNG</strong> — và đây là điểm mạnh cốt lõi của mô hình khai báo. Compose theo dõi việc <em>đọc</em>
+				state, nên nó khoanh được đúng vùng cần vẽ lại thay vì đo và đặt lại cả cây giao diện như cách cũ. Cần nói thêm một
+				chỗ dễ hiểu quá lạc quan: đúng ở mức <em>mô hình</em>, còn trong thực tế nếu bạn đọc state ở tầng quá cao thì "vùng
+				đang đọc state" chính là cả màn hình, và recomposition lan rộng đúng như cách cũ. <strong>Chương 6.1, mục 3</strong>
+				nói về việc giữ cho vùng đó nhỏ.
+			</p>
+			<p>
+				<strong>Rút ra:</strong> bốn trong năm phát biểu trên sai vì cùng một kiểu lỗi — <em>gộp hai tầng thời gian khác
+				nhau làm một</em>. Tầng Activity (hệ điều hành tạo và huỷ, đo bằng lần) và tầng Compose (state đổi và vẽ lại, đo
+				bằng hàng chục lần mỗi giây) chạy độc lập với nhau. Mỗi lần bạn bí một hiện tượng lạ trong Compose, câu hỏi đầu tiên
+				đáng đặt ra là "chuyện này thuộc tầng nào".
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>

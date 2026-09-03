@@ -1,0 +1,749 @@
+---
+// Chương 2.1 — Cài Android Studio và tạo project đầu tiên. Task 48 (Phase 7): áp chuẩn Chương 10.
+// Ranh giới tách + hợp đồng đặt tên: docs/CHAPTER_SPLIT_MAP.md
+// Nội dung diễn giải lại bằng tiếng Việt, không copy nguyên văn nguồn.
+// Code trích nguyên văn từ aaf-materials/ theo Quyết định #7 (docs/PROJECT_PLAN.md) — ghi rõ file + dòng ở mục nguon.
+// Đã mở file thật để kiểm: projects/ của Chương 2 chỉ có final, không có starter; settings.gradle.kts dòng 16–17;
+//   app/build.gradle.kts dòng 6–15 (namespace, compileSdk = 34, minSdk = 30, targetSdk = 34) và dòng 42–44
+//   (composeOptions kotlinCompilerExtensionVersion = "1.5.3"); build.gradle.kts gốc dòng 2–5 (AGP 8.2.0,
+//   Kotlin 1.9.10); gradle/wrapper/gradle-wrapper.properties dòng 1 và 4; res/values/strings.xml dòng 1–3.
+// Đã đếm bằng script trên cây thư mục thật: project Chương 2 có 4 file Kotlin trong src/main + 2 file test mẫu
+//   + 10 file XML trong src/main; quét cả aaf-materials có 19 file app/build.gradle.kts (10 chương có project
+//   thật, starter + final) và tất cả đều ghi minSdk = 30; 0 file build.gradle kiểu Groovy.
+// Mẩu Groovy trong chương này do khoá học tự viết để đối chiếu — project mẫu không có file build.gradle kiểu Groovy.
+
+import { Code } from "astro:components";
+
+const BOOK = "content/book/ch02-getting-started-with-android-studio.md";
+const FINAL = "aaf-materials/02-getting-started-with-android-studio/projects/final";
+
+const settingsSnippet = `rootProject.name = "Kodeco Chat"
+include(":app")`;
+
+const stringsSnippet = `<resources>
+  <string name="app_name">Kodeco Chat</string>
+</resources>`;
+
+const kotlinDslSnippet = `android {
+  namespace = "com.kodeco.chat"
+  compileSdk = 34
+
+  defaultConfig {
+    applicationId = "com.kodeco.chat"
+    minSdk = 30
+    targetSdk = 34
+    versionCode = 1
+    versionName = "1.0"
+    // … còn testInstrumentationRunner và vectorDrawables
+  }
+  // … còn buildTypes, compileOptions, kotlinOptions, buildFeatures, composeOptions, packaging
+}`;
+
+const groovySnippet = `android {
+  namespace 'com.kodeco.chat'
+  compileSdk 34
+
+  defaultConfig {
+    applicationId "com.kodeco.chat"
+    minSdk 30
+    targetSdk 34
+    versionCode 1
+    versionName "1.0"
+  }
+}`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Bạn sẽ học được gì trong chương này</strong>
+		<ul>
+			<li>Android Studio là gì, vì sao nó <em>không</em> phải "một editor code" mà là cả một bộ công cụ gộp lại — và câu định nghĩa nào giải thích được gần hết những thứ lạ bạn sẽ gặp trong nó.</li>
+			<li>Ba nhánh phiên bản <strong>Stable / Beta / Canary</strong> khác nhau ở đâu, nhánh nào dành cho bạn lúc này, và những cái tên như "Hedgehog" hay "Ladybug" thật ra là gì.</li>
+			<li>Cách chọn đúng bản tải theo hệ điều hành và loại chip, và vì sao bước cài đặt tải lâu hơn bạn tưởng rất nhiều.</li>
+			<li>Bước cấu hình <strong>New UI</strong> — nó là gì, vì sao nhiều tài liệu bắt bạn bật nó, và vì sao hôm nay bạn không cần làm gì cả.</li>
+			<li><strong>6 thông tin</strong> phải điền khi tạo project mới, và <em>hệ quả về sau</em> của từng cái: ô nào quyết định tên thư mục chứa code, ô nào là danh tính duy nhất của app trên Google Play, ô nào bạn sẽ gặp lại ở Chương 4.1.</li>
+			<li>Kotlin DSL so với Groovy: khác nhau ở cái gì, tên file đổi ra sao, và nhìn cùng một khối cấu hình viết bằng hai ngôn ngữ.</li>
+			<li>Hai vùng đầu tiên của Android Studio bạn cần định vị được — <strong>Editor</strong> và <strong>Project navigator</strong> — cộng một chi tiết về Project navigator hay làm người mới đi tìm sai thư mục.</li>
+			<li>Vì sao câu "đợi Gradle Sync xong đã" cứu bạn khỏi một buổi tối đi tìm lỗi không tồn tại.</li>
+		</ul>
+		<p>
+			Chương 2 được chia thành ba chương nhỏ, và đây là lộ trình để bạn biết trước mình đang ở đâu:
+			<strong>Chương 2.1</strong> (chương bạn đang đọc) — cài Android Studio và tạo project đầu tiên.
+			<strong>Chương 2.2</strong> — dựng <strong>máy ảo</strong> (AVD) từ ba màn hình cấu hình, hoặc bật máy Android
+			thật lên bằng <strong>USB Debugging</strong> (kèm lý do vì sao bật nó đúng là một lỗ hổng bảo mật, và vì sao vẫn
+			phải bật), rồi mở <em>từng file</em> mà Android Studio vừa tự sinh ra để hiểu nó làm gì.
+			<strong>Chương 2.3</strong> — build và chạy app thật, đổi chữ trên màn hình rồi thấy nó đổi ngay lập tức nhờ
+			<strong>Live Edit</strong>, cuối cùng là cách cập nhật Android Studio cùng Android SDK về sau.
+		</p>
+	</div>
+
+	<div class="callout">
+		<strong>App của cả khoá học: <em>Kodeco Chat</em></strong>
+		<p>
+			Chương 2 tạo ra app tên <strong>Kodeco Chat</strong> — nhưng nói ngay cho khỏi thất vọng: hết Chương 2 nó
+			<em>chưa</em> phải app chat. Đó mới là một project trống do Android Studio sinh ra, chạy lên chỉ hiện đúng một
+			dòng chữ chào. Không có ô nhập tin nhắn, không có danh sách tin, không có mạng.
+		</p>
+		<p>
+			Giá trị của nó nằm ở chỗ khác: <strong>cùng project đó sẽ được xây dần suốt cả khoá học.</strong> Chương 5 dựng
+			giao diện chat bằng Jetpack Compose, Chương 6 làm giao diện đó biết phản ứng khi bạn gõ và gửi tin, Chương 8 nối
+			app ra mạng, Chương 10 lưu dữ liệu xuống database trên máy. Cái tên <code>com.kodeco.chat</code> bạn điền hôm nay
+			sẽ còn xuất hiện trong đường dẫn file ở tám chương nữa.
+		</p>
+		<p>
+			Vì vậy mục tiêu duy nhất của Chương 2 rất hẹp và rất rõ: <strong>đi từ "máy chưa có gì" đến "app do chính mình
+			build đang chạy trên thiết bị"</strong>, trong thời gian ngắn nhất. Chia nhỏ ra thì Chương 2 có đúng
+			<strong>ba việc phải làm xong</strong>, và ba chương nhỏ lần lượt lo từng việc: <strong>(1)</strong> dựng được môi
+			trường làm việc — cài và cấu hình Android Studio, đây là việc của chương bạn đang đọc; <strong>(2)</strong> có một
+			thiết bị để chạy app, máy ảo hoặc máy thật đều được — việc của Chương 2.2; <strong>(3)</strong> build, cài và chạy
+			app trên thiết bị đó — việc của Chương 2.3. Trên đường đi bạn sẽ gặp vài màn hình và vài
+			dòng code chưa hiểu — đó là chuyện đã tính trước, không phải bạn học sai. Từng thứ trong đó sẽ được mổ ra ở
+			<strong>Chương 5.1, mục 2</strong> (hàm Composable — thứ đang vẽ dòng chữ chào đó) và
+			<strong>Chương 6.1, mục 2</strong> (state — thứ làm giao diện biết thay đổi).
+		</p>
+	</div>
+	<div class="callout journey">
+		<strong>Chương này viết khác các chương còn lại — và đây là lý do</strong>
+		<p>
+			Gần như mọi chương khác của khoá học dạy <em>code</em>: bạn đọc một khái niệm, xem code thật, hiểu vì sao nó được
+			viết như vậy. Chương 2 thì khác — nó là chương <strong>bấm chuột</strong>. Nội dung thật của nó là một chuỗi thao
+			tác trên giao diện: bấm nút này, chọn mục kia, điền ô nọ.
+		</p>
+		<p>
+			Loại nội dung đó có một điểm yếu chết người: <strong>nó lỗi thời nhanh hơn kiến thức lập trình rất nhiều.</strong>
+			Code Compose viết năm 2023 hôm nay vẫn chạy y nguyên, nhưng đường dẫn menu trong Android Studio thì đã đổi vài
+			lần trong cùng khoảng thời gian đó, và vị trí các nút trên thanh công cụ đã xê dịch. Một hướng dẫn kiểu "bấm nút
+			thứ ba ở góc trên bên phải" sẽ sai chỉ sau vài bản cập nhật.
+		</p>
+		<p>Nên chương này chọn cách trình bày khác:</p>
+		<ul>
+			<li>
+				Thay vì chỉ vị trí trên màn hình, chương mô tả <strong>bạn đang tìm cái gì và vì sao cần nó</strong>. Thông tin
+				đó không hết hạn: cái ô "Minimum SDK" có thể chuyển chỗ, nhưng ý nghĩa của nó thì không đổi. Biết mình đang
+				tìm gì thì dù giao diện đổi, bạn vẫn tìm ra.
+			</li>
+			<li>
+				Mỗi chỗ mà hướng dẫn phổ biến trên mạng đã lệch so với Android Studio hiện nay đều được gom vào mục
+				<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a> ở cuối chương, thay vì trộn lẫn vào phần hướng dẫn
+				chính. Như vậy bạn đọc phần hướng dẫn một mạch không bị ngắt, còn khi máy bạn không giống mô tả thì có đúng
+				một chỗ để tra.
+			</li>
+			<li>
+				Các thao tác được viết theo <strong>macOS</strong>, vì đó là môi trường mà project mẫu của khoá học được dựng
+				trên. Android Studio chạy cả trên Windows và Linux; chỗ nào có khác biệt thì khác biệt được ghi <em>ngay tại
+				chỗ</em>, không dồn xuống cuối. Khác biệt hay gặp nhất: menu <em>Settings</em> trên macOS nằm trong menu
+				<em>Android Studio</em>, còn trên <strong>Windows là <em>File ▸ Settings</em></strong>. Chương này nhắc lại mỗi
+				lần cần mở Settings, để bạn không phải nhớ.
+			</li>
+		</ul>
+	</div>
+	<h2 id="android-studio-la-gi">1. Android Studio là gì, và tải bản nào</h2>
+	<p>
+		Muốn viết app Android thì việc đầu tiên là cài <strong>Android Studio</strong>. Và trước khi tải, đáng dừng lại ở
+		một câu định nghĩa nghe khô khan nhưng giải thích được rất nhiều thứ về sau: Android Studio là một
+		<strong>IDE được tuỳ biến dựa trên IntelliJ Platform</strong> — nền tảng IDE do JetBrains làm ra.
+	</p>
+	<p>Câu đó trả lời trước cho ba câu hỏi mà gần như ai mới cài cũng thắc mắc:</p>
+	<ul>
+		<li>
+			<strong>Vì sao nó nặng và nhiều menu đến vậy?</strong> Vì nó không phải một editor. Nó là editor + trình build +
+			trình gỡ lỗi + trình quản lý máy ảo + trình quản lý SDK + trình xem log, tất cả gộp trong một cửa sổ. Mỗi thanh
+			công cụ bạn thấy là mặt tiền của một công cụ riêng biệt.
+		</li>
+		<li>
+			<strong>Vì sao phím tắt và cách bố trí giống IntelliJ IDEA hay PyCharm?</strong> Vì cả ba dùng chung nền tảng.
+			Nếu bạn từng dùng một IDE của JetBrains, phần lớn thói quen giữ nguyên: cách tìm file, cách nhảy tới định nghĩa,
+			cách đổi tên biến hàng loạt.
+		</li>
+		<li>
+			<strong>Vì sao Google không tự viết IDE từ đầu?</strong> Vì viết một IDE tốt mất nhiều năm. Google lấy nền
+			JetBrains rồi thêm vào phần thuộc về Android: Layout Inspector, Device Manager, Compose Preview, Logcat. Phần
+			"Android" là lớp phủ lên trên, còn ruột bên dưới vẫn là IntelliJ.
+		</li>
+	</ul>
+	<p class="hint">
+		<strong>Giải thích cho người mới: "IDE" là gì.</strong> Viết đủ là <em>Integrated Development Environment</em> — môi
+		trường phát triển tích hợp. Nghĩa đơn giản: một chương trình gộp sẵn mọi công cụ cần để viết, chạy và sửa lỗi app,
+		thay vì bạn phải cài rời từng thứ rồi tự ghép chúng lại. Bạn <strong>có thể</strong> làm Android bằng một editor
+		thường cộng dòng lệnh — Gradle chạy được độc lập. Nhưng bạn sẽ mất <em>Compose Preview</em> (xem trước giao diện
+		ngay trong lúc viết, không cần chạy app) và trình gỡ lỗi trực quan — hai thứ được dùng liên tục từ Chương 3 trở đi.
+		Với người mới, cài IDE là lựa chọn đúng, không cần cân nhắc.
+	</p>
+
+	<h3>Trang tải và ba nhánh phiên bản</h3>
+	<p>
+		Địa chỉ tải là <code>developer.android.com/studio#downloads</code>. Bấm Download sẽ không tải ngay: trang điều khoản
+		hiện ra trước. Cuộn xuống hết trang, tick ô đồng ý, rồi chọn bản đúng với <strong>hệ điều hành và loại chip</strong>
+		của máy bạn.
+	</p>
+	<p class="hint">
+		<strong>"Loại chip" nghĩa là gì và vì sao nó quan trọng.</strong> Trên máy Mac có hai bản khác nhau: bản cho chip
+		Apple silicon (M1, M2, M3…) và bản cho chip Intel. Trên Windows thường là bản 64-bit. Tải sai loại chip thì hoặc
+		không cài được, hoặc cài được nhưng chạy qua lớp giả lập nên chậm rõ rệt — đặc biệt là máy ảo Android sẽ chậm tới
+		mức khó dùng. Nếu không rõ máy mình chip gì: trên Mac xem <em>About This Mac</em>, trên Windows xem
+		<em>Settings ▸ System ▸ About</em>.
+	</p>
+	<p>
+		Project mẫu của khoá học được dựng trên <strong>Android Studio Hedgehog</strong>. "Hedgehog" (con nhím) là
+		<strong>nickname</strong> — tên gọi thân mật của phiên bản đó. Google đặt tên các bản Android Studio theo thứ tự chữ
+		cái, mỗi tên là một con vật: Hedgehog → Iguana → Jellyfish → Koala → Ladybug… giống cách trước đây họ đặt tên các
+		bản Android theo món tráng miệng (Lollipop, Marshmallow, Nougat, Oreo, Pie). Bạn không cần tìm đúng bản Hedgehog để
+		học: hãy tải bản Stable hiện tại, tên nó sẽ là một con vật ở xa hơn trong bảng chữ cái.
+	</p>
+	<p>
+		Ngoài bản mặc định, trang tải còn có mục <em>preview</em> ở phía trên, dẫn tới hai nhánh khác. Ba nhánh này khác
+		nhau ở một trục duy nhất: <strong>mới hơn thì kém ổn định hơn</strong>.
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Nhánh</th><th>Là gì</th><th>Nên dùng khi</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Stable</strong></td>
+				<td>Bản chính thức, đã qua kiểm thử, là bản mặc định hiện trên trang tải.</td>
+				<td><strong>Học theo khoá này.</strong> Khi bạn còn chưa phân biệt được "lỗi do mình viết sai" và "lỗi do IDE", ổn định là ưu tiên số một — không có ngoại lệ.</td>
+			</tr>
+			<tr>
+				<td><strong>Beta</strong></td>
+				<td>Bản thử của phiên bản kế tiếp, phải vào mục <em>preview</em> trên trang tải mới thấy.</td>
+				<td>Bạn cần một tính năng đã có ở bản sau nhưng bản Stable chưa có, hoặc cần hỗ trợ tốt hơn cho một tính năng Android mới ra.</td>
+			</tr>
+			<tr>
+				<td><strong>Canary</strong></td>
+				<td>Bản mới nhất, mang những tính năng "cắt cạnh" vừa được làm xong. Đây là nhánh <strong>kém ổn định nhất</strong> trong ba nhánh.</td>
+				<td>Lời khuyên chính thức gọn một câu: "dùng theo phán đoán của bạn". Với người mới, dịch ra tiếng Việt là: đừng.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		<strong>Vì sao khuyên tránh Canary đến vậy?</strong> Vì trên bản Canary, một lỗi có thể đến từ ba nguồn cùng lúc:
+		code bạn viết, thư viện bạn dùng, hoặc chính IDE. Người có kinh nghiệm loại trừ được nguồn thứ ba trong vài phút.
+		Người mới thì không — và sẽ mất cả buổi tối đi sửa code vốn không sai. Cài Stable là cách rẻ nhất để loại bỏ hẳn
+		một nguồn gây nhiễu.
+	</p>
+	<p>
+		Trong lúc máy đang tải, mở thêm trang <code>developer.android.com/studio/install</code>. Trang này có hướng dẫn cài
+		đặt và video riêng cho từng hệ điều hành. Làm theo tới khi cửa sổ <strong>"Welcome to Android Studio"</strong> hiện
+		ra là xong bước cài — đó là mốc để bạn biết mình đã sang được phần tiếp theo.
+	</p>
+	<div class="callout note">
+		<strong>Hai chuyện hay làm người mới tưởng mình đã cài sai</strong>
+		<ul>
+			<li>
+				<strong>Mạng chậm thì tải component rất lâu.</strong> Bước cài không chỉ tải riêng IDE: nó còn tải Android
+				SDK, ảnh hệ thống cho máy ảo (emulator image), và bộ build tool — cộng lại nhiều GB. Thanh tiến trình đứng im
+				vài phút là bình thường, đừng hủy giữa đường rồi cài lại từ đầu.
+			</li>
+			<li>
+				<strong>Quá trình cài có thể đòi mật khẩu.</strong> Tuỳ cấu hình máy, nó sẽ hỏi mật khẩu quản trị (admin) hoặc
+				mật khẩu cá nhân của bạn. Đây là hành vi bình thường: trình cài cần quyền ghi vào thư mục hệ thống. Không phải
+				dấu hiệu của phần mềm lạ.
+			</li>
+		</ul>
+	</div>
+	<h2 id="cau-hinh">2. Cấu hình sau khi cài: chuyện gì đã xảy ra với "New UI"</h2>
+	<p>
+		Có một bước cấu hình mà rất nhiều hướng dẫn Android đặt ngay ở đây, <em>trước</em> khi tạo project: bật
+		<strong>New UI</strong>. Đường đi thường được ghi là mở Android Studio → menu <em>Android Studio</em> →
+		<em>Settings</em> (trên Windows: <em>File ▸ Settings</em>) → mở <em>Appearance &amp; Behavior</em> → chọn
+		<em>New UI</em> → tick ô <em>Enable new UI</em>.
+	</p>
+	<p>
+		Lý do bước này từng được coi là bắt buộc rất thực dụng: mọi ảnh chụp màn hình trong các tài liệu thời đó đều theo New
+		UI, nên nếu bạn để giao diện cũ thì ảnh trong tài liệu không khớp với máy bạn, và bạn sẽ đi tìm những cái nút không
+		nằm ở chỗ được chỉ.
+	</p>
+	<p class="hint">
+		<strong>"New UI" là gì?</strong> Đó là bản thiết kế lại giao diện của chính Android Studio: thanh công cụ gọn hơn,
+		các nút được gom lại, thanh bên trái chỉ còn icon, khoảng trắng nhiều hơn. Nó <em>không</em> đổi bất cứ điều gì về
+		cách code chạy hay cách build app — chỉ là chỗ đặt các nút thay đổi. Giao diện cũ được gọi là <em>Classic UI</em>.
+		Kênh <em>Android Developers</em> có một video giới thiệu riêng về New UI, quay từng thay đổi trên giao diện; xem nó
+		hữu ích nếu bạn muốn biết trước cái gì đã dịch chỗ, nhưng không cần thiết để học tiếp chương này.
+	</p>
+	<p>
+		<strong>Nhưng nếu bạn mở Android Studio hôm nay, cái ô tick đó không còn.</strong> New UI đã trở thành giao diện mặc
+		định, nên chẳng còn gì để bật. Bạn <strong>bỏ qua toàn bộ bước này</strong> và đi thẳng sang phần tạo project ở mục 3
+		— chi tiết đầy đủ về chuyện đã xảy ra, kể cả tình huống ngược lại (muốn quay về giao diện cũ), nằm ở mục
+		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>, điểm 2.
+	</p>
+	<p>
+		Vẫn có một việc <em>nên</em> làm ở bước này, và nó hữu ích hơn hẳn việc đi tìm ô tick: <strong>làm quen với chỗ mở
+		Settings</strong>. Bạn sẽ quay lại cửa sổ này nhiều lần trong khoá học — <strong>Chương 2.3, mục 8</strong> vào đây để
+		kiểm tra Live Edit, <strong>Chương 2.3, mục 9</strong> vào đây để cập nhật Android SDK, và các chương sau vào đây để
+		đổi cấu hình build. Mở Settings ra, gõ một từ khoá vào ô tìm kiếm
+		ở góc trên bên trái, và để ý: <strong>ô tìm kiếm đó nhảy trực tiếp tới đúng mục</strong>, không cần bạn biết nó nằm
+		trong nhánh nào của cây bên trái. Đây là mẹo có giá trị lâu dài nhất trong cả mục này, vì nó miễn nhiễm với việc
+		Google sắp xếp lại menu: đường dẫn menu thì đổi, còn tên của thiết lập thì gần như không.
+	</p>
+	<p class="hint">
+		<strong>Một chi tiết nhỏ về tên cửa sổ.</strong> Cùng một cửa sổ này ở các bản Android Studio khác nhau có lúc mang
+		tiêu đề <em>Settings</em>, có lúc là <em>Preferences</em> — tuỳ hệ điều hành và tuỳ phiên bản. Nội dung bên trong là
+		một. Nếu tài liệu nào nói "Preferences" mà máy bạn ghi "Settings", đừng đi tìm hai cửa sổ khác nhau.
+	</p>
+	<h2 id="tao-project">3. Tạo project đầu tiên — 6 thông tin và hệ quả của từng cái</h2>
+	<p>
+		Trên màn hình Welcome, bấm <strong>New Project</strong>. Màn hình Welcome biến mất, một cửa sổ mới thay chỗ nó, và
+		đây là nơi bạn chọn <strong>loại thiết bị</strong> mà project sẽ hỗ trợ. Mặc định đã là <em>Phone and Tablet</em>
+		(điện thoại và tablet) — đúng thứ cần cho khoá học này. Trong danh sách template ở giữa, chọn
+		<strong>Empty Activity</strong>, rồi bấm <em>Next</em> ở góc dưới bên phải.
+	</p>
+	<p class="hint">
+		<strong>Hai từ trên màn hình này cần dịch ra.</strong> Danh sách bên trái — "Phone and Tablet", "Wear OS", "TV",
+		"Automotive" — là các <em>form factor</em>, tức các dạng thiết bị chạy Android khác nhau: điện thoại, đồng hồ, TV, màn
+		hình trong xe hơi. Chọn <em>Phone and Tablet</em> nghĩa là app nhắm vào điện thoại. Còn "Empty Activity" là một
+		<strong>template</strong> — một project mẫu tối giản: thay vì để bạn tạo tay từng file, Android Studio sinh sẵn cả bộ
+		khung. "Empty" (trống) chỉ có nghĩa là <em>không có tính năng nào</em>, chứ không có nghĩa là không có file: bộ khung đó
+		gồm code Kotlin, file khai báo app, file tài nguyên (chuỗi, màu, theme, icon), hai file cấu hình Gradle, và cả hai file
+		test mẫu — đã đếm trên project mẫu Chương 2: <strong>4 file Kotlin</strong> trong phần code chính, <strong>10 file
+		XML</strong>, cộng 2 file test. Chương 2.2, mục 7 sẽ mở <strong>9 file quan trọng nhất</strong> trong số đó và giải
+		thích từng cái.
+	</p>
+	<p>
+		Có một chi tiết trên màn hình này rất dễ đọc trượt, nhưng nó nói lên cả định hướng của khoá học: phụ đề của template
+		Empty Activity là <em>"Creates a new empty activity with Jetpack Compose"</em>. Nghĩa là ngay từ project trống, bạn
+		<strong>đã đang dùng Jetpack Compose</strong> — cách dựng giao diện bằng code Kotlin — chứ không phải layout XML kiểu
+		cũ. Compose là một bước nhảy lớn so với cách làm truyền thống, và <strong>Chương 5.1, mục 1</strong> dành riêng để
+		giải thích vì sao. Điều
+		đáng nhớ lúc này chỉ là: lựa chọn đó đã được quyết ngay tại đây, ở màn hình thứ hai của cả khoá học.
+	</p>
+
+	<h3>Màn hình kế tiếp: 6 ô phải điền</h3>
+	<p>
+		Màn hình tiếp theo hỏi những thông tin quan trọng của ứng dụng. Bảng dưới đây liệt kê đủ sáu mục theo đúng thứ tự
+		chúng xuất hiện, kèm một cột mà các hướng dẫn thường bỏ qua: <em>hệ quả về sau</em> — ô này sẽ ảnh hưởng tới cái gì ở
+		những chương tiếp theo.
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Ô</th><th>Điền gì</th><th>Nó ảnh hưởng gì</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Name</strong></td>
+				<td><code>Kodeco Chat</code></td>
+				<td>
+					Tên app hiển thị dưới icon trên máy. Nó được ghi thành <code>app_name</code> trong
+					<code>res/values/strings.xml</code> — kiểm được trong project mẫu, xem đoạn code ngay dưới bảng này. Đổi tên
+					app về sau chỉ cần sửa một dòng ở file đó, không phải tạo lại project.
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Package name</strong></td>
+				<td><code>com.kodeco.chat</code> — hãy chắc chắn ô này đúng <em>từng ký tự</em></td>
+				<td>
+					<strong>Danh tính duy nhất của app</strong> trên toàn hệ Android và trên Google Play: hai app không được
+					trùng package name. Nó đồng thời là tên package Kotlin, nên nó quyết định luôn <em>đường dẫn thư mục</em>
+					chứa code: <code>app/src/main/java/com/kodeco/chat/</code>. Điền sai ô này thì mọi đường dẫn file được nhắc
+					trong các chương sau sẽ lệch với máy bạn.
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Save location</strong></td>
+				<td>Bất cứ đâu bạn muốn</td>
+				<td>
+					Chỗ Android Studio lưu project. Một lời khuyên thực tế đáng làm theo: <strong>mỗi project Android một thư
+					mục riêng</strong>, đừng để hai project chung một chỗ. Nút hình thư mục bên phải ô này mở trình chọn thư mục
+					của hệ điều hành.
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Minimum SDK</strong></td>
+				<td><code>API 28 ("Pie", Android 9.0)</code> — cả khoá học dùng mức này</td>
+				<td>
+					Phiên bản Android <strong>thấp nhất</strong> mà app chịu cài. Đặt thấp thì nhiều máy cài được nhưng bạn không
+					dùng được API mới; đặt cao thì ngược lại. Đây là ô hay bị nhầm với "chọn bản Android mới nhất" — hai chuyện
+					hoàn toàn khác nhau, giải thích ngay dưới bảng.
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Build configuration language</strong></td>
+				<td>Giữ mặc định <strong>Kotlin DSL</strong></td>
+				<td>Ngôn ngữ dùng để viết các file cấu hình Gradle. Ô này được dành riêng một phần bên dưới vì nó có cả một câu chuyện lịch sử.</td>
+			</tr>
+			<tr>
+				<td><strong>Finish</strong></td>
+				<td>Bấm khi đã điền xong năm ô trên</td>
+				<td>Android Studio bắt đầu tải thư viện và sinh project. Từ giây này trở đi bạn có một project thật trên đĩa.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Ô <strong>Name</strong> đi đâu sau khi bạn bấm Finish? Nó thành đúng một dòng trong file tài nguyên chuỗi của project
+		mẫu:
+	</p>
+	<Code code={stringsSnippet} lang="xml" theme="github-dark" />
+	<p>
+		Còn tên project ở cấp cao hơn — cái tên hiện trên thanh tiêu đề Android Studio — nằm trong file cấu hình Gradle của
+		toàn project:
+	</p>
+	<Code code={settingsSnippet} lang="kotlin" theme="github-dark" />
+	<p>
+		Dòng <code>include(":app")</code> nói rằng project này có đúng một module tên <code>app</code>. Đó là lý do trong
+		Project navigator bạn thấy một mục tên <code>app</code> — không phải Android Studio tự bày ra, mà vì file này khai
+		như vậy. <strong>Chương 4.1, mục 4 và mục 5</strong> sẽ mổ kỹ hai file Gradle cấp cao này.
+	</p>
+	<h3>Ô "Minimum SDK" — ba con số hay bị gộp làm một</h3>
+	<p>
+		Đây là ô gây nhầm nhiều nhất trên cả màn hình, vì Android có tới ba con số phiên bản khác nhau, và ô này chỉ là một
+		trong ba. Phân biệt được chúng bây giờ sẽ tiết kiệm cho bạn rất nhiều bối rối ở <strong>Chương 4.2, mục 7</strong>,
+		nơi cả khối <code>android</code> được mổ ra từng dòng.
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Con số</th><th>Nó trả lời câu hỏi gì</th><th>Trong project mẫu</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>minSdk</code><br />(chính là ô Minimum SDK)</td>
+				<td>Máy Android <em>cũ nhất</em> nào được phép cài app này? Máy cũ hơn mức đó sẽ không thấy app trên Google Play và không cài được.</td>
+				<td><code>minSdk = 30</code></td>
+			</tr>
+			<tr>
+				<td><code>targetSdk</code></td>
+				<td>App được <em>viết và kiểm thử</em> cho bản Android nào? Con số này cho hệ điều hành biết nên áp dụng hành vi mới hay giữ hành vi cũ để app không vỡ.</td>
+				<td><code>targetSdk = 34</code></td>
+			</tr>
+			<tr>
+				<td><code>compileSdk</code></td>
+				<td>Bộ API nào được dùng để <em>biên dịch</em> code? Nó quyết định bạn được phép gọi những hàm nào lúc viết code — hoàn toàn không liên quan tới máy nào cài được app.</td>
+				<td><code>compileSdk = 34</code></td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Ba con số đó nằm cạnh nhau trong file cấu hình build của module app, và đây là chỗ chúng thật sự sống — ô trên màn
+		hình tạo project chỉ là cách điền giá trị ban đầu cho chúng:
+	</p>
+	<Code code={kotlinDslSnippet} lang="kotlin" theme="github-dark" />
+	<p>
+		Để ý một chuyện: project mẫu ghi <code>minSdk = 30</code>, chứ không phải 28 như hướng dẫn tạo project yêu cầu. Đây
+		là một điểm lệch thật, có ở tất cả các project của khoá học, và nó có hệ quả cụ thể — chi tiết ở mục
+		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>, điểm 1.
+	</p>
+	<p class="hint">
+		<strong>"API level" là gì và vì sao nó có tên riêng.</strong> Mỗi bản Android có ba cách gọi: số phiên bản người dùng
+		thấy (Android 9), tên món tráng miệng (Pie), và <em>API level</em> — một số nguyên tăng dần dành cho lập trình viên
+		(28). Trong code và trong file cấu hình, chỉ API level được dùng, vì nó là số nên so sánh được:
+		"tính năng này cần API 31 trở lên" là một câu máy kiểm tra được, còn "cần Android Snow Cone trở lên" thì không. Từ
+		Android 10 Google bỏ hẳn tên món tráng miệng công khai, nên với các bản mới bạn chỉ còn hai cách gọi.
+	</p>
+
+	<h3>Ô "Build configuration language" — vì sao ô này được giải thích dài nhất</h3>
+	<p>
+		Trong sáu ô, đây là ô duy nhất đáng một đoạn giải thích riêng, và lý do thuộc về lịch sử. Trước đây bạn
+		<em>buộc</em> phải dùng Groovy để viết file cấu hình Gradle; nay ngôn ngữ mặc định của Gradle đã là Kotlin. Kết quả:
+		bạn dùng được <strong>một ngôn ngữ duy nhất cho toàn bộ việc phát triển Android</strong> — code app viết bằng Kotlin,
+		file cấu hình build cũng Kotlin.
+	</p>
+	<p>
+		Về mặt file, lựa chọn này thấy được ngay ở phần đuôi tên: chọn Kotlin DSL thì các file cấu hình có đuôi
+		<code>.gradle.kts</code>; chọn Groovy thì đuôi là <code>.gradle</code>. Toàn bộ project mẫu của khoá học đều dùng
+		Kotlin DSL — đã quét cả 19 bản project (mỗi chương có project thật thì có cả <code>starter</code> và
+		<code>final</code>): <strong>không có một file <code>build.gradle</code> kiểu Groovy nào</strong>.
+	</p>
+	<p>
+		Khác biệt trong cách viết cũng nhỏ hơn bạn tưởng. Cùng một khối cấu hình, bản Kotlin DSL dùng dấu <code>=</code> để
+		gán và bọc chuỗi trong dấu ngoặc kép:
+	</p>
+	<Code code={kotlinDslSnippet} lang="kotlin" theme="github-dark" />
+	<p>
+		Còn bản Groovy tương đương thì bỏ dấu <code>=</code>, viết giá trị ngay sau tên, và cho phép dùng dấu nháy đơn:
+	</p>
+	<Code code={groovySnippet} lang="groovy" theme="github-dark" />
+	<p>
+		Nội dung y hệt, chỉ khác cú pháp. Nhưng Kotlin DSL có một lợi thế thực tế đáng chọn cho người mới: vì nó là Kotlin
+		thật, Android Studio <strong>gợi ý tên thiết lập và báo lỗi ngay lúc bạn gõ</strong>. Với Groovy, gõ sai tên một
+		thuộc tính thường phải chờ tới lúc build thất bại mới biết. Đoạn Groovy ở trên đưa vào đây chỉ để bạn nhận ra khi
+		gặp tài liệu cũ, không phải để dùng.
+	</p>
+	<p>
+		Cùng ô này còn cho bạn chọn dùng <strong>Gradle Version Catalogs</strong> hay không. Cách làm đúng lúc này là
+		<strong>giữ mặc định</strong> — nó có nhiều lợi ích, nhưng lợi ích đó chỉ hiện ra khi project đã có nhiều thư viện.
+		Cả Gradle lẫn Version Catalog là nội dung của <strong>Chương 4</strong> — Version Catalog cụ thể là
+		<strong>Chương 4.3, mục 10</strong>. Có một chi tiết thú vị đáng biết trước:
+		project mẫu của Chương 2 <em>không</em> có Version Catalog — nó khai từng thư viện kèm số phiên bản trực tiếp trong
+		file build. Version Catalog chỉ xuất hiện từ project của Chương 4 trở đi, đúng lúc số thư viện bắt đầu nhiều lên. Đó
+		là minh hoạ sống cho việc: công cụ được thêm vào khi có vấn đề cần nó, không phải thêm cho đủ bộ.
+	</p>
+	<p class="hint">
+		<strong>Một câu để hiểu Gradle trước khi tới Chương 4.1, mục 1.</strong> Gradle là chương trình <em>biến code của bạn
+		thành file app cài được</em>. Muốn làm việc đó, nó cần biết: dùng những thư viện nào, bản bao nhiêu, nhắm bản Android
+		nào, ký app bằng khoá nào. Các câu trả lời đó nằm trong file <code>build.gradle.kts</code>. Còn "DSL" viết đủ là
+		<em>Domain-Specific Language</em> — "ngôn ngữ dùng riêng cho một việc". Ở đây việc đó là khai báo cấu hình build.
+	</p>
+
+	<h3>Sau khi bấm Finish</h3>
+	<p>
+		Android Studio lấy các thông tin bạn vừa điền, <strong>tải các thư viện và tài nguyên cần thiết, rồi sinh ra project
+		mới</strong>. Tuỳ đường mạng, bước này có thể lâu — lần đầu tiên trên một máy mới thường lâu nhất, vì chưa có gì được
+		tải sẵn về máy. Xong thì project mở ra với <strong><code>MainActivity.kt</code> đã sẵn trên editor</strong>: đó là
+		file chứa màn hình duy nhất của app.
+	</p>
+	<p class="notice">
+		<strong>Câu quan trọng nhất của cả mục 3, và nó chỉ dài một dòng: thấy <em>"Gradle Sync in Progress"</em> hoặc các
+		thanh tiến trình ở đáy cửa sổ thì hãy đợi cho xong.</strong> Trong lúc sync, Android Studio chưa hiểu đầy đủ project:
+		code có thể bị gạch chân đỏ như thể sai cú pháp, gợi ý tự động chưa chạy, nút Run có thể mờ đi không bấm được. Rất
+		nhiều người mới tưởng project bị lỗi ngay từ lúc mới tạo, trong khi thực ra chỉ cần đợi thêm ba mươi giây. Đây là
+		phản xạ đáng luyện ngay từ hôm nay: <em>gặp lỗi lạ trong Android Studio, việc đầu tiên là nhìn xuống đáy cửa sổ xem
+		có gì đang chạy không.</em>
+	</p>
+	<p class="hint">
+		<strong>"Gradle Sync" thật ra làm gì?</strong> Nó đọc các file cấu hình build, tải về những thư viện được khai trong
+		đó, rồi dựng lại trong bộ nhớ một bản đồ đầy đủ về project: có những module nào, mỗi module dùng thư viện gì, code
+		nằm ở thư mục nào. Trước khi bản đồ đó xong, IDE chưa biết class <code>Surface</code> hay <code>Text</code> mà bạn
+		gọi trong code đến từ đâu — nên nó gạch đỏ. Sync xong là đỏ tự hết. Bạn sẽ chạy lại bước sync này mỗi lần thêm một
+		thư viện mới, và lần đầu bạn tự thêm thư viện là ở <strong>Chương 4.2, mục 9</strong>.
+	</p>
+	<h2 id="giao-dien-studio">4. Nhìn quanh Android Studio trước khi viết code</h2>
+	<p>
+		Project đã tạo xong, mọi thứ đã sẵn để làm việc. Nhưng đừng nhảy vào code ngay — và lời khuyên này nghe hơi lạ nên
+		đáng nói rõ lý do: Android Studio là một phần mềm lớn, <strong>lao vào quá nhanh thì rất dễ bị mất phương
+		hướng</strong>. Bạn sẽ mở một file, thấy ba mươi mục menu chưa biết dùng để làm gì, rồi mất mười lăm phút bấm thử
+		từng cái. Dành hai phút định vị trước sẽ đỡ hơn nhiều.
+	</p>
+	<p>
+		Cả cửa sổ chỉ cần <strong>hai vùng</strong> cho Chương 2 — đúng hai vùng, không nhiều hơn:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Vùng</th><th>Ở đâu</th><th>Nó dùng để làm gì</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Editor</strong></td>
+				<td>Cửa sổ hiện ra đầu tiên, chiếm phần giữa</td>
+				<td>
+					Nơi sửa source code của app. Nó có <em>syntax highlighting</em> (tô màu cú pháp — từ khoá, chuỗi, comment mỗi
+					loại một màu để đọc nhanh hơn), <em>auto-completion</em> (gợi ý tên hàm và tên đối tượng ngay khi bạn gõ vài
+					ký tự đầu), và đặt được <strong>breakpoint</strong> — điểm dừng để app tạm ngừng đúng tại một dòng cho bạn xem
+					giá trị các biến lúc đó. Breakpoint chưa dùng tới trong Chương 2; cách chạy app ở chế độ gỡ lỗi và cách đọc giá
+					trị biến tại một breakpoint là nội dung của <strong>Chương 3.2, mục 13</strong>. Bạn sẽ dành
+					<strong>phần lớn thời gian</strong> ở vùng này.
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Project navigator</strong></td>
+				<td>Bên trái Editor</td>
+				<td>
+					Hiện <em>mọi thứ</em> project chứa: code, file cấu hình, và cả tài nguyên ảnh. Bấm mũi tên bên trái từng mục
+					để mở rộng ra. Số lượng file khiến người mới hơi choáng, nhưng chưa cần lo — bạn sẽ quen dần từng nhóm file
+					qua các chương.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Về Project navigator có một chi tiết đáng nói ngay, vì nó khiến rất nhiều người mới đi tìm sai chỗ: <strong>cây thư
+		mục bạn thấy trong đó không phải cây thư mục thật trên đĩa.</strong> Ở chế độ hiển thị mặc định (tên nó là
+		<em>Android</em>, hiện ở ô chọn phía trên cây), Android Studio gom và rút gọn để bạn làm việc nhanh hơn: các file
+		Gradle của cả project được dồn vào một nhóm <em>Gradle Scripts</em> ở cuối, còn code Kotlin hiện dưới nhánh
+		<code>app ▸ kotlin+java ▸ com.kodeco.chat</code> — trong khi đường dẫn thật trên đĩa là
+		<code>app/src/main/java/com/kodeco/chat/</code>. Nếu bạn mở thư mục project bằng Finder hay File Explorer mà thấy khác
+		với Android Studio, không có gì sai cả. Muốn xem cây thật, đổi ô chọn từ <em>Android</em> sang <em>Project</em>.
+	</p>
+	<p class="hint">
+		<strong>Vì sao nhánh code lại tên "kotlin+java" mà không phải "kotlin"?</strong> Vì Android cho phép một project chứa
+		lẫn code Kotlin và code Java trong cùng thư mục, và thư mục đó theo lịch sử vẫn mang tên <code>java</code>. App trong
+		khoá học này viết thuần Kotlin, nhưng cái tên thư mục thì được giữ lại để tương thích với các project cũ. Đây là một
+		ví dụ nhỏ của điều bạn sẽ gặp nhiều trong Android: <em>tên gọi thường già hơn công nghệ.</em>
+	</p>
+	<p>
+		Còn một điểm nữa nên biết trước khi sang Chương 2.2: tài liệu hướng dẫn thường trấn an rằng "chưa cần lo về các file
+		này". Khoá học này làm ngược lại — <strong>Chương 2.2, mục 7 sẽ mở từng file trong Project navigator và giải thích nó
+		làm gì</strong>. Lý do rất cụ thể: project vừa sinh ra là project Android <strong>nhỏ nhất bạn sẽ gặp trong cả khoá
+		học</strong>. Phần code thật của nó chỉ có <strong>4 file Kotlin</strong> — <code>MainActivity.kt</code> cộng ba file
+		trong <code>ui/theme/</code> — thêm vài file cấu hình, và hai file test mẫu mà template sinh kèm nhưng chương này
+		không dùng tới. Hiểu trọn một project cỡ đó bây giờ là việc khả thi trong một buổi, và đó là cơ hội chỉ có đúng một
+		lần: về sau bạn sẽ luôn học file mới trong một project bạn <em>đã</em> quen, chứ không bao giờ được nhìn toàn bộ một
+		project từ con số không nữa. Con số tăng nhanh hơn bạn tưởng — đã đếm trên project mẫu của Chương 5:
+		bản <code>final</code> có <strong>20 file Kotlin</strong>, gấp năm lần project hôm nay, và
+		<strong>Chương 5.3, mục 10</strong> sẽ chỉ mổ những file liên quan tới UI tin nhắn chứ không đọc lại từng file nữa.
+		Bốn file bây giờ là kích cỡ vừa đủ để đọc hết mà không kiệt sức.
+	</p>
+
+	<div class="callout">
+		<strong>Tổng kết Chương 2.1</strong>
+		<ul>
+			<li>
+				<strong>Android Studio là một IDE dựng trên IntelliJ Platform</strong> của JetBrains — không phải editor, mà là
+				editor + trình build + trình gỡ lỗi + trình quản lý máy ảo + trình quản lý SDK gộp lại. Câu này giải thích cả độ
+				nặng của nó, cả việc phím tắt giống PyCharm.
+			</li>
+			<li>
+				<strong>Ba nhánh phiên bản:</strong> Stable (mặc định, dùng cho khoá học này) · Beta (bản thử của phiên bản kế
+				tiếp, nằm trong mục <em>preview</em>) · Canary (mới nhất, kém ổn định nhất — người mới nên tránh, vì nó thêm một
+				nguồn gây lỗi mà bạn chưa loại trừ được). Tên như "Hedgehog" chỉ là nickname đặt theo thứ tự chữ cái.
+			</li>
+			<li>
+				<strong>Bước cài tải nhiều GB</strong> (IDE + SDK + emulator image + build tool) nên chậm là bình thường, và có
+				thể đòi mật khẩu quản trị. Chọn đúng bản theo hệ điều hành <em>và loại chip</em>.
+			</li>
+			<li>
+				<strong>Bước bật "Enable new UI" đã không còn</strong> — New UI là giao diện mặc định. Việc đáng làm ở bước cấu
+				hình là quen với ô tìm kiếm trong Settings: nó nhảy thẳng tới đúng mục, nên miễn nhiễm với việc menu bị sắp xếp
+				lại.
+			</li>
+			<li>
+				<strong>Sáu ô khi tạo project:</strong> Name (<code>Kodeco Chat</code>, thành <code>app_name</code> trong
+				<code>strings.xml</code>) · Package name (<code>com.kodeco.chat</code>, là danh tính duy nhất của app <em>và</em>
+				đường dẫn thư mục code) · Save location (mỗi project một thư mục riêng) · Minimum SDK (API 28) · Build
+				configuration language (Kotlin DSL) · Finish.
+			</li>
+			<li>
+				<strong>Ba con số phiên bản đừng gộp làm một:</strong> <code>minSdk</code> = máy cũ nhất cài được ·
+				<code>targetSdk</code> = bản được viết và kiểm thử cho · <code>compileSdk</code> = bộ API dùng để biên dịch.
+				Project mẫu: <code>minSdk = 30</code>, <code>targetSdk = 34</code>, <code>compileSdk = 34</code>.
+			</li>
+			<li>
+				<strong>Kotlin DSL so với Groovy:</strong> đuôi file <code>.gradle.kts</code> so với <code>.gradle</code>; cú
+				pháp khác ở dấu <code>=</code> và dấu nháy; nội dung như nhau. Kotlin DSL được gợi ý tên thiết lập và báo lỗi
+				ngay lúc gõ. Mọi project mẫu của khoá học đều dùng Kotlin DSL, không có file Groovy nào.
+			</li>
+			<li>
+				<strong>Gradle Sync đang chạy thì đợi.</strong> Code gạch đỏ, nút Run mờ, gợi ý chưa hoạt động — tất cả là trạng
+				thái tạm trong lúc IDE dựng bản đồ project, không phải lỗi.
+			</li>
+			<li>
+				<strong>Hai vùng cần định vị:</strong> Editor (ở giữa, nơi bạn ở lâu nhất) và Project navigator (bên trái). Cây
+				trong Project navigator ở chế độ <em>Android</em> đã được gom lại, <em>không</em> giống cây thật trên đĩa — đổi
+				sang chế độ <em>Project</em> để xem cây thật.
+			</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Tiếp theo — Chương 2.2:</strong> project đã có, nhưng chưa có chỗ nào để chạy nó. Chương 2.2 dựng thiết bị:
+		tạo một <strong>máy ảo</strong> (AVD) qua ba màn hình cấu hình, hoặc bật máy Android thật lên bằng
+		<strong>USB Debugging</strong> — kèm câu trả lời cho việc vì sao bật tính năng đó đúng là mở một lỗ hổng bảo mật, và
+		vì sao vẫn phải bật. Sau đó là phần dài nhất của cả Chương 2: mở <em>từng file</em> trong project vừa sinh ra —
+		<code>MainActivity.kt</code>, <code>AndroidManifest.xml</code>, ba file trong <code>ui/theme/</code>, hai file Gradle
+		— và giải thích mỗi file làm gì.
+	</p>
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Hướng dẫn cài đặt là loại tài liệu hết hạn nhanh nhất trong lập trình Android: code viết ba năm trước vẫn chạy, nhưng
+		vị trí một cái nút thì không sống được lâu như vậy. Năm điểm dưới đây là những chỗ mà tài liệu bạn tìm thấy trên mạng
+		hay khiến bạn tưởng máy mình bị lỗi. Đọc trước để khỏi mất buổi tối đi tìm một cái ô tick không tồn tại.
+	</p>
+	<p class="notice">
+		<strong>1. Hướng dẫn tạo project nói <code>minSdk</code> là API 28, nhưng mọi project mẫu ghi 30.</strong> Đây là
+		điểm lệch thật, và nó đã được kiểm bằng cách quét toàn bộ project mẫu của khoá học chứ không phải đọc lướt một file:
+		<strong>19 file <code>app/build.gradle.kts</code></strong> (mỗi chương có project thật thì có cả bản
+		<code>starter</code> và bản <code>final</code>, trải trên <strong>10 chương</strong>) — <em>tất cả</em> đều ghi
+		<code>minSdk = 30</code>, tức Android 11, chứ không phải 28 (Android 9, "Pie") như phần hướng dẫn tạo project yêu cầu.
+		Hệ quả rất cụ thể và bạn nên biết trước: nếu bạn tạo project mới với
+		API 28 rồi đối chiếu với project mẫu, con số sẽ không khớp — không phải bạn điền sai. Và nếu bạn định chạy app trên
+		một máy Android 9 hoặc 10 thật, thì app <em>bạn tự tạo</em> (minSdk 28) sẽ cài được, còn project mẫu tải về
+		(minSdk 30) sẽ bị từ chối cài với thông báo kiểu "app không tương thích với thiết bị". Cách xử lý: đổi
+		<code>minSdk</code> trong <code>app/build.gradle.kts</code> xuống 28 rồi sync lại — không cần tạo project mới. Điều
+		đáng nhớ rộng hơn: <code>minSdk</code> là một con số bạn <em>tự chọn</em> theo tập người dùng mình muốn phục vụ, không
+		phải một giá trị cố định của Android.
+	</p>
+	<p class="notice">
+		<strong>2. Bước "tick ô Enable new UI" không còn tồn tại — và hai bên đã đổi vai.</strong> Từ bản
+		<strong>Ladybug Feature Drop</strong>, New UI đã là <strong>giao diện mặc định</strong> của Android Studio, nên trong
+		<em>Settings ▸ Appearance &amp; Behavior</em> không còn mục <em>New UI</em> với ô tick nào để bật (trang tài liệu chính
+		thức cho chuyện này là <code>developer.android.com/studio/intro/new-ui</code>). Nếu tài liệu bảo
+		bạn vào đó tick, hãy bỏ qua và đi thẳng tới bước tạo project — bạn <em>đã</em> đang dùng New UI. Chiều ngược lại mới
+		là chỗ đổi vai hoàn toàn: ai muốn quay về giao diện cũ (Classic UI) thì bây giờ phải <em>cài thêm một plugin</em> từ
+		JetBrains Marketplace, tức thứ từng là mặc định giờ thành tuỳ chọn phải cài thêm. Vì sao vẫn kể lại bước đã lỗi thời
+		thay vì xoá hẳn? Vì bạn <em>sẽ</em> gặp nó trong hầu hết tài liệu Android còn lưu hành, và biết trước "bước này đã bị
+		xoá vì nó thành mặc định" tiết kiệm cho bạn mười lăm phút đi tìm.
+	</p>
+	<p class="notice">
+		<strong>3. Tên template trong danh sách đã bị đổi, nên tài liệu cũ chỉ bạn chọn một mục không còn ở đó.</strong>
+		Android Studio từng có hai template khác nhau nằm cạnh nhau: <em>"Empty Activity"</em> dùng layout XML kiểu cũ, và
+		<em>"Empty Compose Activity"</em> dùng Jetpack Compose. Sau đó Google đảo lại cách đặt tên để đẩy Compose thành lựa
+		chọn mặc định: bản Compose được đổi tên thành <strong>"Empty Activity"</strong>, còn bản XML cũ chuyển thành
+		<strong>"Empty Views Activity"</strong>. Kết quả là hai kiểu nhầm đối xứng nhau. Nếu tài liệu bạn đọc bảo "chọn Empty
+		Compose Activity" mà bạn không thấy mục nào tên vậy — đúng, nó không còn; hãy chọn <em>Empty Activity</em>. Ngược
+		lại, nếu bạn đọc một tài liệu <em>rất</em> cũ bảo "chọn Empty Activity" rồi ngạc nhiên vì không thấy file layout XML
+		nào được sinh ra, thì vì cái tên đó nay thuộc về bản Compose. Cách kiểm chắc chắn nhất không dựa vào tên: đọc phụ đề
+		ngay dưới nó — có chữ "with Jetpack Compose" là template bạn cần.
+	</p>
+	<p class="notice">
+		<strong>4. Khối <code>composeOptions</code> trong project mẫu ngày nay không còn cần thiết.</strong> Mở
+		<code>app/build.gradle.kts</code> của project mẫu Chương 2, bạn sẽ thấy một khối <code>composeOptions</code> khai
+		<code>kotlinCompilerExtensionVersion = "1.5.3"</code>. Nó ở đó vì thời điểm project được dựng, Compose compiler là
+		một thư viện <em>riêng</em> và bạn phải tự khai đúng phiên bản tương thích với phiên bản Kotlin đang dùng — sai cặp số
+		là build thất bại kèm thông báo khó hiểu, và đây từng là một trong những lỗi phổ biến nhất của người mới. Từ
+		<strong>Kotlin 2.0</strong>, Compose compiler đi kèm luôn với Kotlin và được bật bằng plugin
+		<code>org.jetbrains.kotlin.plugin.compose</code>, nên trong project mới cả khối <code>composeOptions</code> lẫn dòng
+		<code>kotlinCompilerExtensionVersion</code> đều không còn chỗ dùng. Đừng copy khối đó sang project mới của bạn; và
+		đừng bối rối khi project mẫu có nó mà project bạn vừa tạo thì không.
+	</p>
+	<p class="notice">
+		<strong>5. Project bạn tạo hôm nay rất có thể có sẵn <code>libs.versions.toml</code>, còn project mẫu Chương 2 thì
+		không.</strong> Đã kiểm trong khoá học: file <code>gradle/libs.versions.toml</code> — tức Gradle Version Catalog —
+		chỉ xuất hiện từ project của <strong>Chương 4</strong> trở đi; project Chương 2 khai từng thư viện kèm số phiên bản
+		trực tiếp trong <code>app/build.gradle.kts</code>. Android Studio hiện nay có xu hướng sinh sẵn Version Catalog cho
+		project mới, nên khi đối chiếu bạn sẽ thấy hai cấu trúc khác nhau: bên bạn có một file <code>.toml</code> lạ và các
+		dependency viết dạng <code>libs.something</code>, còn project mẫu thì ghi thẳng chuỗi
+		<code>"androidx.core:core-ktx:1.12.0"</code>. Cả hai cách đều đúng và cùng cho ra một kết quả; đây chỉ là hai cách
+		khai cùng một danh sách thư viện. Chương 4 sẽ dạy Version Catalog tử tế, nên lúc này không cần sửa gì cho giống nhau
+		— chỉ cần biết vì sao chúng khác nhau.
+	</p>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 11 (định nghĩa Android Studio là IDE tuỳ biến dựa trên
+			IntelliJ Platform) · dòng 13–17 (ba mục tiêu của chương) · dòng 21, 26, 30 (trang tải, trang điều khoản, chọn bản
+			theo hệ điều hành và phần cứng) · dòng 28 (ghi chú các thao tác viết theo macOS, có hướng dẫn cho Windows/Linux ở
+			những chỗ có thể) · dòng 35 (nickname "Hedgehog"; ba nhánh Stable / Beta / Canary, Canary kém ổn định nhất, "dùng
+			theo phán đoán của bạn") · dòng 37, 42 (trang hướng dẫn cài đặt; mốc cửa sổ "Welcome to Android Studio") · dòng 44
+			(mạng chậm thì tải component lâu; có thể bị đòi mật khẩu quản trị hoặc mật khẩu cá nhân) · dòng 49–61 (mục cấu hình
+			New UI: đường đi Settings ▸ Appearance &amp; Behavior ▸ New UI ▸ Enable new UI, và lý do là để khớp ảnh chụp màn
+			hình) · dòng 63–65 (mục tiêu chạy app đầu tiên nhanh nhất; sẽ gặp vài màn hình lạ, phần giải thích chi tiết thuộc
+			Chương 6) · dòng 67–79 (bấm New Project; mặc định Phone and Tablet; chọn Empty Activity rồi Next; phụ đề "Creates a
+			new empty activity with Jetpack Compose" và nhận xét Compose là bước nhảy lớn) · dòng 84–92 (sáu thông tin của
+			project: Name = Kodeco Chat · Package name = com.kodeco.chat · Save location kèm lời khuyên mỗi project một thư mục
+			riêng · Minimum SDK = API 28 "Pie" Android 9.0 · Build configuration language, lịch sử Groovy sang Kotlin, một ngôn
+			ngữ cho toàn bộ việc phát triển, Version Catalogs hẹn giải thích sau, giữ mặc định Kotlin DSL · Finish) · dòng 94–101
+			(Android Studio tải thư viện và sinh project, có thể lâu tuỳ mạng; project mở ra với MainActivity.kt sẵn trên
+			editor; thấy "Gradle Sync in Progress" hoặc thanh tiến trình ở đáy thì đợi cho xong) · dòng 103–113 (khuyên đừng lao
+			vào code ngay vì dễ mất phương hướng; Editor với syntax highlighting, auto-completion, breakpoint, là nơi bạn ở lâu
+			nhất; Project navigator bên trái hiện cả code và tài nguyên ảnh, bấm mũi tên để mở rộng) · dòng 294 (trên Windows mở
+			Settings bằng <em>File ▸ Settings</em>). Chương gốc minh hoạ bằng 38 ảnh chụp màn hình (<code>img8.jpg</code> tới
+			<code>img45.png</code>); vì bản quyền, khoá học không copy ảnh mà diễn giải lại bằng chữ, bảng và mô tả "bạn đang
+			tìm cái gì".
+		</li>
+		<li>
+			<strong>Code thật đã đối chiếu:</strong> <code>{FINAL}/settings.gradle.kts</code> (dòng 16–17 —
+			<code>rootProject.name = "Kodeco Chat"</code> và <code>include(":app")</code>) ·
+			<code>{FINAL}/app/build.gradle.kts</code> (dòng 6–15 — <code>namespace</code>, <code>compileSdk = 34</code>,
+			<code>applicationId</code>, <code>minSdk = 30</code>, <code>targetSdk = 34</code>; dòng 42–44 — khối
+			<code>composeOptions</code> với <code>kotlinCompilerExtensionVersion = "1.5.3"</code>; dòng 54–68 — các dependency
+			khai trực tiếp kèm số phiên bản, không qua Version Catalog) · <code>{FINAL}/build.gradle.kts</code> (dòng 2–5 — AGP
+			<code>8.2.0</code>, Kotlin <code>1.9.10</code>) ·
+			<code>{FINAL}/gradle/wrapper/gradle-wrapper.properties</code> (dòng 1 — timestamp
+			<code>Thu Oct 12 21:21:56 EDT 2023</code>; dòng 4 — <code>gradle-8.2-bin.zip</code>, hai dòng này là bằng chứng
+			project mẫu ghim ở cuối 2023) · <code>{FINAL}/app/src/main/res/values/strings.xml</code> (dòng 1–3 —
+			<code>app_name</code> chính là ô Name) · đã liệt kê bằng script trên cây thư mục thật của
+			<code>{FINAL}/</code>: chương này <strong>chỉ có <code>projects/final</code>, không có
+			<code>starter</code></strong>, phần code chính gồm đúng 4 file Kotlin
+			(<code>MainActivity.kt</code>, <code>ui/theme/Theme.kt</code>, <code>ui/theme/Color.kt</code>,
+			<code>ui/theme/Type.kt</code>) cộng 10 file XML trong <code>src/main/</code> và 2 file test mẫu
+			(<code>ExampleUnitTest.kt</code>, <code>ExampleInstrumentedTest.kt</code>) · đã quét toàn bộ
+			<code>aaf-materials/</code>: <strong>19 file <code>app/build.gradle.kts</code></strong> (10 chương có project thật,
+			mỗi chương một hoặc hai bản) đều ghi <code>minSdk = 30</code>, <strong>0 file
+			<code>build.gradle</code></strong> kiểu Groovy, và <code>gradle/libs.versions.toml</code> chỉ xuất hiện từ project
+			Chương 4 trở đi (bản <code>final</code> của Chương 4 đã có, bản <code>starter</code> thì chưa) · đã đếm để so
+			sánh kích cỡ project: <code>05-jetpack-compose/projects/final/app/src/main</code> có
+			<strong>20 file Kotlin</strong>, so với 4 file của project Chương 2 (bản <code>starter</code> của Chương 5 vẫn còn
+			đúng 4 file — toàn bộ 16 file kia là phần bạn dựng trong Chương 5).
+		</li>
+		<li>
+			<strong>Phần bổ sung ngoài giáo trình:</strong> giải thích "IDE" là gì và khi nào thật sự cần một IDE · vì sao phải
+			chọn đúng loại chip khi tải · lý do cụ thể khiến người mới nên tránh nhánh Canary · giải thích "New UI" là gì và mẹo
+			dùng ô tìm kiếm trong Settings thay vì học đường dẫn menu · phân biệt ba con số <code>minSdk</code> /
+			<code>targetSdk</code> / <code>compileSdk</code> và khái niệm "API level" · ví dụ cùng một khối cấu hình viết bằng
+			Kotlin DSL và bằng Groovy để so sánh cú pháp (mẩu Groovy do khoá học tự viết — project mẫu không có file Groovy nào)
+			· giải thích Gradle Sync thật ra làm gì và vì sao code bị gạch đỏ lúc đang sync · chế độ hiển thị
+			<em>Android</em> so với <em>Project</em> trong Project navigator và lý do nhánh code mang tên
+			<code>kotlin+java</code> · toàn bộ năm điểm trong mục Cạm bẫy &amp; tài liệu lỗi thời, gồm việc template đã bị đổi
+			tên và việc <code>composeOptions</code> không còn cần từ Kotlin 2.0.
+		</li>
+	</ul>
+</section>
+

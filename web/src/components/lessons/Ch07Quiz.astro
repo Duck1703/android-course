@@ -1,74 +1,488 @@
 ---
-// Quiz + bài tập nhỏ cho lesson Chapter 7 — Advanced Architecture (Repository pattern + Ditto SDK).
-// Câu hỏi bám theo docs/LEARNING_MAP.md + nội dung lesson Ch07AdvancedArchitecture.astro.
+// Quiz + bài tập cho lesson Chapter 7 — Advanced Architecture (Repository pattern + Ditto SDK).
+// Viết lại hoàn toàn ở Task 44: 19 câu hỏi + widget sắp thứ tự + 4 bài tập.
+// Câu hỏi bám nội dung Ch07AdvancedArchitecture.astro và code thật trong
+// aaf-materials/07-advanced-architecture/projects/{starter,final}/ — mọi số dòng đã kiểm bằng Read tool.
 // Quiz chấm bằng vanilla JS phía client (đúng tinh thần "gần như 0 JS trừ chỗ cần tương tác" trong CLAUDE.md).
+
+const daoSnippet = `override fun getAllMessagesForRoom(chatRoom: ChatRoom): Flow<List<Message>> {
+  getAllMessagesForRoomFromDitto(chatRoom)
+  return allMessagesForRoom
+}`;
+
+const initSnippet = `private var firstName: String = ""
+private var lastName: String = ""
+
+// ... trong init { }
+val firstName = "My"
+val lastName = android.os.Build.MODEL
+updateUserInfo(firstName, lastName)`;
+
+const dateSnippet = `import kotlinx.datetime.toInstant
+
+fun String.toInstant(): kotlinx.datetime.Instant {
+  return this.toInstant()
+}`;
+
+const deadCodeHunt = `1. RepositoryImpl.addPrivateRoomSubscriptions()   // dong 243-261
+2. val messageSubscription  trong addSubscriptionForRoom()  // dong 239
+3. Message.authorImage       trong ConversationUiState.kt   // dong 83
+4. RepositoryImpl.messagesDocs / usersDocs       // dong 110 va 125
+5. DateExtensions.String.toInstant()             // dong 40-42`;
+
+const proveShadowing = `// dat ngay sau updateUserInfo(firstName, lastName) trong init { }
+android.util.Log.d("shadow", "local  = $firstName / $lastName")
+android.util.Log.d("shadow", "field  = " + this.firstName + " / " + this.lastName)`;
 ---
 
 <section class="quiz" id="quiz">
 	<h2>Quiz nhanh</h2>
-	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+	<p class="intro">
+		19 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích hiện ra sau khi chấm — đọc cả những câu bạn
+		làm đúng, vì nhiều giải thích có thêm chi tiết không nằm trong bài.
+	</p>
 
 	<form id="quiz-form">
 		<fieldset data-answer="c">
-			<legend>1. Repository pattern giúp ích gì trong kiến trúc MVVM này?</legend>
-			<label><input type="radio" name="q1" value="a" /> Tự động sinh code SQLite từ interface Repository</label>
-			<label><input type="radio" name="q1" value="b" /> Thay thế hoàn toàn ViewModel bằng một class duy nhất</label>
-			<label><input type="radio" name="q1" value="c" /> Tách ViewModel tránh biết bề ngoài nguồn dữ liệu (network/database/Ditto), giúp test và thay đổi nguồn dễ dàng</label>
+			<legend>1. Repository pattern giải quyết vấn đề gì?</legend>
+			<label><input type="radio" name="q1" value="a" /> Nó tự sinh code truy vấn database từ một interface</label>
+			<label><input type="radio" name="q1" value="b" /> Nó thay thế ViewModel, gộp cả logic UI và logic dữ liệu vào một chỗ</label>
+			<label><input type="radio" name="q1" value="c" /> Nó là tầng trung gian che giấu nguồn dữ liệu, tập trung logic truy vấn, và dịch model lưu trữ thành model app dùng được</label>
+			<label><input type="radio" name="q1" value="d" /> Nó bắt buộc phải có để Compose hoạt động</label>
 			<p class="explain" hidden>
-				Repository pattern tạo ra 1 lớp trung gian: ViewModel chỉ giao tiếp với 1 interface, còn việc dữ liệu
-				đến từ đâu (ở đây là Ditto P2P, có thể đổi thành mạng) là việc của phần implement. Nhờ vậy ViewModel
-				được tách biệt, dễ test, và có thể đổi nguồn dữ liệu mà không sửa ViewModel.
+				Repository đứng <em>giữa</em> nguồn dữ liệu và phần còn lại của app. Sách liệt kê 5 trách nhiệm: che giấu nguồn,
+				tập trung logic truy cập, đổi model lưu trữ sang model domain, cho phép thay thế/test, và là nguồn sự thật duy nhất.
+				Đáp án (a) là mô tả của Room (Chương 10.2) — Room sinh code, Repository không. Nó cũng không thay ViewModel:
+				ViewModel vẫn tồn tại và giờ <em>gọn hơn</em> vì đã đẩy việc quản lý dữ liệu xuống Repository.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="b">
-			<legend>2. Tại sao <code>RepositoryImpl</code> dùng <code>@Volatile</code> + <code>synchronized()</code> trong singleton?</legend>
-			<label><input type="radio" name="q2" value="a" /> Để code chạy nhanh hơn khi truy cập từ nhiều thread</label>
-			<label><input type="radio" name="q2" value="b" /> Để đảm bảo chỉ tạo ra duy nhất 1 instance ngay cả khi nhiều thread gọi <code>getInstance()</code> cùng lúc</label>
-			<label><input type="radio" name="q2" value="c" /> Để tuân thủ chuẩn kết nối P2P của Ditto SDK</label>
+			<legend>2. Vì sao singleton trong <code>RepositoryImpl</code> cần cả <code>@Volatile</code> lẫn <code>synchronized</code>?</legend>
+			<label><input type="radio" name="q2" value="a" /> Để <code>getInstance()</code> chạy nhanh hơn</label>
+			<label><input type="radio" name="q2" value="b" /> <code>synchronized</code> chặn 2 thread cùng tạo instance; <code>@Volatile</code> đảm bảo thread khác thấy được giá trị vừa ghi thay vì bản cũ trong cache CPU</label>
+			<label><input type="radio" name="q2" value="c" /> Vì Ditto SDK yêu cầu như vậy</label>
+			<label><input type="radio" name="q2" value="d" /> Để instance được giải phóng khi app xuống background</label>
 			<p class="explain" hidden>
-				<code>@Volatile</code> đảm bảo mọi thread đọc giá trị <code>INSTANCE</code> luôn thấy bản cập nhật mới
-				nhất từ bộ nhớ chính; <code>synchronized(this)</code> ngăn chặn 2 thread cùng tạo instance đồng thời.
-				Hai kết cặp này đảm bảo duy nhất 1 <code>RepositoryImpl</code> trong toàn app dù đa thread.
+				Hai thứ giải quyết hai vấn đề khác nhau. <code>synchronized</code> lo <em>tính nguyên tử</em>: một lúc chỉ một thread
+				trong vùng khoá. <code>@Volatile</code> lo <em>tính hiển thị</em>: mỗi CPU core có cache riêng, không có
+				<code>@Volatile</code> thì thread B có thể vẫn thấy <code>instance</code> là <code>null</code> dù thread A đã gán,
+				hoặc tệ hơn là thấy một object chưa khởi tạo xong. Thiếu <code>@Volatile</code> thì
+				double-checked locking <strong>vẫn sai</strong>. Về (a): thực ra kiểm tra lần 1 <em>ngoài</em> khoá mới là phần
+				vì hiệu năng — nhưng đó là công của cấu trúc <code>instance ?: synchronized</code>, không phải của hai từ khoá này.
+				Cách đơn giản hơn trong Kotlin: dùng <code>object RepositoryImpl</code>.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="a">
-			<legend>3. Ditto SDK có đặc tính nào so với database server truyền thống?</legend>
-			<label><input type="radio" name="q3" value="a" /> Đồng bộ P2P trực tiếp giữa các thiết bị, không cần server backend, dữ liệu luôn available local-first</label>
-			<label><input type="radio" name="q3" value="b" /> Lưu trữ dữ liệu cloud-first, yêu cầu Internet để đọc bất kỳ record nào</label>
-			<label><input type="radio" name="q3" value="c" /> Chỉ hỗ trợ đồng bộ một chiều từ thiết bị qua trình duyệt</label>
+			<legend>3. "Local-first" trong Ditto nghĩa là gì?</legend>
+			<label><input type="radio" name="q3" value="a" /> Mỗi thiết bị có một bản database đầy đủ; đọc-ghi luôn xảy ra cục bộ và luôn hoạt động, việc sync ra thiết bị khác diễn ra phía sau</label>
+			<label><input type="radio" name="q3" value="b" /> Dữ liệu được cache tạm ở máy, nhưng phải có mạng mới đọc được bản chính</label>
+			<label><input type="radio" name="q3" value="c" /> Dữ liệu chỉ nằm trên máy và không bao giờ được chia sẻ</label>
+			<label><input type="radio" name="q3" value="d" /> Chỉ đồng bộ một chiều, từ điện thoại lên cloud</label>
 			<p class="explain" hidden>
-				Ditto đồng bộ <em>peer-to-peer</em> qua Bluetooth/Wi-Fi — thiết bị gần nhau tự đồng bộ trực tiếp,
-				không cần server giữa. Dữ liệu luôn available trên máy ngay (local-first), thêm đồng bộ ra thiết bị khác
-				chỉ là "bonus" khi có kết nối — khác hoàn toàn với database phụ thuộc server truyền thống.
+				Điểm khác biệt cốt lõi so với cache: cache có một "bản chính" ở đâu đó mà nó phản ánh. Trong local-first,
+				<strong>không có bản chính</strong> — mỗi máy đều là bản đầy đủ và có quyền ghi. Khi hai máy gặp nhau, chúng hợp nhất
+				thay đổi ở mức từng field theo quy tắc đảm bảo mọi máy rồi sẽ đi tới cùng kết quả (eventual consistency). Cloud
+				(Ditto Big Peer) chỉ là một peer to hơn, hoàn toàn tuỳ chọn. Đây là lý do <code>upsert()</code> trả về ngay và
+				interface <code>Repository</code> không có trạng thái "đang tải" hay "lỗi mạng" nào.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>4. Trong <code>getAllUsersFromDitto()</code>, vì sao cần <em>cả</em> <code>.subscribe()</code> lẫn <code>.observeLocal &#123; &#125;</code>?</legend>
+			<label><input type="radio" name="q4" value="a" /> Không cần cả hai, viết một trong hai là đủ — code này dư</label>
+			<label><input type="radio" name="q4" value="b" /> <code>subscribe()</code> để đọc, <code>observeLocal()</code> để ghi</label>
+			<label><input type="radio" name="q4" value="c" /> <code>subscribe()</code> cho Bluetooth, <code>observeLocal()</code> cho Wi-Fi</label>
+			<label><input type="radio" name="q4" value="d" /> <code>subscribe()</code> là đường ống kéo dữ liệu từ mesh về database local; <code>observeLocal()</code> là cái chuông reo khi database local thay đổi</label>
+			<p class="explain" hidden>
+				Đây là chỗ dễ lẫn nhất khi học Ditto. Hai thứ hoạt động ở hai tầng khác nhau: subscription quyết định
+				<em>dữ liệu từ máy khác có chảy về máy này hay không</em>; live query chỉ quan sát <em>database local</em> và không
+				biết gì về mạng. Thiếu subscription: bạn thấy được tin nhắn của chính mình nhưng không bao giờ thấy của người khác.
+				Thiếu live query: dữ liệu về máy nhưng UI không hề biết. Cả hai lỗi này <strong>không báo exception</strong> —
+				app chỉ đơn giản hoạt động một nửa, nên rất khó truy.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>5. <code>usersSubscription</code> và <code>usersLiveQuery</code> được lưu vào field của class. Nếu đổi thành biến cục bộ trong hàm thì sao?</legend>
+			<label><input type="radio" name="q5" value="a" /> Không sao, code gọn hơn</label>
+			<label><input type="radio" name="q5" value="b" /> Chúng mất tham chiếu và bị garbage collector dọn → app im lặng ngừng nhận dữ liệu mới, không có exception nào</label>
+			<label><input type="radio" name="q5" value="c" /> App crash ngay với <code>NullPointerException</code></label>
+			<label><input type="radio" name="q5" value="d" /> Compiler báo lỗi, không build được</label>
+			<p class="explain" hidden>
+				Đây là cái bẫy tệ nhất trong chapter, vì nó thất bại <em>im lặng</em>: không crash, không log, app trông như chạy
+				bình thường nhưng dữ liệu không bao giờ cập nhật. Và project của sách <strong>mắc đúng lỗi này ở một chỗ</strong>:
+				<code>addSubscriptionForRoom()</code> (<code>RepositoryImpl.kt</code> dòng 238–240) gán subscription vào
+				<code>val messageSubscription</code> cục bộ rồi hàm kết thúc — đăng ký đó không có hiệu lực.
+				Nó không lộ ra bug vì app hiện tại chỉ dùng một phòng chat cố định.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>6. Trong interface <code>Repository</code>, vì sao <code>getAllUsers()</code> <strong>không</strong> là <code>suspend</code> còn <code>addUser()</code> thì có?</legend>
+			<label><input type="radio" name="q6" value="a" /> Vì đọc dữ liệu luôn nhanh hơn ghi dữ liệu</label>
+			<label><input type="radio" name="q6" value="b" /> Vì <code>getAllUsers()</code> chạy trên main thread còn <code>addUser()</code> chạy trên background thread</label>
+			<label><input type="radio" name="q6" value="c" /> Vì <code>getAllUsers()</code> chỉ trả về cái "ống" <code>Flow</code> — việc đó tức thời; sự chờ đợi xảy ra lúc bạn collect ống đó, không phải lúc gọi hàm</label>
+			<label><input type="radio" name="q6" value="d" /> Vì Kotlin không cho phép <code>suspend</code> khi trả về <code>Flow</code></label>
+			<p class="explain" hidden>
+				Trả về một <code>Flow</code> chỉ là tạo một đối tượng mô tả "dữ liệu sẽ chảy qua đây" — không có I/O nào xảy ra,
+				nên không cần <code>suspend</code>. Việc chờ đợi nằm ở <code>collect</code>, và <code>collect</code> mới là hàm
+				<code>suspend</code>. Ngược lại <code>addUser()</code> thực sự <em>làm</em> việc ghi, nên nó <code>suspend</code>
+				để buộc người gọi phải ở trong coroutine — nghĩa là không thể vô tình chặn main thread. Về (d): Kotlin
+				<em>cho phép</em> <code>suspend fun</code> trả về <code>Flow</code>, chỉ là gần như không bao giờ nên làm.
+				Ghi nhớ quy ước này: <strong>đọc-liên-tục → <code>Flow</code>; ghi hoặc đọc-một-lần → <code>suspend</code></strong>.
+				Bạn sẽ gặp lại đúng nó ở Room (Chương 10.2).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>7. <code>combine(repository.getAllUsers(), repository.getAllMessagesForRoom(room))</code> làm gì?</legend>
+			<label><input type="radio" name="q7" value="a" /> Nối hai danh sách thành một danh sách dài hơn</label>
+			<label><input type="radio" name="q7" value="b" /> Chạy hai flow tuần tự: xong users mới tới messages</label>
+			<label><input type="radio" name="q7" value="c" /> Chỉ phát giá trị khi <em>cả hai</em> flow cùng phát ở đúng một thời điểm</label>
+			<label><input type="radio" name="q7" value="d" /> Chờ cả hai flow có giá trị đầu tiên, sau đó chạy lại lambda mỗi khi <em>bất kỳ</em> flow nào phát giá trị mới, dùng giá trị mới nhất của cả hai</label>
+			<label><input type="radio" name="q7" value="e" /> Gộp hai flow thành một <code>StateFlow</code> có <code>.value</code></label>
+			<p class="explain" hidden>
+				<code>combine</code> là <code>JOIN</code> của thế giới reactive. Hệ quả thực tế rất hay: khi một người đổi tên,
+				flow users phát giá trị mới → lambda chạy lại → tên mới xuất hiện ở <em>mọi</em> tin nhắn cũ của người đó,
+				mà không ai phải query lại. Đáp án (c) mô tả <code>zip</code>, không phải <code>combine</code>.
+				Đáp án (e) sai: <code>combine</code> trả về <code>Flow</code> thường, không có <code>.value</code> —
+				chính vì thế <code>collectAsStateWithLifecycle</code> ở <code>MainActivity</code> <em>bắt buộc</em> phải truyền
+				<code>initialValue = emptyList()</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>8. Vì sao <code>MainActivity</code> gọi <code>.asReversed()</code> lên danh sách tin nhắn?</legend>
+			<label><input type="radio" name="q8" value="a" /> Để sắp xếp tin nhắn theo thời gian, vì Ditto trả về thứ tự ngẫu nhiên</label>
+			<label><input type="radio" name="q8" value="b" /> Vì Ditto sắp xếp cũ-nhất-trước, nhưng <code>LazyColumn(reverseLayout = true)</code> vẽ phần tử đầu danh sách ở <em>đáy</em> màn hình, nên danh sách truyền vào phải là mới-nhất-trước</label>
+			<label><input type="radio" name="q8" value="c" /> Để tiết kiệm bộ nhớ khi danh sách dài</label>
+			<label><input type="radio" name="q8" value="d" /> Vì tiếng Việt đọc từ trên xuống</label>
+			<p class="explain" hidden>
+				Dòng này là kết quả của một chuỗi quyết định xuyên ba tầng: <code>RepositoryImpl.kt</code> dòng 274 sắp xếp
+				<code>DittoSortDirection.Ascending</code> (cũ trước) → giao diện chat cần tin mới ở đáy và tự cuộn, nên dùng
+				<code>reverseLayout = true</code> → mà <code>reverseLayout</code> lại vẽ phần tử đầu ở đáy → nên phải đảo danh sách.
+				Bỏ một trong hai (<code>.asReversed()</code> hoặc <code>reverseLayout</code>) là tin nhắn hiện ngược.
+				Chi tiết đáng biết: <code>asReversed()</code> trả về một <em>view</em> (không copy danh sách), khác
+				<code>reversed()</code> tạo bản copy.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>9. <code>collectAsStateWithLifecycle</code> hơn <code>collectAsState</code> ở điểm nào?</legend>
+			<label><input type="radio" name="q9" value="a" /> Nó nhanh hơn vì bỏ qua các giá trị trung gian</label>
+			<label><input type="radio" name="q9" value="b" /> Nó tự retry khi mạng lỗi</label>
+			<label><input type="radio" name="q9" value="c" /> Nó chỉ collect khi Activity ở trạng thái <code>STARTED</code> và ngừng khi app xuống background — không xử lý dữ liệu vô ích khi UI không hiển thị</label>
+			<label><input type="radio" name="q9" value="d" /> Nó không cần <code>initialValue</code></label>
+			<p class="explain" hidden>
+				Trong app này lợi ích rất cụ thể: mỗi tin nhắn mới về mesh sẽ kích hoạt <code>combine</code> chạy lại và ghép lại
+				toàn bộ <code>MessageUiModel</code>. Nếu app đang bị che mà vẫn làm việc đó thì tốn CPU và pin hoàn toàn vô ích.
+				Về (d) thì <em>ngược lại</em>: cả hai đều cần <code>initialValue</code> khi collect một <code>Flow</code> thường —
+				chỉ khi collect <code>StateFlow</code> mới không cần, vì <code>StateFlow</code> đã có sẵn <code>.value</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>10. Vì sao ba <code>MutableStateFlow</code> trong <code>RepositoryImpl</code> là <code>private</code>, còn hàm public trả về kiểu <code>Flow</code>?</legend>
+			<label><input type="radio" name="q10" value="a" /> Để bên ngoài chỉ <em>đọc được</em> mà không ghi được — luồng dữ liệu một chiều được áp đặt bằng hệ thống kiểu, không bằng lời hứa của lập trình viên</label>
+			<label><input type="radio" name="q10" value="b" /> Vì <code>MutableStateFlow</code> không thể là public trong Kotlin</label>
+			<label><input type="radio" name="q10" value="c" /> Để giảm dung lượng APK</label>
+			<label><input type="radio" name="q10" value="d" /> Vì Compose chỉ đọc được kiểu <code>Flow</code>, không đọc được <code>MutableStateFlow</code></label>
+			<p class="explain" hidden>
+				Đây là một pattern bạn sẽ thấy khắp Android hiện đại: <strong>bên trong Mutable, bên ngoài read-only</strong>.
+				Nhờ nó, ViewModel <em>không thể</em> ghi đè danh sách tin nhắn kể cả khi lập trình viên muốn — chỉ Repository làm
+				được. Compiler thi hành quy tắc kiến trúc thay bạn. Về (d): <code>MutableStateFlow</code> <em>là</em> một
+				<code>StateFlow</code>, và <code>StateFlow</code> <em>là</em> một <code>Flow</code>, nên Compose đọc được cả ba —
+				lý do dùng <code>Flow</code> ở đây thuần là để giới hạn quyền, không phải kỹ thuật.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>11. Đọc đoạn code thật này trong <code>RepositoryImpl.kt</code> (dòng 144–147). Vấn đề nằm ở đâu?</legend>
+			<pre><code>{daoSnippet}</code></pre>
+			<label><input type="radio" name="q11" value="a" /> Không có vấn đề gì, đây là cách viết chuẩn</label>
+			<label><input type="radio" name="q11" value="b" /> Hàm phải là <code>suspend</code> vì có truy cập database</label>
+			<label><input type="radio" name="q11" value="c" /> Một hàm tên <code>get...</code> lại gây <em>tác dụng phụ</em>: nó khởi động live query. Gọi hàm hai lần là tạo hai live query, và người đọc không hề đoán được điều đó từ cái tên</label>
+			<label><input type="radio" name="q11" value="d" /> Nó trả về sai kiểu, phải trả về <code>List&lt;Message&gt;</code></label>
+			<p class="explain" hidden>
+				Đây là một "getter có tác dụng phụ" (side-effecting getter). Quy ước ngầm trong lập trình: hàm
+				<code>get...</code> chỉ <em>lấy</em>, không <em>làm</em>. Ở đây nó vừa lấy vừa đăng ký một live query mới lên Ditto.
+				Trong app hiện tại không lộ bug vì <code>MainViewModel</code> chỉ gọi một lần, nhưng nếu sau này bạn thêm màn hình
+				thứ hai cũng gọi hàm này, bạn sẽ có nhiều live query cùng ghi vào một <code>MutableStateFlow</code> —
+				rất khó truy. Cách đặt tên trung thực hơn: <code>observeMessagesForRoom()</code>, hoặc tách hẳn phần khởi động ra
+				một hàm <code>startObserving...()</code> riêng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>12. Đoạn dưới rút từ <code>MainViewModel.kt</code> (field dòng 68–69, <code>init</code> dòng 100–105). Hậu quả thật là gì?</legend>
+			<pre><code>{initSnippet}</code></pre>
+			<label><input type="radio" name="q12" value="a" /> Không có gì, hai biến cùng tên nên cùng giá trị</label>
+			<label><input type="radio" name="q12" value="b" /> <code>val</code> trong <code>init</code> tạo biến <em>cục bộ mới</em> che (shadow) field của class → hai field của class mãi mãi là <code>""</code>, khiến tham số mặc định của <code>updateUserInfo</code> thành code chết</label>
+			<label><input type="radio" name="q12" value="c" /> App crash vì khai báo trùng tên</label>
+			<label><input type="radio" name="q12" value="d" /> Compiler tự hiểu ý và gán vào field của class</label>
+			<p class="explain" hidden>
+				<code>val firstName = "My"</code> không phải phép gán mà là một <em>khai báo mới</em>. Từ dòng đó tới hết
+				<code>init</code>, cái tên <code>firstName</code> trỏ vào biến cục bộ; field của class không bị chạm tới.
+				May là <code>updateUserInfo(firstName, lastName)</code> nhận đúng giá trị cục bộ nên tên người dùng vẫn hiển thị
+				đúng — bug nằm ở chỗ khác: <code>updateUserInfo</code> có tham số mặc định lấy từ field, và vì field luôn rỗng nên
+				mặc định đó vô dụng. Cách sửa: bỏ hai chữ <code>val</code>. Kotlin <em>không</em> cảnh báo shadowing của field
+				(chỉ cảnh báo shadowing tham số), nên loại bug này lọt lưới rất dễ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>13. Vì sao khoá Ditto được đặt trong <code>keys.properties</code> + <code>buildConfigField</code> chứ không viết thẳng vào file <code>.kt</code>?</legend>
+			<label><input type="radio" name="q13" value="a" /> Để khoá không bị commit lên git (file này nằm trong <code>.gitignore</code>), mà code vẫn đọc được qua <code>BuildConfig</code> lúc build</label>
+			<label><input type="radio" name="q13" value="b" /> Vì Ditto SDK chỉ đọc được khoá từ file <code>.properties</code></label>
+			<label><input type="radio" name="q13" value="c" /> Vì đọc từ file nhanh hơn hằng số trong code</label>
+			<label><input type="radio" name="q13" value="d" /> Để đổi khoá lúc app đang chạy mà không cần build lại</label>
+			<p class="explain" hidden>
+				Cần đủ ba mảnh mới hoạt động: <code>buildConfig = true</code> trong khối <code>buildFeatures</code> (từ AGP 8.0
+				mặc định là <code>false</code>), <code>buildConfigField</code> để nhét giá trị vào class sinh tự động, và
+				<code>keys.properties</code> nằm ngoài git. Nhớ giới hạn quan trọng: đây <strong>không phải</strong> bảo mật —
+				giá trị vẫn nằm trong APK và ai cũng decompile ra được. Nó chỉ ngăn khoá bị public trên GitHub. Muốn thật an toàn
+				thì khoá phải ở server. Về (d): sai, <code>BuildConfig</code> là hằng số biên dịch, đổi khoá là phải build lại.
+				Đây cũng là lý do project <code>final</code> tải về <strong>không build được ngay</strong>: file
+				<code>keys.properties</code> bị gitignore nên không có trong repo, và Gradle lỗi ngay ở bước configuration.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>14. <code>DittoHandler</code> dùng <code>lateinit var ditto: Ditto</code> trong <code>companion object</code>. Rủi ro lớn nhất là gì?</legend>
+			<label><input type="radio" name="q14" value="a" /> Rò rỉ bộ nhớ vì <code>Ditto</code> giữ tham chiếu tới Activity</label>
+			<label><input type="radio" name="q14" value="b" /> Không thread-safe, hai thread có thể tạo hai <code>Ditto</code></label>
+			<label><input type="radio" name="q14" value="c" /> <code>lateinit</code> không dùng được với <code>companion object</code></label>
+			<label><input type="radio" name="q14" value="d" /> Bất kỳ code nào chạm vào <code>ditto</code> trước khi <code>setupDitto()</code> hoàn tất sẽ ném <code>UninitializedPropertyAccessException</code>, và compiler không hề cảnh báo</label>
+			<p class="explain" hidden>
+				<code>lateinit</code> là lời hứa "tôi sẽ gán trước khi dùng" mà chỉ <em>runtime</em> mới kiểm tra được.
+				Đây chính là lý do thứ tự khởi tạo trong <code>MainActivity.onCreate</code> quan trọng: nếu bất kỳ đường nào
+				chạm Ditto trước dòng <code>setupDitto()</code> (dòng 81), app crash. Về (a): tham số truyền vào là
+				<code>AndroidDittoDependencies(context)</code> dùng <code>applicationContext</code> nên không leak Activity.
+				Phương án hiện đại hơn: dùng dependency injection (Hilt) để không cần global mutable state — nhưng sách chọn
+				cách đơn giản nhất để không phải dạy thêm một framework.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>15. <code>DittoSyncPermissions(this).missingPermissions()</code> trả về mảng rỗng nghĩa là gì?</legend>
+			<label><input type="radio" name="q15" value="a" /> Thiết bị không hỗ trợ Bluetooth</label>
+			<label><input type="radio" name="q15" value="b" /> Mọi quyền cần cho sync ngang hàng đã được cấp — không cần hỏi người dùng nữa</label>
+			<label><input type="radio" name="q15" value="c" /> Hàm bị lỗi, cần gọi lại</label>
+			<label><input type="radio" name="q15" value="d" /> Ditto sẽ tự xin quyền hộ bạn</label>
+			<p class="explain" hidden>
+				Helper này tồn tại vì bộ quyền cho mesh P2P thay đổi theo phiên bản Android (Bluetooth, Wi-Fi Aware,
+				<code>NEARBY_WIFI_DEVICES</code> từ API 33…) — tự viết danh sách quyền là chắc chắn sai ở một API level nào đó.
+				Một thiếu sót thật của project sách: nó <strong>không</strong> override <code>onRequestPermissionsResult</code>,
+				nên sau khi người dùng vừa cấp quyền, Ditto vẫn chưa biết và các transport chưa bật lên. Với SDK mới
+				(5.x) việc gọi <code>refreshPermissions()</code> ở đó là <em>bắt buộc</em>, không còn là tuỳ chọn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>16. Vì sao mọi tên field được gom vào <code>Constants.kt</code> thay vì viết chuỗi trực tiếp tại chỗ dùng?</legend>
+			<label><input type="radio" name="q16" value="a" /> Vì Ditto yêu cầu khai báo schema trước khi ghi</label>
+			<label><input type="radio" name="q16" value="b" /> Vì hằng số chạy nhanh hơn chuỗi</label>
+			<label><input type="radio" name="q16" value="c" /> Vì Ditto là schemaless: viết sai <code>"crateedOn"</code> sẽ <em>không</em> báo lỗi, chỉ âm thầm trả về <code>null</code>. Hằng số biến lỗi runtime im lặng thành lỗi biên dịch</label>
+			<label><input type="radio" name="q16" value="d" /> Vì Kotlin không cho phép chuỗi lặp lại nhiều lần trong project</label>
+			<p class="explain" hidden>
+				Đây là bù đắp cho nhược điểm của database schemaless. Với Room (Chương 10.2) bạn có compile-time safety miễn phí
+				vì schema nằm trong data class; với Ditto bạn phải tự tạo ra nó bằng kỷ luật. Ghi sai tên field lúc
+				<code>upsert</code> thì document vẫn được lưu, chỉ là field đó không ai đọc được — dữ liệu hỏng nhưng app vẫn chạy.
+				Đó là loại bug tệ nhất. Chi tiết đáng học thêm: các key được đặt trong <code>object</code> nên chúng là
+				<code>const</code> thật sự, không tạo object mới lúc chạy.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>17. Đoạn này ở <code>DateExtensions.kt</code> (dòng 37–42). Điều gì thực sự xảy ra?</legend>
+			<pre><code>{dateSnippet}</code></pre>
+			<label><input type="radio" name="q17" value="a" /> Chắc chắn <code>StackOverflowError</code>: hàm gọi chính nó vô hạn</label>
+			<label><input type="radio" name="q17" value="b" /> Rất có thể nó gọi hàm <code>String.toInstant()</code> của kotlinx-datetime (do import tường minh được ưu tiên hơn extension cùng package), nên chạy đúng — nhưng đây là code cực kỳ dễ gây nhầm và không nên bắt chước</label>
+			<label><input type="radio" name="q17" value="c" /> Compiler báo lỗi "recursive call", không build được</label>
+			<label><input type="radio" name="q17" value="d" /> Nó trả về <code>null</code></label>
+			<p class="explain" hidden>
+				Quy tắc phân giải của Kotlin xếp extension được import tường minh (mức 3) <em>trước</em> extension khai báo cùng
+				package (mức 4), nên <code>this.toInstant()</code> gần như chắc chắn trỏ vào hàm của thư viện —
+				kotlinx-datetime 0.4.0 thật sự có <code>public fun String.toInstant(): Instant = Instant.parse(this)</code>.
+				Tôi <strong>không compile được để xác nhận</strong>, nên hãy coi đây là suy luận có căn cứ chứ không phải sự thật
+				đã kiểm chứng: cách kiểm dứt điểm là Ctrl+B (Go to declaration) lên <code>toInstant</code> trong Android Studio.
+				Dù kết quả thế nào, wrapper này vô nghĩa và nên xoá. Lưu ý thêm: kotlinx-datetime 0.8.0 đã <em>bỏ</em> các
+				extension trên <code>String</code>, nên nâng thư viện là đoạn này đổi hành vi hoặc không build.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>18. <code>createMessageForRoom()</code> không ghi <code>dbIdKey</code> khi <code>upsert</code>, còn <code>addUser()</code> thì ghi. Hệ quả?</legend>
+			<label><input type="radio" name="q18" value="a" /> Tin nhắn không được lưu vì thiếu id</label>
+			<label><input type="radio" name="q18" value="b" /> Cả hai đều dùng id do app tạo, không khác gì nhau</label>
+			<label><input type="radio" name="q18" value="c" /> Ditto tự sinh <code>_id</code> cho tin nhắn, nên <code>UUID</code> mà ViewModel tạo ra bị bỏ đi — hai loại document trong cùng app dùng hai chiến lược id khác nhau</label>
+			<label><input type="radio" name="q18" value="d" /> Tin nhắn sẽ bị ghi đè lên nhau vì trùng id</label>
+			<p class="explain" hidden>
+				Với <code>users</code>, id do app quyết định (chính là <code>userId</code>) — nhờ vậy <code>upsert</code> cùng id
+				sẽ <em>cập nhật</em> đúng người đó thay vì tạo bản mới. Với <code>messages</code>, id do Ditto sinh, nên bên gọi
+				không biết trước id của tin nhắn vừa gửi. Không sai về mặt chức năng (tin nhắn không cần update), nhưng là một
+				<em>sự thiếu nhất quán</em> đáng ghi nhớ: nếu về sau bạn cần sửa hay xoá một tin nhắn cụ thể, bạn sẽ phải đi tìm
+				id đó thay vì đã có sẵn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>19. Chuyển từ query builder cũ sang DQL, câu nào tương đương <code>collection("messages").findAll()</code> có sắp xếp?</legend>
+			<label><input type="radio" name="q19" value="a" /> <code>SELECT * FROM messages ORDER BY createdOn ASC;</code> — cú pháp giống SQL hoàn toàn</label>
+			<label><input type="radio" name="q19" value="b" /> <code>find("messages").sort("createdOn")</code></label>
+			<label><input type="radio" name="q19" value="c" /> DQL không hỗ trợ sắp xếp, phải sort trong Kotlin</label>
+			<label><input type="radio" name="q19" value="d" /> <code>SELECT * FROM messages ORDER BY createdOn</code> — giống SQL nhưng có khác biệt cần nhớ: so sánh dùng một dấu <code>=</code>, chuỗi phải dùng nháy đơn, và DQL trả về <code>Map</code> thô nên phần map sang model phải tự viết</label>
+			<p class="explain" hidden>
+				DQL <em>trông</em> như SQL nên rất dễ chủ quan. Ba chỗ hay sai: dùng <code>==</code> (DQL chỉ nhận
+				<code>=</code>), dùng nháy kép cho chuỗi (DQL cần nháy đơn — nháy kép là để bọc <em>tên field</em> có ký tự đặc biệt),
+				và tưởng rằng <code>DittoDocument</code> vẫn có sẵn — DQL trả về <code>Map&lt;String, Any?&gt;</code>, nên các
+				secondary constructor <code>constructor(document: DittoDocument)</code> trong project này phải viết lại.
+				Từ SDK 4.12 query builder bắt đầu bị deprecate; SDK 5.x đổi cả coordinate (<code>com.ditto:ditto-kotlin</code>)
+				và cách khởi tạo (<code>DittoConfig</code> + <code>DittoFactory.create()</code>). Bảng đối chiếu đầy đủ nằm ở
+				mục "Phiên bản" trong bài học.
 			</p>
 		</fieldset>
 
 		<button type="submit">Kiểm tra đáp án</button>
-		<p id="quiz-score" hidden></p>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
 	</form>
 
+	<h2>Sắp xếp đúng thứ tự</h2>
+	<p class="intro">
+		Bạn gõ một tin nhắn rồi bấm gửi. Sáu việc dưới đây đang bị xếp lộn — hãy chọn số thứ tự đúng cho từng việc,
+		tính từ lúc ngón tay rời khỏi nút gửi cho đến lúc tin nhắn hiện trên màn hình.
+	</p>
+	<ul class="order-list" id="save-order">
+		<li data-correct="3">
+			<select aria-label="Thứ tự của: Repository gọi upsert">
+				<option value="">–</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+			</select>
+			<span><code>createMessageForRoom()</code> gọi <code>ditto.store.collection("messages").upsert(...)</code> — ghi vào database <strong>local</strong> và trả về ngay, không chờ mạng</span>
+		</li>
+		<li data-correct="6">
+			<select aria-label="Thứ tự của: Compose recompose LazyColumn">
+				<option value="">–</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+			</select>
+			<span><code>collectAsStateWithLifecycle</code> nhận danh sách mới → Compose recompose <code>LazyColumn</code> → tin nhắn xuất hiện ở đáy màn hình</span>
+		</li>
+		<li data-correct="1">
+			<select aria-label="Thứ tự của: người dùng bấm nút gửi">
+				<option value="">–</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+			</select>
+			<span>Người dùng bấm nút gửi trong <code>UserInput</code> → callback đi lên tới <code>MainActivity</code> → gọi <code>viewModel.onCreateNewMessageClick(text)</code></span>
+		</li>
+		<li data-correct="4">
+			<select aria-label="Thứ tự của: live query nhận thông báo">
+				<option value="">–</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+			</select>
+			<span>Live query <code>observeLocal</code> phát hiện database local đã đổi → gán danh sách mới cho <code>allMessagesForRoom</code></span>
+		</li>
+		<li data-correct="2">
+			<select aria-label="Thứ tự của: ViewModel tạo Message và launch coroutine">
+				<option value="">–</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+			</select>
+			<span>ViewModel dựng đối tượng <code>Message</code> (id, người gửi, thời gian) rồi <code>viewModelScope.launch(Dispatchers.Default)</code> để gọi Repository</span>
+		</li>
+		<li data-correct="5">
+			<select aria-label="Thứ tự của: combine chạy lại">
+				<option value="">–</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+			</select>
+			<span><code>combine</code> trong ViewModel chạy lại, ghép mỗi message với user tương ứng thành <code>MessageUiModel</code></span>
+		</li>
+	</ul>
+	<button type="button" id="check-order">Kiểm tra thứ tự</button>
+	<p id="order-result" role="status" aria-live="polite" hidden></p>
+	<p class="intro">
+		Điều đáng chú ý: việc sync sang thiết bị khác <strong>không nằm trong chuỗi này</strong>. Ditto gửi dữ liệu ra mesh
+		song song ở phía sau. UI của bạn cập nhật xong từ lâu trước khi máy bên kia nhận được — và vẫn cập nhật y hệt
+		khi không có thiết bị nào ở gần.
+	</p>
+
 	<h2>Bài tập nhỏ</h2>
+	<p class="intro">
+		Bốn bài dưới đây làm trên project <code>07-advanced-architecture/projects/final</code>. Bài 1 và 2 chỉ cần đọc code,
+		không cần build. Bài 3 và 4 cần chạy được app — nếu Gradle báo thiếu <code>keys.properties</code>, xem lại mục
+		"keys.properties" trong bài học trước khi bắt đầu.
+	</p>
+
 	<div class="exercise">
+		<h3>Bài 1 — Đi ngược đường dây một mình</h3>
 		<p>
-		>Nhìn vào luồng dữ liệu trong mục 4: <code>Ditto → Repository → ViewModel → UI</code>. Hỏi: vai trò của
-			<code>MainViewModel</code> trong chuỗi này là gì? Nó nhận từ Repository ở dạng gì, và gửi tới UI ở dạng
-			gì?
+			Không mở bài học, chỉ mở project. Bắt đầu từ <code>Conversation.kt</code> — chỗ vẽ một bong bóng tin nhắn —
+			và lần <em>ngược</em> lên tới dòng code nói chuyện với Ditto. Viết ra giấy chuỗi file mà bạn đi qua,
+			kèm tên hàm hoặc property ở mỗi chặng.
 		</p>
-		<details>
-			<summary>Gợi ý</summary>
-			<p>
-				<code>Repository</code> cung cấp 1 hoặc nhiều <code>Flow</code> (ví dụ <code>getAllUsers()</code>,
-				<code>getAllMessagesForRoom()</code>) — các Flow này chứa model thô từ Ditto như <code>User</code>,
-				<code>Message</code>. <code>MainViewModel</code> <strong>kết hợp</strong> (<code>combine</code>) các Flow
-				đó lại thành 1 luồng dữ liệu duy nhất chứa đủ thông tin UI cần (tin nhắn + thông tin người gửi), rồi
-				tạo thành <code>StateFlow</code> mà Compose sẽ <code>collectAsState</code> để vẽ lại mỗi khi có tin mới.
-			</p>
-		</details>
+		<p>
+			Sau đó so với mục "Đường dây từ Ditto tới màn hình" trong bài học. Chỗ bạn bị mắc là chỗ đáng học nhất —
+			thường là ranh giới ViewModel ↔ Repository, vì ở đó dữ liệu đổi <em>kiểu</em> (<code>Message</code> →
+			<code>MessageUiModel</code>) chứ không chỉ đổi chỗ.
+		</p>
+		<p>
+			Câu hỏi để tự trả lời khi xong: <em>nếu muốn thêm ảnh đại diện thật cho mỗi tin nhắn, bạn phải sửa mấy file
+			trong chuỗi đó?</em>
+		</p>
+	</div>
+
+	<div class="exercise">
+		<h3>Bài 2 — Săn code chết</h3>
+		<p>
+			Bài học chỉ ra 5 chỗ code chết hoặc vô hiệu trong project. Hãy tự tìm lại chúng bằng công cụ, đừng tìm bằng mắt:
+			nhấn <kbd>Alt</kbd>+<kbd>F7</kbd> (Find Usages) lên từng mục dưới đây trong Android Studio.
+		</p>
+		<pre><code>{deadCodeHunt}</code></pre>
+		<p>
+			Với mỗi mục, ghi lại: Find Usages trả về bao nhiêu chỗ dùng, và <em>nếu xoá nó thì app có đổi hành vi không</em>.
+			Chỉ có <strong>một</strong> trong năm mục là bug thật sự đang gây hậu quả — ba mục kia chỉ là rác. Bạn tìm ra mục nào?
+		</p>
+		<p>
+			Gợi ý: câu hỏi phân biệt là "code này <em>đáng ra</em> phải làm gì?". Rác thì không đáng ra phải làm gì cả.
+		</p>
+	</div>
+
+	<div class="exercise">
+		<h3>Bài 3 — Sửa bug shadowing và tự chứng minh</h3>
+		<p>
+			Trong <code>MainViewModel.kt</code>, bỏ hai chữ <code>val</code> ở dòng 102–103 để phép gán thật sự chạm vào field
+			của class. Nhưng đừng dừng ở đó — hãy <em>chứng minh</em> rằng trước khi sửa thì hai field đó rỗng.
+		</p>
+		<pre><code>{proveShadowing}</code></pre>
+		<p>
+			Đặt hai dòng log này ngay sau <code>updateUserInfo(...)</code> trong <code>init</code>, chạy app, đọc Logcat với
+			filter <code>shadow</code>. Trước khi sửa: dòng "field" in ra hai giá trị rỗng. Sau khi sửa: hai dòng giống nhau.
+		</p>
+		<p>
+			Bài học rộng hơn ở đây không phải về Kotlin: đó là <strong>thói quen chứng minh bug tồn tại trước khi sửa nó</strong>.
+			Nếu không, bạn không có cách nào biết mình vừa sửa đúng thứ hay chỉ vừa làm code trông đẹp hơn.
+		</p>
+	</div>
+
+	<div class="exercise">
+		<h3>Bài 4 — Gỡ một chân của bộ ba live query</h3>
+		<p>
+			Ba thứ phải cùng có mặt thì dữ liệu mới tới được UI: <em>subscription</em>, <em>live query</em>, và
+			<em>tham chiếu được giữ</em>. Bài này bạn sẽ phá từng chân một để thấy mỗi chân đỡ cái gì.
+		</p>
+		<p>
+			Trong <code>getAllUsersFromDitto()</code> (<code>RepositoryImpl.kt</code> dòng 316–325), lần lượt thử ba biến thể,
+			mỗi lần chạy app rồi gửi vài tin nhắn và <strong>ghi lại triệu chứng cụ thể</strong>:
+		</p>
+		<ol>
+			<li>Comment dòng gán <code>usersSubscription = ...</code> nhưng vẫn giữ <code>.subscribe()</code> — đổi thành biến cục bộ.</li>
+			<li>Bỏ hẳn <code>.subscribe()</code>, chỉ để lại <code>observeLocal</code>.</li>
+			<li>Bỏ hẳn <code>observeLocal</code>, chỉ để lại <code>subscribe()</code>.</li>
+		</ol>
+		<p>
+			Điểm quan trọng nhất của bài: <strong>cả ba trường hợp đều không crash và không in exception nào</strong>.
+			App chỉ đơn giản làm sai một nửa. Sau khi làm xong bài này, hãy tự trả lời: <em>nếu người dùng báo "tôi không thấy
+			tin nhắn của bạn tôi", bạn sẽ kiểm tra cái gì đầu tiên?</em>
+		</p>
+		<p>
+			Nhớ <code>git restore</code> lại project khi xong, hoặc làm trên một branch riêng.
+		</p>
 	</div>
 </section>
-
 <script>
 	const form = document.getElementById("quiz-form");
 	const scoreEl = document.getElementById("quiz-score");
@@ -99,102 +513,31 @@
 			scoreEl.removeAttribute("hidden");
 		}
 	});
-</script>
 
-<style>
-	.quiz h2 {
-		margin-top: 2.2rem;
-		font-size: 1.15rem;
-		color: #1a202c;
-		border-bottom: 1px solid #e2e8f0;
-		padding-bottom: 0.35rem;
-	}
-	.intro {
-		color: #718096;
-		font-size: 0.9rem;
-	}
-	fieldset {
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 0.9rem 1.1rem;
-		margin-bottom: 1rem;
-		background: #fff;
-	}
-	fieldset.correct {
-		border-color: #68d391;
-		background: #f0fff4;
-	}
-	fieldset.incorrect {
-		border-color: #fc8181;
-		background: #fff5f5;
-	}
-	legend {
-		font-weight: 600;
-		font-size: 0.92rem;
-		padding: 0 0.3rem;
-	}
-	label {
-		display: block;
-		font-size: 0.9rem;
-		margin: 0.35rem 0;
-		color: #2d3748;
-	}
-	.explain {
-		margin-top: 0.6rem;
-		font-size: 0.85rem;
-		color: #4a5568;
-		border-top: 1px dashed #e2e8f0;
-		padding-top: 0.5rem;
-	}
-	button[type="submit"] {
-		background: #2b6cb0;
-		color: #fff;
-		border: none;
-		padding: 0.55rem 1.1rem;
-		border-radius: 8px;
-		font-size: 0.9rem;
-		cursor: pointer;
-	}
-	button[type="submit"]:hover {
-		background: #2c5282;
-	}
-	#quiz-score {
-		margin-top: 0.8rem;
-		font-weight: 600;
-		color: #2d3748;
-	}
-	.exercise {
-		background: #fff;
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 1rem 1.2rem;
-		font-size: 0.92rem;
-		line-height: 1.6;
-		color: #2d3748;
-	}
-	.exercise pre {
-		background: #1a202c;
-		color: #e2e8f0;
-		padding: 0.6rem 0.9rem;
-		border-radius: 6px;
-		overflow-x: auto;
-		font-size: 0.85rem;
-	}
-	.exercise code {
-		background: #edf2f7;
-		padding: 0.1rem 0.35rem;
-		border-radius: 4px;
-	}
-	.exercise pre code {
-		background: none;
-		padding: 0;
-	}
-	details {
-		margin-top: 0.8rem;
-		font-size: 0.88rem;
-	}
-	details summary {
-		cursor: pointer;
-		color: #2b6cb0;
-	}
-</style>
+	const orderBtn = document.getElementById("check-order");
+	const orderResult = document.getElementById("order-result");
+
+	orderBtn?.addEventListener("click", () => {
+		const items = document.querySelectorAll("#save-order li");
+		let correct = 0;
+
+		items.forEach((li) => {
+			const select = li.querySelector<HTMLSelectElement>("select");
+			li.classList.remove("correct", "incorrect");
+			if (select?.value === li.getAttribute("data-correct")) {
+				correct++;
+				li.classList.add("correct");
+			} else {
+				li.classList.add("incorrect");
+			}
+		});
+
+		if (orderResult) {
+			orderResult.textContent =
+				correct === items.length
+					? `Chính xác cả ${items.length} bước — bạn đã nắm được đường đi của dữ liệu.`
+					: `Đúng ${correct}/${items.length} bước. Nhớ: ghi vào database local trước, sync và UI đến sau.`;
+			orderResult.removeAttribute("hidden");
+		}
+	});
+</script>

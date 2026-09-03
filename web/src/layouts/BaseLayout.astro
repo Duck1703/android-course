@@ -1,5 +1,7 @@
 ---
-import { SECTIONS } from "../data/chapters";
+import { SECTIONS, ALL_CHAPTERS, chapterLabel, groupChapters } from "../data/chapters";
+import { getStats } from "../data/lessonStats";
+import "../styles/global.css";
 
 interface Props {
   title: string;
@@ -7,160 +9,449 @@ interface Props {
 
 const { title } = Astro.props;
 const currentPath = Astro.url.pathname;
+
+// Index tim kiem — dung 100% du lieu da co: ten chapter, tom tat, va tung muc
+// <h2> that trong file lesson (lay qua lessonStats). Khong tao noi dung moi.
+const searchIndex = ALL_CHAPTERS.flatMap((ch) => {
+  const base = `/chapters/${ch.slug}/`;
+  const label = chapterLabel(ch);
+  const rows = [
+    {
+      t: ch.title,
+      c: `Chương ${label}`,
+      u: base,
+      k: `${label} ${ch.title} ${ch.summaryVi} ${ch.parentTitle ?? ""}`.toLowerCase(),
+    },
+  ];
+  for (const h of getStats(ch.slug).headings) {
+    rows.push({
+      t: h.text,
+      c: `Chương ${label} · ${ch.title}`,
+      u: `${base}#${h.id}`,
+      k: h.text.toLowerCase(),
+    });
+  }
+  return rows;
+});
+
+// So chuong lon — dung cho nhan "11 chuong" o dau rail. Cac chuong nho (10.1..10.4)
+// van la 4 trang rieng, nhung nguoi hoc dem chuong theo chuong lon.
+const totalChapters = new Set(ALL_CHAPTERS.map((c) => c.number)).size;
+
+// Ten module trong rail: bo tien to "Section I: " de con lai phan mo ta.
+// `nodes` gom cac chuong nho (10.1..10.4) duoi mot tieu de nhom.
+const modules = SECTIONS.map((s, i) => {
+  const parts = s.title.split(": ");
+  return {
+    index: i + 1,
+    label: parts.length > 1 ? parts.slice(1).join(": ") : s.title,
+    chapters: s.chapters,
+    nodes: groupChapters(s.chapters),
+    chapterCount: new Set(s.chapters.map((c) => c.number)).size,
+  };
+});
 ---
 
 <html lang="vi">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="generator" content={Astro.generator} />
+		<meta name="color-scheme" content="light dark" />
 		<title>{title} · Học Android tiếng Việt</title>
+		<script is:inline>
+			// Chay TRUOC khi trang ve — tranh nhay mau khi dang o dark theme.
+			try {
+				const saved = localStorage.getItem("hoc-android-tv:theme");
+				const dark =
+					saved === "dark" ||
+					(!saved && window.matchMedia("(prefers-color-scheme: dark)").matches);
+				if (dark) document.documentElement.dataset.theme = "dark";
+			} catch (e) {
+				/* localStorage bi chan: bo qua, dung light theme */
+			}
+		</script>
 	</head>
 	<body>
+		<a class="skip-link" href="#main">Bỏ qua điều hướng, tới nội dung</a>
+
+		<header class="topbar">
+			<button
+				class="icon-btn"
+				id="menu-toggle"
+				type="button"
+				aria-label="Mở danh sách chương"
+				aria-expanded="false"
+			>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+					<path d="M3 6h18M3 12h18M3 18h18"></path>
+				</svg>
+			</button>
+
+			<a class="brand" href="/">
+				<span class="brand-mark" aria-hidden="true">
+					<!-- Bieu tuong con robot Android don gian -->
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M7 9a5 5 0 0 1 10 0v7H7z"></path>
+						<path d="M8.5 5.5 7.4 3.7M15.5 5.5l1.1-1.8"></path>
+						<path d="M4.6 10.5v4.4M19.4 10.5v4.4"></path>
+						<path d="M10 19v1.6M14 19v1.6"></path>
+						<path d="M10 12h.01M14 12h.01"></path>
+					</svg>
+				</span>
+				<span class="brand-text">
+					<span class="brand-title">Android Jetpack Compose</span>
+					<span class="brand-sub">Khoá học tiếng Việt</span>
+				</span>
+			</a>
+
+			<div class="topbar-search">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+					<circle cx="11" cy="11" r="7"></circle>
+					<path d="m16.5 16.5 4 4"></path>
+				</svg>
+				<input
+					type="search"
+					id="lesson-search"
+					placeholder="Tìm chương, mục…"
+					autocomplete="off"
+					role="combobox"
+					aria-expanded="false"
+					aria-autocomplete="list"
+					aria-controls="search-results"
+					aria-label="Tìm trong khoá học"
+				/>
+				<ul id="search-results" role="listbox" aria-label="Kết quả tìm kiếm" hidden></ul>
+			</div>
+
+			<div class="topbar-progress" title="Tiến độ toàn khoá">
+				<span class="tp-track" aria-hidden="true"><span class="tp-fill" id="tp-fill"></span></span>
+				<span class="tp-label" id="tp-label">0/{ALL_CHAPTERS.length} phần</span>
+			</div>
+
+			<button class="icon-btn" id="theme-toggle" type="button" aria-label="Đổi sáng/tối">
+				<svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+					<circle cx="12" cy="12" r="4"></circle>
+					<path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"></path>
+				</svg>
+				<svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"></path>
+				</svg>
+			</button>
+		</header>
+
+
 		<div class="shell">
-			<aside class="sidebar">
-				<a class="brand" href="/">Học Android bằng tiếng Việt</a>
-				<p class="brand-sub">Dựa theo sách <em>Android Fundamentals by Tutorials</em></p>
+			<aside class="rail" id="rail" aria-label="Chương trình học">
+				<div class="rail-head">
+					<p class="rail-title">Chương trình học</p>
+					<span class="rail-count">{totalChapters} chương</span>
+				</div>
 				<nav>
 					{
-						SECTIONS.map((section) => (
-							<div class="section">
-								<h2>{section.title}</h2>
-								<ul>
-									{section.chapters.map((ch) => {
-										const href = `/chapters/${ch.slug}/`;
-										const active = currentPath === href;
-										return (
-											<li>
-												<a href={href} class={active ? "active" : ""} data-slug={ch.slug}>
-													<span class="num">{ch.number}</span>
-													{ch.title}
-													<span class="check">✓</span>
-												</a>
-											</li>
-										);
-									})}
-								</ul>
-							</div>
-						))
+						modules.map((mod) => {
+							const slugs = mod.chapters.map((c) => c.slug);
+							// Module nao dang chua bai dang doc thi mo san.
+							const hasCurrent = mod.chapters.some(
+								(c) => currentPath === `/chapters/${c.slug}/`
+							);
+							return (
+								<details class="module" open={hasCurrent || currentPath === "/"} data-mod={slugs.join(",")}>
+									<summary>
+										<span class="module-num">{mod.index}</span>
+										<span class="module-meta">
+											<span class="module-title">{mod.label}</span>
+											<span class="module-sub">
+												<span class="mod-done">0</span>/{mod.chapters.length} chương xong
+											</span>
+											<span class="module-bar" aria-hidden="true"><span></span></span>
+										</span>
+										<svg class="module-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+											<path d="M9 5l7 7-7 7"></path>
+										</svg>
+									</summary>
+									<ul>
+										{mod.nodes.map((node) => {
+											// Chuong lon da tach: mot tieu de nhom, roi cac chuong nho thut vao.
+											const rows = node.items.map((ch) => {
+												const href = `/chapters/${ch.slug}/`;
+												const active = currentPath === href;
+												return (
+													<li>
+														<a
+															href={href}
+															class={active ? "active" : ""}
+															data-slug={ch.slug}
+															aria-current={active ? "page" : undefined}
+														>
+															<span class="num">{chapterLabel(ch)}</span>
+															{ch.title}
+															<svg class="check" role="img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Đã học">
+																<path d="M4 12.5l5 5L20 6.5"></path>
+															</svg>
+														</a>
+													</li>
+												);
+											});
+
+											if (!node.groupTitle) return rows;
+
+											return (
+												<li class="ch-group">
+													<p class="ch-group-head">
+														<span class="num">{node.groupNumber}</span>
+														<span>{node.groupTitle}</span>
+														<span class="ch-group-count">{node.items.length} phần</span>
+													</p>
+													<ul class="ch-group-list">{rows}</ul>
+												</li>
+											);
+										})}
+									</ul>
+								</details>
+							);
+						})
 					}
 				</nav>
 			</aside>
-			<main>
-				<slot />
+
+			<div class="rail-overlay" id="rail-overlay" aria-hidden="true"></div>
+			<main class="content" id="main">
+				<div class="content-inner">
+					<slot />
+				</div>
 			</main>
 		</div>
+
+		<script
+			is:inline
+			type="application/json"
+			id="search-index"
+			set:html={JSON.stringify(searchIndex)}
+		/>
 	</body>
 </html>
 
 <script>
-	// Task 9 — đọc localStorage, đánh dấu chapter đã học ở sidebar (checkmark ẩn/hiện qua class "done").
+	// ------------------------------------------------------------------ theme --
+	const THEME_KEY = "hoc-android-tv:theme";
+	const themeBtn = document.getElementById("theme-toggle");
+
+	function applyTheme(dark: boolean) {
+		if (dark) document.documentElement.dataset.theme = "dark";
+		else delete document.documentElement.dataset.theme;
+		themeBtn?.setAttribute("aria-label", dark ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối");
+	}
+
+	applyTheme(document.documentElement.dataset.theme === "dark");
+
+	themeBtn?.addEventListener("click", () => {
+		const dark = document.documentElement.dataset.theme !== "dark";
+		applyTheme(dark);
+		try {
+			localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+		} catch (e) {
+			/* localStorage bi chan: theme chi doi trong phien nay */
+		}
+	});
+
+	// --------------------------------------------------- tien do o rail + header
+	// Nguon du lieu: localStorage "hoc-android-tv:progress" (khong doi).
 	import { getDoneSlugs } from "../lib/progress";
 
-	const done = new Set(getDoneSlugs());
-	document.querySelectorAll<HTMLAnchorElement>("nav a[data-slug]").forEach((a) => {
-		const slug = a.dataset.slug;
-		if (slug && done.has(slug)) a.classList.add("done");
+	function paintProgress() {
+		const done = new Set(getDoneSlugs());
+		const links = document.querySelectorAll<HTMLAnchorElement>("nav a[data-slug]");
+
+		links.forEach((a) => {
+			const slug = a.dataset.slug;
+			a.classList.toggle("done", !!slug && done.has(slug));
+		});
+
+		// Thanh tien do tong o header
+		const total = links.length;
+		const n = [...links].filter((a) => a.classList.contains("done")).length;
+		const pct = total ? Math.round((n / total) * 100) : 0;
+		const fill = document.getElementById("tp-fill");
+		const label = document.getElementById("tp-label");
+		if (fill) fill.style.width = `${pct}%`;
+		if (label) label.textContent = `${n}/${total} phần`;
+
+		// Tien do tung module
+		document.querySelectorAll<HTMLElement>(".module[data-mod]").forEach((mod) => {
+			const slugs = (mod.dataset.mod || "").split(",").filter(Boolean);
+			const d = slugs.filter((s) => done.has(s)).length;
+			const cnt = mod.querySelector(".mod-done");
+			if (cnt) cnt.textContent = String(d);
+			const bar = mod.querySelector<HTMLElement>(".module-bar span");
+			if (bar) bar.style.width = slugs.length ? `${(d / slugs.length) * 100}%` : "0%";
+		});
+	}
+
+	paintProgress();
+	// ProgressToggle phat su kien nay sau khi nguoi hoc bam danh dau.
+	document.addEventListener("progress-changed", paintProgress);
+
+	// ---------------------------------------------------- drawer tren mobile ---
+	const menuBtn = document.getElementById("menu-toggle");
+	const overlay = document.getElementById("rail-overlay");
+
+	function setRail(open: boolean) {
+		document.body.classList.toggle("rail-open", open);
+		menuBtn?.setAttribute("aria-expanded", String(open));
+	}
+
+	menuBtn?.addEventListener("click", () => {
+		setRail(!document.body.classList.contains("rail-open"));
 	});
+	overlay?.addEventListener("click", () => setRail(false));
+
+	// Escape dong drawer va tra con tro ve nut mo — nguoi dung ban phim khong
+	// phai Tab nguoc lai tim nut.
+	document.addEventListener("keydown", (e) => {
+		if (e.key === "Escape" && document.body.classList.contains("rail-open")) {
+			setRail(false);
+			menuBtn?.focus();
+		}
+	});
+
+	// Bam vao 1 bai trong drawer thi dong drawer lai.
+	document.querySelectorAll("nav a[data-slug]").forEach((a) => {
+		a.addEventListener("click", () => setRail(false));
+	});
+
+	// Cuon rail sao cho bai dang hoc nam trong tam nhin.
+	const activeLink = document.querySelector<HTMLAnchorElement>("nav a[data-slug].active");
+	if (activeLink) {
+		const rail = document.getElementById("rail");
+		if (rail && activeLink.offsetTop > rail.clientHeight - 120) {
+			rail.scrollTop = activeLink.offsetTop - rail.clientHeight / 2;
+		}
+	}
+
+	// ------------------------------------------------------------- tim kiem ----
+	// Index duoc render san o build time (the <script type="application/json">),
+	// nen tim kiem chay ngay tren client, khong can server.
+	interface Hit {
+		t: string;
+		c: string;
+		u: string;
+		k: string;
+	}
+
+	const idxEl = document.getElementById("search-index");
+	const INDEX: Hit[] = idxEl?.textContent ? JSON.parse(idxEl.textContent) : [];
+
+	const input = document.getElementById("lesson-search") as HTMLInputElement | null;
+	const panel = document.getElementById("search-results");
+	let hits: Hit[] = [];
+	let cursor = -1;
+
+	// Bo dau tieng Viet de "du lieu" tim duoc "dữ liệu", "compose" tim duoc "Compose".
+	function fold(s: string): string {
+		return s
+			.normalize("NFD")
+			.replace(/[̀-ͯ]/g, "")
+			.replace(/đ/g, "d")
+			.replace(/Đ/g, "D");
+	}
+
+	// Tieu de muc co the chua ky tu < > " sau khi bo the HTML — phai escape lai.
+	function esc(s: string): string {
+		return s
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;");
+	}
+
+	function closePanel() {
+		if (!panel) return;
+		panel.hidden = true;
+		panel.innerHTML = "";
+		input?.setAttribute("aria-expanded", "false");
+		input?.removeAttribute("aria-activedescendant");
+		hits = [];
+		cursor = -1;
+	}
+
+	function render() {
+		if (!panel) return;
+		if (!hits.length) {
+			panel.innerHTML = '<li class="res-empty">Không tìm thấy nội dung nào.</li>';
+		} else {
+			panel.innerHTML = hits
+				.map(
+					(h, i) =>
+						`<li id="sr-${i}" role="option" aria-selected="${i === cursor}"><a href="${h.u}" class="${i === cursor ? "hl" : ""}">${esc(h.t)}<span class="res-ch">${esc(h.c)}</span></a></li>`
+				)
+				.join("");
+		}
+		panel.hidden = false;
+		input?.setAttribute("aria-expanded", "true");
+		// aria-activedescendant cho screen reader biet dong nao dang duoc chon
+		// khi nguoi dung bam mui ten — chi doi mau chu thi ho khong biet.
+		if (cursor >= 0) input?.setAttribute("aria-activedescendant", `sr-${cursor}`);
+		else input?.removeAttribute("aria-activedescendant");
+	}
+
+	input?.addEventListener("input", () => {
+		const q = fold(input.value.trim().toLowerCase());
+		if (q.length < 2) {
+			closePanel();
+			return;
+		}
+		// Uu tien ket qua khop tu dau chuoi, roi moi den khop giua chuoi.
+		const scored: Array<{ h: Hit; s: number }> = [];
+		for (const h of INDEX) {
+			const pos = fold(h.k).indexOf(q);
+			if (pos >= 0) scored.push({ h, s: pos });
+		}
+		scored.sort((a, b) => a.s - b.s);
+		hits = scored.slice(0, 12).map((x) => x.h);
+		cursor = -1;
+		render();
+	});
+
+	input?.addEventListener("keydown", (e) => {
+		if (e.key === "Escape") {
+			closePanel();
+			input.blur();
+			return;
+		}
+		if (!hits.length) return;
+		if (e.key === "ArrowDown") {
+			e.preventDefault();
+			cursor = (cursor + 1) % hits.length;
+			render();
+		} else if (e.key === "ArrowUp") {
+			e.preventDefault();
+			cursor = cursor <= 0 ? hits.length - 1 : cursor - 1;
+			render();
+		} else if (e.key === "Enter" && cursor >= 0) {
+			e.preventDefault();
+			window.location.href = hits[cursor]!.u;
+		}
+	});
+
+	document.addEventListener("click", (e) => {
+		const t = e.target as Node;
+		if (!panel?.contains(t) && t !== input) closePanel();
+	});
+
+	// Ctrl/Cmd + K de nhay vao o tim kiem.
+	document.addEventListener("keydown", (e) => {
+		if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+			e.preventDefault();
+			input?.focus();
+			input?.select();
+		}
+	});
+
+
+
+
 </script>
 
-<style>
-	:global(*) {
-		box-sizing: border-box;
-	}
-	:global(body) {
-		margin: 0;
-		font-family: system-ui, "Segoe UI", sans-serif;
-		color: #1a1a1a;
-		background: #fafafa;
-	}
-	.shell {
-		display: flex;
-		min-height: 100vh;
-	}
-	.sidebar {
-		width: 280px;
-		flex-shrink: 0;
-		background: #171923;
-		color: #e2e8f0;
-		padding: 1.5rem 1rem;
-		overflow-y: auto;
-	}
-	.brand {
-		display: block;
-		color: #fff;
-		font-weight: 700;
-		font-size: 1.05rem;
-		text-decoration: none;
-		line-height: 1.3;
-	}
-	.brand-sub {
-		font-size: 0.78rem;
-		color: #9aa5b1;
-		margin: 0.4rem 0 1.4rem;
-	}
-	.section h2 {
-		font-size: 0.72rem;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		color: #718096;
-		margin: 1.2rem 0 0.4rem;
-	}
-	.section ul {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-	}
-	.section li a {
-		display: flex;
-		gap: 0.5rem;
-		align-items: baseline;
-		padding: 0.35rem 0.5rem;
-		border-radius: 6px;
-		color: #cbd5e0;
-		text-decoration: none;
-		font-size: 0.9rem;
-	}
-	.section li a:hover {
-		background: #262b38;
-		color: #fff;
-	}
-	.section li a.active {
-		background: #2b6cb0;
-		color: #fff;
-	}
-	.num {
-		font-variant-numeric: tabular-nums;
-		color: #718096;
-		font-size: 0.8rem;
-	}
-	.section li a.active .num {
-		color: #cfe3f7;
-	}
-	.check {
-		display: none;
-		margin-left: auto;
-		color: #68d391;
-		font-size: 0.85rem;
-	}
-	.section li a.done .check {
-		display: inline;
-	}
-	main {
-		flex: 1;
-		padding: 2.5rem 3rem;
-		max-width: 860px;
-	}
-	@media (max-width: 800px) {
-		.shell {
-			flex-direction: column;
-		}
-		.sidebar {
-			width: 100%;
-		}
-		main {
-			padding: 1.5rem;
-		}
-	}
-</style>
+

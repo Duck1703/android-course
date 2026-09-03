@@ -1,0 +1,664 @@
+/* ==========================================================================
+   shell.css — khung app: top bar (brand/search/progress/theme/menu),
+   curriculum rail ben trai, vung noi dung, drawer cho mobile.
+   ========================================================================== */
+
+.skip-link {
+	position: absolute;
+	left: var(--s4);
+	top: -3rem;
+	z-index: 100;
+	background: var(--primary);
+	color: var(--on-primary);
+	padding: 0.5rem 0.9rem;
+	border-radius: var(--r-sm);
+	font-size: var(--fs-sm);
+	text-decoration: none;
+	transition: top 0.16s ease;
+}
+
+.skip-link:focus {
+	top: calc(var(--s2));
+}
+
+/* --------------------------------------------------------- top bar ------- */
+.topbar {
+	position: sticky;
+	top: 0;
+	z-index: 50;
+	height: var(--header-h);
+	display: flex;
+	align-items: center;
+	gap: var(--s3);
+	padding: 0 var(--s4);
+	background: color-mix(in srgb, var(--surface) 86%, transparent);
+	backdrop-filter: blur(14px) saturate(1.4);
+	border-bottom: 1px solid var(--outline-soft);
+}
+
+.brand {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	text-decoration: none;
+	color: var(--text);
+	flex-shrink: 0;
+}
+
+.brand-mark {
+	display: grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	border-radius: var(--r-sm);
+	background: var(--grad-brand);
+	color: #fff;
+	box-shadow: var(--e1);
+	flex-shrink: 0;
+}
+
+.brand-mark svg {
+	width: 19px;
+	height: 19px;
+	display: block;
+}
+
+.brand-text {
+	display: flex;
+	flex-direction: column;
+	line-height: 1.15;
+}
+
+.brand-title {
+	font-family: var(--font-display);
+	font-weight: 700;
+	font-size: 0.95rem;
+	letter-spacing: -0.012em;
+}
+
+.brand-sub {
+	font-size: var(--fs-2xs);
+	color: var(--text-3);
+	letter-spacing: 0.02em;
+}
+
+/* --------------------------------------------------- search trong header -- */
+.topbar-search {
+	position: relative;
+	margin-left: auto;
+	width: min(320px, 34vw);
+	flex-shrink: 1;
+	/* Flex item mac dinh co min-width: auto, ma min-content cua <input> la
+	   khoang 200px — khong co dong nay thi o 375px input day header tran ngang. */
+	min-width: 0;
+}
+
+.topbar-search svg {
+	position: absolute;
+	left: 0.65rem;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 15px;
+	height: 15px;
+	color: var(--text-3);
+	pointer-events: none;
+}
+
+#lesson-search {
+	width: 100%;
+	padding: 0.44rem 0.7rem 0.44rem 2.05rem;
+	border: 1px solid var(--outline);
+	border-radius: var(--r-full);
+	background: var(--surface-2);
+	color: var(--text);
+	font-size: var(--fs-sm);
+	transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+#lesson-search::placeholder {
+	color: var(--text-3);
+}
+
+#lesson-search:focus {
+	border-color: var(--primary);
+	background: var(--surface);
+}
+
+/* Ket qua tim kiem — panel noi ngay duoi o input */
+#search-results {
+	position: absolute;
+	top: calc(100% + 0.4rem);
+	right: 0;
+	left: 0;
+	max-height: min(60vh, 420px);
+	overflow-y: auto;
+	margin: 0;
+	padding: var(--s1);
+	list-style: none;
+	background: var(--surface);
+	border: 1px solid var(--outline);
+	border-radius: var(--r-md);
+	box-shadow: var(--e3);
+	z-index: 60;
+}
+
+#search-results[hidden] {
+	display: none;
+}
+
+#search-results li a {
+	display: block;
+	padding: 0.42rem 0.6rem;
+	border-radius: var(--r-xs);
+	color: var(--text);
+	text-decoration: none;
+	font-size: var(--fs-sm);
+	line-height: 1.35;
+}
+
+#search-results li a:hover,
+#search-results li a.hl {
+	background: var(--primary-container);
+	color: var(--on-primary-container);
+}
+
+#search-results .res-ch {
+	display: block;
+	font-size: var(--fs-2xs);
+	color: var(--text-3);
+	letter-spacing: 0.02em;
+}
+
+#search-results li a:hover .res-ch,
+#search-results li a.hl .res-ch {
+	color: color-mix(in srgb, var(--on-primary-container) 75%, transparent);
+}
+
+#search-results .res-empty {
+	padding: 0.5rem 0.6rem;
+	font-size: var(--fs-sm);
+	color: var(--text-3);
+}
+
+/* ------------------------------- progress + theme + menu trong header ---- */
+.topbar-progress {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	flex-shrink: 0;
+}
+
+.topbar-progress .tp-track {
+	width: 92px;
+	height: 6px;
+	border-radius: var(--r-full);
+	background: var(--surface-3);
+	overflow: hidden;
+}
+
+.topbar-progress .tp-fill {
+	display: block;
+	height: 100%;
+	width: 0%;
+	border-radius: var(--r-full);
+	background: linear-gradient(90deg, var(--primary), var(--accent));
+	transition: width 0.35s ease;
+}
+
+.topbar-progress .tp-label {
+	font-size: var(--fs-2xs);
+	font-variant-numeric: tabular-nums;
+	color: var(--text-2);
+	white-space: nowrap;
+}
+
+.icon-btn {
+	display: grid;
+	place-items: center;
+	width: 34px;
+	height: 34px;
+	flex-shrink: 0;
+	border: 1px solid var(--outline);
+	border-radius: var(--r-sm);
+	background: var(--surface);
+	color: var(--text-2);
+	cursor: pointer;
+	transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.icon-btn:hover {
+	border-color: var(--primary);
+	color: var(--primary);
+	background: var(--primary-container);
+}
+
+.icon-btn svg {
+	width: 17px;
+	height: 17px;
+	display: block;
+}
+
+/* Icon mat troi / mat trang: chi hien 1 cai tuy theme */
+#theme-toggle .icon-moon {
+	display: none;
+}
+
+:root[data-theme="dark"] #theme-toggle .icon-sun {
+	display: none;
+}
+
+:root[data-theme="dark"] #theme-toggle .icon-moon {
+	display: block;
+}
+
+#menu-toggle {
+	display: none;
+}
+
+/* --------------------------------------------------- khung shell + rail --- */
+.shell {
+	display: flex;
+	align-items: flex-start;
+	min-height: calc(100vh - var(--header-h));
+}
+
+.rail {
+	position: sticky;
+	top: var(--header-h);
+	width: var(--rail-w);
+	flex-shrink: 0;
+	height: calc(100vh - var(--header-h));
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: var(--s5) var(--s3) var(--s8);
+	background: var(--surface);
+	border-right: 1px solid var(--outline-soft);
+}
+
+.rail-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--s2);
+	padding: 0 var(--s2) var(--s3);
+}
+
+.rail-head .rail-title {
+	margin: 0;
+	font-size: var(--fs-2xs);
+	font-weight: 700;
+	letter-spacing: 0.09em;
+	text-transform: uppercase;
+	color: var(--text-3);
+}
+
+.rail-head .rail-count {
+	font-size: var(--fs-2xs);
+	font-variant-numeric: tabular-nums;
+	color: var(--text-3);
+}
+
+/* Module (Section cua sach) */
+.module {
+	border: 1px solid var(--outline-soft);
+	border-radius: var(--r-md);
+	background: var(--surface);
+	margin-bottom: var(--s3);
+	overflow: hidden;
+}
+
+.module[open] {
+	background: color-mix(in srgb, var(--surface-2) 55%, var(--surface));
+}
+
+.module > summary {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	padding: 0.62rem 0.7rem;
+	cursor: pointer;
+	list-style: none;
+	transition: background 0.15s ease;
+}
+
+.module > summary::-webkit-details-marker {
+	display: none;
+}
+
+.module > summary:hover {
+	background: var(--surface-2);
+}
+
+/* .module co overflow:hidden (de bo goc an duoc phan tu ben trong), nen
+   outline mac dinh cua :focus-visible bi cat mat. Ve vong focus vao phia
+   trong bang outline-offset am de nguoi dung ban phim van thay ro. */
+.module > summary:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: -3px;
+	border-radius: var(--r-sm);
+}
+
+.module-num {
+	display: grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+	flex-shrink: 0;
+	border-radius: var(--r-xs);
+	background: var(--primary-container);
+	color: var(--on-primary-container);
+	font-size: var(--fs-2xs);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.module-meta {
+	min-width: 0;
+	flex: 1;
+}
+
+.module-title {
+	display: block;
+	font-size: var(--fs-xs);
+	font-weight: 650;
+	color: var(--text);
+	line-height: 1.3;
+}
+
+.module-sub {
+	display: block;
+	font-size: var(--fs-2xs);
+	color: var(--text-3);
+	font-variant-numeric: tabular-nums;
+}
+
+.module-caret {
+	flex-shrink: 0;
+	width: 14px;
+	height: 14px;
+	color: var(--text-3);
+	transition: transform 0.18s ease;
+}
+
+.module[open] > summary .module-caret {
+	transform: rotate(90deg);
+}
+
+/* Thanh tien do nho cua tung module */
+.module-bar {
+	height: 3px;
+	border-radius: var(--r-full);
+	background: var(--surface-3);
+	margin: 0.3rem 0 0;
+	overflow: hidden;
+}
+
+.module-bar span {
+	display: block;
+	height: 100%;
+	width: 0%;
+	background: var(--accent);
+	border-radius: var(--r-full);
+	transition: width 0.3s ease;
+}
+
+/* Danh sach lesson trong 1 module */
+.module ul {
+	list-style: none;
+	margin: 0;
+	padding: 0 var(--s2) var(--s2);
+}
+
+.module li {
+	margin: 0;
+}
+
+.rail nav a[data-slug] {
+	display: grid;
+	grid-template-columns: 22px 1fr 16px;
+	align-items: start;
+	gap: 0.5rem;
+	padding: 0.42rem 0.5rem;
+	border-radius: var(--r-sm);
+	color: var(--text-2);
+	text-decoration: none;
+	font-size: var(--fs-xs);
+	line-height: 1.4;
+	transition: background 0.14s ease, color 0.14s ease;
+}
+
+.rail nav a[data-slug] .num {
+	display: grid;
+	place-items: center;
+	width: 22px;
+	height: 20px;
+	border-radius: var(--r-xs);
+	background: var(--surface-3);
+	color: var(--text-3);
+	font-size: var(--fs-2xs);
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+}
+
+.rail nav a[data-slug]:hover {
+	background: var(--surface-2);
+	color: var(--text);
+}
+
+/* Bai dang hoc — noi bat nhat trong rail */
+.rail nav a[data-slug].active {
+	background: var(--primary-container);
+	color: var(--on-primary-container);
+	font-weight: 650;
+	box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.rail nav a[data-slug].active .num {
+	background: var(--primary);
+	color: var(--on-primary);
+}
+
+/* Bai da hoc — dau check mau xanh Android */
+.rail nav a[data-slug] .check {
+	display: none;
+	width: 16px;
+	height: 16px;
+	margin-top: 0.15rem;
+	color: var(--accent);
+}
+
+.rail nav a[data-slug].done .check {
+	display: block;
+}
+
+.rail nav a[data-slug].done:not(.active) {
+	color: var(--text-2);
+}
+
+.rail nav a[data-slug].done .num {
+	background: var(--accent-container);
+	color: var(--on-accent-container);
+}
+
+.rail nav a[data-slug].active.done .num {
+	background: var(--primary);
+	color: var(--on-primary);
+}
+
+/* --- Nhom chuong nho (10.1 -> 10.4) ------------------------------------- */
+/* Chuong lon da tach: mot tieu de nhom khong bam duoc, roi cac chuong nho
+   thut vao duoi mot duong doc — de nguoi hoc thay chung thuoc cung mot chuong. */
+.ch-group {
+	margin: 0.3rem 0;
+}
+
+.ch-group-head {
+	display: grid;
+	grid-template-columns: 22px 1fr auto;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0;
+	padding: 0.32rem 0.5rem;
+	color: var(--text-2);
+	font-size: var(--fs-xs);
+	font-weight: 650;
+	line-height: 1.35;
+}
+
+.ch-group-head .num {
+	display: grid;
+	place-items: center;
+	width: 22px;
+	height: 20px;
+	border-radius: var(--r-xs);
+	background: var(--surface-3);
+	color: var(--text-3);
+	font-size: var(--fs-2xs);
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+}
+
+.ch-group-count {
+	color: var(--text-3);
+	font-size: var(--fs-2xs);
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+.ch-group-list {
+	list-style: none;
+	margin: 0.1rem 0 0;
+	padding: 0 0 0 0.55rem;
+	margin-left: 0.55rem;
+	border-left: 2px solid var(--border);
+}
+
+/* Chuong nho: so "10.1" dai hon so "9" nen o so phai rong hon mot chut. */
+.ch-group-list a[data-slug] {
+	grid-template-columns: 30px 1fr 16px;
+}
+
+.ch-group-list a[data-slug] .num {
+	width: 30px;
+	letter-spacing: -0.01em;
+}
+
+/* ------------------------------------------------------ vung noi dung ---- */
+.content {
+	flex: 1;
+	min-width: 0;
+	padding: var(--s8) var(--s10) var(--s16);
+}
+
+.content-inner {
+	max-width: 1080px;
+	margin: 0 auto;
+}
+
+/* Lop phu khi mo drawer tren mobile */
+.rail-overlay {
+	display: none;
+	position: fixed;
+	inset: var(--header-h) 0 0;
+	z-index: 39;
+	background: rgba(12, 10, 18, 0.5);
+	backdrop-filter: blur(2px);
+}
+
+body.rail-open .rail-overlay {
+	display: block;
+}
+
+/* ============================================================ responsive == */
+
+/* Tablet: rail hep hon, noi dung bot padding */
+@media (max-width: 1180px) {
+	:root {
+		--rail-w: 264px;
+	}
+	.content {
+		padding: var(--s6) var(--s6) var(--s12);
+	}
+}
+
+/* Duoi 1024px: rail thanh drawer truot tu ben trai */
+@media (max-width: 1024px) {
+	#menu-toggle {
+		display: grid;
+	}
+
+	/* Trong drawer (dung ngon tay), moi dong bai hoc phai du cao de bam. */
+	.rail nav a[data-slug] {
+		padding: 0.6rem 0.55rem;
+	}
+
+	.rail {
+		position: fixed;
+		top: var(--header-h);
+		left: 0;
+		bottom: 0;
+		z-index: 40;
+		width: min(320px, 86vw);
+		height: auto;
+		transform: translateX(-102%);
+		/* visibility:hidden de drawer dong khong con nam trong thu tu Tab —
+		   neu chi dich chuyen bang transform thi 14 link ben trong van focus
+		   duoc, nguoi dung ban phim se "mat" con tro vao vung khong nhin thay.
+		   Delay 0.22s cho visibility de van thay animation truot ra. */
+		visibility: hidden;
+		transition: transform 0.22s ease, visibility 0s linear 0.22s;
+		box-shadow: var(--e3);
+		border-right: 1px solid var(--outline);
+	}
+
+	body.rail-open .rail {
+		transform: translateX(0);
+		visibility: visible;
+		transition: transform 0.22s ease, visibility 0s;
+	}
+
+	.topbar-search {
+		width: min(260px, 40vw);
+	}
+
+	.topbar-progress .tp-track {
+		display: none;
+	}
+}
+
+/* Mobile: an brand-sub, thu nho, search thanh nut mo rong */
+@media (max-width: 760px) {
+	.topbar {
+		padding: 0 var(--s3);
+		gap: var(--s2);
+	}
+
+	.brand-sub {
+		display: none;
+	}
+
+	.content {
+		padding: var(--s5) var(--s4) var(--s12);
+	}
+}
+
+@media (max-width: 560px) {
+	.brand-text {
+		display: none;
+	}
+
+	.topbar-progress .tp-label {
+		display: none;
+	}
+
+	.topbar-search {
+		width: auto;
+		flex: 1;
+	}
+
+	#search-results {
+		right: calc(-1 * var(--s3));
+		left: calc(-1 * var(--s3));
+		border-radius: 0 0 var(--r-md) var(--r-md);
+	}
+}

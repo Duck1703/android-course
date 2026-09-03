@@ -2,6 +2,48 @@
 // Quiz + bài tập nhỏ cho lesson Chapter 4: Gradle Basics.
 // Câu hỏi lấy ý từ docs/LEARNING_MAP.md (mục Chapter 4 > Gợi ý Exercise/Quiz), tự viết đáp án + giải thích.
 // Quiz chấm bằng vanilla JS phía client (đúng tinh thần "gần như 0 JS trừ chỗ cần tương tác" trong CLAUDE.md).
+
+// Đoạn build file giả lập cho Bài tập 4 — KHÔNG phải code thật của aaf-materials, cố tình gài 3 lỗi
+// (plugin có version ở module-level · signingConfigs khai sau buildTypes · excludes dùng "=" thay vì "+=").
+const brokenGradleCode = `plugins {
+    id("com.android.application") version "8.2.0"
+    id("org.jetbrains.kotlin.android") version "1.9.10"
+}
+
+android {
+    namespace = "com.kodeco.chat"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "com.kodeco.chat"
+        minSdk = 30
+        targetSdk = 30
+        versionCode = 1
+        versionName = "1.0"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("keystore.jks")
+            storePassword = "hunter2"
+            keyAlias = "key0"
+            keyPassword = "hunter2"
+        }
+    }
+
+    packaging {
+        resources {
+            excludes = setOf("/META-INF/{AL2.0,LGPL2.1}")
+        }
+    }
+}`;
 ---
 
 <section class="quiz" id="quiz">
@@ -9,43 +51,249 @@
 	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
 
 	<form id="quiz-form">
-		<fieldset data-answer="b">
-			<legend>1. Khác biệt chính giữa build type <code>debug</code> và <code>release</code> là gì?</legend>
-			<label><input type="radio" name="q1" value="a" /> <code>debug</code> chạy nhanh hơn <code>release</code> vì có nhiều tính năng hơn</label>
-			<label><input type="radio" name="q1" value="b" /> <code>debug</code> dùng khi đang phát triển/thử nghiệm (không tối ưu, dễ debug); <code>release</code> dùng khi phát hành (có thể minify/obfuscate code, bắt buộc ký signing)</label>
-			<label><input type="radio" name="q1" value="c" /> Cả 2 hoàn toàn giống nhau, chỉ khác mỗi cái tên</label>
+		<fieldset data-answer="c">
+			<legend>1. <strong>Gradle</strong> và <strong>Android Gradle Plugin (AGP)</strong> khác nhau thế nào?</legend>
+			<label><input type="radio" name="q1" value="a" /> Hai tên gọi của cùng một thứ; AGP là tên mới của Gradle</label>
+			<label><input type="radio" name="q1" value="b" /> Gradle chỉ dùng cho Android, còn AGP dùng cho mọi loại project</label>
+			<label><input type="radio" name="q1" value="c" /> Gradle là build system tổng quát, <em>không biết gì</em> về Android; AGP chạy bên trên Gradle và dạy nó những việc riêng của Android (biên dịch <code>res/</code>, gộp manifest, đóng gói)</label>
 			<p class="explain" hidden>
-				<code>debug</code> có <code>isDebuggable = true</code>, không bật <code>isMinifyEnabled</code>, và
-				Android Studio tự ký giúp. <code>release</code> có <code>isDebuggable = false</code>, có thể bật
-				<code>isMinifyEnabled</code> để rút gọn/làm rối code, và bắt buộc phải có <code>signingConfig</code>
-				hợp lệ trước khi phát hành.
+				Đúng — và đây là lý do project có <strong>hai số version riêng</strong>: một cho Gradle (ở
+				<code>gradle-wrapper.properties</code>, project này là <code>8.2</code>) và một cho AGP (ở
+				<code>build.gradle.kts</code> gốc, project này là <code>8.2.0</code>). Hai con số trùng đầu nhau chỉ là
+				tình cờ — chúng là hai thứ khác nhau và phải tương thích với nhau.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="b">
-			<legend>2. Vì sao <strong>không</strong> nên commit file <code>keys.properties</code> lên Git?</legend>
-			<label><input type="radio" name="q2" value="a" /> Vì file quá nặng, làm chậm tốc độ clone repo</label>
-			<label><input type="radio" name="q2" value="b" /> Vì nó chứa thông tin ký app (mật khẩu keystore...) — lộ ra thì ai cũng có thể giả mạo là chủ sở hữu app</label>
-			<label><input type="radio" name="q2" value="c" /> Vì Git không hỗ trợ định dạng file <code>.properties</code></label>
+			<legend>2. Bạn muốn nộp app lên Google Play. Nên build ra file gì, và vì sao?</legend>
+			<label><input type="radio" name="q2" value="a" /> <code>.apk</code> — vì đó là file duy nhất Android cài được</label>
+			<label><input type="radio" name="q2" value="b" /> <code>.aab</code> — nó chứa mọi thứ để Google Play <em>tự sinh</em> file <code>.apk</code> tối ưu cho đúng máy đang tải</label>
+			<label><input type="radio" name="q2" value="c" /> Cả hai đều được, không khác gì nhau về kích thước app tải về</label>
+			<p class="explain" hidden>
+				<code>.aab</code> (Android App Bundle) <strong>không cài trực tiếp được</strong> — nó là "nguyên liệu" cho
+				Play Store. App phải mang ảnh cho mọi mật độ điểm ảnh, chuỗi dịch cho mọi ngôn ngữ, code máy cho mọi loại
+				CPU; máy người dùng chỉ cần một bộ. Play cắt phần thừa trước khi gửi xuống nên app tải về nhẹ hơn.
+				<code>.apk</code> vẫn hữu ích khi bạn tự cài hoặc gửi cho người khác test.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>3. Trong <code>build.gradle.kts</code> ở gốc project, <code>apply false</code> nghĩa là gì?</legend>
+			<label><input type="radio" name="q3" value="a" /> Tắt plugin đi, plugin sẽ không được dùng ở bất kỳ đâu trong project</label>
+			<label><input type="radio" name="q3" value="b" /> Plugin chỉ được dùng khi build bản <code>release</code></label>
+			<label><input type="radio" name="q3" value="c" /> "Khai báo sẵn để các module dùng được, nhưng <em>đừng áp dụng</em> ngay tại cấp gốc"</label>
+			<p class="explain" hidden>
+				Cấp gốc không chứa code Android nào, nên áp dụng plugin ở đó chỉ tốn công build vô ích. Lợi ích thật là
+				<strong>single source of truth</strong>: số version chỉ nằm ở một chỗ. Vì vậy trong
+				<code>app/build.gradle.kts</code>, khối <code>plugins</code> khai lại đúng các ID đó mà
+				<strong>không có version nào</strong>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>4. Dòng <code>repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)</code> trong <code>settings.gradle.kts</code> làm gì?</legend>
+			<label><input type="radio" name="q4" value="a" /> Bắt build <strong>fail</strong> nếu có repository nào được khai báo ngoài file này (ví dụ trong <code>build.gradle.kts</code> của một module)</label>
+			<label><input type="radio" name="q4" value="b" /> Bắt build fail nếu Gradle không tải được một dependency nào đó</label>
+			<label><input type="radio" name="q4" value="c" /> Bắt build fail nếu project chưa khai báo <code>rootProject.name</code></label>
+			<p class="explain" hidden>
+				Mặc định (không có dòng này), repository khai trong file của một module sẽ <em>ghi đè</em> repository ở
+				<code>settings.gradle.kts</code> — mỗi module có thể tải thư viện từ nơi khác nhau và bạn phải đọc hết mọi
+				file mới biết. Dòng này khắt khe có mục đích: buộc mọi nguồn tải về đúng một chỗ dễ review. Lưu ý từ
+				"project" ở đây theo nghĩa Gradle: mỗi module là một <em>sub-project</em>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>5. App khai <code>compileSdk = 34</code>, <code>minSdk = 30</code>, <code>targetSdk = 34</code>. Câu nào <strong>đúng</strong>?</legend>
+			<label><input type="radio" name="q5" value="a" /> App chỉ chạy được trên Android 14 (API 34), máy mới hơn sẽ không cài được</label>
+			<label><input type="radio" name="q5" value="b" /> App không xuất hiện trên Play Store với máy chạy dưới API 30, và code không được gọi API mới hơn 34</label>
+			<label><input type="radio" name="q5" value="c" /> <code>minSdk = 30</code> nghĩa là Android Studio cần bản 30 trở lên để mở project</label>
+			<p class="explain" hidden>
+				Ba con số, ba việc khác nhau: <code>compileSdk</code> = "tôi được gọi tới API bản nào" (đặt thấp thì
+				<em>không compile được</em>); <code>minSdk</code> = "máy cũ nhất tôi hỗ trợ" (đặt cao thì Play Store
+				<em>ẩn app</em> với máy cũ hơn); <code>targetSdk</code> = "bản cao nhất tôi đã test" (đặt thấp thì hệ thống
+				bật chế độ tương thích ngược). App vẫn chạy trên Android mới hơn <code>targetSdk</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>6. Khối <code>vectorDrawables &#123; useSupportLibrary = true &#125;</code> trong project này vì sao là code vô ích?</legend>
+			<label><input type="radio" name="q6" value="a" /> Vì project không có ảnh vector nào</label>
+			<label><input type="radio" name="q6" value="b" /> Vì Compose không hỗ trợ vector drawable</label>
+			<label><input type="radio" name="q6" value="c" /> Vì thư viện hỗ trợ này chỉ cần cho API dưới 24, còn project khai <code>minSdk = 30</code></label>
+			<p class="explain" hidden>
+				Nó không bao giờ có tác dụng. Nó có mặt chỉ vì Android Studio tự thêm khi tạo project — bài học tốt ở đây:
+				<strong>template sinh sẵn không có nghĩa là code cần thiết</strong>. Sách yêu cầu xoá nó, cùng với
+				<code>packaging</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>7. File <code>app/build.gradle.kts</code> chỉ khai <strong>một</strong> build type là <code>release</code>. Nhưng cửa sổ Build Variants lại đang chọn <code>debug</code>. Vì sao?</legend>
+			<label><input type="radio" name="q7" value="a" /> Vì Android Studio hiển thị sai, cần bấm Sync để nó cập nhật lại</label>
+			<label><input type="radio" name="q7" value="b" /> Vì build system <strong>luôn có sẵn</strong> hai build type <code>debug</code> và <code>release</code>; viết chúng ra chỉ để <em>tuỳ biến</em> thuộc tính, không phải để "tạo" chúng</label>
+			<label><input type="radio" name="q7" value="c" /> Vì <code>debug</code> được khai ở <code>settings.gradle.kts</code> thay vì ở file module</label>
+			<p class="explain" hidden>
+				Đây là một mental model dùng lại nhiều lần trong Gradle: <em>khối cấu hình thường là "chỉnh cái đã có",
+				không phải "khai sinh cái mới"</em>. <code>debug</code> mặc định có <code>isDebuggable = true</code>,
+				<code>release</code> có <code>isDebuggable = false</code>. Android Studio viết ra
+				<code>release</code> chỉ vì nó muốn đổi <code>isMinifyEnabled</code> trong đó.
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>8. Vì sao Android Studio đặt <code>isMinifyEnabled = false</code> cho <code>release</code>, dù minify là thứ ta muốn ở bản phát hành?</legend>
+			<label><input type="radio" name="q8" value="a" /> Vì nếu Proguard rules chưa đúng, bật nó lên có thể gây <strong>crash lúc chạy</strong> — Studio nhường quyết định cho lập trình viên</label>
+			<label><input type="radio" name="q8" value="b" /> Vì minify làm app tải về nặng hơn</label>
+			<label><input type="radio" name="q8" value="c" /> Vì Google Play tự minify khi bạn nộp file <code>.aab</code></label>
+			<p class="explain" hidden>
+				<code>isMinifyEnabled</code> bật obfuscate + optimize + shrink. Rủi ro: R8 xoá/đổi tên class mà bạn thật sự
+				cần (thường là class chỉ được gọi qua reflection), và lỗi chỉ lộ ra <em>lúc chạy bản release</em> — tức trên
+				máy người dùng. Phần lớn Proguard rules rút lại chỉ là bạn nói rõ class nào <em>không</em> được
+				obfuscate/xoá.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>9. Bạn thêm <code>debug &#123; applicationIdSuffix = ".debug" &#125;</code> theo đúng sách. Chuyện gì xảy ra với test có sẵn của project?</legend>
+			<label><input type="radio" name="q9" value="a" /> Không có gì — thay đổi ở tầng build không ảnh hưởng test</label>
+			<label><input type="radio" name="q9" value="b" /> Unit test <code>ExampleUnitTest</code> fail vì package name đổi</label>
+			<label><input type="radio" name="q9" value="c" /> Instrumented test <code>ExampleInstrumentedTest</code> fail, vì nó hard-code <code>assertEquals("com.kodeco.chat", appContext.packageName)</code></label>
+			<p class="explain" hidden>
+				Instrumented test luôn chạy trên variant <code>debug</code>, nên sau khi thêm suffix
+				<code>appContext.packageName</code> trả về <code>"com.kodeco.chat.debug"</code> → assert fail. Sách
+				<strong>không</strong> cảnh báo chỗ này. Cách sửa: so với <code>"com.kodeco.chat.debug"</code>, hoặc dùng
+				<code>BuildConfig.APPLICATION_ID</code>. Unit test không bị ảnh hưởng vì nó chạy trên JVM và không biết gì
+				về package của app.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>10. Vì sao các dependency Compose trong project <strong>không có số version</strong>?</legend>
+			<label><input type="radio" name="q10" value="a" /> Vì Compose là phần của Android SDK nên không cần version</label>
+			<label><input type="radio" name="q10" value="b" /> Vì dòng <code>implementation(platform("androidx.compose:compose-bom:..."))</code> cung cấp bộ version được khuyến nghị cho cả họ Compose</label>
+			<label><input type="radio" name="q10" value="c" /> Vì Gradle tự lấy version mới nhất khi không khai báo</label>
+			<p class="explain" hidden>
+				BOM (Bill of Materials) là một <em>platform</em> — vì thế mới có <code>platform(...)</code> bọc ngoài. Bạn
+				vẫn phải khai từng thư viện Compose mình dùng, chỉ là không cần version. Nếu bạn <em>vẫn</em> ghi version,
+				con số của bạn <strong>ghi đè</strong> BOM. Nâng BOM một dòng = nâng toàn bộ Compose. Đáp án c là hành vi
+				<em>không</em> tồn tại trong Gradle: thiếu version thì Gradle báo lỗi, không tự đoán.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>11. Trong TOML bạn viết <code>androidx-core-ktx</code>. Trong Kotlin DSL truy cập nó thế nào?</legend>
+			<label><input type="radio" name="q11" value="a" /> <code>libs["androidx-core-ktx"]</code></label>
+			<label><input type="radio" name="q11" value="b" /> <code>libs.androidx-core-ktx</code></label>
+			<label><input type="radio" name="q11" value="c" /> <code>libs.androidx.core.ktx</code> — Gradle đổi mỗi dấu <code>-</code> thành một dấu chấm</label>
+			<p class="explain" hidden>
+				Gradle sinh ra "accessor" từ tên trong TOML và biến <code>-</code> thành <code>.</code>. Tương tự
+				<code>android-application</code> ở <code>[plugins]</code> → <code>libs.plugins.android.application</code>.
+				Đáp án b không hợp lệ vì Kotlin không cho dấu <code>-</code> trong tên biến. Đây cũng là lý do sách khuyên
+				dùng <strong>kebab-case</strong>: nó cho code completion tốt hơn.
+			</p>
+		</fieldset>
+		<fieldset data-answer="b">
+			<legend>12. Sách nói bundles làm script gọn hơn, nhưng cũng nêu một <strong>cái giá</strong>. Cái giá đó là gì?</legend>
+			<label><input type="radio" name="q12" value="a" /> Bundles làm thời gian build chậm hơn đáng kể</label>
+			<label><input type="radio" name="q12" value="b" /> Đọc <code>implementation(libs.bundles.compose)</code> thì không biết được nó kéo vào những thư viện nào — phải mở file TOML mới biết</label>
+			<label><input type="radio" name="q12" value="c" /> Bundles không hoạt động với <code>debugImplementation</code></label>
+			<p class="explain" hidden>
+				Vì thế sách nhắc <strong>hai lần</strong> về việc đặt tên bundle cho đúng. Một hệ quả thật thấy ngay trong
+				project mẫu: bundle <code>instrumented-tests</code> chứa <code>espresso-core</code> và
+				<code>ui-test-junit4</code>, nhưng <em>không test nào trong chapter dùng tới chúng</em> — dependency không
+				dùng nằm im mà không ai để ý.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>13. Sách nhấn "thứ tự khai báo có ảnh hưởng" khi thêm <code>signingConfigs</code>. Cụ thể là gì và vì sao?</legend>
+			<label><input type="radio" name="q13" value="a" /> <code>signingConfigs</code> phải nằm <strong>trên</strong> <code>buildTypes</code>, vì <code>buildTypes</code> gọi <code>signingConfigs.getByName("release")</code> — chưa <code>create</code> thì không tìm thấy</label>
+			<label><input type="radio" name="q13" value="b" /> <code>signingConfigs</code> phải nằm <strong>dưới</strong> <code>buildTypes</code>, để ghi đè cấu hình build type</label>
+			<label><input type="radio" name="q13" value="c" /> Phải nằm ngoài khối <code>android</code>, ngang hàng với <code>dependencies</code></label>
+			<p class="explain" hidden>
+				Kotlin DSL là <strong>code Kotlin chạy tuần tự từ trên xuống</strong>, không phải file cấu hình khai báo
+				thuần. Đây là một trong ít chỗ trong file Gradle mà đảo thứ tự là vỡ build. Project mẫu đặt đúng:
+				<code>signingConfigs</code> dòng 27–34, <code>buildTypes</code> dòng 35–47.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>14. Vì sao <strong>không</strong> nên commit file <code>keys.properties</code> lên Git?</legend>
+			<label><input type="radio" name="q14" value="a" /> Vì file quá nặng, làm chậm tốc độ clone repo</label>
+			<label><input type="radio" name="q14" value="b" /> Vì nó chứa thông tin ký app (mật khẩu keystore...) — lộ ra thì ai cũng có thể nhận mình là chủ sở hữu app</label>
+			<label><input type="radio" name="q14" value="c" /> Vì Git không hỗ trợ định dạng file <code>.properties</code></label>
 			<p class="explain" hidden>
 				<code>keys.properties</code> chứa <code>storeFile</code>, <code>storePassword</code>,
-				<code>keyAlias</code>, <code>keyPassword</code> — đây là "chìa khoá" chứng minh bạn là chủ app. Vì
-				vậy file này luôn nằm trong <code>.gitignore</code>, không bao giờ được đẩy lên kho mã nguồn.
+				<code>keyAlias</code>, <code>keyPassword</code> — "chìa khoá" chứng minh bạn là chủ app. Sách còn nhắc điều
+				thứ hai không sửa được: sau khi app đã publish, <strong>mọi bản cập nhật phải dùng đúng keystore đó</strong>
+				— mất nó là mất luôn khả năng cập nhật app của chính mình.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>15. Bạn thêm <code>keys.properties</code> vào <code>.gitignore</code>, nhưng <code>git status</code> vẫn báo file đó có thay đổi. Vì sao?</legend>
+			<label><input type="radio" name="q15" value="a" /> Vì phải chạy <code>git gc</code> để Git đọc lại <code>.gitignore</code></label>
+			<label><input type="radio" name="q15" value="b" /> Vì <code>.gitignore</code> phải nằm trong thư mục module, không phải gốc project</label>
+			<label><input type="radio" name="q15" value="c" /> Vì <code>.gitignore</code> chỉ tác động tới file <strong>chưa</strong> được track; file đã commit trước đó vẫn tiếp tục được theo dõi</label>
+			<p class="explain" hidden>
+				Muốn bỏ hẳn: <code>git rm --cached keys.properties</code> rồi commit. Đây không phải câu hỏi lý thuyết —
+				chính repo <code>aaf-materials</code> <strong>đang track</strong> file <code>keys.properties</code> của
+				project <code>final</code> chapter này, dù sách vừa dặn đừng commit. Ở đó vô hại vì nội dung chỉ là
+				placeholder, nhưng nó là ví dụ sống của sai lầm rất phổ biến này.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="b">
-			<legend>3. Version Catalog (<code>libs.versions.toml</code>) giúp ích gì?</legend>
-			<label><input type="radio" name="q3" value="a" /> Tự động đăng app lên Google Play Store</label>
-			<label><input type="radio" name="q3" value="b" /> Gom version + thư viện + plugin vào đúng 1 file, tránh version rải rác nhiều nơi và dễ quên cập nhật</label>
-			<label><input type="radio" name="q3" value="c" /> Thay thế hoàn toàn Android Gradle Plugin (AGP)</label>
+			<legend>16. Bạn clone project <code>final</code> về mà không có <code>keys.properties</code> (vì file này lẽ ra bị ignore). Gradle sync sẽ thế nào?</legend>
+			<label><input type="radio" name="q16" value="a" /> Sync bình thường; chỉ khi build <code>release</code> mới báo lỗi thiếu keystore</label>
+			<label><input type="radio" name="q16" value="b" /> Sync <strong>fail ngay</strong> với <code>FileNotFoundException</code>, vì dòng <code>keysProperties.load(FileInputStream(...))</code> không kiểm tra file có tồn tại</label>
+			<label><input type="radio" name="q16" value="c" /> Gradle tự tạo file <code>keys.properties</code> rỗng</label>
 			<p class="explain" hidden>
-				Version Catalog không thay thế AGP — nó chỉ là nơi khai báo tập trung version của dependency/plugin,
-				giúp mọi module trong project tham chiếu version theo kiểu type-safe thay vì gõ tay version ở nhiều
-				chỗ khác nhau.
+				Và app chưa build được một dòng nào. Vá chỉ mất ba dòng: bọc lệnh <code>load</code> trong
+				<code>if (keysPropertiesFile.exists())</code>. Khi đó thiếu file thì <code>keysProperties</code> chỉ rỗng —
+				bản <code>debug</code> vẫn build bình thường, tức là hành vi mà đáp án a mô tả. Đây là kiến thức bổ sung,
+				sách không nói.
 			</p>
 		</fieldset>
 
+		<fieldset data-answer="a">
+			<legend>17. Sách in <code>kotlinCompilerExtensionVersion = "1.5.1"</code> trong đoạn giải thích, nhưng <code>"1.5.3"</code> ở listing kết quả ngay sau đó. Nên theo con số nào?</legend>
+			<label><input type="radio" name="q17" value="a" /> <code>1.5.3</code> — project mẫu dùng số này, và bảng tương thích của Google cho thấy đó là bản đúng cho Kotlin <code>1.9.10</code></label>
+			<label><input type="radio" name="q17" value="b" /> <code>1.5.1</code> — đoạn giải thích luôn chính xác hơn listing</label>
+			<label><input type="radio" name="q17" value="c" /> Số nào cũng được, Compose compiler không cần khớp với Kotlin</label>
+			<p class="explain" hidden>
+				Compose compiler <strong>phải</strong> khớp với version Kotlin — đây là một trong những cặp version chặt
+				nhất trong hệ Android. Đáp án c sai hoàn toàn: lệch cặp này thì build fail với thông báo nói rõ bản Kotlin
+				nào cần bản compiler nào. Đây cũng là lý do từ Kotlin 2.0 trở đi Google bỏ hẳn cách khai này và thay bằng
+				plugin <code>org.jetbrains.kotlin.plugin.compose</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>18. Bạn đổi <code>build.gradle.kts</code>, bỏ qua banner "Sync now", rồi bấm Run. Kết quả?</legend>
+			<label><input type="radio" name="q18" value="a" /> Build fail, Gradle từ chối build khi chưa sync</label>
+			<label><input type="radio" name="q18" value="b" /> Gradle tự sync trước khi build, không có gì xảy ra</label>
+			<label><input type="radio" name="q18" value="c" /> App <strong>vẫn build ra được</strong>, nhưng dùng <em>cấu hình hợp lệ trước đó</em> — thay đổi bạn vừa gõ không có tác dụng</label>
+			<p class="explain" hidden>
+				Đây là chỗ đáng nhớ nhất trong phần sync của sách, vì nó không báo lỗi gì: app chạy, mọi thứ trông ổn, chỉ
+				là thay đổi của bạn "không ăn". Rất dễ mất cả buổi để tìm hiểu "vì sao sửa mà không thấy tác dụng". Quy
+				tắc: <strong>sync mỗi lần đổi file Gradle</strong>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>19. Mở một project Android mới tạo bằng Android Studio bản 2026, bạn thấy khối <code>kotlinOptions</code> đã biến mất. Vì sao?</legend>
+			<label><input type="radio" name="q19" value="a" /> Vì project mới không dùng Kotlin nữa</label>
+			<label><input type="radio" name="q19" value="b" /> Vì từ AGP 9.0, Kotlin được tích hợp sẵn (built-in Kotlin): plugin <code>org.jetbrains.kotlin.android</code> bị bỏ, và <code>android.kotlinOptions</code> chuyển thành <code>kotlin &#123; compilerOptions &#125;</code></label>
+			<label><input type="radio" name="q19" value="c" /> Vì <code>kotlinOptions</code> đã chuyển vào <code>settings.gradle.kts</code></label>
+			<p class="explain" hidden>
+				Concept trong sách vẫn đúng nguyên — chỉ cú pháp đổi. Trong <code>compilerOptions</code> mới, giá trị dùng
+				<em>enum có kiểu</em> thay vì chuỗi, và <code>jvmTarget</code> thường không cần khai vì nó lấy theo
+				<code>android.compileOptions.targetCompatibility</code>. Nghĩa là khối <code>compileOptions</code> mà sách
+				bảo xoá lại <em>quan trọng hơn</em> so với hồi 2023 — thêm một lý do giữ nó như project <code>final</code>
+				đã làm.
+			</p>
+		</fieldset>
 		<button type="submit">Kiểm tra đáp án</button>
 		<p id="quiz-score" hidden></p>
 	</form>
@@ -53,7 +301,7 @@
 	<h2>Bài tập nhỏ</h2>
 	<div class="exercise">
 		<p>
-			Đây là trích đoạn thật từ mục <code>[versions]</code> trong file
+			<strong>Bài tập 1 — đọc Version Catalog.</strong> Đây là trích đoạn thật từ mục <code>[versions]</code> trong file
 			<code>aaf-materials/04-gradle-basics-a-look-behind-the-curtain/projects/final/gradle/libs.versions.toml</code>
 			(dòng 1–10):
 		</p>
@@ -78,6 +326,125 @@ lifecycle-runtime-ktx = "2.6.2"</code></pre>
 				Nhờ khai báo tập trung kiểu này, nếu sau này muốn nâng cấp Kotlin, chỉ cần sửa đúng 1 dòng ở đây —
 				mọi chỗ khác trong project tham chiếu qua <code>version.ref = "kotlin"</code> sẽ tự động dùng version
 				mới, không cần sửa tay từng file.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<p>
+			<strong>Bài tập 2 — lần theo một dependency từ TOML về file build.</strong> Vẫn trong project
+			<code>04-gradle-basics-a-look-behind-the-curtain/projects/final/</code>, mở hai file cạnh nhau:
+			<code>gradle/libs.versions.toml</code> và <code>app/build.gradle.kts</code>. Trả lời bằng cách
+			<em>tìm trong file</em>, không đoán:
+		</p>
+		<ol>
+			<li>
+				Dòng <code>implementation(libs.bundles.compose)</code> trong <code>app/build.gradle.kts</code> thật sự kéo vào
+				<strong>bao nhiêu</strong> thư viện? Tên chúng là gì?
+			</li>
+			<li>
+				Trong số đó, thư viện nào <strong>không có</strong> <code>version.ref</code> ở mục <code>[libraries]</code>? Ai
+				cung cấp version cho chúng?
+			</li>
+			<li>
+				Bundle <code>compose-debug</code> được dùng ở configuration nào trong <code>app/build.gradle.kts</code>? Nếu đổi
+				nó thành <code>implementation</code> thì bản release thay đổi thế nào?
+			</li>
+		</ol>
+		<details>
+			<summary>Đáp án</summary>
+			<p>
+				(1) <strong>Bốn</strong> thư viện — mở mục <code>[bundles]</code> (dòng 42–47) sẽ thấy
+				<code>compose = ["androidx-compose-material3", "androidx-compose-ui-ui-graphics", "androidx-compose-ui-ui",
+				"androidx-compose-ui-ui-tooling-preview"]</code>. Đây chính là cái giá của bundles mà mục 10 của bài học nói:
+				đọc một dòng thì không biết nó gồm gì.
+			</p>
+			<p>
+				(2) <strong>Cả bốn</strong> đều không có <code>version.ref</code> — chúng chỉ khai <code>group</code> và
+				<code>name</code>. Version đến từ <strong>Compose BOM</strong>, được thêm vào qua
+				<code>implementation(composeBom)</code> ngay phía trên.
+			</p>
+			<p>
+				(3) <code>debugImplementation(libs.bundles.compose.debug)</code> — nó gồm <code>ui-tooling</code> (dựng
+				<code>@Preview</code>) và <code>ui-test-manifest</code>. Đổi sang <code>implementation</code> thì hai thư viện
+				công cụ này bị <strong>đóng gói vào bản release</strong>, làm app to hơn vô ích — người dùng không bao giờ cần
+				chúng.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<p>
+			<strong>Bài tập 3 — tìm bảy chỗ sách lệch với project mẫu.</strong> Mở
+			<code>projects/starter/app/build.gradle.kts</code> và <code>projects/final/app/build.gradle.kts</code>. Đối chiếu
+			với những gì bài học ghi lại và trả lời:
+		</p>
+		<ol>
+			<li>
+				Sách yêu cầu xoá <strong>ba</strong> khối (<code>vectorDrawables</code>, <code>packaging</code>,
+				<code>compileOptions</code>). Project <code>final</code> thật xoá mấy khối? Khối nào được giữ lại?
+			</li>
+			<li>
+				So <code>starter/app/build.gradle.kts</code> với <code>final/app/build.gradle.kts</code>: khối
+				<code>signingConfigs</code> nằm trước hay sau <code>buildTypes</code>? Vì sao thứ tự đó là <em>bắt buộc</em>?
+			</li>
+			<li>
+				Mở <code>final/app/src/androidTest/java/com/kodeco/chat/ExampleInstrumentedTest.kt</code>. Sau khi bạn thêm
+				<code>applicationIdSuffix = ".debug"</code>, test này còn pass không? Sửa nó theo cách nào để không phải nhớ
+				chuỗi package?
+			</li>
+		</ol>
+		<details>
+			<summary>Đáp án</summary>
+			<p>
+				(1) Chỉ <strong>hai</strong> khối bị xoá thật: <code>vectorDrawables</code> và <code>packaging</code>. Khối
+				<code>compileOptions</code> <strong>vẫn còn</strong> ở dòng 48–51 của <code>final</code>. Giữ lại là an toàn hơn
+				— xem mục 7.4 và mục 14 của bài học: với toolchain hiện nay, <code>compileOptions.targetCompatibility</code>
+				còn ảnh hưởng tới cả <code>jvmTarget</code> của Kotlin.
+			</p>
+			<p>
+				(2) <code>signingConfigs</code> ở dòng 27–34, <code>buildTypes</code> ở dòng 35–47 — tức
+				<strong>trước</strong>. Bắt buộc, vì <code>buildTypes</code> gọi
+				<code>signingConfigs.getByName("release")</code>, và Kotlin DSL chạy tuần tự từ trên xuống: chưa
+				<code>create("release")</code> thì lệnh tìm sẽ lỗi.
+			</p>
+			<p>
+				(3) <strong>Không pass.</strong> Dòng 53 assert <code>"com.kodeco.chat"</code> còn
+				<code>appContext.packageName</code> giờ là <code>"com.kodeco.chat.debug"</code>. Cách sửa gọn nhất là dùng
+				<code>BuildConfig.APPLICATION_ID</code> thay chuỗi cứng — nó tự đúng cho mọi build variant, kể cả khi sau này
+				bạn đổi suffix.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<p>
+			<strong>Bài tập 4 — sửa một file build hỏng.</strong> Đoạn dưới đây là một
+			<code>app/build.gradle.kts</code> giả lập (không phải code thật của project), có <strong>ba</strong> lỗi. Tìm cả ba:
+		</p>
+		<pre class="quiz-code"><code>{brokenGradleCode}</code></pre>
+		<details>
+			<summary>Đáp án</summary>
+			<ol>
+				<li>
+					<strong><code>plugins</code> có <code>version</code>.</strong> Ở file <em>module-level</em>, plugin chỉ khai ID
+					— version đã nằm ở file top-level (hoặc trong Version Catalog). Ghi version ở cả hai nơi là nhân đôi nguồn sự
+					thật, và Gradle sẽ báo lỗi khi plugin đã được resolve ở cấp trên.
+				</li>
+				<li>
+					<strong><code>signingConfigs</code> nằm sau <code>buildTypes</code>.</strong> Dòng
+					<code>signingConfigs.getByName("release")</code> chạy trước lúc config được tạo → không tìm thấy.
+				</li>
+				<li>
+					<strong><code>excludes = </code> thay vì <code>excludes += </code>.</strong> Dùng <code>=</code> sẽ
+					<em>thay thế</em> toàn bộ danh sách loại trừ mặc định thay vì thêm vào — một lỗi âm thầm, chỉ lộ ra khi đóng
+					gói bị conflict file.
+				</li>
+			</ol>
+			<p>
+				Còn một chỗ <em>không</em> phải lỗi nhưng đáng để ý: <code>compileSdk = 34</code> mà
+				<code>targetSdk = 30</code> là hợp lệ về cú pháp, chỉ là không nên — sách khuyên giữ
+				<code>targetSdk</code> bằng <code>compileSdk</code>.
 			</p>
 		</details>
 	</div>
@@ -114,101 +481,3 @@ lifecycle-runtime-ktx = "2.6.2"</code></pre>
 		}
 	});
 </script>
-
-<style>
-	.quiz h2 {
-		margin-top: 2.2rem;
-		font-size: 1.15rem;
-		color: #1a202c;
-		border-bottom: 1px solid #e2e8f0;
-		padding-bottom: 0.35rem;
-	}
-	.intro {
-		color: #718096;
-		font-size: 0.9rem;
-	}
-	fieldset {
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 0.9rem 1.1rem;
-		margin-bottom: 1rem;
-		background: #fff;
-	}
-	fieldset.correct {
-		border-color: #68d391;
-		background: #f0fff4;
-	}
-	fieldset.incorrect {
-		border-color: #fc8181;
-		background: #fff5f5;
-	}
-	legend {
-		font-weight: 600;
-		font-size: 0.92rem;
-		padding: 0 0.3rem;
-	}
-	label {
-		display: block;
-		font-size: 0.9rem;
-		margin: 0.35rem 0;
-		color: #2d3748;
-	}
-	.explain {
-		margin-top: 0.6rem;
-		font-size: 0.85rem;
-		color: #4a5568;
-		border-top: 1px dashed #e2e8f0;
-		padding-top: 0.5rem;
-	}
-	button[type="submit"] {
-		background: #2b6cb0;
-		color: #fff;
-		border: none;
-		padding: 0.55rem 1.1rem;
-		border-radius: 8px;
-		font-size: 0.9rem;
-		cursor: pointer;
-	}
-	button[type="submit"]:hover {
-		background: #2c5282;
-	}
-	#quiz-score {
-		margin-top: 0.8rem;
-		font-weight: 600;
-		color: #2d3748;
-	}
-	.exercise {
-		background: #fff;
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 1rem 1.2rem;
-		font-size: 0.92rem;
-		line-height: 1.6;
-		color: #2d3748;
-	}
-	.exercise pre {
-		background: #1a202c;
-		color: #e2e8f0;
-		padding: 0.6rem 0.9rem;
-		border-radius: 6px;
-		overflow-x: auto;
-		font-size: 0.85rem;
-	}
-	.exercise code {
-		background: #edf2f7;
-		padding: 0.1rem 0.35rem;
-		border-radius: 4px;
-	}
-	.exercise pre code {
-		background: none;
-		padding: 0;
-	}
-	details {
-		margin-top: 0.8rem;
-		font-size: 0.88rem;
-	}
-	details summary {
-		cursor: pointer;
-		color: #2b6cb0;
-	}
-</style>

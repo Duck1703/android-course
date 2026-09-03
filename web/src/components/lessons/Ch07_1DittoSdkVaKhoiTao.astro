@@ -1,0 +1,575 @@
+---
+// Lesson Chapter 7: Advanced Architecture — viết lại hoàn toàn ở Task 44 (Phase 5 "Depth pass").
+// Nguồn chính (source of truth): content/book/ch07-advanced-architecture.md (456 dòng).
+// Project minh hoạ: aaf-materials/07-advanced-architecture/projects/{starter,final}/ (app "Kodeco Chat").
+// Mọi số dòng trích dẫn trong bài đã mở file thật để kiểm bằng Read tool trước khi viết.
+// Giải thích tự viết tiếng Việt — không copy nguyên văn sách (xem CLAUDE.md mục Bản quyền).
+// Chapter 7 là chapter cuối mạch app "Kodeco Chat" (ch5 → ch6 → ch7, package com.kodeco.chat).
+// [TASK48] Chuong 7.1 — Ditto SDK: cài, xin quyền, giấu App ID, khởi tạo
+
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/07-advanced-architecture/projects/final/app/src/main/java/com/kodeco/chat";
+
+const FINAL_ROOT = "aaf-materials/07-advanced-architecture/projects/final";
+
+const BOOK = "content/book/ch07-advanced-architecture.md";
+
+const tomlCode = `[versions]
+# ... các version đã có từ chapter 5, 6 ...
+ditto = "4.5.0"
+
+[libraries]
+# ... các thư viện đã có ...
+ditto = { module = "live.ditto:ditto", version.ref = "ditto" }`;
+
+const gradleDepCode = `dependencies {
+  // ... các dependency đã có ...
+  implementation(libs.ditto)
+}`;
+
+const checkPermissionsCode = `private fun checkPermissions() {
+  val missing = DittoSyncPermissions(this).missingPermissions()
+  if (missing.isNotEmpty()) {
+    this.requestPermissions(missing, 0)
+  }
+}`;
+
+const keysLoaderCode = `// nằm GIỮA block plugins { } và block android { }
+val keystorePropertiesFile = rootProject.file("keys.properties")
+val keysProperties = Properties()
+keysProperties.load(FileInputStream(keystorePropertiesFile))`;
+
+const keysPropertiesCode = `DITTO_APP_ID=dán-app-id-của-bạn-vào-đây
+DITTO_TOKEN=dán-playground-token-của-bạn-vào-đây`;
+
+const buildConfigFieldCode = `buildTypes {
+  release {
+    // ... minifyEnabled, proguard ... giữ nguyên
+    buildConfigField("String", "DITTO_APP_ID", keysProperties["DITTO_APP_ID"] as String)
+    buildConfigField("String", "DITTO_TOKEN", keysProperties["DITTO_TOKEN"] as String)
+  }
+  debug {
+    buildConfigField("String", "DITTO_APP_ID", keysProperties["DITTO_APP_ID"] as String)
+    buildConfigField("String", "DITTO_TOKEN", keysProperties["DITTO_TOKEN"] as String)
+  }
+}
+
+buildFeatures {
+  compose = true
+  buildConfig = true
+}`;
+
+const dittoHandlerCode = `class DittoHandler {
+  companion object {
+    lateinit var ditto: Ditto
+  }
+}`;
+
+const setupDittoCode = `private fun setupDitto() {
+  val androidDependencies = DefaultAndroidDittoDependencies(applicationContext)
+  DittoLogger.minimumLogLevel = DittoLogLevel.DEBUG
+  ditto = Ditto(
+    androidDependencies,
+    DittoIdentity.OnlinePlayground(
+      androidDependencies,
+      appId = BuildConfig.DITTO_APP_ID,
+      token = BuildConfig.DITTO_TOKEN
+    )
+  )
+  ditto.startSync()
+}`;
+
+const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
+  super.onCreate(savedInstanceState)
+  setContent {
+    // ... toàn bộ UI ...
+  }
+  checkPermissions()
+  setupDitto()
+}`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<p><strong>Sau bài này bạn sẽ:</strong></p>
+		<ul>
+			<li>Hiểu <strong>Repository pattern</strong> là gì, giải quyết vấn đề gì, và vì sao nó là lớp cuối cùng còn thiếu của app Kodeco Chat.</li>
+			<li>Biết cách gắn một SDK bên thứ ba (Ditto) vào project qua <em>version catalog</em>, và cách giấu App ID / token khỏi git bằng <code>keys.properties</code> + <code>BuildConfig</code>.</li>
+			<li>Đọc hiểu <code>RepositoryImpl</code>: singleton, <code>MutableStateFlow</code>, subscription và live query — cơ chế biến dữ liệu thay đổi ở máy khác thành UI cập nhật ở máy bạn.</li>
+			<li>Nối được toàn bộ đường dây: Ditto → Repository → <code>combine()</code> trong ViewModel → <code>collectAsStateWithLifecycle</code> → Compose vẽ lại.</li>
+			<li>Nhận ra những chỗ code thật trong project <em>khác</em> với listing in trong sách, và những chỗ SDK 2026 đã đổi so với bản 4.5.0 của sách.</li>
+		</ul>
+	</div>
+
+	<h2 id="vi-sao">Vì sao chapter này quan trọng</h2>
+
+	<p>
+		Hai chapter trước bạn đã xây xong phần <em>trông thấy được</em> của app Kodeco Chat: danh sách tin nhắn cuộn được,
+		bong bóng chat trái–phải, ô nhập tin, emoji picker, thanh app bar. Nhưng có một sự thật hơi phũ: app đó
+		<strong>chưa phải một app chat</strong>. Nó là một bản demo giao diện. Dữ liệu nó hiển thị nằm cứng trong file
+		<code>FakeData.kt</code> — ba tin nhắn của hai người tên Fuad và Sally, đóng băng ở thời điểm
+		<code>2023-11-16T05:48:01Z</code>. Bạn gõ tin mới thì tin đó được <code>add(0, ...)</code> vào một
+		<code>MutableList</code> trong RAM, và biến mất ngay khi bạn tắt app.
+	</p>
+
+	<p>
+		Chapter 7 là chapter làm cho nó thành app thật. Nhưng cách sách chọn để làm điều đó đáng chú ý: nó
+		<strong>không</strong> dạy bạn dựng một server, viết REST API, hay cắm Firebase. Nó dùng một SDK gọi là
+		<strong>Ditto</strong>, và Ditto có một tính chất khiến bài học này khác hẳn một bài "gọi API" thông thường:
+		các thiết bị nói chuyện <em>trực tiếp</em> với nhau qua Bluetooth và Wi-Fi, không cần internet, không cần server ở giữa.
+		Hai cái điện thoại đặt cạnh nhau trong một căn phòng không có mạng vẫn chat được với nhau.
+	</p>
+
+	<p>
+		Điều đó tạo ra hai bài học chồng lên nhau, và bạn nên tách chúng ra trong đầu ngay từ đầu:
+	</p>
+
+	<ol>
+		<li>
+			<strong>Bài học về kiến trúc</strong> — Repository pattern. Cái này <em>vĩnh viễn đúng</em>: nó không phụ thuộc Ditto,
+			không phụ thuộc phiên bản, và bạn sẽ dùng lại nó ở Chương 8 (Networking), Chương 9 (Data Store), Chương 10 (Room).
+			Đây là phần đáng học kỹ nhất.
+		</li>
+		<li>
+			<strong>Bài học về một SDK cụ thể</strong> — Ditto 4.5.0. Cái này <em>đã cũ</em> tại thời điểm bạn đọc (2026).
+			Tên thư viện đã đổi, cách khởi tạo đã đổi, cách truy vấn đã đổi. Học nó để hiểu <em>mô hình</em>
+			(sync engine, subscription, live query, document store), đừng học để copy nguyên cú pháp.
+		</li>
+	</ol>
+
+	<div class="callout note">
+		<p>
+			<strong>Cảnh báo thực tế trước khi bạn mở project.</strong> Project <code>final</code> của chapter này
+			<strong>không build được ngay khi tải về</strong>. File <code>app/build.gradle.kts</code> đọc
+			<code>keys.properties</code> ở dòng 43–45, nhưng file đó nằm trong <code>.gitignore</code> nên không được ship kèm.
+			Gradle sẽ ném lỗi ngay ở bước <em>configuration</em> (trước cả khi compile). Bạn phải tự tạo file đó — mục
+			<a href="#keys-properties">Giấu App ID khỏi git</a> hướng dẫn chi tiết. Đây không phải lỗi của bạn.
+		</p>
+	</div>
+
+	<h2 id="ditto-la-gi">Ditto SDK là gì — mô hình local-first</h2>
+
+	<p>
+		Trước khi gõ dòng code nào, cần hiểu Ditto <em>khác</em> mô hình bạn quen ở đâu. Mô hình quen thuộc — gọi là
+		<strong>client–server</strong> — trông như thế này: app của bạn là client, mọi dữ liệu nằm ở server, muốn đọc thì gửi
+		request, muốn ghi thì gửi request. Không có mạng thì không có gì cả.
+	</p>
+
+	<p>
+		Ditto là <strong>peer-to-peer</strong> (P2P, ngang hàng) và <strong>local-first</strong> (ưu tiên cục bộ). Cụ thể:
+	</p>
+
+	<ul>
+		<li>
+			Mỗi thiết bị có <strong>một bản database đầy đủ của riêng nó</strong>, nằm ngay trong máy. Đọc và ghi luôn xảy ra
+			trên bản local đó, nên luôn nhanh và luôn hoạt động — kể cả ở chế độ máy bay.
+		</li>
+		<li>
+			Ditto tự dò các thiết bị khác đang chạy cùng app ở gần đó, qua <strong>Bluetooth Low Energy</strong>,
+			<strong>Wi-Fi Aware / Wi-Fi Direct</strong>, và LAN. Nó tự chọn đường truyền tốt nhất và tự chuyển khi đường đó đứt.
+			Cái này gọi là <em>mesh network</em> (mạng lưới).
+		</li>
+		<li>
+			Khi hai bản database gặp nhau, chúng <strong>hợp nhất thay đổi</strong> của nhau. Không phải "ai ghi sau thì thắng
+			toàn bộ" mà hợp nhất ở mức từng field, theo một tập quy tắc toán học đảm bảo mọi thiết bị rồi sẽ đi đến cùng một
+			kết quả bất kể thứ tự gặp nhau. Ditto gọi tính chất này là <em>eventual consistency</em> (rồi cũng nhất quán).
+		</li>
+		<li>
+			Cloud là <strong>tuỳ chọn</strong>, không bắt buộc. Nếu có internet, Ditto Big Peer trên cloud tham gia mesh như một
+			peer nữa — nó chỉ là một thành viên to hơn, không phải "nguồn sự thật" mà các máy khác phải xin phép.
+		</li>
+	</ul>
+
+	<div class="callout">
+		<p>
+			<strong>Mental model:</strong> đừng hình dung "app gọi server". Hình dung <em>mỗi máy có một quyển sổ giống nhau</em>.
+			Bạn viết vào sổ của mình ngay lập tức, không cần hỏi ai. Khi hai người mang sổ lại gần nhau, họ đọc chéo và chép
+			bổ sung phần thiếu của nhau. Không ai là "sổ gốc". Đây là lý do Repository trong chapter này
+			<strong>không có hàm nào trả về "đang loading"</strong> hay "lỗi mạng" — vì đọc-ghi cục bộ thì không có hai trạng
+			thái đó. Chapter 8 (Networking) mới có, và đó là một khác biệt kiến trúc rất đáng để ý.
+		</p>
+	</div>
+
+	<p>
+		Kiểu app phù hợp với mô hình này: nhân viên kho quét hàng trong tầng hầm không có sóng, phi hành đoàn ghi dữ liệu trên
+		máy bay, thiết bị y tế trong toà nhà bị mất mạng, POS ở hội chợ. Chat trong sách chỉ là ví dụ dễ hình dung nhất.
+	</p>
+
+	<h3 id="dang-ky-ditto">Đăng ký app với Ditto</h3>
+
+	<p>
+		Để hai máy nhận ra nhau là "cùng một app", Ditto cần một danh tính. Bạn lấy nó ở
+		<a href="https://portal.ditto.live" target="_blank" rel="noopener">portal.ditto.live</a>: tạo tài khoản miễn phí, tạo một
+		app mới, rồi lấy <strong>hai chuỗi</strong>:
+	</p>
+
+	<table class="api">
+		<thead>
+			<tr><th>Chuỗi</th><th>Là gì</th><th>Dùng ở đâu</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>App ID</code></td>
+				<td>Định danh app của bạn trong hệ Ditto. Hai thiết bị chỉ sync với nhau nếu cùng App ID.</td>
+				<td><code>BuildConfig.DITTO_APP_ID</code></td>
+			</tr>
+			<tr>
+				<td><code>Playground Token</code></td>
+				<td>Chìa khoá xác thực kiểu "sân chơi": bỏ qua toàn bộ phần permission/identity thật để bạn học nhanh.</td>
+				<td><code>BuildConfig.DITTO_TOKEN</code></td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p class="src">Nguồn: {BOOK} — mục "Registering Your App With Ditto".</p>
+
+	<div class="callout note">
+		<p>
+			<strong>"Playground" nghĩa là gì và vì sao phải nhớ.</strong> Chế độ này cho <em>bất kỳ ai</em> có App ID + token
+			đọc và ghi <em>mọi</em> dữ liệu. Không có phân quyền, không có xác thực người dùng thật. Nó tồn tại để bạn không phải
+			dựng auth server chỉ để chạy thử một app chat. Tuyệt đối không dùng cho app thật có dữ liệu thật — app production
+			phải dùng identity kiểu <code>OnlineWithAuthentication</code> (v4) hoặc provider auth thật (v5).
+			Sách không nói rõ điểm này, nên ghi lại ở đây.
+		</p>
+	</div>
+
+	<h2 id="cai-sdk">Cài SDK: version catalog trước, dependency sau</h2>
+
+	<p>
+		Bước đầu là khai báo thư viện. Chapter 4 đã dạy <em>version catalog</em> — file
+		<code>gradle/libs.versions.toml</code> tập trung mọi số phiên bản vào một chỗ, để không rải rác chuỗi
+		<code>"4.5.0"</code> khắp các file build. Ở đây bạn dùng lại đúng cơ chế đó, hai bước:
+	</p>
+
+	<Code code={tomlCode} lang="toml" theme="github-dark" />
+	<p class="src">Nguồn: {FINAL_ROOT}/gradle/libs.versions.toml — <code>ditto = "4.5.0"</code> ở dòng 7 (block <code>[versions]</code>), <code>ditto = &#123; module = "live.ditto:ditto", version.ref = "ditto" &#125;</code> ở dòng 53 (block <code>[libraries]</code>).</p>
+
+	<p>
+		Đọc lại dòng <code>[libraries]</code> một lần nữa vì nó cô đặc 3 thông tin:
+		<code>module = "live.ditto:ditto"</code> là <em>toạ độ Maven</em> — phần trước dấu hai chấm là group
+		(<code>live.ditto</code>, thường là tên miền ngược của tổ chức), phần sau là artifact (<code>ditto</code>, tên gói).
+		<code>version.ref = "ditto"</code> là con trỏ trỏ về key <code>ditto</code> trong <code>[versions]</code> — đây là
+		lý do bạn chỉ cần sửa <em>một</em> chỗ khi nâng version. Còn tên <code>ditto</code> đứng đầu dòng là <em>alias</em>
+		bạn tự đặt, và alias đó là cái xuất hiện trong Gradle dưới dạng <code>libs.ditto</code>.
+	</p>
+
+	<Code code={gradleDepCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: {FINAL_ROOT}/app/build.gradle.kts — <code>implementation(libs.ditto)</code> ở dòng 127.</p>
+
+	<div class="hint">
+		<strong>Kiến thức thêm (không có trong sách):</strong> <code>libs</code> không phải biến bạn khai báo ở đâu cả — Gradle
+		<em>sinh</em> nó ra từ file <code>.toml</code> lúc build. Đó là lý do Android Studio autocomplete được
+		<code>libs.ditto</code> và tô đỏ nếu bạn gõ sai alias. Nếu autocomplete không thấy, bấm
+		<em>Sync Project with Gradle Files</em> — Gradle chưa đọc lại file toml.
+	</div>
+
+	<h2 id="quyen">Xin quyền: vì sao Ditto cần Bluetooth mà bạn không viết dòng permission nào</h2>
+
+	<p>
+		Ditto dò thiết bị qua Bluetooth và Wi-Fi, nên nó cần cả một chùm permission: <code>BLUETOOTH_SCAN</code>,
+		<code>BLUETOOTH_ADVERTISE</code>, <code>BLUETOOTH_CONNECT</code>, quyền Wi-Fi, và tuỳ phiên bản Android còn cần cả
+		location. Danh sách này thay đổi theo từng API level — một cơn đau đầu kinh điển của Android.
+	</p>
+
+	<p>
+		Điểm đáng để ý: <strong>bạn không hề mở <code>AndroidManifest.xml</code> để thêm permission nào.</strong>
+		Tôi đã kiểm tra file manifest của cả <code>starter</code> và <code>final</code>: <em>không có một thẻ
+		<code>&lt;uses-permission&gt;</code> nào</em>. Lý do là <em>manifest merger</em> — Gradle gộp manifest của app với
+		manifest của mọi thư viện phụ thuộc, và SDK Ditto đã tự khai báo permission của nó trong manifest của chính nó.
+		Khi build, chúng chảy vào manifest cuối cùng của app.
+	</p>
+
+	<p class="src">Đã kiểm: {FINAL_ROOT}/app/src/main/AndroidManifest.xml (60 dòng, <code>&lt;application&gt;</code> ở 39–48, <code>&lt;activity&gt;</code> ở 49–52) và file tương ứng bên <code>starter</code> — cả hai đều 0 thẻ <code>uses-permission</code>.</p>
+
+	<p>
+		Nhưng khai báo trong manifest chỉ là <em>xin phép hệ thống cho quyền tồn tại</em>. Từ Android 6.0, các quyền
+		"nguy hiểm" còn phải được <strong>người dùng bấm đồng ý lúc chạy</strong>. Đó là việc của hàm này:
+	</p>
+
+	<Code code={checkPermissionsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: {FINAL}/MainActivity.kt dòng 84–89. Import cần thêm: <code>live.ditto.transports.DittoSyncPermissions</code>.</p>
+
+	<p>
+		Hàm này ngắn nhưng làm hai việc, và cái hay nằm ở việc thứ nhất:
+	</p>
+
+	<ol class="chain">
+		<li>
+			<code>DittoSyncPermissions(this).missingPermissions()</code> — SDK <em>tự</em> trả về mảng các permission
+			<strong>còn thiếu</strong> trên đúng thiết bị này, đúng phiên bản Android này. Bạn không phải viết
+			<code>if (Build.VERSION.SDK_INT &gt;= ...)</code> để đoán xem Android 12 cần gì mà Android 10 không cần.
+			Đây là kiểu API nên học: thư viện biết rõ nhu cầu của chính nó, nên nó tự khai báo, không đẩy việc cho người dùng thư viện.
+		</li>
+		<li>
+			Nếu mảng không rỗng thì <code>requestPermissions(missing, 0)</code> — mở hộp thoại hệ thống. Số
+			<code>0</code> là <em>request code</em>, mã để phân biệt nhiều lời xin quyền khác nhau khi kết quả trả về.
+		</li>
+	</ol>
+
+	<div class="callout diff">
+		<p>
+			<strong>Chỗ code thật thiếu, và bạn nên biết.</strong> App gọi <code>requestPermissions(...)</code> nhưng
+			<strong>không hề override <code>onRequestPermissionsResult(...)</code></strong> — tôi đã grep toàn project,
+			không có. Nghĩa là app <em>bắn</em> lời xin quyền rồi không quan tâm người dùng bấm gì. Hệ quả thực tế:
+			<code>setupDitto()</code> chạy ngay sau đó, khi quyền có thể còn <em>chưa</em> được cấp, nên Ditto khởi động
+			trong trạng thái không có quyền Bluetooth. Trên bản SDK cũ nó thường vẫn tự nhận quyền ở lần scan sau nên
+			"trông như chạy được"; tài liệu Ditto hiện tại thì yêu cầu gọi <code>ditto.refreshPermissions()</code>
+			sau khi người dùng cấp quyền, nếu không sync sẽ trễ hoặc không bao giờ bắt đầu. Sách không nhắc điều này.
+		</p>
+	</div>
+
+	<h2 id="keys-properties">Giấu App ID khỏi git: keys.properties → BuildConfig</h2>
+
+	<p>
+		Bạn có hai chuỗi bí mật (App ID, token) mà code cần đọc được. Cách sai — và cách rất nhiều người mới làm — là gõ thẳng
+		chuỗi vào file Kotlin. Vấn đề không phải "hacker sẽ đọc được" (APK nào cũng có thể bị dịch ngược); vấn đề là
+		<strong>chuỗi đó vào lịch sử git</strong>, và git không quên. Push lên GitHub public là token của bạn nằm đó mãi mãi,
+		kể cả sau khi bạn xoá dòng đó ở commit sau.
+	</p>
+
+	<p>
+		Cơ chế sách dùng là cơ chế bạn <em>đã gặp ở chapter 4</em> cho keystore signing, giờ tái sử dụng cho secret. Ba bước:
+	</p>
+
+	<h3>Bước 1 — nạp file properties trong build script</h3>
+
+	<Code code={keysLoaderCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: {FINAL_ROOT}/app/build.gradle.kts dòng 43–45. Hai import <code>java.io.FileInputStream</code> và <code>java.util.Properties</code> nằm ở <strong>dòng 1–2</strong>, tức là <em>trên cả comment license</em> ở đầu file.</p>
+
+	<div class="hint">
+		<strong>Vì sao import phải ở dòng 1–2?</strong> Vì <code>build.gradle.kts</code> là một <em>Kotlin script</em>, và Kotlin
+		bắt buộc mọi <code>import</code> phải đứng trước mọi khai báo khác. Comment thì không tính là khai báo, nên về mặt cú
+		pháp import có thể nằm dưới comment — nhưng tác giả đặt lên trên cùng, và đó là chi tiết dễ làm bạn tưởng file bị lỗi
+		khi mở ra. Đặt sai chỗ (ví dụ sau <code>plugins &#123; &#125;</code>) thì Gradle báo lỗi cú pháp ngay.
+	</div>
+
+	<p>
+		Vị trí của <em>ba dòng nạp</em> thì có ràng buộc thật: chúng phải nằm <strong>giữa <code>plugins &#123; &#125;</code> và
+		<code>android &#123; &#125;</code></strong>. Lý do: <code>keysProperties</code> là một biến cục bộ của script, và
+		block <code>android &#123; &#125;</code> ở dưới sẽ đọc nó — Kotlin đọc trên xuống, biến phải được khai báo trước khi dùng.
+		Đặt nó vào trong <code>android &#123; &#125;</code> cũng không sai về cú pháp nhưng làm rối, còn đặt <em>sau</em>
+		<code>android &#123; &#125;</code> thì không compile.
+	</p>
+
+	<h3>Bước 2 — tạo file keys.properties ở gốc project</h3>
+
+	<p>
+		File này nằm cùng cấp với <code>settings.gradle.kts</code>, tức <em>ngoài</em> thư mục <code>app/</code>
+		(chú ý <code>rootProject.file(...)</code> ở dòng nạp — <code>rootProject</code> là gốc, không phải module app):
+	</p>
+
+	<Code code={keysPropertiesCode} lang="properties" theme="github-dark" />
+	<p class="src">Nguồn: {BOOK} — mục "Setting Up Ditto SDK in Your App". File thật không được ship kèm project (xem cảnh báo dưới).</p>
+
+	<div class="callout diff">
+		<p>
+			<strong>Đây là chỗ project final "hỏng" khi tải về.</strong> File <code>{FINAL_ROOT}/.gitignore</code> có dòng
+			<code>keys.properties</code> dưới mục "# Keystore confidential information" — nên tác giả <em>cố tình</em> không
+			commit nó, và điều đó đúng về mặt bảo mật. Nhưng hệ quả: cả <code>starter</code> lẫn <code>final</code> đều không có
+			file này, và <code>keysProperties.load(FileInputStream(keystorePropertiesFile))</code> ở dòng 45 sẽ ném
+			<code>FileNotFoundException</code> ngay lúc Gradle <em>configure</em> project — trước cả khi compile dòng Kotlin nào.
+			Nghĩa là bạn mở project ra là thấy lỗi build ngay, và lỗi không liên quan gì đến code bạn viết.
+			<strong>Cách xử lý:</strong> tự tạo <code>keys.properties</code> ở gốc mỗi project (starter và final riêng), điền
+			App ID + token của bạn. Nếu bạn chỉ muốn <em>đọc code</em> chứ không chạy, điền chuỗi giả cũng đủ để Gradle sync qua.
+		</p>
+	</div>
+
+	<h3>Bước 3 — chuyển properties thành BuildConfig</h3>
+
+	<Code code={buildConfigFieldCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: {FINAL_ROOT}/app/build.gradle.kts — <code>release &#123; &#125;</code> ở dòng 65 với buildConfigField ở 71–72, <code>debug &#123; &#125;</code> ở dòng 74 với buildConfigField ở 75–76, <code>buildFeatures &#123; compose = true; buildConfig = true &#125;</code> ở dòng 86–88.</p>
+
+	<p>
+		Ba điều cần hiểu ở đoạn này:
+	</p>
+
+	<ul>
+		<li>
+			<strong><code>buildConfigField(type, name, value)</code> sinh code Java.</strong> Nó không "đặt biến môi trường" gì cả
+			— nó khiến AGP <em>viết ra</em> một file <code>BuildConfig.java</code> chứa
+			<code>public static final String DITTO_APP_ID = "..."</code>. Vì vậy trong Kotlin bạn đọc được nó như một hằng số
+			bình thường: <code>BuildConfig.DITTO_APP_ID</code>. File đó nằm trong thư mục build sinh tự động, không phải code bạn viết.
+		</li>
+		<li>
+			<strong>Phải khai báo ở <em>cả</em> <code>debug</code> và <code>release</code>.</strong> Mỗi build type sinh
+			<code>BuildConfig</code> riêng. Khai ở <code>debug</code> mà quên <code>release</code> thì app chạy được lúc dev và
+			<em>không compile</em> lúc build bản phát hành — một lỗi rất khó chịu vì nó chỉ hiện ra ở cuối dự án.
+		</li>
+		<li>
+			<strong><code>buildConfig = true</code> là bắt buộc từ AGP 8.</strong> Trước AGP 8, <code>BuildConfig</code> luôn được
+			sinh. Từ AGP 8, Google tắt mặc định (vì phần lớn app không dùng, và sinh thừa thì tốn thời gian build).
+			Không bật cờ này thì <code>BuildConfig</code> đơn giản là <em>không tồn tại</em> và Android Studio báo
+			"Unresolved reference: BuildConfig" — mà thông báo đó không hề gợi ý rằng nguyên nhân nằm ở
+			<code>buildFeatures</code>. Project này dùng AGP 8.2.0.
+		</li>
+	</ul>
+
+	<div class="hint">
+		<strong>Mẹo từ sách, đáng làm thật:</strong> sau khi thêm <code>buildConfigField</code>, chạy
+		<em>Build ▸ Clean Project</em> rồi build lại. <code>BuildConfig.java</code> là file sinh, và đôi khi bản cũ (chưa có
+		field mới) còn nằm trong cache khiến IDE vẫn báo đỏ dù bạn đã khai đúng.
+	</div>
+
+	<p>
+		Một chi tiết nhỏ nhưng đáng chú ý khi bạn so với chapter 4: ở chapter 4 cùng cơ chế <code>keys.properties</code> này
+		được dùng cho <code>signingConfigs &#123; create("release") &#123; ... &#125; &#125;</code> (storeFile, storePassword,
+		keyAlias, keyPassword). Ở project chapter 7 <strong>không có block <code>signingConfigs</code> nào</strong> — tôi đã
+		grep, 0 kết quả. Chỉ có <em>cơ chế nạp file</em> được tái sử dụng, còn nội dung file thì hoàn toàn khác. Đây là kiểu
+		"học một pattern rồi dùng lại cho mục đích khác" — đúng tinh thần chapter 4.
+	</p>
+
+	<h2 id="ditto-handler">DittoHandler: một biến toàn cục, và cái giá của nó</h2>
+
+	<p>
+		Ditto phải được khởi tạo <em>một lần</em> và dùng lại ở nhiều nơi: <code>MainActivity</code> khởi tạo nó,
+		<code>RepositoryImpl</code> truy vấn nó. Sách giải quyết bằng file ngắn nhất của cả chapter:
+	</p>
+
+	<Code code={dittoHandlerCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: {FINAL}/DittoHandler.kt dòng 39–43 (toàn file 43 dòng, phần trên là comment license). Sách hướng dẫn copy file này từ project <code>final</code> sang <code>starter</code>.</p>
+
+	<p>
+		Bốn dòng này gói ba khái niệm Kotlin, và vì đây là chỗ người mới hay tắc nên tách ra:
+	</p>
+
+	<table class="api">
+		<thead>
+			<tr><th>Thành phần</th><th>Nghĩa</th><th>Vì sao ở đây</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>companion object</code></td>
+				<td>Khối thuộc về <em>class</em> chứ không thuộc về từng đối tượng — gần giống <code>static</code> trong Java.</td>
+				<td>Để truy cập được mà không cần tạo <code>DittoHandler()</code>: chỉ cần <code>DittoHandler.Companion.ditto</code>.</td>
+			</tr>
+			<tr>
+				<td><code>lateinit var</code></td>
+				<td>"Tôi hứa sẽ gán giá trị trước khi đọc" — cho phép khai báo một biến không-nullable mà chưa có giá trị.</td>
+				<td>Vì <code>Ditto</code> chỉ tạo được khi đã có <code>Context</code> của Activity, không tạo được lúc class load.</td>
+			</tr>
+			<tr>
+				<td>không có <code>?</code></td>
+				<td>Kiểu là <code>Ditto</code>, không phải <code>Ditto?</code>.</td>
+				<td>Nhờ vậy mọi nơi dùng <code>ditto.store...</code> không phải viết <code>?.</code> hay <code>!!</code>.</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p>
+		Cách import để dùng cho gọn là <code>import com.kodeco.chat.DittoHandler.Companion.ditto</code> — sau dòng đó bạn viết
+		thẳng <code>ditto</code> như một biến toàn cục. Đó là lý do trong <code>RepositoryImpl</code> bạn thấy
+		<code>ditto.store.collection(...)</code> mà không thấy nó được truyền vào từ đâu.
+	</p>
+
+	<div class="callout note">
+		<p>
+			<strong>Cái giá của <code>lateinit</code>, nói thẳng.</strong> Nếu có đường code nào đọc <code>ditto</code>
+			<em>trước khi</em> <code>setupDitto()</code> chạy, app <strong>crash</strong> với
+			<code>UninitializedPropertyAccessException</code> — không phải trả về <code>null</code> để bạn xử lý, mà chết ngay.
+			Và trong project này khoảng nguy hiểm đó <em>có thật</em>, rất hẹp nhưng có: <code>RepositoryImpl</code> được tạo lúc
+			<code>MainViewModel</code> khởi tạo (nghĩa là trong lúc <code>setContent</code> compose lần đầu), trong khi
+			<code>setupDitto()</code> chỉ chạy <em>sau</em> <code>setContent</code>. Xem mục
+			<a href="#thu-tu-goi">Thứ tự gọi</a> để hiểu vì sao nó vẫn không crash.
+		</p>
+		<p>
+			Cách làm tốt hơn trong app thật là <strong>dependency injection</strong> (Hilt/Koin): <code>Ditto</code> được tạo ở
+			tầng Application và <em>tiêm</em> vào Repository qua constructor. Lúc đó compiler và DI framework đảm bảo thứ tự,
+			không phải bạn nhớ. Chính tác giả cũng ghi nhận điều này trong KDoc của <code>RepositoryImpl</code>
+			("Better approach is to use Dependency Injection") — nhưng DI nằm ngoài phạm vi sách này.
+		</p>
+	</div>
+
+	<h2 id="setup-ditto">setupDitto(): khởi tạo engine sync</h2>
+
+	<Code code={setupDittoCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: {FINAL}/MainActivity.kt dòng 91–103. Cần 6 import mới, gồm <code>live.ditto.*</code> và <code>live.ditto.android.DefaultAndroidDittoDependencies</code>, <code>live.ditto.transports.DittoSyncPermissions</code>.</p>
+
+	<p>Đọc từng dòng:</p>
+
+	<ol class="chain">
+		<li>
+			<code>DefaultAndroidDittoDependencies(applicationContext)</code> — Ditto là SDK đa nền tảng (Android, iOS, Rust, JS…),
+			nên phần lõi của nó viết chung, còn những thứ <em>đặc thù nền tảng</em> (thư mục ghi file, quản lý Bluetooth
+			của Android, logging) được gói vào một object "dependencies". Bạn truyền <code>applicationContext</code>
+			<strong>chứ không phải <code>this</code></strong> — vì Ditto sống lâu hơn Activity, giữ tham chiếu Activity sẽ
+			gây memory leak khi Activity bị xoay/hủy.
+		</li>
+		<li>
+			<code>DittoLogger.minimumLogLevel = DittoLogLevel.DEBUG</code> — bật log chi tiết. Với một SDK P2P thì đây gần như
+			bắt buộc lúc học: nó in ra việc dò được peer nào, chọn transport nào, sync bao nhiêu document.
+			Không có log này thì "app không sync" là một hộp đen. Nhớ hạ xuống <code>ERROR</code> ở bản release.
+		</li>
+		<li>
+			<code>DittoIdentity.OnlinePlayground(androidDependencies, appId, token)</code> — danh tính. Chú ý
+			<code>androidDependencies</code> được truyền vào <em>hai lần</em>: một lần cho <code>Ditto</code>, một lần cho
+			<code>Identity</code>. Hơi lặp, và bản v5 đã bỏ kiểu này.
+		</li>
+		<li>
+			<code>ditto.startSync()</code> — <strong>dòng quan trọng nhất</strong>. Trước dòng này, Ditto chỉ là một database
+			cục bộ: đọc-ghi vẫn hoạt động bình thường nhưng không có gì rời khỏi máy. Sau dòng này, engine bắt đầu quảng bá và
+			dò tìm peer, và mesh hình thành. Nếu bạn thấy app chạy, ghi tin nhắn được, nhưng máy kia không nhận —
+			nghi ngờ đầu tiên là dòng này chưa chạy hoặc đã ném exception trước đó.
+		</li>
+	</ol>
+
+	<div class="callout diff">
+		<p>
+			<strong>Không có ai tắt Ditto.</strong> Tôi đã grep toàn project: không có <code>stopSync()</code>,
+			không có <code>ditto.close()</code>, không có <code>onDestroy()</code> trong <code>MainActivity</code>.
+			Engine sync chạy đến khi process bị hệ thống kill. Với một app học thì chấp nhận được; với app thật thì đây là
+			nguồn tiêu pin và là lý do bạn nên gắn vòng đời Ditto vào <code>Application</code> hoặc một
+			foreground service (SDK v5 có <code>DefaultDittoForegroundService</code> cho việc này) chứ không vào Activity.
+		</p>
+	</div>
+
+	<h2 id="thu-tu-goi">Thứ tự gọi trong onCreate(): chi tiết sách nói rõ, và vì sao nó vẫn chạy</h2>
+
+	<Code code={onCreateCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: {FINAL}/MainActivity.kt — <code>onCreate</code> bắt đầu ở dòng 60, <code>setContent</code> ở 62, <code>checkPermissions()</code> ở <strong>dòng 80</strong>, <code>setupDitto()</code> ở <strong>dòng 81</strong> — tức là cả hai đều <em>sau</em> khối <code>setContent</code>.</p>
+
+	<p>
+		Sách nói rõ hai hàm này gọi "ở cuối <code>onCreate()</code>", và code thật đúng như vậy. Nhưng đọc kỹ thì thứ tự này
+		<em>trông có vẻ</em> ngược: <code>setContent</code> dựng UI, UI đọc <code>viewModel.roomMessagesWithUsersFlow</code>,
+		flow đó do <code>RepositoryImpl</code> cấp, và <code>RepositoryImpl</code> dùng <code>ditto</code> —
+		vậy chẳng phải Ditto cần có <em>trước</em> <code>setContent</code> hay sao?
+	</p>
+
+	<p>
+		Câu trả lời làm sáng tỏ khá nhiều về cách Compose và Flow hoạt động, nên đi chậm:
+	</p>
+
+	<ol class="chain">
+		<li>
+			<code>setContent &#123; ... &#125;</code> <strong>không chạy nội dung lambda ngay tại dòng đó</strong> theo nghĩa "chạy xong rồi
+			mới sang dòng sau". Nó đăng ký một cây composition; lần compose đầu tiên xảy ra trong một pha vẽ của khung
+			hiển thị, tức là <em>sau khi <code>onCreate()</code> đã trả về</em>.
+		</li>
+		<li>
+			Vì vậy tại thời điểm CPU chạy đến dòng 80–81, lambda của <code>setContent</code> nhìn chung <em>chưa</em> chạy.
+			<code>MainViewModel</code> chưa được khởi tạo (nó được tạo lazily bởi <code>by viewModels()</code> khi lần đầu
+			được đọc, mà lần đọc đầu nằm trong lambda), nên <code>RepositoryImpl.getInstance()</code> cũng chưa chạy.
+			<code>checkPermissions()</code> và <code>setupDitto()</code> kịp chạy trước.
+		</li>
+		<li>
+			Thêm một lớp an toàn nữa: <code>combine(...)</code> tạo ra một <strong>cold flow</strong> — mã bên trong nó
+			(gồm <code>repository.getAllMessagesForRoom(...)</code>, hàm có side effect gọi vào Ditto) chỉ chạy khi có
+			người <em>collect</em>. Người collect ở đây là <code>collectAsStateWithLifecycle</code>, và nó chỉ collect khi
+			Activity đã ở trạng thái <code>STARTED</code> — muộn hơn <code>onCreate</code> nữa.
+		</li>
+	</ol>
+
+	<div class="callout note">
+		<p>
+			<strong>Nhưng đây là "đúng do may", không phải "đúng do thiết kế".</strong> Sự đúng đắn ở đây phụ thuộc vào ba chi tiết
+			ngầm: composition chạy trễ, <code>by viewModels()</code> khởi tạo lazily, và <code>combine</code> là cold. Đổi một
+			trong ba (ví dụ bạn đọc <code>viewModel.something</code> ở ngay trong <code>onCreate</code> trước
+			<code>setupDitto()</code>, hoặc chuyển sang <code>MutableStateFlow</code> hot khởi tạo trong <code>init</code>) là
+			<code>lateinit</code> nổ. Đặt <code>checkPermissions()</code> + <code>setupDitto()</code>
+			<strong>trước</strong> <code>setContent</code> thì an toàn hơn về mặt logic và không mất gì —
+			đây là một chỗ bạn có thể mạnh dạn làm khác sách.
+		</p>
+	</div>
+
+</section>
+

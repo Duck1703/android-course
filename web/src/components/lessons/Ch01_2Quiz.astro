@@ -1,0 +1,391 @@
+---
+// Quiz + bài tập cho Chương 1.2 — Bốn app component và cách chúng gọi nhau.
+// Phạm vi: mục 4 (4.1–4.5) và mục 5 (5.1) của Ch01_2AppComponent.astro.
+// KHÔNG hỏi sang manifest/resources (Chương 1.3) hay Gradle/phiên bản (Chương 1.4).
+// Ba câu 1, 7, 9 viết lại từ quiz gộp cũ (Ch01Quiz.astro câu 1, 6, 7) — bỏ giọng bám giáo trình,
+// sửa tham chiếu chéo cho đúng chương nhỏ; bảy câu còn lại viết mới trong phạm vi mục 4–5.
+// Mọi con số đối chiếu code đều tự kiểm lại bằng grep trên aaf-materials/ trước khi viết.
+// Quiz chấm bằng vanilla JS phía client; file này có bài sắp thứ tự nên script gồm 2 phần.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		10 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm
+		đúng, nên đọc hết, vì phần giải thích nói thêm vì sao hai đáp án còn lại nghe hợp lý mà vẫn sai.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. Trong bốn app component, loại nào cung cấp màn hình để người dùng tương tác?</legend>
+			<label><input type="radio" name="q1" value="a" /> Service — vì nó chạy liên tục nên giữ được màn hình mở lâu</label>
+			<label><input type="radio" name="q1" value="b" /> Activity</label>
+			<label><input type="radio" name="q1" value="c" /> Broadcast Receiver — vì nó nhận các cú bấm của người dùng rồi vẽ lại màn hình</label>
+			<p class="explain" hidden>
+				<strong>Activity</strong> là loại duy nhất trong bốn loại có giao diện, và cũng là loại bạn dùng nhiều nhất.
+				Service thì ngược lại hoàn toàn: vì mục đích của nó là <em>làm việc</em>, nó không cung cấp bất kỳ tương tác nào
+				với người dùng — không có màn hình nào để "giữ mở". Broadcast Receiver nghe những sự kiện mà <em>hệ thống</em>
+				phát đi (kiểu "máy sắp hết pin", "vừa có mạng lại"), không phải cú bấm trên màn hình, và nó thường chỉ chuyển
+				việc cho component khác chứ không tự vẽ gì.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				2. App nhạc của bạn phải tiếp tục phát nhạc sau khi người dùng chuyển app vào chế độ nền (background). Loại
+				component nào lo việc đó?
+			</legend>
+			<label><input type="radio" name="q2" value="a" /> Activity — chỉ cần tìm cách không cho hệ thống đóng nó lại</label>
+			<label><input type="radio" name="q2" value="b" /> Broadcast Receiver — vì nó là loại duy nhất hoạt động được khi app không hiện trên màn hình</label>
+			<label><input type="radio" name="q2" value="c" /> Service</label>
+			<p class="explain" hidden>
+				<strong>Service</strong> tồn tại đúng để giúp app tiếp tục làm việc ở chế độ nền, và nhạc phát khi bạn đã chuyển
+				app vào nền là ví dụ kinh điển. Đáp án a hấp dẫn vì Activity là loại bạn quen nhất, nhưng Activity gắn với màn
+				hình — dựa vào nó cho một việc phải chạy khi màn hình không còn được nhìn thấy là chọn sai loại công cụ. Đáp án b
+				đúng một nửa: Broadcast Receiver thật sự chạy được khi app không hiện, nhưng bản chất nó là <em>bộ xử lý sự
+				kiện</em> — nhận tin rồi giao việc đi, không phải chỗ cho một việc dài. Mô hình dễ nhớ: Activity là mặt tiền,
+				Service là nhà bếp phía sau; tắt mặt tiền không có nghĩa là bếp ngừng nấu.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				3. Thời đầu Android, một Activity là một màn hình. Ngày nay kiến trúc được ưu tiên là nhiều màn hình trong cùng
+				một Activity. Lý do kỹ thuật đứng sau sự đổi hướng đó là gì?
+			</legend>
+			<label><input type="radio" name="q3" value="a" /> Việc tạo ra và duy trì một Activity có thể tốn nhiều tài nguyên, nên càng ít Activity thì app càng nhẹ</label>
+			<label><input type="radio" name="q3" value="b" /> Android đã bỏ hỗ trợ nhiều Activity, khai báo hơn một Activity sẽ không build được</label>
+			<label><input type="radio" name="q3" value="c" /> Một Activity chỉ hiện được tối đa một màn hình, nên phải gộp lại mới đủ chỗ cho app nhiều màn hình</label>
+			<p class="explain" hidden>
+				Activity là một component <em>nặng</em> của hệ thống — tạo ra và duy trì nó tốn tài nguyên (resource-heavy), nên
+				gom nhiều màn hình vào một Activity là cách làm nhẹ hơn. Đáp án b là chỗ rất dễ nhầm: kiến trúc cũ
+				<em>không sai về mặt chạy được</em>, code nhiều Activity vẫn build và vẫn chạy bình thường — nó chỉ lỗi mốt, và
+				chính vì không có lỗi nào hiện ra nên bạn dễ theo tutorial cũ mà không biết. Đáp án c nói ngược sự thật: đúng ra
+				một Activity <em>chứa được</em> nhiều màn hình, và cách chuyển giữa các màn hình bên trong một Activity là
+				<strong>navigation</strong> trong Compose, học ở Chương 8.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				4. App của bạn cần lưu lại danh sách công thức nấu ăn mà người dùng đã đánh dấu, và <em>không</em> có nhu cầu cho
+				app nào khác đọc. Có nên tạo một Content Provider không?
+			</legend>
+			<label><input type="radio" name="q4" value="a" /> Nên — Content Provider là component chuẩn của Android cho mọi việc lưu dữ liệu</label>
+			<label><input type="radio" name="q4" value="b" /> Không nên — chỉ tạo Content Provider khi bạn thật sự <em>muốn chia sẻ</em> dữ liệu; chỉ để lưu thì có cách phù hợp hơn</label>
+			<label><input type="radio" name="q4" value="c" /> Bắt buộc phải tạo — không có Content Provider thì dữ liệu mất khi tắt app</label>
+			<p class="explain" hidden>
+				Content Provider có hai vai trò, và thứ tự của chúng có ý nghĩa: quản lý — lưu bền (persist) dữ liệu là vai trò
+				cơ bản, còn lợi thế <em>riêng</em> của nó là chia sẻ dữ liệu đó cho app khác (nếu bạn cho phép, app khác thậm chí
+				sửa được). Nguyên tắc là: chỉ dựng Content Provider khi bạn muốn cái lợi thế riêng đó. Đáp án a và c hấp dẫn vì
+				cả hai đều nghe như "đây là cách chính thống", nhưng chúng bỏ qua đúng cái lý do tồn tại của loại component này.
+				Nếu bạn chỉ cần lưu, các lựa chọn phù hợp hơn nằm ở ba chương cuối: <code>DataStore</code> cho thiết lập nhỏ dạng
+				khoá–giá trị (Chương 9), <code>Room</code> cho dữ liệu có cấu trúc và nhiều bản ghi (Chương 10), và lưu có bảo
+				mật (Chương 11).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				5. Broadcast Receiver được mô tả là "thường chỉ chuyển việc". Cụ thể nghĩa là gì?
+			</legend>
+			<label><input type="radio" name="q5" value="a" /> Nó chuyển dữ liệu của app bạn sang app khác đang cần dữ liệu đó</label>
+			<label><input type="radio" name="q5" value="b" /> Nó chuyển app từ chế độ nền sang chế độ hiện trên màn hình khi có sự kiện</label>
+			<label><input type="radio" name="q5" value="c" /> Vì bản chất là bộ xử lý sự kiện (event handler), nó nhận sự kiện rồi giao (delegate) phần việc thật cho một loại component khác làm</label>
+			<p class="explain" hidden>
+				Broadcast Receiver cho app nhận những sự kiện cụ thể mà hệ thống phát đi (broadcast = phát rộng), và người gửi có
+				thể là chính app của bạn hoặc app khác. Nhưng nó chỉ là <em>bộ xử lý sự kiện</em>: nghe được tin rồi đưa việc cho
+				bộ phận có trách nhiệm — giống người nhận điện thoại ở quầy lễ tân, nhiệm vụ không phải tự giải quyết vấn đề. Đáp
+				án a mô tả đúng công việc của <strong>Content Provider</strong>, không phải loại này. Đáp án b nghe hợp lý vì
+				người ta hay tưởng "có sự kiện thì app phải hiện lên", nhưng việc mở màn hình là của Activity, và app hoàn toàn
+				có thể xử lý một sự kiện mà không hiện màn hình nào cả.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				6. Tìm cả bốn loại component trên toàn bộ file <code>AndroidManifest.xml</code> của các project đi kèm khoá học,
+				kết quả là gì?
+			</legend>
+			<label><input type="radio" name="q6" value="a" /> Chỉ có <code>&lt;activity&gt;</code> — mọi project đều có đúng một Activity tên <code>MainActivity</code>; <code>&lt;service&gt;</code>, <code>&lt;provider&gt;</code>, <code>&lt;receiver&gt;</code> đều 0 kết quả</label>
+			<label><input type="radio" name="q6" value="b" /> Cả bốn loại đều xuất hiện, chỉ khác nhau về số lần</label>
+			<label><input type="radio" name="q6" value="c" /> Có nhiều Activity trong mỗi project, nhưng không có ba loại còn lại</label>
+			<p class="explain" hidden>
+				Kết quả tìm kiếm rất dứt khoát: 19 thẻ <code>&lt;activity&gt;</code> trên 19 file manifest — tức đúng
+				<strong>một</strong> Activity cho mỗi project, tên luôn là <code>MainActivity</code> — còn
+				<code>&lt;service&gt;</code>, <code>&lt;provider&gt;</code> và <code>&lt;receiver&gt;</code> không xuất hiện ở
+				đâu cả. (Con số 19 lớn hơn số chương vì phần lớn chương có <em>hai</em> project: một bản
+				<code>starter</code> để bạn làm theo và một bản <code>final</code> đã hoàn thiện.) Đáp án b là cái bẫy tự nhiên
+				nhất: bốn component được trình bày ngang hàng nhau, nên bạn dễ cho rằng project cũng dùng cả bốn — điều đó đúng
+				về mặt <em>kiến thức nền Android</em> nhưng lệch hẳn so với <em>code bạn sẽ gõ</em>. Đáp án c là hình dung theo
+				kiến trúc cũ đã bàn ở câu 3. Kỳ vọng đúng: học Activity để <em>dùng</em>, ba loại kia để <em>nhận diện</em> khi
+				đọc code người khác hoặc đọc tài liệu — chúng vẫn là phần nền tảng của Android, chỉ là khoá học này không có bài
+				thực hành cho chúng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				7. Câu "tất cả component đều là <em>entry point</em> (điểm vào) của app" có nghĩa gì với người từng học Python, C
+				hay Java thuần?
+			</legend>
+			<label><input type="radio" name="q7" value="a" /> App Android có nhiều hàm <code>main()</code>, và bạn chọn gọi cái nào lúc app khởi động</label>
+			<label><input type="radio" name="q7" value="b" /> App Android chạy từ trên xuống dưới như một script, chỉ là dài hơn</label>
+			<label><input type="radio" name="q7" value="c" /> App có thể bắt đầu chạy ở nhiều chỗ khác nhau tuỳ hệ thống cần gì, và <strong>hệ thống gọi bạn</strong> chứ không phải bạn gọi hệ thống</label>
+			<p class="explain" hidden>
+				Hệ thống Android có khả năng khởi chạy app của bạn — hoặc chí ít tạo một process cho nó — để thi hành bất cứ
+				component nào nó đang muốn chạy. Hai tình huống cụ thể: người dùng cố mở app (hệ thống chạy Activity bạn đã đặt
+				làm Activity bắt đầu), hoặc một app khác cần một việc mà app bạn làm được (hệ thống chạy đúng component cần
+				thiết). Đáp án a sai ở chỗ then chốt: vấn đề không phải "có nhiều <code>main()</code> để bạn chọn", mà là
+				<em>bạn không phải người chọn</em>. Đáp án b là mô hình quen của Python hay C — một điểm bắt đầu, chạy tuần tự,
+				hết thì thoát — và đúng cái mô hình đó là thứ Android không dùng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				8. <code>inversion of control</code> (đảo ngược quyền điều khiển) biểu hiện cụ thể nhất ở đâu trong đoạn code
+				Activity bạn đã xem?
+			</legend>
+			<label><input type="radio" name="q8" value="a" /> Ở <code>class MainActivity : ComponentActivity()</code> — dấu hai chấm nghĩa là quyền điều khiển bị đảo sang class cha</label>
+			<label><input type="radio" name="q8" value="b" /> Ở <code>onCreate()</code> — bạn viết hàm đó nhưng không bao giờ tự gọi nó; hệ thống gọi khi component được tạo ra</label>
+			<label><input type="radio" name="q8" value="c" /> Ở việc app luôn phải có đúng một Activity, không được nhiều hơn</label>
+			<p class="explain" hidden>
+				<code>onCreate()</code> là ví dụ sạch nhất: bạn <em>viết sẵn</em> nó rồi <em>chờ được gọi</em> — code của bạn tồn
+				tại để được gọi, không phải để gọi. Một hệ quả hay bị bỏ qua: app của bạn có thể đang chạy trong khi
+				<em>không có màn hình nào</em> hiện lên, ví dụ khi hệ thống chỉ gọi một Broadcast Receiver của bạn. Đáp án a
+				nhầm hai chuyện: dấu <code>:</code> là kế thừa, một quy tắc cú pháp Kotlin, không liên quan đến việc ai gọi ai.
+				Đáp án c mô tả một quan sát về project (câu 6) nhưng đó là <em>lựa chọn kiến trúc</em>, không phải luật của
+				Android, và cũng không nói gì về ai giữ quyền điều khiển. Vòng đời (lifecycle) đầy đủ của cơ chế này là nội dung
+				Chương 3.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>9. Để nói chuyện với một <strong>Content Provider</strong>, bạn dùng gì?</legend>
+			<label><input type="radio" name="q9" value="a" /> Content Resolver</label>
+			<label><input type="radio" name="q9" value="b" /> Intent — vì Intent là cơ chế liên lạc chung cho cả bốn loại component</label>
+			<label><input type="radio" name="q9" value="c" /> Cái nào cũng được, tuỳ bạn thấy cách nào gọn hơn</label>
+			<p class="explain" hidden>
+				Việc dùng cơ chế nào <strong>không do bạn chọn</strong>, mà do <em>loại component</em> quyết định:
+				<strong>Intent</strong> cho Activity, Service và Broadcast Receiver; <strong>Content Resolver</strong> dành riêng
+				cho Content Provider. Đó là lý do đáp án c sai — đây không phải chỗ có hai cách làm tương đương để bạn cân nhắc.
+				Đáp án b sai vì Intent phủ ba loại chứ không phải bốn. Điểm nữa đáng nhớ: Content Resolver
+				<em>hạn chế hơn nhiều</em> so với Intent — nó "chỉ" làm người trung gian giữa một Content Provider và component
+				muốn nói chuyện với nó, chứ không phải một cơ chế nhắn tin đa năng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				10. Cách mô tả nào về <strong>Intent</strong> là chính xác, và vì sao sự phân biệt đó quan trọng?
+			</legend>
+			<label><input type="radio" name="q10" value="a" /> Intent là câu lệnh app bạn dùng để mở trực tiếp một Activity của app khác</label>
+			<label><input type="radio" name="q10" value="b" /> Intent là một <em>tin nhắn app gửi cho hệ thống</em>, chứa mọi thông tin hệ thống cần để biết phải mở component nào — chính hệ thống mới là bên đi mở</label>
+			<label><input type="radio" name="q10" value="c" /> Intent là một quyền (permission) bạn xin để được chạm vào app khác</label>
+			<p class="explain" hidden>
+				Đáp án a là cách hiểu phổ biến nhất và cũng là cách hiểu làm mờ đi điều quan trọng: app của bạn
+				<strong>không</strong> tự tay chạm vào app khác. Bạn ghi nguyện vọng lên một tin nhắn và đưa cho hệ thống — như
+				đưa tờ phiếu yêu cầu cho lễ tân, không phải tự tra chìa vào ổ — rồi hệ thống xem ai nhận được loại việc đó và
+				gọi giúp. Đây là hệ quả trực tiếp của <strong>security sandbox</strong> ở Chương 1.1, mục 3: mọi giao tiếp ra
+				ngoài phải đi qua hệ thống. Nó cũng giải thích một điều bạn thấy hằng ngày: bấm nút "share" thì hiện ra
+				<em>một danh sách</em> app chứ không phải một app cố định, vì bạn không chỉ định — và không cần biết — app nào
+				sẽ nhận. Đáp án c nhầm Intent với permission; Intent không phải thứ phải xin phép, nó là cơ chế nhắn tin. Nhớ
+				thêm: Intent dùng được cả trong nội bộ app (một Activity khởi chạy Activity tiếp theo) và sang app khác.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+
+	<h2>Bài tập</h2>
+	<p class="intro">
+		Bài tập 1 làm ngay trên trang. Bài tập 2 chỉ cần giấy bút hoặc suy nghĩ trong đầu — không cần mở Android Studio.
+	</p>
+
+	<div class="exercise">
+		<h3>Bài tập 1 — Sắp xếp: hệ thống mở app của bạn theo thứ tự nào</h3>
+		<p>
+			Bốn bước dưới đây bị xáo trộn, mô tả chuyện xảy ra từ lúc bạn bấm biểu tượng app tới lúc màn hình hiện ra (xem mục
+			4.1 và 5 của chương này, cùng Chương 1.3, mục 6). Với mỗi bước, chọn số thứ tự đúng (1 đến 4) rồi bấm "Kiểm tra thứ
+			tự":
+		</p>
+		<ul class="order-list" id="boot-order">
+			<li data-correct="3">
+				<select aria-label="Thứ tự cho bước: hệ thống tạo process và khởi chạy Activity">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>Hệ thống tạo process cho app và khởi chạy Activity đó</span>
+			</li>
+			<li data-correct="1">
+				<select aria-label="Thứ tự cho bước: người dùng bấm biểu tượng app">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>Người dùng bấm biểu tượng app trên launcher</span>
+			</li>
+			<li data-correct="4">
+				<select aria-label="Thứ tự cho bước: hệ thống gọi onCreate và Activity dựng giao diện">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>Hệ thống gọi <code>onCreate()</code>, Activity dựng giao diện của mình</span>
+			</li>
+			<li data-correct="2">
+				<select aria-label="Thứ tự cho bước: hệ thống đọc manifest để tìm Activity khởi đầu">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>
+					Hệ thống đọc manifest, tìm Activity có <code>action.MAIN</code> + <code>category.LAUNCHER</code>
+				</span>
+			</li>
+		</ul>
+		<button type="button" id="check-order">Kiểm tra thứ tự</button>
+		<p id="order-result" role="status" aria-live="polite" hidden></p>
+		<details>
+			<summary>Vì sao thứ tự này quan trọng</summary>
+			<p>
+				Cả bốn bước đều do <strong>hệ thống</strong> làm, trừ bước 1. Bạn không viết dòng code nào cho bước 2 và 3 — bạn chỉ
+				<em>khai báo</em> ở manifest rồi <em>chờ được gọi</em> ở bước 4. Đó chính là <strong>inversion of control</strong>
+				trong câu hỏi 8: bạn viết <code>onCreate()</code> nhưng không bao giờ tự gọi nó. Chương 3 sẽ mở rộng bước 4 thành
+				một vòng đời (lifecycle) đầy đủ.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 2 — Chọn component cho 5 tình huống, và nói rõ cách liên lạc</h3>
+		<p>
+			Với mỗi tình huống dưới đây, tự trả lời <strong>hai</strong> câu: (1) loại component nào phù hợp — Activity, Service,
+			Content Provider hay Broadcast Receiver? (2) để khởi chạy hoặc nói chuyện với nó thì dùng <strong>Intent</strong>,
+			dùng <strong>Content Resolver</strong>, hay <em>không cần cơ chế liên lạc nào cả</em>? Nhắc lại nguyên tắc ở mục 5.1
+			của chương này: cơ chế liên lạc không do bạn chọn, nó do loại component quyết định.
+		</p>
+		<ol>
+			<li>App cần tải một file lớn xuống và việc tải phải chạy tiếp sau khi người dùng đã thoát khỏi màn hình.</li>
+			<li>App cần biết máy vừa được cắm sạc.</li>
+			<li>App muốn cho app khác đọc được danh sách công thức nấu ăn của mình.</li>
+			<li>App cần một màn hình để người dùng nhập tin nhắn.</li>
+			<li>App cần mở màn hình chi tiết khi người dùng bấm vào một item trong danh sách.</li>
+		</ol>
+		<details>
+			<summary>Đáp án cho cả 5 tình huống</summary>
+			<p>
+				<strong>1. Tải file lớn khi người dùng đã thoát màn hình → Service, khởi chạy bằng Intent.</strong> Việc phải chạy
+				tiếp khi không còn màn hình nào để nhìn, và bản thân nó không cần tương tác với người dùng — đúng định nghĩa của
+				Service: giúp app tiếp tục làm việc ở chế độ nền, không cung cấp tương tác nào. Đừng nhét việc này vào Activity:
+				Activity gắn với màn hình, mà màn hình thì đã đi rồi.
+			</p>
+			<p>
+				<strong>2. Biết máy vừa được cắm sạc → Broadcast Receiver, và nó được hệ thống gọi tới bằng Intent.</strong> Đây là
+				một sự kiện <em>hệ thống phát đi</em>, không phải điều app bạn tự phát hiện được bằng cách ngồi kiểm tra liên tục.
+				Chú ý điều đã học ở câu 5: Receiver thường chỉ nhận tin rồi chuyển việc — nếu sau khi biết máy đang sạc bạn cần
+				làm một việc dài (ví dụ đồng bộ dữ liệu), phần việc dài đó nên giao cho một component khác, không làm ngay trong
+				Receiver. Đây cũng là chỗ thấy rõ inversion of control: bạn không gọi ai, bạn <em>được gọi</em>.
+			</p>
+			<p>
+				<strong>3. Cho app khác đọc danh sách công thức → Content Provider, và app kia nói chuyện với nó qua Content
+				Resolver.</strong> Đây là <em>duy nhất</em> một trong năm tình huống mà Content Provider là câu trả lời đúng, vì
+				đây là tình huống duy nhất có nhu cầu <strong>chia sẻ</strong> dữ liệu — cái lợi thế riêng của loại component này.
+				Nếu bạn cho phép, app khác còn sửa được dữ liệu đó. Và lưu ý cơ chế: ở đây <strong>không</strong> dùng Intent —
+				Content Provider là loại duy nhất có cơ chế riêng, và Content Resolver hạn chế hơn Intent nhiều, nó chỉ làm người
+				trung gian giữa Content Provider và component muốn nói chuyện với nó.
+			</p>
+			<p>
+				<strong>4. Màn hình nhập tin nhắn → Activity.</strong> Cần giao diện thì chỉ có một lựa chọn trong bốn loại. Về cơ
+				chế liên lạc: nếu đây là màn hình đầu tiên người dùng thấy khi mở app thì <em>bạn</em> không gửi Intent nào cả —
+				hệ thống khởi chạy Activity bắt đầu cho bạn. Câu trả lời "dùng Intent" chỉ đúng khi bạn cần khởi chạy Activity
+				<em>này</em> từ một chỗ khác.
+			</p>
+			<p>
+				<strong>5. Mở màn hình chi tiết khi bấm vào một item → không cần component mới, và cũng không cần Intent.</strong>
+				Đây là tình huống bẫy của bài tập. Theo kiến trúc cũ, mỗi màn hình là một Activity, nên bạn sẽ tạo thêm một
+				Activity rồi gửi Intent để mở nó. Với kiến trúc được ưu tiên hiện nay — <strong>một Activity duy nhất</strong>
+				chứa nhiều màn hình — thì "màn hình chi tiết" chỉ là một màn hình khác <em>bên trong</em> Activity đang có, và
+				việc chuyển sang nó làm bằng <strong>navigation trong Compose</strong> (Chương 8), tức một lời gọi hàm bình thường
+				trong code Kotlin của bạn. Không component mới, không Intent, không lần nào phải nhờ hệ thống.
+			</p>
+			<p>
+				<strong>Rút ra:</strong> hai câu hỏi tách rời nhau. Câu "component nào" trả lời bằng <em>bản chất công việc</em>:
+				có giao diện không, có phải chạy khi không ai nhìn không, có phải phản ứng với sự kiện hệ thống không, có phải
+				chia sẻ ra ngoài không. Câu "liên lạc bằng gì" thì bạn không có quyền chọn — Intent cho Activity, Service,
+				Broadcast Receiver; Content Resolver cho Content Provider. Và như tình huống 5 cho thấy, đôi khi câu trả lời tốt
+				nhất là không thêm component nào cả.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+
+	const checkOrderBtn = document.getElementById("check-order");
+	const orderResultEl = document.getElementById("order-result");
+
+	checkOrderBtn?.addEventListener("click", () => {
+		const items = document.querySelectorAll("#boot-order li");
+		let correctCount = 0;
+
+		items.forEach((li) => {
+			const correctValue = li.getAttribute("data-correct");
+			const select = li.querySelector("select");
+			const picked = select?.value;
+
+			li.classList.remove("correct", "incorrect");
+			if (picked && picked === correctValue) {
+				correctCount++;
+				li.classList.add("correct");
+			} else {
+				li.classList.add("incorrect");
+			}
+		});
+
+		if (orderResultEl) {
+			orderResultEl.textContent = `Kết quả: ${correctCount}/${items.length} bước đúng vị trí.`;
+			orderResultEl.removeAttribute("hidden");
+		}
+	});
+</script>

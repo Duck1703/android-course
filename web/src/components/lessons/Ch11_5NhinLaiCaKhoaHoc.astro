@@ -1,0 +1,384 @@
+---
+// Lesson Chapter 11 — Advanced Storage (chapter CUỐI CÙNG của sách).
+// Viết lại hoàn toàn ở Task 45 theo chuẩn độ sâu (CLAUDE.md mục A/B).
+// Code trích từ aaf-materials/11-advanced-storage/projects/{starter,final}/ — mọi số dòng đã kiểm bằng Read/grep.
+// Đối chiếu thêm với aaf-materials/10-room-db/projects/final/ để làm rõ cái gì đổi khi thêm mã hoá.
+// Nội dung giải thích tự viết tiếng Việt, diễn giải theo content/book/ch11-advanced-storage.md — không copy nguyên văn sách.
+// [TASK48] Chuong 11.5 — Bảng tổng hợp, lỗi thường gặp, và nhìn lại cả khoá học
+
+import { Code } from "astro:components";
+---
+
+<article class="lesson">
+	<h2 id="bang-lech">17. Bảng tổng hợp: sách nói gì, project làm gì, nên theo cái nào</h2>
+
+	<p>
+		Chapter này có nhiều chỗ lệch nhất trong cả sách — 15 chỗ tôi tìm được khi đối chiếu từng dòng. Bảng dưới đây để bạn tra
+		nhanh khi làm theo mà thấy khác.
+	</p>
+
+	<table class="div">
+		<thead>
+			<tr><th>#</th><th>Chủ đề</th><th>Sách in</th><th>Project / thực tế</th><th>Nên theo cái nào</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>1</td><td>Cache quota &amp; thread</td>
+				<td>"you must retrieve this from the main thread"</td>
+				<td>Không có yêu cầu nào như vậy. Ngược lại, <code>getCacheQuotaBytes()</code> là phần <em>nên tránh</em> main thread</td>
+				<td><strong>Ngược lại sách.</strong> Xem mục 3.3</td>
+			</tr>
+			<tr>
+				<td>2</td><td>Snippet ghi file</td>
+				<td>Dùng <code>context.cacheDir</code> / <code>context.filesDir</code> trong Activity</td>
+				<td>Không compile — Activity <em>chính là</em> Context, không có biến <code>context</code></td>
+				<td>Bỏ tiền tố <code>context.</code>, hoặc dùng <code>this</code></td>
+			</tr>
+			<tr>
+				<td>3</td><td>External storage</td>
+				<td>Trình bày <code>getExternalStoragePublicDirectory()</code> như cách dùng được</td>
+				<td>Deprecated từ API 29 (Scoped Storage); thường không ghi được trên máy thật</td>
+				<td><code>getExternalFilesDir()</code> / MediaStore / SAF tuỳ mục đích. Xem mục 6</td>
+			</tr>
+			<tr>
+				<td>4</td><td><code>startActivityForResult</code></td>
+				<td>Có Note nói đã deprecated, nhưng <strong>không đưa code mới</strong></td>
+				<td>Activity Result API là cách hiện tại</td>
+				<td>Dùng <code>registerForActivityResult</code>. Xem mục 7.2</td>
+			</tr>
+			<tr>
+				<td>5</td><td><code>KeyInfo</code></td>
+				<td><code>isInsideSecurityHardware()</code>, mốc API 28/29</td>
+				<td>Tên đúng <code>isInsideSecureHardware()</code>; mốc đúng là <strong>API 31</strong> cho cả deprecation và <code>getSecurityLevel()</code></td>
+				<td>Theo tài liệu. Sách sai cả tên lẫn số</td>
+			</tr>
+			<tr>
+				<td>6</td><td>Vị trí code nối dây</td>
+				<td>Đặt trong <code>MainActivity</code></td>
+				<td><code>RecipeApp.onCreate()</code> (<code>RecipeApp.kt</code> 58–69)</td>
+				<td><strong>Theo project.</strong> <code>repository</code> là của cả app</td>
+			</tr>
+			<tr>
+				<td>7</td><td><code>PASSCODE_KEY</code></td>
+				<td>Viết trần: <code>PASSCODE_KEY</code></td>
+				<td><code>RecipeDatabase.PASSCODE_KEY</code> (nằm trong companion object)</td>
+				<td>Theo project — bản sách không compile</td>
+			</tr>
+			<tr>
+				<td>8</td><td>Tên field prefs</td>
+				<td>Dòng 374 bảo viết <code>prefs = SecurePrefs(this)</code></td>
+				<td><code>securePrefs = SecurePrefs(this)</code> — chính sách đã đổi tên field ở bước trước</td>
+				<td>Theo project. Sách tự mâu thuẫn</td>
+			</tr>
+			<tr>
+				<td>9</td><td>Tên database</td>
+				<td>Không nhắc gì</td>
+				<td>Đổi âm thầm <code>"Recipes"</code> → <code>"recipe_database"</code>; đây cũng là chapter <code>getInstance()</code> thôi làm code chết</td>
+				<td>Biết để không mất dữ liệu người dùng thật. Xem mục 13.3</td>
+			</tr>
+			<tr>
+				<td>10</td><td>Sinh passcode</td>
+				<td><code>kotlin.random.Random</code>, chỉ a–z</td>
+				<td>Giống sách — tức là project cũng có điểm yếu này</td>
+				<td><strong>Không theo cả hai.</strong> Dùng <code>SecureRandom</code>. Xem mục 13.1</td>
+			</tr>
+			<tr>
+				<td>11</td><td>Kiểu passcode</td>
+				<td><code>String</code> rồi <code>toCharArray()</code></td>
+				<td>Giống sách</td>
+				<td>Giữ <code>CharArray</code> và <code>fill('\u0000')</code> sau khi dùng</td>
+			</tr>
+			<tr>
+				<td>12</td><td>Auto Backup</td>
+				<td>Không nhắc</td>
+				<td><code>allowBackup="true"</code> + rule bị comment hết → khôi phục máy mới là mất dữ liệu</td>
+				<td>Phải thêm exclude rules. Xem mục 15</td>
+			</tr>
+			<tr>
+				<td>13</td><td>Version bump</td>
+				<td>Chỉ nói thêm 2 dependency</td>
+				<td>Project nâng thêm 5 version không liên quan</td>
+				<td>Biết để không hoang mang khi so code với <code>final</code></td>
+			</tr>
+			<tr>
+				<td>14</td><td>Code chết còn lại</td>
+				<td>Không nhắc</td>
+				<td><code>RecipeApp.kt</code> giữ import <code>Room</code> (38) + <code>Prefs</code> (39) không dùng; <code>data/Prefs.kt</code> còn nguyên nhưng không ai gọi; <code>ShowRecipeList.kt:58</code> thêm import <code>LocalContext</code> không dùng; <code>IngredientDao.kt:45</code> thêm một dòng trống; <code>MainScreen.kt:68</code> có null-check luôn đúng</td>
+				<td>Xoá được hết. Không ảnh hưởng chạy</td>
+			</tr>
+			<tr>
+				<td>15</td><td>API key</td>
+				<td>Chapter 8 đã dạy cách đưa key ra <code>keys.properties</code></td>
+				<td><code>SpoonacularService.kt:47</code> <em>vẫn</em> hardcode <code>"&lt;Replace with API Key&gt;"</code></td>
+				<td>Theo bài học chapter 8, không theo code chapter 11</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p class="hint">
+		<strong>Nhìn bảng này thế nào cho đúng?</strong> 15 chỗ lệch không có nghĩa là chapter tệ. Ý tưởng của nó đúng và vẫn dùng
+		được nguyên. Nhưng nó cho thấy một điều đáng nhớ hơn bất kỳ API nào: <strong>code trong sách là ảnh chụp của một thời
+		điểm, còn Android thì không đứng yên</strong> — và mảng bảo mật đổi nhanh nhất. Kỹ năng cần rèn không phải là nhớ tên API,
+		mà là biết đối chiếu code mình đang viết với tài liệu hiện tại.
+	</p>
+
+	<h2 id="loi-thuong-gap">18. Lỗi thường gặp khi làm chapter này</h2>
+
+	<table class="api">
+		<thead><tr><th>Triệu chứng</th><th>Nguyên nhân thật</th><th>Cách sửa</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><code>Unresolved reference: getBytes</code></td>
+				<td>IDE auto-import <code>android.database.sqlite.SQLiteDatabase</code> thay vì <code>net.sqlcipher.database.SQLiteDatabase</code></td>
+				<td>Sửa dòng import. Xem mục 13</td>
+			</tr>
+			<tr>
+				<td><code>KeyStoreException: Uninitialized keystore</code></td>
+				<td>Quên gọi <code>load(null)</code> sau <code>KeyStore.getInstance()</code></td>
+				<td>Luôn gọi <code>load(null)</code></td>
+			</tr>
+			<tr>
+				<td><code>SecurityException</code> khi dùng lại <code>Uri</code> đã lưu</td>
+				<td>Không gọi <code>takePersistableUriPermission</code>; quyền chết theo process</td>
+				<td>Xem mục 7.3</td>
+			</tr>
+			<tr>
+				<td><code>UnsatisfiedLinkError</code> sau khi nâng SQLCipher</td>
+				<td>Bản mới bỏ <code>loadLibs</code>, phải tự load native library</td>
+				<td>Gọi <code>System.loadLibrary("sqlcipher")</code>. Xem mục 16.2</td>
+			</tr>
+			<tr>
+				<td>Database Inspector không mở được database</td>
+				<td><strong>Không phải lỗi</strong> — mã hoá đang hoạt động, công cụ không có passcode</td>
+				<td>Không cần sửa gì</td>
+			</tr>
+			<tr>
+				<td>App crash khi mở, chỉ trên máy vừa khôi phục backup</td>
+				<td>Master key không được backup; file mã hoá thì có</td>
+				<td>Thêm exclude rules. Xem mục 15</td>
+			</tr>
+			<tr>
+				<td>Bookmark cũ biến mất sau khi cập nhật app</td>
+				<td>Tên database đổi từ <code>"Recipes"</code> sang <code>"recipe_database"</code></td>
+				<td>Giữ nguyên tên, hoặc viết code di chuyển dữ liệu. Xem mục 13.3</td>
+			</tr>
+			<tr>
+				<td>Ghi được file lúc test trên emulator, hỏng trên máy thật</td>
+				<td>Đang dùng <code>getExternalStoragePublicDirectory()</code> — Scoped Storage chặn</td>
+				<td>Đổi sang <code>getExternalFilesDir()</code> hoặc SAF. Xem mục 6</td>
+			</tr>
+			<tr>
+				<td><code>ActivityNotFoundException</code> / crash khi <code>registerForActivityResult</code></td>
+				<td>Gọi đăng ký muộn (trong onClick) thay vì lúc Activity khởi tạo</td>
+				<td>Đăng ký ở property hoặc <code>onCreate</code>; chỉ <code>launch()</code> mới gọi lúc bấm</td>
+			</tr>
+			<tr>
+				<td>File trong cache biến mất ngẫu nhiên</td>
+				<td>Đúng như hợp đồng của <code>cacheDir</code> — hệ thống được phép xoá</td>
+				<td>Kiểm <code>exists()</code> trước khi dùng, hoặc chuyển sang <code>filesDir</code></td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h2 id="key-points">19. Key Points</h2>
+
+	<p>
+		Sách chỉ có 4 bullet ở mục này — mỏng nhất trong cả cuốn. Dưới đây là bản tôi tự viết, gom cả những gì sách nói lẫn những
+		gì phải đối chiếu project mới thấy.
+	</p>
+
+	<ol class="kp">
+		<li>
+			<strong>Chỗ lưu file quyết định ai đọc được nó.</strong> <code>filesDir</code> là của riêng app và bền;
+			<code>cacheDir</code> là của riêng app nhưng hệ thống được phép xoá; external storage thì liên quan tới quyền và
+			Scoped Storage. Chọn sai chỗ không gây lỗi ngay — nó gây lỗi vài tháng sau, trên máy người khác.
+		</li>
+		<li>
+			<strong><code>cacheDir</code> là một lời hứa, không phải một thư mục.</strong> Đặt gì vào đó nghĩa là bạn cam kết tạo
+			lại được nó. Luôn <code>exists()</code> trước khi dùng lại.
+		</li>
+		<li>
+			<strong>SAF đổi câu hỏi từ "xin quyền" thành "nhờ người dùng chỉ".</strong> Không quyền nào trong manifest, giao diện
+			chọn file thuộc hệ thống chứ không thuộc app, và app chỉ nhận đúng một <code>Uri</code>. Đây là hướng Android đang đi,
+			không phải một lựa chọn ngang hàng với cách cũ.
+		</li>
+		<li>
+			<strong>Quyền vào <code>Uri</code> chết theo process.</strong> Muốn giữ qua các lần mở app thì
+			<code>takePersistableUriPermission</code>, và bạn vẫn phải tự lưu cái <code>Uri</code>.
+		</li>
+		<li>
+			<strong>Bài toán gốc của mã hoá trên máy là "key để đâu", không phải "mã hoá bằng gì".</strong> Keystore giải bằng cách
+			không đưa key cho app: app chỉ giữ một cái tên (alias), việc mã hoá xảy ra bên trong.
+		</li>
+		<li>
+			<strong>TEE và Secure Element khác nhau ở chỗ chống được tấn công vật lý hay không</strong>, nhưng giống nhau ở điểm
+			quan trọng nhất: key sinh ra bên trong và không có API nào lấy nó ra.
+		</li>
+		<li>
+			<strong><code>EncryptedSharedPreferences</code> dùng hai lớp key (envelope encryption).</strong> Master key trong
+			Keystore chỉ để mở data key; data key mới mã hoá dữ liệu và nằm ngay trong file. Hiểu điều này là hiểu luôn vì sao
+			backup sang máy mới thì mở không được.
+		</li>
+		<li>
+			<strong>Key dùng scheme deterministic, value dùng non-deterministic — có lý do.</strong> Hệ quả: đừng đặt thông tin bí
+			mật vào <em>tên</em> preference.
+		</li>
+		<li>
+			<strong>Mã hoá Room chỉ tốn một dòng vì Room không phụ thuộc vào SQLite, nó phụ thuộc vào một interface.</strong>
+			DAO, Entity, query của bạn không đổi một chữ. Đây là ví dụ dependency inversion rõ ràng nhất trong cả cuốn sách.
+		</li>
+		<li>
+			<strong>Đổi <code>getInt</code> từ <code>Int?</code> thành <code>Int</code> là xoá bỏ một trạng thái</strong> —
+			trạng thái "chưa có dữ liệu". Nó biến một null-check thành code chết và làm mất khả năng phân biệt "chưa chọn" với
+			"đã chọn số 0".
+		</li>
+		<li>
+			<strong>Đi từ DataStore về <code>SharedPreferences</code> để có mã hoá là một sự đánh đổi, không phải nâng cấp.</strong>
+			Bạn được mã hoá, mất API bất đồng bộ và cơ chế xử lý lỗi. Cách tốt hơn trong dự án thật: chỉ đưa thứ thật sự bí mật vào
+			chỗ mã hoá.
+		</li>
+		<li>
+			<strong>Mọi thứ trong <code>Application.onCreate()</code> là thuế đánh vào thời gian khởi động</strong>, và Keystore là
+			khoản đắt nhất trong nhóm. Với app nhỏ thì không thấy, nhưng cách nghĩ nên đúng từ đầu.
+		</li>
+		<li>
+			<strong>Auto Backup + dữ liệu mã hoá bằng Keystore = mất dữ liệu, trừ khi bạn khai exclude rules</strong> — và phải khai
+			cả <code>&lt;cloud-backup&gt;</code> lẫn <code>&lt;device-transfer&gt;</code>. Đây là cảnh báo do chính javadoc của
+			library ghi.
+		</li>
+		<li>
+			<strong>Đổi tên database âm thầm là cách làm mất dữ liệu người dùng mà không có một dòng log nào.</strong> Không crash,
+			không lỗi — dữ liệu chỉ đơn giản không bao giờ được đọc nữa.
+		</li>
+		<li>
+			<strong><code>Random</code> không phải <code>SecureRandom</code>.</strong> Một chapter về bảo mật vẫn có thể dùng sai chỗ
+			này — nên bài học thật là: code trông đúng và code an toàn là hai chuyện khác nhau, phải kiểm riêng.
+		</li>
+		<li>
+			<strong>Ý tưởng bền hơn API.</strong> Gần như mọi API bảo mật trong chapter đã deprecated hoặc đổi tên sau 3 năm, nhưng
+			envelope encryption, Keystore, và việc tráo lớp SQLite dưới Room thì vẫn đúng nguyên. Học cái thứ hai, tra cái thứ nhất.
+		</li>
+	</ol>
+
+	<h2 id="thu-thach">20. Thử thách tự làm</h2>
+
+	<p>Bốn việc, xếp theo độ khó. Cả bốn đều làm được trên project <code>final</code> có sẵn.</p>
+
+	<div class="chal">
+		<h3>1. Chứng minh mã hoá thật sự có tác dụng</h3>
+		<p>
+			Chạy app <code>final</code>, tìm vài công thức, bookmark một cái. Mở Device Explorer, vào
+			<code>/data/data/com.kodeco.recipefinder/shared_prefs/</code>, mở <code>encrypted_preferences.xml</code>. Bạn phải thấy
+			toàn chuỗi base64 vô nghĩa — kể cả <em>tên</em> key cũng bị mã hoá. Sau đó mở App Inspection ▸ Database Inspector và
+			xem nó có đọc được <code>recipe_database</code> không.
+		</p>
+		<p>
+			Rồi làm ngược lại để có cơ sở so sánh: checkout project <code>10-room-db/projects/final</code>, chạy, và mở lại đúng hai
+			chỗ đó. Sự khác biệt giữa hai lần chính là thứ cả chapter này đang dạy.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Tìm 5 dấu vết refactor chưa dọn</h3>
+		<p>Mở project <code>final</code> và tìm cho đủ:</p>
+		<ul>
+			<li>Hai import không dùng trong <code>RecipeApp.kt</code> (gợi ý: dòng 38 và 39).</li>
+			<li>Một file cả project không ai gọi tới (gợi ý: nó là class của chapter 9).</li>
+			<li>Một import thêm vào rồi không dùng ở <code>ShowRecipeList.kt</code>.</li>
+			<li>Một điều kiện <code>if</code> luôn đúng ở <code>MainScreen.kt</code>.</li>
+		</ul>
+		<p>
+			Dùng <em>Analyze ▸ Inspect Code</em> để đối chiếu kết quả của bạn. Câu hỏi thật của bài này: <strong>trong 5 cái đó, cái
+			nào chỉ là rác, và cái nào là thay đổi hành vi?</strong> Chỉ có một cái là loại thứ hai.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Sửa hàm sinh passcode và đo lại</h3>
+		<p>
+			Thay <code>getPassCode()</code> bằng phiên bản dùng <code>SecureRandom</code> + 62 ký tự ở mục 13.1.
+			<strong>Nhưng làm trên máy đã cài app rồi thì chú ý:</strong> passcode cũ đã nằm trong
+			<code>EncryptedSharedPreferences</code>, nên <code>hasKey()</code> trả về <code>true</code> và hàm mới của bạn sẽ không
+			bao giờ được gọi. Muốn thấy nó chạy phải xoá dữ liệu app (Settings ▸ Apps ▸ Storage ▸ Clear data) hoặc gỡ cài lại.
+		</p>
+		<p>
+			Đây chính là bài học đi kèm: <strong>đổi cách sinh key không giúp gì cho những key đã sinh rồi.</strong> App thật cần
+			một cơ chế xoay key (key rotation), và đó là lý do việc này khó hơn nó trông.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>4. Tự tạo ra cái bẫy backup</h3>
+		<p>
+			Cách mô phỏng gần nhất mà không cần hai máy: chạy app cho nó tạo passcode, dùng Device Explorer <em>copy</em>
+			<code>encrypted_preferences.xml</code> ra máy tính. Xoá dữ liệu app (master key mất theo). Chạy lại app để nó tạo master
+			key mới. Rồi push file cũ đè vào chỗ cũ và khởi động lại app.
+		</p>
+		<p>
+			Kết quả bạn thấy chính là điều xảy ra với người dùng khôi phục backup sang máy mới. Sau đó thêm exclude rules ở mục 15
+			và giải thích được vì sao chúng chặn được tình huống này.
+		</p>
+		<p class="warn">
+			Làm trên emulator hoặc bản debug, và chỉ với app học này. Đừng thử trên app có dữ liệu bạn cần.
+		</p>
+	</div>
+
+	<h2 id="ket">21. Hết sách — và cái nhìn lại</h2>
+
+	<p>
+		Đây là chapter cuối. Thay vì dẫn sang chapter sau, hãy nhìn lại xem 11 chapter đã dựng nên cái gì — vì bây giờ mới thấy
+		được toàn cảnh:
+	</p>
+
+	<table class="api">
+		<thead><tr><th>Chapter</th><th>Nó thêm gì vào app Recipe</th></tr></thead>
+		<tbody>
+			<tr><td>1–2</td><td>Kotlin, Android Studio, project đầu tiên chạy được</td></tr>
+			<tr><td>3–4</td><td>Activity, lifecycle, Gradle và cách project được build</td></tr>
+			<tr><td>5–6</td><td>Jetpack Compose: UI khai báo, state, recomposition, navigation</td></tr>
+			<tr><td>7</td><td>Architecture: ViewModel, UiState, repository, luồng dữ liệu một chiều</td></tr>
+			<tr><td>8</td><td>Networking: Retrofit, gọi API thật, xử lý lỗi</td></tr>
+			<tr><td>9</td><td>DataStore: lưu preference đơn giản</td></tr>
+			<tr><td>10</td><td>Room: database, DAO, live query</td></tr>
+			<tr><td>11</td><td>File, SAF, và mã hoá cả preference lẫn database</td></tr>
+		</tbody>
+	</table>
+
+	<p>
+		Nhìn theo dữ liệu thì cả cuốn sách là một đường đi: dữ liệu bắt đầu ở <strong>trên mạng</strong> (Chương 8), được đưa vào
+		<strong>state trong bộ nhớ</strong> (Chương 7), rồi <strong>lưu xuống đĩa</strong> (Chương 9 và Chương 10), và cuối cùng được
+		<strong>bảo vệ</strong> (Chương 11). Mỗi chương là một chặng của cùng một đường.
+	</p>
+
+	<div class="callout note">
+		<p><strong>Bốn hướng đi tiếp mà chính sách gợi ý ở mục "Where to Go From Here?", kèm nhận xét của tôi:</strong></p>
+		<ul>
+			<li>
+				<strong>Tài liệu về lưu trữ và bảo mật của Android.</strong> Đáng đọc ngay, vì như mục 16 đã cho thấy, đây là mảng
+				đổi nhanh nhất và sách chắc chắn sẽ lỗi thời trước bạn.
+			</li>
+			<li>
+				<strong>Dependency Injection (Hilt).</strong> Hướng tự nhiên nhất từ điểm bạn đang đứng. Toàn bộ những chỗ khó chịu
+				trong project — <code>RecipeApp</code> giữ mọi thứ, CompositionLocal để truyền prefs, <code>onCreate()</code> làm quá
+				nhiều việc — đều là vấn đề mà DI giải quyết.
+			</li>
+			<li>
+				<strong>Testing.</strong> Sách gần như không dạy. Nhưng để ý: mọi bug được nêu trong bài học này (null-check chết,
+				đổi tên database, bẫy backup) đều là loại mà một bộ test tử tế sẽ bắt được.
+			</li>
+			<li>
+				<strong>Kotlin Multiplatform / Compose Multiplatform.</strong> Xa nhất, và chỉ nên đi khi đã vững phần trên. Nhưng
+				Room 2.7+ đã hỗ trợ KMP — nghĩa là kiến thức Chương 10–11 của bạn đi theo được.
+			</li>
+		</ul>
+	</div>
+
+	<p>
+		Và một điều đáng mang theo hơn cả danh sách trên. Suốt bài học này, chỗ nào có ích nhất thường không phải chỗ sách dạy đúng
+		— mà là chỗ <strong>sách và project không khớp nhau</strong>: một tên field khác nhau, một null-check thành code chết, một
+		tên database đổi âm thầm. Đọc được những chỗ đó là kỹ năng thật, và nó dùng được với mọi cuốn sách, mọi tutorial, mọi
+		codebase bạn sẽ gặp sau này. Sách chỉ là nơi để bắt đầu tập.
+	</p>
+
+</article>
+

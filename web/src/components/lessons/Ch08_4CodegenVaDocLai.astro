@@ -1,0 +1,666 @@
+---
+// Lesson Chapter 8 — Networking (coroutines, Flow, Retrofit, Moshi).
+// Nguồn chính: content/book/ch08-networking.md (trích từ EPUB "Android Fundamentals by Tutorials", Kodeco).
+// Nguồn code: aaf-materials/08-networking/projects/{starter,final}/ — dùng theo Quyết định #7 trong docs/PROJECT_PLAN.md.
+// [TASK48] Chuong 8.4 — Moshi codegen, màn hình chi tiết, và đọc lại project
+
+import { Code } from "astro:components";
+
+const BOOK = "content/book/ch08-networking.md";
+
+const AAF = "aaf-materials/08-networking/projects/final/app/src/main/java/com/kodeco/recipefinder";
+
+const AAF_START = "aaf-materials/08-networking/projects/starter";
+
+const AAF_GRADLE = "aaf-materials/08-networking/projects/final";
+
+const tomlCodegenBefore = `moshi-kotlin = {module="com.squareup.moshi:moshi-kotlin", version.ref="moshi" }`;
+
+const tomlCodegenAfter = `moshi = {module="com.squareup.moshi:moshi", version.ref="moshi" }
+moshiCodeGen = {module="com.squareup.moshi:moshi-kotlin-codegen", version.ref="moshi" }`;
+
+const gradleCodegenBefore = `implementation(libs.moshi.kotlin)`;
+
+const gradleCodegenAfter = `implementation(libs.moshi)
+ksp (libs.moshiCodeGen)`;
+
+const provideMoshiCodegen = `private fun provideMoshi(): Moshi =
+  Moshi
+    .Builder()
+    .build()`;
+
+const kspPluginBlock = `plugins {
+  alias(libs.plugins.androidApplication)
+  alias(libs.plugins.kotlinAndroid)
+  alias(libs.plugins.devtoolsKsp)
+}`;
+
+const queryRecipeBook = `// 1
+viewModelScope.launch(Dispatchers.Default) {
+  try {
+    // 2
+    val spoonacularRecipe = spoonacularService.queryRecipe(id)
+    // 3
+    _recipeState.value = spoonacularRecipe
+  } catch (e: Exception) {
+    Timber.e(e, "Problems getting Recipe for id $id")
+    _recipeState.value = null
+  }
+}`;
+
+const queryRecipeFinal = `suspend fun queryRecipe(
+  id: Int,
+) {
+  viewModelScope.launch(Dispatchers.Default) {
+    try {
+      val spoonacularRecipe = spoonacularService.queryRecipe(id)
+      _recipeState.value = spoonacularRecipe
+    } catch (e: Exception) {
+      Timber.e(e, "Problems getting Recipe for id $id")
+      _recipeState.value = null
+    }
+  }
+}`;
+
+const recipeDetailsCollect = `if (recipeId != null) {
+  LaunchedEffect(Unit) {
+    scope.launch {
+      viewModel.recipeState.collect { state ->
+        recipeState.value = state
+      }
+    }
+    scope.launch {
+      viewModel.queryRecipe(recipeId)
+    }
+  }
+} else if (databaseRecipeId != null) {
+  LaunchedEffect(Unit) {
+    scope.launch {
+      viewModel.recipeState.collect { state ->
+        recipeState.value = state
+      }
+    }
+    scope.launch {
+      // TODO: Add Repository
+      viewModel.getBookmark()
+    }
+  }
+}`;
+---
+
+<section class="lesson">
+	<h2 id="codegen">18. Chuyển Moshi từ reflection sang codegen (KSP)</h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (Use Moshi's Codegen, dòng 476)</p>
+	<p>
+		App đã chạy được. Sách quay lại tối ưu một chỗ: hiện tại Moshi dùng <strong>reflection</strong> để chuyển JSON
+		thành class Kotlin, nhưng <strong>để hiệu năng tốt hơn</strong> bạn có thể dùng <strong>codegen</strong> của Moshi —
+		nó <strong>sinh ra các adapter lúc biên dịch</strong>.
+	</p>
+	<h3 id="reflection-vs-codegen">18.1. Reflection và codegen khác nhau thế nào</h3>
+	<p>
+		Đây là đoạn sách nói ngắn nhất mà lại là kiến thức dùng lại được nhiều nhất, nên cần giải thích rõ. Cả hai cách đều
+		phải trả lời cùng một câu hỏi: <em>"class <code>Recipe</code> có những field nào, tên gì, kiểu gì?"</em> — chỉ khác
+		thời điểm trả lời.
+	</p>
+	<table class="cmp">
+		<thead>
+			<tr><th></th><th>Reflection (<code>moshi-kotlin</code>)</th><th>Codegen (<code>moshi-kotlin-codegen</code>)</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Khi nào đọc cấu trúc class</strong></td>
+				<td>Lúc app đang chạy, mỗi lần khởi tạo adapter</td>
+				<td>Lúc biên dịch, một lần duy nhất</td>
+			</tr>
+			<tr>
+				<td><strong>Kết quả</strong></td>
+				<td>Không sinh file gì; dùng metadata Kotlin trong APK</td>
+				<td>Sinh ra file <code>RecipeJsonAdapter.kt</code> — code Kotlin thật, đọc được</td>
+			</tr>
+			<tr>
+				<td><strong>Tốc độ lúc chạy</strong></td>
+				<td>Chậm hơn (đặc biệt lần parse đầu)</td>
+				<td>Nhanh hơn — chỉ là các lệnh gán thông thường</td>
+			</tr>
+			<tr>
+				<td><strong>Kích thước APK</strong></td>
+				<td>Phải kèm thư viện <code>kotlin-reflect</code> khá nặng</td>
+				<td>Không cần <code>kotlin-reflect</code></td>
+			</tr>
+			<tr>
+				<td><strong>Chống obfuscate (R8/ProGuard)</strong></td>
+				<td>Dễ vỡ — tên field bị đổi thì reflection tìm không ra, phải viết rule giữ lại</td>
+				<td>An toàn — code sinh ra được obfuscate cùng nhau</td>
+			</tr>
+			<tr>
+				<td><strong>Thời gian build</strong></td>
+				<td>Nhanh hơn</td>
+				<td>Chậm hơn (phải chạy thêm bước sinh code)</td>
+			</tr>
+			<tr>
+				<td><strong>Phải làm gì</strong></td>
+				<td>Không cần annotation gì thêm</td>
+				<td>Mọi class phải có <code>@JsonClass(generateAdapter = true)</code></td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Nhìn bảng thì thấy đánh đổi rất rõ: bạn <strong>trả bằng thời gian build và một annotation</strong> để
+		<strong>đổi lấy tốc độ chạy, APK nhỏ hơn và an toàn khi obfuscate</strong>. Với app thật, đây gần như luôn là đánh
+		đổi đáng làm — đó là lý do sách chuyển sang codegen ngay trong cùng một chapter.
+	</p>
+	<h3 id="ksp">18.2. KSP — công cụ chạy bước sinh code</h3>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 480–500)</p>
+	<p>Đổi trong <code>libs.versions.toml</code>, phần <code>[libraries]</code> — thay dòng:</p>
+	<Code code={tomlCodegenBefore} lang="toml" theme="github-dark" />
+	<p>bằng hai dòng:</p>
+	<Code code={tomlCodegenAfter} lang="toml" theme="github-dark" />
+	<p>Rồi trong <code>app/build.gradle.kts</code>, thay:</p>
+	<Code code={gradleCodegenBefore} lang="kotlin" theme="github-dark" />
+	<p>bằng:</p>
+	<Code code={gradleCodegenAfter} lang="kotlin" theme="github-dark" />
+	<p>
+		Sách giải thích: lệnh <strong><code>ksp</code></strong> là <strong>Kotlin Symbol Processing API</strong>, và plugin
+		codegen của Moshi <strong>tạo ra các converter cho các class model của bạn</strong>. Sau đó Gradle sync.
+	</p>
+	<p>
+		Chú ý sự khác biệt giữa <code>implementation(...)</code> và <code>ksp(...)</code> — đây là điểm rất dễ nhầm.
+		<code>implementation</code> nghĩa là "đóng thư viện này vào app". <code>ksp</code> nghĩa là "chạy công cụ này
+		<em>lúc biên dịch</em> để sinh code, đừng đóng nó vào app". Nếu bạn viết <code>implementation(libs.moshiCodeGen)</code>
+		thì bộ sinh code bị nhét vào APK mà không bao giờ chạy, và không có adapter nào được sinh ra — app crash lúc parse
+		với thông báo kiểu "cannot serialize... adapter not found".
+	</p>
+	<p class="hint">
+		<strong>KSP là gì, nói cho người mới:</strong> một cơ chế cho phép thư viện <strong>đọc code của bạn lúc biên dịch
+		và viết thêm code mới</strong>. Nó là bản thay thế hiện đại cho <code>kapt</code> (annotation processor thời Java) —
+		nhanh hơn nhiều vì nó hiểu cú pháp Kotlin trực tiếp thay vì phải dịch Kotlin sang Java trước. Bạn đã gặp KSP ở
+		Chương 10.1 với Room; ở đây là lần đầu nó xuất hiện trong sách.
+	</p>
+	<p class="notice">
+		<strong>Điểm lệch #4 — plugin KSP đã có sẵn trong <code>starter</code>.</strong> Sách bảo bạn thêm
+		<code>ksp(libs.moshiCodeGen)</code> nhưng <strong>không nói gì về việc phải khai plugin KSP</strong>. Lý do là nó đã
+		được khai từ trước: <code>{AAF_START}/app/build.gradle.kts</code> dòng 1–5 đã có
+		<code>alias(libs.plugins.devtoolsKsp)</code>, và <code>{AAF_START}/gradle/libs.versions.toml</code> dòng 65 đã khai
+		<code>devtoolsKsp</code>. Nếu bạn tự làm lại trên một project mới, <strong>bạn phải tự thêm khối này</strong>, nếu
+		không lệnh <code>ksp(...)</code> sẽ báo lỗi "Unresolved reference: ksp":
+	</p>
+	<Code code={kspPluginBlock} lang="kotlin" theme="github-dark" />
+	<h3 id="bo-reflection">18.3. Bỏ <code>KotlinJsonAdapterFactory</code></h3>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 506–519) · <code>{AAF}/network/SpoonacularService.kt</code> (dòng 64–67)</p>
+	<p>
+		Không cần <code>KotlinJsonAdapterFactory</code> nữa, nên sửa <code>provideMoshi()</code> thành:
+	</p>
+	<Code code={provideMoshiCodegen} lang="kotlin" theme="github-dark" />
+	<p>và xoá import <code>com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory</code>.</p>
+	<p>
+		Đây là phiên bản khớp <strong>chính xác</strong> với file trong <code>final</code> — <code>Moshi.Builder()</code>
+		trống trơn. Nhìn vào đó dễ tưởng "Moshi không cần cấu hình gì", nhưng thật ra <em>cấu hình đã chuyển sang
+		annotation</em>: mỗi class có <code>@JsonClass</code> tự đăng ký adapter của nó, nên builder không còn việc gì.
+	</p>
+	<h3 id="jsonclass">18.4. Annotate mọi model</h3>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 521–542)</p>
+	<p>
+		Bước cuối: bạn phải annotate <strong>tất cả</strong> các class muốn chuyển đổi JSON. Sách làm mẫu với
+		<code>SearchRecipesResponse.kt</code> (thêm <code>@JsonClass(generateAdapter = true)</code> và import
+		<code>com.squareup.moshi.JsonClass</code>), giải thích rằng annotation này <strong>tạo adapter cho bạn</strong>, và
+		khi build project nó sinh ra một file tên <strong><code>SearchRecipesResponseJsonAdapter</code></strong> chứa rất
+		nhiều code lặp để chuyển JSON ↔ class. Rồi sách nói ngắn gọn: <em>"Do the same with the rest of the files from
+		main/java/com/kodeco/recipefinder/data/models"</em>.
+	</p>
+	<p>
+		Câu cuối đó dễ bị đọc qua, nhưng nó là <strong>một bước bắt buộc, không phải tuỳ chọn</strong>. Nếu thiếu một
+		class, Moshi không có adapter cho class đó và sẽ quay về... không có gì cả (vì <code>KotlinJsonAdapterFactory</code>
+		đã bị xoá) — app crash lúc parse. Đối chiếu <code>final</code> thì thấy sách đã làm đủ:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>File trong <code>data/models/</code></th><th>Ở <code>starter</code></th><th>Ở <code>final</code></th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>SearchRecipesResponse.kt</code></td><td><em>chưa tồn tại</em></td><td>tạo mới + <code>@JsonClass</code> (dòng 40)</td></tr>
+			<tr><td><code>Recipe.kt</code></td><td>không annotation</td><td>thêm <code>@JsonClass</code> (dòng 39)</td></tr>
+			<tr><td><code>RecipeInformationResponse.kt</code></td><td>không annotation</td><td>thêm <code>@JsonClass</code> (dòng 39)</td></tr>
+			<tr><td><code>ExtendedIngredient.kt</code></td><td>không annotation</td><td>thêm <code>@JsonClass</code> (dòng 39)</td></tr>
+			<tr><td><code>Ingredient.kt</code></td><td>không annotation</td><td>thêm <code>@JsonClass</code> (dòng 39)</td></tr>
+		</tbody>
+	</table>
+	<p class="notice">
+		<strong>Điểm lệch #5 — <code>Ingredient</code> được annotate nhưng không bao giờ đi qua JSON.</strong> Bốn class
+		trên đều đúng là model của API, trừ <code>Ingredient</code>. Tra toàn bộ <code>final</code> thì
+		<code>Ingredient</code> chỉ xuất hiện ở <code>GroceryListViewModel.kt</code> (dòng 45–46, 63, 70) và
+		<code>RecipeViewModel.kt</code> (dòng 88) — <strong>không có endpoint Spoonacular nào trả về nó</strong>. Nguyên
+		liệu từ API về dưới dạng <code>extendedIngredients: List&lt;ExtendedIngredient&gt;</code> nằm trong
+		<code>RecipeInformationResponse</code>. <code>Ingredient</code> là model cho <em>database ở Chương 10.2</em> (nó có
+		field <code>recipeId</code> — dấu hiệu của khoá liên kết trong DB, không phải của JSON). Vậy annotation
+		<code>@JsonClass</code> trên nó chỉ là kết quả của việc làm theo chữ "the rest of the files" một cách máy móc. Vô
+		hại (chỉ sinh thêm một file adapter không dùng), nhưng nó cho thấy một bài học: <strong>đừng annotate hàng loạt —
+		hãy annotate đúng những class thật sự đi qua JSON.</strong>
+	</p>
+	<p>Sau đó sách cho build và chạy lại để kiểm tra mọi thứ vẫn hoạt động.</p>
+	<h2 id="details-screen">19. Details Screen — lời gọi mạng thứ hai</h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (Details Screen, dòng 546–577)</p>
+	<p>
+		Sách mở đầu bằng một triệu chứng: <em>nếu bạn bấm vào một công thức, bạn sẽ thấy một màn hình trắng</em>. Đến lúc
+		sửa. Mở <code>RecipeViewModel.kt</code>, thay <code>// TODO: Query a Recipe</code> bằng:
+	</p>
+	<Code code={queryRecipeBook} lang="kotlin" theme="github-dark" />
+	<p>Ba điểm sách đánh số:</p>
+	<ol>
+		<li>Khởi động một coroutine mới trên <strong>default dispatcher</strong>.</li>
+		<li>Gọi <code>SpoonacularService</code> để lấy chi tiết đầy đủ của công thức.</li>
+		<li>Đặt giá trị cho Recipe state mà màn hình Details đang lắng nghe.</li>
+	</ol>
+	<p>Và cần thêm import <code>kotlinx.coroutines.Dispatchers</code>.</p>
+	<p>
+		Sau đó chạy lại app bằng nút <em>Re-play</em>, bấm vào một công thức để thấy chi tiết; bấm icon <em>Bookmark</em>
+		hoặc <em>Back arrow</em> thì quay lại danh sách.
+	</p>
+	<p>Toàn bộ hàm trong <code>final</code>:</p>
+	<p class="src">Nguồn: <code>{AAF}/viewmodels/RecipeViewModel.kt</code> (dòng 117–129)</p>
+	<Code code={queryRecipeFinal} lang="kotlin" theme="github-dark" />
+
+	<h3 id="hai-diem-la">19.1. Hai điểm trong hàm này không nên bắt chước</h3>
+	<p>
+		Cấu trúc hàm giống <code>queryRecipes</code> ở mục 13 — nhưng có <strong>hai chỗ khác</strong>, và cả hai đều đáng
+		bàn. Đây là ví dụ tốt để tập <em>đọc code có phê phán</em> thay vì copy nguyên xi.
+	</p>
+	<p class="notice">
+		<strong>Điểm lệch #6 — <code>suspend</code> cộng <code>launch</code> là một lớp dư.</strong> Hàm khai báo
+		<code>suspend fun queryRecipe(id: Int)</code> nhưng bên trong lại mở
+		<code>viewModelScope.launch &#123; ... &#125;</code>. Hệ quả cụ thể: hàm <strong>trả về ngay lập tức</strong> sau khi
+		mở coroutine, nên người gọi dù đang <code>await</code> nó cũng <strong>không thật sự chờ được kết quả</strong>. Từ
+		khoá <code>suspend</code> ở đây là <em>lời hứa suông</em> — nó buộc người gọi phải ở trong coroutine mà không mang
+		lại lợi ích nào. Chọn một trong hai cách:
+	</p>
+	<ul>
+		<li>
+			<strong>Bỏ <code>suspend</code></strong>, giữ <code>launch</code> — giống hệt <code>queryRecipes</code>. Hàm trở
+			thành "khởi động một việc", gọi được từ mọi nơi.
+		</li>
+		<li>
+			<strong>Bỏ <code>launch</code></strong>, giữ <code>suspend</code> và bọc bằng
+			<code>withContext(Dispatchers.IO)</code> nếu cần đổi dispatcher. Lúc đó người gọi thật sự chờ được, và biết được
+			khi nào xong.
+		</li>
+	</ul>
+	<p>
+		Điểm đáng chú ý: <strong>cùng một ViewModel, cùng một loại việc, hai hàm viết hai kiểu khác nhau</strong>
+		(<code>queryRecipes</code> không <code>suspend</code>, <code>queryRecipe</code> có). Sự không nhất quán này tự nó là
+		một dấu hiệu cần xem lại.
+	</p>
+	<p class="notice">
+		<strong>Điểm lệch #7 — <code>Dispatchers.Default</code> cho một lời gọi mạng.</strong> Như đã nói ở mục 3, quy ước
+		Kotlin là <code>Default</code> dành cho việc <em>tính toán CPU</em>, còn gọi mạng là <em>I/O</em> nên thuộc
+		<code>Dispatchers.IO</code>. Thực tế ở đây <strong>vẫn chạy đúng</strong>, vì (theo cơ chế ở mục 16) Retrofit tự
+		chuyển việc gửi request sang thread pool của OkHttp — nên tham số dispatcher này gần như không thay đổi gì. Nhưng
+		nó tạo <strong>thói quen sai</strong>: nếu sau này bạn tự viết code chặn thread để chờ I/O và đặt vào
+		<code>Dispatchers.Default</code>, bạn sẽ chiếm chỗ của các tác vụ tính toán khác. Và chú ý sự bất đối xứng:
+		<code>queryRecipes</code> không truyền dispatcher gì cả (chạy trên Main), <code>queryRecipe</code> lại truyền
+		<code>Default</code> — hai hàm gọi cùng một API mà khác dispatcher, không có lý do kỹ thuật nào giải thích.
+	</p>
+
+	<h3 id="recipedetails">19.2. Phía giao diện — <code>RecipeDetails</code> và hai đường vào</h3>
+	<p class="src">Nguồn: <code>{AAF}/ui/RecipeDetails.kt</code> (dòng 94–117)</p>
+	<Code code={recipeDetailsCollect} lang="kotlin" theme="github-dark" />
+	<p>
+		Composable này nhận <strong>hai tham số nullable</strong>: <code>recipeId</code> (id của Spoonacular — vào từ danh
+		sách tìm kiếm) và <code>databaseRecipeId</code> (id trong database cục bộ — vào từ danh sách bookmark). Đúng một
+		trong hai được truyền, và <code>if/else if</code> quyết định lấy dữ liệu từ đâu. Ở Chương 8, chỉ nhánh đầu chạy
+		được; nhánh thứ hai gọi <code>viewModel.getBookmark()</code> — thân hàm rỗng, chờ Chương 10.3.
+	</p>
+	<p>
+		Cấu trúc bên trong lặp lại đúng bài học ở mục 5.2: <strong>hai <code>scope.launch</code> song song</strong> — một để
+		<code>collect</code> flow (lắng nghe mãi mãi), một để <em>khởi động</em> lời gọi mạng. Nếu bạn viết chúng nối tiếp
+		trong một <code>launch</code>, lệnh <code>queryRecipe</code> sẽ không bao giờ chạy vì <code>collect</code> chặn ở
+		trên. Đây là lý do kỹ thuật thật cho cách viết trông có vẻ rườm rà này.
+	</p>
+	<p class="hint">
+		<strong>Vì sao thứ tự phải là collect trước, gọi API sau?</strong> Vì <code>recipeState</code> là
+		<code>StateFlow</code> — nó luôn giữ giá trị hiện tại, nên người đăng ký muộn <em>vẫn</em> nhận được giá trị mới
+		nhất. Về lý thuyết thứ tự không quan trọng ở đây. Nhưng nếu đây là <code>SharedFlow</code> hay
+		<code>Channel</code> (loại phát một lần, không giữ giá trị), gọi API trước khi kịp <code>collect</code> sẽ làm
+		<strong>mất kết quả</strong> — một race condition rất khó tái hiện. Viết collect trước là thói quen an toàn.
+	</p>
+	<p class="notice">
+		<strong>Điểm lệch #8 — hai hàm <code>@Preview</code> trong app không thể render.</strong> File
+		<code>{AAF}/MainActivity.kt</code> dòng 59–60 khai báo
+		<code>val LocalNavigatorProvider = compositionLocalOf&lt;NavHostController&gt; &#123; error("No navigation
+		provided") &#125;</code> — một <code>CompositionLocal</code> mà <strong>giá trị mặc định là ném lỗi</strong>. Nó chỉ
+		có giá trị thật khi Composable nằm bên trong <code>CompositionLocalProvider</code> ở dòng 81–83. Cả
+		<code>RecipeDetails</code> (dòng 92) và <code>ShowRecipeList</code> (dòng 73) đều đọc
+		<code>LocalNavigatorProvider.current</code>. Vì vậy hai hàm preview <code>PreviewShowRecipeList</code>
+		(<code>{AAF}/ui/recipes/ShowRecipeList.kt</code> dòng 124–135) và <code>PreviewRecipeList</code>
+		(<code>{AAF}/ui/recipes/RecipeList.kt</code> dòng 95–101, gọi gián tiếp qua <code>RecipeList</code>) sẽ
+		<strong>báo lỗi "No navigation provided" thay vì vẽ giao diện</strong>. Đây là cùng một vấn đề mà lesson Chương 10.4
+		đã chỉ ra với <code>LocalRepositoryProvider</code>. Nếu bạn mở các file này và thấy preview đỏ, đó không phải do bạn
+		làm sai. Cách sửa: bọc nội dung preview trong <code>CompositionLocalProvider(LocalNavigatorProvider provides
+		rememberNavController())</code>.
+	</p>
+	<h2 id="tong-hop-lech">20. Tổng hợp: 8 điểm sách và project không khớp</h2>
+	<p>
+		Trong suốt lesson này, mỗi lần gặp một chỗ sách nói một đằng mà code trong <code>aaf-materials/</code> làm một nẻo,
+		hoặc một chỗ code chạy được nhưng dạy thói quen không tốt, tôi đã đánh dấu là <em>điểm lệch</em>. Bảng dưới gom lại
+		đủ tám điểm để bạn tra nhanh. Cột cuối là <strong>kết luận nên theo cái nào</strong> — vì mục đích của bạn là học
+		đúng, không phải trung thành với một trong hai nguồn.
+	</p>
+	<table class="cmp">
+		<thead>
+			<tr>
+				<th>#</th>
+				<th>Sách nói / code làm</th>
+				<th>Thực tế đã kiểm chứng</th>
+				<th>Nên theo cái nào</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>1</td>
+				<td>Key Points: "Flows thay thế <code>LiveData</code>" (<code>{BOOK}</code> dòng 592)</td>
+				<td>
+					<code>LiveData</code> chưa bao giờ bị deprecate, tính tới 2026-08-28 vẫn nằm trong AndroidX lifecycle và vẫn
+					nhận cập nhật. Nó chỉ <em>không còn là lựa chọn mặc định</em> cho code Kotlin + Compose viết mới.
+				</td>
+				<td>
+					Theo <strong>tinh thần</strong> của sách (code mới dùng <code>StateFlow</code>), không theo
+					<strong>chữ</strong> của nó. Đừng nghĩ project cũ dùng <code>LiveData</code> là sai.
+				</td>
+			</tr>
+			<tr>
+				<td>2</td>
+				<td>
+					Sách thêm <code>moshi-kotlin</code> (reflection) ở mục 7.1 rồi bỏ nó ở mục 18 để chuyển sang codegen
+				</td>
+				<td>
+					<code>moshi-kotlin</code> <strong>không tồn tại ở bất kỳ đâu</strong> trong <code>final</code>. So sánh
+					<code>starter</code> ↔ <code>final</code> sẽ không bao giờ thấy trạng thái trung gian đó;
+					<code>provideMoshi()</code> trong <code>final</code> chỉ là <code>Moshi.Builder().build()</code> trơn.
+				</td>
+				<td>
+					Theo <strong><code>final</code></strong>: đi thẳng tới codegen. Chỉ đọc phần reflection để hiểu
+					<em>vì sao</em> codegen tốt hơn.
+				</td>
+			</tr>
+			<tr>
+				<td>3</td>
+				<td>
+					Sách cảnh báo không được commit API key (<code>{BOOK}</code> dòng 314), nhưng chính project lại commit
+					<code>const val apiKey</code> vào <code>SpoonacularService.kt:47</code>
+				</td>
+				<td>
+					Giá trị commit chỉ là placeholder <code>"&lt;Replace with API Key&gt;"</code> nên không rò rỉ gì. Nhưng cấu
+					trúc mời bạn gõ key thật vào đúng chỗ đó rồi commit.
+				</td>
+				<td>
+					Theo <strong>lời cảnh báo</strong>, không theo cấu trúc code. Đặt key vào
+					<code>local.properties</code> (không commit) và đọc qua <code>BuildConfig</code>.
+				</td>
+			</tr>
+			<tr>
+				<td>4</td>
+				<td>Sách bảo thêm <code>ksp(libs.moshiCodeGen)</code> nhưng không nói phải khai báo plugin KSP</td>
+				<td>
+					Plugin đã có sẵn trong <code>starter</code> (<code>app/build.gradle.kts</code> dòng 1–5 và
+					<code>gradle/libs.versions.toml</code> dòng 65), nên người làm theo sách không thấy thiếu.
+				</td>
+				<td>
+					Bổ sung bước còn thiếu: nếu bạn dựng project mới từ đầu, phải tự thêm
+					<code>alias(libs.plugins.devtoolsKsp)</code> — xem mục 18.2.
+				</td>
+			</tr>
+			<tr>
+				<td>5</td>
+				<td>
+					Sách nói "làm tương tự với các file còn lại", nên <code>Ingredient</code> cũng được gắn
+					<code>@JsonClass(generateAdapter = true)</code>
+				</td>
+				<td>
+					Không endpoint Spoonacular nào trong chương này trả về <code>Ingredient</code>; nó chỉ được dùng bởi state
+					của <code>GroceryListViewModel</code> và mang một field <code>recipeId</code> — dấu hiệu của khoá ngoại
+					database. Đây là model của Chương 10.2.
+				</td>
+				<td>
+					Vô hại, giữ cũng được. Nhưng hiểu rằng annotation đó <strong>chưa có tác dụng gì</strong> ở Chương 8 — đừng
+					suy ra "mọi data class đều cần <code>@JsonClass</code>".
+				</td>
+			</tr>
+			<tr>
+				<td>6</td>
+				<td>
+					<code>suspend fun queryRecipe(...)</code> nhưng bên trong vẫn mở
+					<code>viewModelScope.launch</code> (<code>RecipeViewModel.kt:117–129</code>)
+				</td>
+				<td>
+					Hàm trả về ngay sau khi mở coroutine, nên <code>suspend</code> không giúp người gọi chờ được kết quả. Bất
+					đối xứng với <code>queryRecipes</code> — cùng ViewModel, cùng loại việc, hai kiểu viết.
+				</td>
+				<td>
+					Chọn <strong>một</strong>: hoặc bỏ <code>suspend</code> (giống <code>queryRecipes</code>), hoặc bỏ
+					<code>launch</code> và dùng <code>withContext</code>. Xem mục 19.1.
+				</td>
+			</tr>
+			<tr>
+				<td>7</td>
+				<td><code>viewModelScope.launch(Dispatchers.Default)</code> cho một lời gọi mạng</td>
+				<td>
+					Chạy đúng trên thực tế vì Retrofit/OkHttp tự chuyển request sang thread pool riêng, nên dispatcher này gần
+					như không ảnh hưởng. Nhưng quy ước Kotlin là <code>Default</code> = tính toán CPU, I/O = <code>IO</code>.
+				</td>
+				<td>
+					Theo <strong>quy ước</strong>: dùng <code>Dispatchers.IO</code> khi code của bạn thật sự chặn thread để chờ
+					I/O.
+				</td>
+			</tr>
+			<tr>
+				<td>8</td>
+				<td>
+					Hai hàm <code>@Preview</code> có sẵn trong project: <code>PreviewRecipeList</code> và
+					<code>PreviewShowRecipeList</code>
+				</td>
+				<td>
+					Cả hai chạm tới <code>LocalNavigatorProvider.current</code> mà <code>MainActivity.kt:59–60</code> khai báo
+					mặc định là <code>error("No navigation provided")</code>, nên preview ném lỗi thay vì vẽ.
+				</td>
+				<td>
+					Không phải lỗi của bạn. Muốn preview chạy thì bọc bằng
+					<code>CompositionLocalProvider(LocalNavigatorProvider provides rememberNavController())</code>.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		<strong>Vì sao tôi liệt kê những điểm này thay vì im lặng sửa?</strong> Vì bạn sẽ đọc code người khác suốt sự nghiệp,
+		và phần lớn code đó vừa chạy được vừa có chỗ chưa tối ưu. Kỹ năng cần luyện không phải "tìm ra ai sai", mà là
+		<strong>phân biệt ba mức</strong>: (a) sai thật, phải sửa; (b) chạy được nhưng dạy thói quen xấu, nên biết để không
+		bắt chước; (c) chỉ là lựa chọn khác, không sai. Trong bảng trên: #3 thuộc mức (a) nếu bạn gõ key thật vào; #6, #7,
+		#8 thuộc mức (b); #1, #2, #4, #5 thuộc mức (c) — thông tin cũ hoặc thiếu bước, không phải lỗi thiết kế.
+	</p>
+	<h2 id="phien-ban">21. Ghi chú phiên bản — sách viết năm 2023, hôm nay là 2026</h2>
+	<p>
+		Sách khoá phiên bản thư viện trong <code>{AAF_GRADLE}/gradle/libs.versions.toml</code>. Những con số đó đúng ở thời
+		điểm sách ra, nhưng nếu bạn tạo project mới hôm nay Android Studio sẽ đưa bạn số khác. Bảng dưới so sánh để bạn biết
+		<strong>chỗ nào cần cập nhật, chỗ nào giữ nguyên cũng chạy</strong>.
+	</p>
+	<table class="cmp">
+		<thead>
+			<tr>
+				<th>Thư viện</th>
+				<th>Sách dùng</th>
+				<th>Mới nhất (2026-08)</th>
+				<th>Có cần đổi không</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>kotlinx-coroutines</code></td>
+				<td>1.7.2</td>
+				<td>1.11.0 (08/05/2026)</td>
+				<td>
+					Không bắt buộc. Mọi API dùng trong chapter này (<code>launch</code>, <code>suspend</code>,
+					<code>Dispatchers</code>, <code>MutableStateFlow</code>, <code>asStateFlow</code>) đều không đổi.
+				</td>
+			</tr>
+			<tr>
+				<td><code>retrofit</code></td>
+				<td>2.9.0</td>
+				<td>3.0.0 (05/2025), nhánh 2.x cuối là 2.12.0</td>
+				<td>
+					Nên đổi lên 2.12.0 nếu tiện. Retrofit 3.0.0 <strong>không đổi API</strong> (vẫn package
+					<code>retrofit2</code>, vẫn tương thích binary với 2.x) — thay đổi duy nhất đáng kể là nó nâng OkHttp từ
+					3.14 lên 4.12, tức là kéo thêm một dependency Kotlin vào app. <code>@GET</code>/<code>@Query</code>/<code
+						>@Path</code
+					> và <code>suspend</code> giữ nguyên cách dùng ở cả hai bản.
+				</td>
+			</tr>
+			<tr>
+				<td><code>moshi</code> + <code>moshi-kotlin-codegen</code></td>
+				<td>1.15.0</td>
+				<td>1.15.2 (12/2024)</td>
+				<td>
+					Nên đổi (chỉ là bản sửa lỗi). <code>@Json</code>, <code>@JsonClass(generateAdapter = true)</code> không đổi.
+				</td>
+			</tr>
+			<tr>
+				<td><code>timber</code></td>
+				<td>5.0.1</td>
+				<td>5.0.1 — vẫn là bản mới nhất (08/2021)</td>
+				<td>Không. Thư viện này ổn định, 5 năm không cần bản mới.</td>
+			</tr>
+			<tr>
+				<td><code>kotlin</code></td>
+				<td>1.9.10</td>
+				<td>2.4.x</td>
+				<td>
+					Đây là thay đổi lớn nhất. Từ Kotlin 2.0, Compose compiler <strong>đi kèm luôn trong plugin Kotlin</strong>
+					(<code>org.jetbrains.kotlin.plugin.compose</code>) thay vì khai báo riêng
+					<code>composeOptions &#123; kotlinCompilerExtensionVersion = ... &#125;</code>. Nếu bạn nâng Kotlin, phải sửa
+					cả cách khai báo Compose compiler.
+				</td>
+			</tr>
+			<tr>
+				<td><code>agp</code> (Android Gradle Plugin)</td>
+				<td>8.2.0</td>
+				<td>Dòng 8.x đã đi rất xa</td>
+				<td>
+					Không cần đổi để học. Nhưng AGP phải tương thích với phiên bản Android Studio bạn đang dùng — nếu Studio báo
+					"needs newer AGP", hãy để Studio tự nâng qua <em>AGP Upgrade Assistant</em>.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="notice">
+		<strong>Khuyến nghị thực tế:</strong> đừng nâng version khi <em>đang học</em> chapter này. Nâng thư viện là một việc
+		riêng, dễ sinh lỗi build không liên quan gì tới networking, và bạn sẽ mất buổi học vào việc đọc log Gradle. Chạy
+		project với version của sách trước, hiểu xong toàn bộ luồng, rồi mới thử nâng như một bài tập độc lập.
+	</p>
+	<p class="hint">
+		<strong>Một thứ đã đổi ngoài phạm vi thư viện: Spoonacular.</strong> Chính sách free-tier của các API công khai thay
+		đổi thường xuyên hơn thư viện. Ảnh chụp màn hình trong sách (mục 8) gần như chắc chắn không còn giống trang web hiện
+		tại, và số lượt gọi miễn phí mỗi ngày cũng có thể khác. Nếu bố cục trang đăng ký khác sách, hãy tìm theo
+		<em>ý nghĩa</em> của từng bước (đăng ký → vào profile/dashboard → tìm chuỗi ký tự dài gọi là API key) chứ không tìm
+		theo hình.
+	</p>
+
+	<h2 id="key-points">22. Những điểm cần nhớ</h2>
+	<p class="src">
+		Đối chiếu với Key Points của sách (<code>{BOOK}</code>, dòng 589–594). Danh sách dưới đây do tôi viết lại và mở rộng
+		theo đúng thứ tự khái niệm của lesson.
+	</p>
+	<ul>
+		<li>
+			<strong>Main thread là tài nguyên phải bảo vệ.</strong> Nó vừa vẽ giao diện vừa nhận sự kiện chạm, và chỉ có
+			khoảng 16 ms cho mỗi khung hình. Mọi việc chờ đợi — gọi mạng, đọc file, truy vấn database — phải rời khỏi nó.
+		</li>
+		<li>
+			<strong>Coroutine là cách rời main thread mà không phải quản lý thread.</strong> Bạn nói <em>việc này chạy ở đâu</em>
+			(<code>Dispatchers.Main</code> / <code>IO</code> / <code>Default</code>) và <em>sống theo cái gì</em> (scope), phần
+			còn lại thư viện lo.
+		</li>
+		<li>
+			<strong><code>suspend</code> lan lên trên.</strong> Hàm <code>suspend</code> chỉ gọi được từ hàm
+			<code>suspend</code> khác hoặc từ trong một coroutine. Điểm chặn sự lan truyền đó chính là
+			<code>launch</code> — nơi bạn quyết định "bắt đầu một việc chạy song song".
+		</li>
+		<li>
+			<strong><code>viewModelScope</code> giải bài toán vòng đời.</strong> Coroutine mở trong scope này tự bị huỷ khi
+			ViewModel bị dọn, nên không có lời gọi mạng nào cố cập nhật một màn hình đã chết. Nó dùng
+			<code>SupervisorJob</code> nên một việc lỗi không kéo các việc còn lại chết theo.
+		</li>
+		<li>
+			<strong><code>StateFlow</code> là "ống dữ liệu luôn có giá trị hiện tại".</strong> Cặp
+			<code>private val _x = MutableStateFlow(...)</code> + <code>val x = _x.asStateFlow()</code> cho ViewModel quyền ghi
+			và cho UI quyền đọc — đóng gói bằng kiểu, không bằng lời nhắc.
+		</li>
+		<li>
+			<strong>Trong Compose, đọc flow bằng <code>collectAsState()</code>.</strong> Nó tự đăng ký, tự huỷ đăng ký theo
+			composition, và tự recompose khi có giá trị mới. Chỉ dùng <code>collect</code> thủ công trong
+			<code>LaunchedEffect</code> khi bạn cần kiểm soát riêng — và khi đó phải nhớ <code>collect</code>
+			<strong>không bao giờ trả về</strong>, nên mỗi việc cần một <code>launch</code> riêng.
+		</li>
+		<li>
+			<strong>Retrofit biến một interface thành client HTTP.</strong> Bạn khai báo <em>hình dạng</em> của API bằng
+			annotation (<code>@GET</code>, <code>@Query</code>, <code>@Path</code>); Retrofit sinh phần thực thi lúc chạy. Bạn
+			không viết một dòng nào về socket, header, hay parse.
+		</li>
+		<li>
+			<strong>Moshi biến JSON thành data class.</strong> Tên field khớp thì tự động; không khớp thì
+			<code>@Json(name = "...")</code>. Cấu trúc class Kotlin phải phản chiếu cấu trúc JSON lồng nhau — đó là lý do có
+			<code>SearchRecipesResponse</code> bọc ngoài <code>List&lt;Recipe&gt;</code>.
+		</li>
+		<li>
+			<strong>Codegen (KSP) tốt hơn reflection.</strong> Adapter sinh lúc biên dịch nên nhanh hơn, nhỏ hơn, và sai kiểu
+			bị phát hiện ngay khi build thay vì lúc chạy. Giá phải trả là thời gian build dài hơn một chút.
+		</li>
+		<li>
+			<strong>Kiến trúc của chương này lặp lại đúng ba lớp:</strong> UI (Composable) chỉ đọc state và phát sự kiện →
+			ViewModel giữ state, mở coroutine, gọi service → Service (Retrofit) nói chuyện với mạng. Chương 9, 10, 11 sẽ thêm
+			lớp lưu trữ vào đúng chỗ giữa ViewModel và nguồn dữ liệu, chứ không phá cấu trúc này.
+		</li>
+		<li>
+			<strong>Việc gì có thể lỗi thì sẽ lỗi.</strong> Mạng là nguồn dữ liệu duy nhất trong app này mà bạn
+			<em>không kiểm soát</em>. Code trong sách bắt <code>Exception</code> rồi đặt danh sách rỗng — chạy được, nhưng
+			người dùng không phân biệt được "mất mạng" với "không tìm thấy gì". Đây là chỗ đầu tiên bạn nên tự cải thiện.
+		</li>
+	</ul>
+
+	<h2 id="di-tiep">23. Đi tiếp từ đây</h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (Where to Go From Here?, dòng 596–604)</p>
+	<p>Sách để lại hai đường link tài liệu chính thức, cả hai đều đáng đọc sau khi bạn đã chạy app thành công:</p>
+	<ul>
+		<li>
+			Tài liệu Retrofit: <a href="https://square.github.io/retrofit/">square.github.io/retrofit</a> — phần đáng đọc nhất
+			là danh sách annotation (<code>@POST</code>, <code>@Body</code>, <code>@Header</code>) mà chapter này chưa dùng
+			tới.
+		</li>
+		<li>
+			Tài liệu Moshi: <a href="https://github.com/square/moshi">github.com/square/moshi</a> — phần đáng đọc nhất là
+			custom adapter, cho những JSON không map thẳng được sang data class.
+		</li>
+	</ul>
+	<p>Ba bài tập mở rộng tôi đề xuất, xếp theo độ khó tăng dần:</p>
+	<ol>
+		<li>
+			<strong>Tách trạng thái lỗi khỏi trạng thái rỗng.</strong> Thêm một <code>StateFlow</code> cho thông báo lỗi, hoặc
+			đổi <code>recipeListState</code> thành một sealed class ba nhánh (<code>Loading</code> / <code>Success</code> /
+			<code>Error</code>). Đây là cách sửa vấn đề nêu ở mục 13.1.
+		</li>
+		<li>
+			<strong>Sửa phân trang để nối thêm thay vì ghi đè.</strong> Xem lại mục 17: hiện tại trang mới thay thế trang cũ.
+			Sửa để danh sách dài ra khi bạn cuộn.
+		</li>
+		<li>
+			<strong>Đưa API key ra khỏi source code.</strong> Đặt vào <code>local.properties</code>, đọc trong
+			<code>build.gradle.kts</code>, phơi ra qua <code>BuildConfig</code>. Đây là điểm lệch #3 và là kỹ năng bạn sẽ dùng
+			ở mọi project thật.
+		</li>
+	</ol>
+	<div class="callout journey">
+		<strong>Chapter 9 tiếp nối ngay tại đây.</strong> App hiện tại có một điểm yếu dễ thấy: đóng app rồi mở lại, mọi thứ
+		về số không — ô tìm kiếm trống, danh sách trống, phải gọi mạng lại từ đầu. Chapter 9 giới thiệu
+		<strong>DataStore</strong>, cách lưu những mẩu dữ liệu nhỏ (lựa chọn của người dùng, lần tìm kiếm gần nhất) xuống
+		thiết bị để chúng sống qua các lần khởi động. Bạn sẽ thấy lý do hàm <code>addPreviousSearch()</code> trong
+		<code>RecipeViewModel</code> của chương này có thân rỗng — nó đang chờ chương sau. Sau đó Chương 10 mang
+		<strong>Room database</strong> vào để lưu cả công thức đã bookmark, và <code>getBookmark()</code> — cái TODO thứ hai
+		bạn gặp ở mục 19.2 — cuối cùng cũng có nội dung.
+	</div>
+</section>
+

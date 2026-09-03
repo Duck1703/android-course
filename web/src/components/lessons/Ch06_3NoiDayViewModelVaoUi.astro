@@ -1,0 +1,477 @@
+---
+// Chapter 6: Advanced Jetpack Compose — viết lại HOÀN TOÀN ở Task 41 (Phase 5 "Depth pass").
+// Nguyên tắc: bám sát content/book/ch06-advanced-jetpack-compose.md (511 dòng, 4 heading "##"),
+// mọi code lấy từ aaf-materials/06-advanced-jetpack-compose/projects/{starter,final}/.
+// Mọi số dòng trích dẫn trong bài đã mở file thật để kiểm — không có số dòng nào được suy đoán.
+// Giải thích tự viết tiếng Việt — không copy nguyên văn sách (xem CLAUDE.md mục Bản quyền).
+// Code thật được dùng theo Quyết định #7 trong docs/PROJECT_PLAN.md.
+// [TASK48] Chuong 6.3 — Nối ViewModel vào giao diện
+
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/06-advanced-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat";
+
+const STARTER = "aaf-materials/06-advanced-jetpack-compose/projects/starter/app/src/main/java/com/kodeco/chat";
+
+const FINAL_ROOT = "aaf-materials/06-advanced-jetpack-compose/projects/final";
+
+const BOOK = "content/book/ch06-advanced-jetpack-compose.md";
+
+const finalUiStateCode = `class ConversationUiState(
+  val channelName: String,
+  initialMessages: List<MessageUiModel>,
+  val viewModel: MainViewModel
+) {
+  private val _messages: MutableList<MessageUiModel> = initialMessages.toMutableStateList()
+
+  val messages: List<MessageUiModel> = _messages
+
+  //author ID is set to the user ID - it's used to tell if the message is sent from this user (self) when rendering the UI
+  val authorId: MutableStateFlow<String> = viewModel.currentUserId
+
+  fun addMessage(msg: String, photoUri: Uri?) {
+    viewModel.onCreateNewMessageClick(msg, photoUri)
+  }
+}`;
+
+const finalMainActivityCode = `class MainActivity : ComponentActivity() {
+
+  private val viewModel: MainViewModel by viewModels()
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {
+      val messagesWithUsers by viewModel.messages.collectAsStateWithLifecycle()
+      val currentUiState =
+        ConversationUiState(
+          channelName = "Android Apprentice",
+          initialMessages = messagesWithUsers,
+          viewModel = viewModel
+        )
+
+      KodecochatTheme {
+        ConversationContent(
+          currentUiState,
+        )
+      }
+    }
+  }
+}`;
+
+const versionCatalogCode = `[versions]
+lifecycle-runtime-compose = "2.6.2"
+lifecycle-runtime-ktx = "2.6.2"
+
+[libraries]
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle-runtime-compose" }`;
+
+const moduleGradleCode = `dependencies {
+  val composeBom = platform(libs.androidx.compose.bom)
+
+  implementation(composeBom)
+  implementation(libs.bundles.androidx)
+  implementation(libs.bundles.compose)
+
+  // compose lifecycle
+  implementation(libs.androidx.lifecycle.runtime.compose)`;
+
+const finalConversationContentCode = `@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConversationContent(
+  uiState: ConversationUiState,
+) {
+
+  val scrollState = rememberLazyListState()
+  val scope = rememberCoroutineScope()
+  val topBarState = rememberTopAppBarState()
+  val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topBarState)
+  val authorId = uiState.authorId.collectAsStateWithLifecycle()
+
+  LaunchedEffect(key1 = uiState.messages) {
+    scope.launch {
+      scrollState.scrollToItem(0)
+    }
+  }
+
+  Surface() {
+    Box(modifier = Modifier.fillMaxSize()) {
+      Column(
+        Modifier
+          .fillMaxSize()
+          .nestedScroll(scrollBehavior.nestedScrollConnection)
+      ) {
+        Messages(
+          messages = uiState.messages,
+          authorId = authorId.value,
+          scrollState = scrollState,
+          modifier = Modifier.weight(1f),
+        )
+        UserInput(
+          onMessageSent = { content ->
+            uiState.addMessage(content, null)
+          },
+          resetScroll = {
+            scope.launch {
+              scrollState.scrollToItem(0)
+            }
+          },
+          // Use navigationBarsPadding() imePadding() and , to move the input panel above both the
+          // navigation bar, and on-screen keyboard (IME)
+          modifier = Modifier
+            .navigationBarsPadding()
+            .imePadding(),
+        )
+      }
+      // Channel name bar floats above the messages
+      ChannelNameBar(
+        channelName = uiState.channelName,
+        scrollBehavior = scrollBehavior
+      )
+    }
+  }
+}`;
+
+const starterConversationContentCode = `@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConversationContent(uiState: ConversationUiState) {
+
+  val scrollState = rememberLazyListState()
+  val scope = rememberCoroutineScope()
+  val topBarState = rememberTopAppBarState()
+  val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topBarState)
+
+  Surface() {
+    Box(modifier = Modifier.fillMaxSize()) {
+      Column(
+        Modifier
+          .fillMaxSize()
+//          .nestedScroll(scrollBehavior.nestedScrollConnection)
+      ) {
+        Messages(
+          messages = uiState.messages,
+          modifier = Modifier.weight(1f)
+//          scrollState = scrollState
+        )
+        UserInput(onMessageSent = {})
+      }
+      // Channel name bar floats above the messages
+      ChannelNameBar(channelName = "Android Apprentice")
+    }
+  }
+
+
+}`;
+
+const starterMessageUiCode = `val isUserMe = userId == "me" // hard coded for now, next chapter will be = authorId == userId`;
+
+const finalMessageUiCode = `@Composable
+fun MessageUi(
+  onAuthorClick: (String) -> Unit,
+  msg: MessageUiModel,
+  authorId: String,
+  userId: String,
+  isFirstMessageByAuthor: Boolean,
+  isLastMessageByAuthor: Boolean,
+) {
+  val isUserMe = authorId == userId
+  val borderColor = if (isUserMe) {
+    MaterialTheme.colorScheme.primary
+  } else {
+    MaterialTheme.colorScheme.tertiary
+  }
+
+  val authorImageId: Int =
+    if (isUserMe) R.drawable.profile_photo_android_developer else R.drawable.someone_else`;
+
+const fakeDataFinalCode = `val initialMessages = listOf(
+  MessageUiModel(message = sampleMessageTexts[2], user = otherUser, id = "2"),
+  MessageUiModel(message = sampleMessageTexts[1], user = meUser, id = "1"),
+  MessageUiModel(message = sampleMessageTexts[0], user = otherUser, id = "0")
+)
+
+//val exampleUiState = ConversationUiState(
+//    initialMessages = initialMessages,
+//    channelName = "#Android Apprentice",
+//)`;
+
+const fakeDataStarterCode = `private val initialMessages = listOf(
+  MessageUiModel(message = sampleMessageTexts[0], user = otherUser, id = "0"),
+  MessageUiModel(message = sampleMessageTexts[1], user = meUser, id = "1"),
+  MessageUiModel(message = sampleMessageTexts[2], user = otherUser, id = "2")
+)
+
+val exampleUiState = ConversationUiState(
+  initialMessages = initialMessages,
+  channelName = "#Android Apprentice",
+)`;
+---
+
+<section class="lesson">
+	<h2 id="noi-day">12. Nối dây: từ dữ liệu giả sang ViewModel</h2>
+	<p>
+		Tới đây ViewModel đã đủ, nhưng UI vẫn đang ăn dữ liệu giả. Sách hướng dẫn bốn bước sửa, và nên đọc chúng như một chuỗi
+		nối dây từ dưới lên trên.
+	</p>
+	<h3>12.1 Mở khoá dữ liệu giả trong <code>FakeData.kt</code></h3>
+	<p>
+		Sách yêu cầu hai việc: <strong>xoá từ khoá <code>private</code></strong> khỏi <code>initialMessages</code> để ViewModel
+		đọc được nó, và <strong>xoá <code>exampleUiState</code></strong> vì không còn cần.
+	</p>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">starter — dòng 66–74</div>
+			<Code code={fakeDataStarterCode} lang="kotlin" theme="github-dark" />
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">final — dòng 66–74</div>
+			<Code code={fakeDataFinalCode} lang="kotlin" theme="github-dark" />
+		</div>
+	</div>
+	<p class="src">
+		Nguồn: <code>{STARTER}/data/FakeData.kt</code> và <code>{FINAL}/data/FakeData.kt</code> (dòng 66–74)
+	</p>
+	<p>Hai chi tiết trong bản <code>final</code> đáng chú ý mà sách không nói:</p>
+	<ul>
+		<li>
+			Tác giả <strong>không xoá <code>exampleUiState</code> mà comment nó lại</strong>. Kết quả tương đương với việc xoá,
+			nhưng nếu bạn xoá thật theo lời sách rồi so file với <code>final</code>, bạn sẽ thấy khác biệt và tưởng mình sai.
+		</li>
+		<li>
+			<strong>Thứ tự 3 tin nhắn giả bị đảo ngược</strong> giữa hai project: <code>starter</code> theo thứ tự
+			<code>[0, 1, 2]</code>, <code>final</code> theo <code>[2, 1, 0]</code>. Sách <em>không hề</em> yêu cầu đổi. Đây không
+			phải chi tiết vụn vặt: nó là hệ quả bắt buộc của <code>reverseLayout = true</code> ở mục 15. Đảo list rồi lại đảo
+			layout thì thứ tự hiển thị mới đúng như cũ.
+		</li>
+	</ul>
+	<h3>12.2 <code>ConversationUiState</code> — biến thân hàm rỗng thành lời gọi thật</h3>
+	<p>Sách yêu cầu thêm một property và thay dòng <code>TODO</code> bằng một lời gọi:</p>
+	<Code code={finalUiStateCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/ConversationUiState.kt</code> (dòng 48–63)</p>
+	<p>
+		So với bản <code>starter</code> ở mục 1, có ba thay đổi: constructor nhận thêm <code>val viewModel: MainViewModel</code>;
+		thêm property <code>authorId</code> lấy từ <code>viewModel.currentUserId</code> (sách chỉ thêm nó ở dòng 345, tức muộn
+		hơn); và <code>addMessage()</code> giờ chuyển tiếp xuống ViewModel.
+	</p>
+	<div class="hint">
+		<strong>Điều đáng nhận ra về vai trò của class này.</strong> <code>ConversationUiState</code> giờ không còn <em>giữ</em>
+		state theo nghĩa thật — nó chỉ <strong>chuyển tiếp</strong>: nhận danh sách tin nhắn từ ngoài vào constructor, chuyển
+		<code>addMessage()</code> xuống ViewModel, chuyển <code>authorId</code> từ ViewModel ra. Nó trở thành một
+		<em>lớp trung gian</em> giữa UI và ViewModel. Có thể bỏ nó và cho composable nhận thẳng ViewModel không? Được, và nhiều
+		codebase làm vậy. Nhưng giữ nó lại có một lợi ích cụ thể: các composable dưới nó không cần biết ViewModel tồn tại, nên
+		vẫn test được mà không cần dựng ViewModel — đúng tinh thần stateless ở mục 5.
+	</div>
+	<p class="notice">
+		<strong>Nhưng cách làm này để lại một property "chết một nửa".</strong> Trong <code>final</code>, dòng 53–55 vẫn còn
+		<code>private val _messages = initialMessages.toMutableStateList()</code> và <code>val messages = _messages</code>. Nghĩa
+		là danh sách tin nhắn <strong>tồn tại ở hai nơi</strong>: một trong ViewModel (nguồn thật) và một bản copy trong
+		<code>ConversationUiState</code>, được tạo lại mỗi lần <code>MainActivity</code> recompose. Nó chạy đúng vì bản copy được
+		làm mới liên tục từ flow, nhưng đây là dấu vết của code đang chuyển đổi từ kiến trúc cũ sang mới, không phải thiết kế mà
+		bạn nên bắt chước.
+	</p>
+	<h3>12.3 <code>Conversation.kt</code> — nối nút Send vào <code>addMessage()</code></h3>
+	<p>
+		Sách yêu cầu đổi <code>UserInput(onMessageSent = &#123;&#125;)</code> — một lambda rỗng, tức bấm Send không làm gì —
+		thành một lambda thật, đồng thời thêm <code>resetScroll</code> và hai modifier padding. Dưới đây là toàn bộ
+		<code>ConversationContent()</code> của <code>final</code>, để bạn thấy các mảnh nằm ở đâu:
+	</p>
+	<Code code={finalConversationContentCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 101–154)</p>
+	<p>Bốn thứ ở đây đáng giải thích riêng:</p>
+	<ul>
+		<li>
+			<code>uiState.addMessage(content, null)</code> — chú ý tham số thứ hai là <strong><code>null</code> cứng</strong>.
+			Nghĩa là ở tầng gọi này, ảnh <em>không bao giờ</em> được truyền xuống, dù <code>UserInput</code> bên trong có giữ
+			<code>photoUri</code>. Đây là mắt xích thứ hai làm tính năng ảnh không hoạt động — mắt xích thứ nhất là điều kiện
+			<code>if (message.photoUri == null)</code> ở mục 10.
+		</li>
+		<li>
+			<code>resetScroll</code> — khi ô nhập được focus, danh sách cuộn về đầu. Nó đảm bảo bàn phím bật lên không che mất tin
+			nhắn mới nhất.
+		</li>
+		<li>
+			<code>.navigationBarsPadding().imePadding()</code> — comment trong code nói rõ mục đích: đẩy khu vực nhập liệu lên
+			<em>trên</em> cả thanh điều hướng và bàn phím ảo (IME). Không có nó, ô nhập bị bàn phím che.
+		</li>
+		<li>
+			<code>LaunchedEffect(key1 = uiState.messages)</code> — <strong>sách không hề đề cập khối này</strong>, nhưng nó là thứ
+			làm màn hình tự cuộn tới tin nhắn mới mỗi khi danh sách đổi. <code>LaunchedEffect</code> chạy một coroutine
+			<em>mỗi lần <code>key1</code> đổi giá trị</em>. Đây là cách đúng để chạy một tác vụ phụ (side effect) từ trong
+			composable — gọi thẳng <code>scope.launch</code> trong thân composable sẽ chạy lại mỗi lần recompose, tức là sai.
+		</li>
+	</ul>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">starter (dòng 90–118) — mọi thứ về scroll đang bị comment</div>
+			<Code code={starterConversationContentCode} lang="kotlin" theme="github-dark" />
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">final — xem đoạn đầy đủ phía trên</div>
+			<p>
+				Khác biệt: có <code>authorId</code>, có <code>LaunchedEffect</code>, <code>nestedScroll</code> được bỏ comment,
+				<code>scrollState</code> được truyền xuống <code>Messages()</code>, <code>UserInput</code> được nối dây đầy đủ, và
+				<code>ChannelNameBar</code> nhận <code>uiState.channelName</code> thay vì chuỗi cứng.
+			</p>
+		</div>
+	</div>
+	<p class="src">Nguồn: <code>{STARTER}/conversation/Conversation.kt</code> (dòng 90–118)</p>
+	<h3>12.4 <code>MainActivity</code> — nơi ViewModel gặp Compose</h3>
+	<Code code={finalMainActivityCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/MainActivity.kt</code> (dòng 55–75)</p>
+	<ol class="chain">
+		<li>
+			<code>private val viewModel: MainViewModel by viewModels()</code> — sách giải thích chính xác: đây là cách lấy
+			ViewModel <em>từ trong một Activity</em>, và nó là một <strong>property delegate</strong> của Kotlin do thư viện
+			<code>activity-ktx</code> cung cấp. Sách nói thêm: từ một Fragment thì dùng <code>by activityViewModels()</code>.
+			Điểm quan trọng: <code>by viewModels()</code> <em>không</em> tạo mới ViewModel mỗi lần — nó tìm trong
+			<code>ViewModelStore</code>, có rồi thì trả về cái cũ. Đó là toàn bộ lý do dữ liệu sống sót qua xoay màn hình.
+		</li>
+		<li>
+			<code>val messagesWithUsers by viewModel.messages.collectAsStateWithLifecycle()</code> — sách gọi đây là phần
+			<em>then chốt</em>: chỗ bạn <strong>collect</strong> dữ liệu được <strong>emit</strong> từ flow. Cụm
+			<code>by viewModel.</code> + tên property là cách truy cập property public của ViewModel từ trong composable.
+		</li>
+		<li>
+			Tạo một <code>ConversationUiState</code> để truyền vào composable. Tên phòng chat bị hardcode vì hiện chỉ có một
+			phòng. Sách nói rõ một điều dễ gây bối rối: vì <code>_messagesFlow</code> khởi tạo bằng <code>emptyList()</code>,
+			<strong>danh sách tin nhắn giả chỉ xuất hiện sau khi bạn gửi tin nhắn đầu tiên</strong> — muốn nó hiện ngay từ đầu thì
+			cần một hàm <code>init</code>; muốn không có dữ liệu giả thì đừng truyền vào.
+		</li>
+	</ol>
+	<div class="hint">
+		<strong>Bổ sung — vì sao <code>collectAsStateWithLifecycle()</code> chứ không <code>collectAsState()</code>?</strong>
+		Sách chỉ nói "để được lợi ích lifecycle aware". Cụ thể: <code>collectAsState()</code> chỉ dừng thu khi composable rời
+		khỏi cây UI, nên khi app xuống nền (người dùng chuyển sang app khác) nó <em>vẫn tiếp tục thu</em> — tốn pin, và với
+		flow gọi mạng thì tốn cả dữ liệu di động. <code>collectAsStateWithLifecycle()</code> tự động <em>tạm dừng</em> khi
+		Activity không còn ở trạng thái <code>STARTED</code> và tự thu lại khi quay vào. Với app chat, nó chính là khác biệt
+		giữa "ngừng nhận tin khi app ở nền" và "nhận nhưng không ai xem".
+	</div>
+	<p class="notice">
+		<strong>Lệch #2 — <code>KodecochatTheme</code> viết hoa không đồng nhất.</strong> Trong project, tên theme là
+		<code>KodecochatTheme</code> (chữ <code>c</code> nhỏ ở giữa) — xem <code>MainActivity.kt</code> dòng 50 và 70. Ở chapter
+		2, cùng thứ này được đặt tên <code>KodecoChatTheme</code>. Nếu bạn gõ theo bản viết hoa quen mắt, Android Studio sẽ báo
+		không tìm thấy hàm. Copy đúng tên trong project của bạn.
+	</p>
+	<h2 id="gradle-dependency">13. Một dependency phải thêm, nếu không <code>collectAsStateWithLifecycle</code> không tồn tại</h2>
+	<p>
+		Sách dừng lại đúng lúc để nói một điều dễ làm người học tắc: <code>collectAsStateWithLifecycle</code>
+		<strong>không</strong> có sẵn trong Compose. Nó đến từ thư viện <code>androidx.lifecycle:lifecycle-runtime-compose</code>.
+		Và sách nối thẳng về chapter 4: nếu bạn đã theo chapter đó và đang dùng Version Catalog, hãy thêm vào
+		<code>libs.versions.toml</code>:
+	</p>
+	<Code code={versionCatalogCode} lang="toml" theme="github-dark" />
+	<p class="src">
+		Nguồn: <code>{BOOK}</code> (dòng 293–299); file thật <code>{FINAL_ROOT}/gradle/libs.versions.toml</code>
+		(dòng 14 và 33)
+	</p>
+	<p>Rồi thêm vào file Gradle cấp module:</p>
+	<Code code={moduleGradleCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL_ROOT}/app/build.gradle.kts</code> (dòng 88–95)</p>
+	<p>
+		Sau đó <strong>Sync project with Gradle files</strong>. Sách nhắc bước này vì nếu bỏ qua, IDE vẫn báo đỏ dù bạn đã ghi
+		đúng dependency — đúng cái bẫy đã được nói ở chapter 4.
+	</p>
+	<p>
+		Đây là <em>toàn bộ</em> thay đổi về build của chapter 6. So <code>starter</code> với <code>final</code> chỉ có đúng ba
+		dòng mới: một dòng <code>[versions]</code>, một dòng <code>[libraries]</code>, một dòng
+		<code>implementation(libs.androidx.lifecycle.runtime.compose)</code>. Nếu bạn muốn kiểm tra mình có làm thừa gì không,
+		đây là mốc để so.
+	</p>
+	<p class="hint">
+		<strong>Vì sao có <em>hai</em> thư viện lifecycle tên gần giống nhau.</strong> Project đã có
+		<code>lifecycle-runtime-ktx</code> từ trước; giờ thêm <code>lifecycle-runtime-compose</code>. Cái đầu là phần lifecycle
+		lõi (nơi có <code>viewModelScope</code>); cái sau là phần <em>cầu nối sang Compose</em> — chỉ chứa vài hàm như
+		<code>collectAsStateWithLifecycle()</code>. Cả hai dùng chung số version <code>2.6.2</code>, và trong catalog chúng là hai
+		entry riêng. Đây là ví dụ rất sát cho việc "một thư viện lớn được chia thành nhiều artifact nhỏ để app chỉ tải phần mình
+		dùng".
+	</p>
+	<p>
+		Đến đây sách bảo build và chạy: gõ chữ vào ô nhập, bấm nút gửi <em>hoặc</em> biểu tượng máy bay giấy trên bàn phím. Tin
+		nhắn của bạn xuất hiện — kèm cả dữ liệu giả xuất hiện cùng lúc, đúng như lý do đã giải thích ở mục 12.4. Sau lần build
+		này, sách chỉ ra hai thứ chưa ổn, và hai mục tiếp theo sửa chúng.
+	</p>
+
+	<h2 id="sua-authorid">14. Sửa lỗi tin nhắn của bạn hiện ra như của người khác</h2>
+	<p>
+		Vấn đề sách chỉ ra sau lần build đầu: bạn gửi tin nhắn, nhưng UI vẽ nó như thể đến từ nhân vật <em>không phải "tôi"</em> —
+		sai avatar, sai màu bong bóng, sai bên. Nguyên nhân nằm ở một dòng trong <code>MessageUi()</code> của
+		<code>starter</code>:
+	</p>
+	<Code code={starterMessageUiCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{STARTER}/conversation/Conversation.kt</code> (dòng 194) — chính comment của tác giả đã hẹn sẽ sửa</p>
+	<p>
+		<code>authorId</code> bị hardcode thành chuỗi <code>"me"</code>. Sách giải thích vì sao phải bỏ cách làm đó, và lý do
+		này quan trọng hơn bản thân việc sửa code: ViewModel giờ theo dõi danh tính người dùng bằng một UUID riêng, và
+		<strong>nếu không làm vậy thì mọi người trên mọi thiết bị đều là "me"</strong> — không có cách nào phân biệt người dùng
+		giữa các máy. Nó là bug về mặt <em>dữ liệu</em>, không chỉ về hiển thị.
+	</p>
+	<p>Chuỗi sửa gồm năm bước, mỗi bước ở một tầng, và đọc theo thứ tự sẽ thấy dữ liệu chảy từ ViewModel ra tới pixel:</p>
+	<table class="api">
+		<thead>
+			<tr><th>#</th><th>File</th><th>Việc làm</th><th>Ý nghĩa</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>1</td>
+				<td><code>MainViewModel.kt</code></td>
+				<td><code>var currentUserId = MutableStateFlow(userId)</code></td>
+				<td>Công khai danh tính người dùng ra ngoài, dưới dạng flow để UI quan sát được.</td>
+			</tr>
+			<tr>
+				<td>2</td>
+				<td><code>ConversationUiState.kt</code></td>
+				<td><code>val authorId: MutableStateFlow&lt;String&gt; = viewModel.currentUserId</code></td>
+				<td>Chuyển tiếp flow đó ra tầng UI state.</td>
+			</tr>
+			<tr>
+				<td>3</td>
+				<td><code>Conversation.kt</code> — <code>ConversationContent()</code></td>
+				<td><code>val authorId = uiState.authorId.collectAsStateWithLifecycle()</code></td>
+				<td>Thu giá trị hiện tại từ flow, ngay tại composable khung.</td>
+			</tr>
+			<tr>
+				<td>4</td>
+				<td><code>Conversation.kt</code> — <code>Messages()</code></td>
+				<td>Thêm tham số <code>authorId: String</code>, truyền <code>authorId = authorId.value</code> từ trên xuống</td>
+				<td>
+					Đúng pattern state hoisting ở mục 5: <code>Messages()</code> <em>nhận</em> giá trị, không tự đi lấy. Nó vẫn
+					stateless.
+				</td>
+			</tr>
+			<tr>
+				<td>5</td>
+				<td><code>Conversation.kt</code> — <code>MessageUi()</code></td>
+				<td>
+					Lời gọi đổi thành <code>authorId = content.user.id</code>; thân hàm đổi
+					<code>val isUserMe = userId == "me"</code> thành <code>val isUserMe = authorId == userId</code>
+				</td>
+				<td>So <em>hai giá trị thật</em> với nhau thay vì so với một chuỗi cứng.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 334–389)</p>
+	<Code code={finalMessageUiCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 222–239)</p>
+	<p>
+		Từ <code>isUserMe</code>, ba thứ trên giao diện được quyết định: <code>borderColor</code> (viền avatar dùng màu
+		<code>primary</code> nếu là mình, <code>tertiary</code> nếu là người khác), <code>authorImageId</code> (chọn giữa hai file
+		ảnh trong <code>res/drawable</code>), và ở các composable con là màu bong bóng và vị trí. Nghĩa là một
+		<code>Boolean</code> điều khiển toàn bộ "cảm giác đây là tin của tôi".
+	</p>
+	<p class="notice">
+		<strong>Lệch #3 — sách in một dòng khác với code thật, ở đúng chỗ dễ sai.</strong> Sách viết
+		<code>authorId = content.user.id</code> ở lời gọi <code>MessageUi()</code> (dòng 382), nhưng code trong
+		<code>final</code> lại viết <code>authorId = authorId</code> (dòng 187) — tức truyền xuống giá trị đã thu từ flow. Hai
+		cách này <em>không</em> tương đương: <code>content.user.id</code> là người gửi <em>của tin nhắn đang vẽ</em>, còn
+		<code>authorId</code> là <em>người đang dùng máy</em>. Nếu làm theo sách, <code>authorId == userId</code> sẽ luôn đúng
+		với mọi tin nhắn → <strong>mọi tin nhắn đều hiện như của bạn</strong>, kể cả tin nhắn giả của người khác. Bản đúng là bản
+		trong project. Đây là lệch nghiêm trọng nhất của chapter này về mặt hậu quả.
+	</p>
+	<p class="hint">
+		<strong>Vì sao code thật của <code>Messages()</code> vẫn cần biến <code>userId</code> riêng.</strong> Trong
+		<code>itemsIndexed</code>, tác giả tính <code>val userId = messages.getOrNull(index)?.message?.userId</code> rồi truyền
+		<code>userId = userId ?: ""</code>. Nghĩa là: <code>authorId</code> = tôi, <code>userId</code> = người gửi tin này, và
+		<code>MessageUi()</code> so hai cái. Tên hai tham số này đặt khá dễ lẫn — đọc thân hàm
+		<code>val isUserMe = authorId == userId</code> ra ngữ cảnh mới thấy vai trò rõ ràng.
+	</p>
+</section>
+

@@ -1,0 +1,502 @@
+---
+// Lesson Chapter 8 — Networking (coroutines, Flow, Retrofit, Moshi).
+// Nguồn chính: content/book/ch08-networking.md (trích từ EPUB "Android Fundamentals by Tutorials", Kodeco).
+// Nguồn code: aaf-materials/08-networking/projects/{starter,final}/ — dùng theo Quyết định #7 trong docs/PROJECT_PLAN.md.
+// [TASK48] Chuong 8.2 — Retrofit, Moshi và khai báo API bằng interface
+
+import { Code } from "astro:components";
+
+const BOOK = "content/book/ch08-networking.md";
+
+const AAF = "aaf-materials/08-networking/projects/final/app/src/main/java/com/kodeco/recipefinder";
+
+const AAF_GRADLE = "aaf-materials/08-networking/projects/final";
+
+const tomlRetrofit = `# [versions]
+retrofit="2.9.0"
+
+# [libraries]
+# Retrofit
+retrofit = {module="com.squareup.retrofit2:retrofit", version.ref="retrofit" }`;
+
+const gradleRetrofit = `implementation(libs.retrofit)`;
+
+const tomlMoshiReflect = `# [versions]
+moshi="1.15.0"
+
+# [libraries]
+moshi-kotlin = {module="com.squareup.moshi:moshi-kotlin", version.ref="moshi" }
+retrofit-moshi-converter = {module="com.squareup.retrofit2:converter-moshi", version.ref="retrofit" }`;
+
+const gradleMoshiReflect = `implementation(libs.moshi.kotlin)
+implementation(libs.retrofit.moshi.converter)`;
+
+const jsonShape = `{
+  "results": [
+    { "id": 716429, "title": "Pasta with Garlic", "image": "https://.../716429.jpg" },
+    { "id": 715538, "title": "Bruschetta",        "image": "https://.../715538.jpg" }
+  ],
+  "offset": 0,
+  "number": 20,
+  "totalResults": 86
+}`;
+
+const responseBook = `data class SearchRecipesResponse(
+  val offset: Int,
+  val number: Int,
+  val totalResults: Int,
+  @Json(name = "results")
+  val recipes: List<Recipe>
+)`;
+
+const responseFinal = `import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
+
+@JsonClass(generateAdapter = true)
+data class SearchRecipesResponse(
+  val offset: Int,
+  val number: Int,
+  val totalResults: Int,
+  @Json(name = "results")
+  val recipes: List<Recipe>
+)`;
+
+const recipeModelFinal = `import com.squareup.moshi.JsonClass
+
+@JsonClass(generateAdapter = true)
+data class Recipe(
+  val id: Int,
+  val title: String,
+  val image: String?,
+)`;
+
+const serviceImports = `import com.kodeco.recipefinder.data.models.RecipeInformationResponse
+import com.kodeco.recipefinder.data.models.SearchRecipesResponse
+import com.kodeco.recipefinder.viewmodels.PAGE_SIZE
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import retrofit2.Retrofit
+import retrofit2.converter.moshi.MoshiConverterFactory
+import retrofit2.http.GET
+import retrofit2.http.Path
+import retrofit2.http.Query`;
+
+const apiKeyConst = `const val apiKey = "<Replace with API Key>"`;
+
+const serviceInterface = `interface SpoonacularService {
+  // 1
+  @GET("recipes/complexSearch?&apiKey=$apiKey")
+  // 2
+  suspend fun queryRecipes(
+    @Query("query") query: String,
+    @Query("offset") offset: Int,
+    @Query("number") number: Int = PAGE_SIZE
+  ): SearchRecipesResponse
+
+  // 3
+  @GET("recipes/{id}/information?includeNutrition=false&apiKey=$apiKey")
+  suspend fun queryRecipe(@Path("id") id: Int): RecipeInformationResponse
+}`;
+
+const retrofitInstanceBook = `object RetrofitInstance {
+  // 1
+  private const val BASE_URL = "https://api.spoonacular.com/"
+
+  // 2
+  private fun provideMoshi(): Moshi =
+    Moshi
+      .Builder()
+      .addLast(KotlinJsonAdapterFactory())
+      .build()
+
+  // 3
+  private val retrofit: Retrofit by lazy {
+    Retrofit.Builder()
+      .baseUrl(BASE_URL)
+      .addConverterFactory(MoshiConverterFactory.create(provideMoshi()))
+      .build()
+  }
+
+  // 4
+  val spoonacularService: SpoonacularService by lazy {
+      retrofit.create(SpoonacularService::class.java)
+  }
+}`;
+---
+
+<section class="lesson">
+	<h2 id="network-requests">6. Network Requests — vì sao cần thư viện</h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (Network Requests, dòng 140)</p>
+	<p>
+		Sách nói ngắn: muốn lấy dữ liệu từ internet thì phải gửi network request, và <strong>cách dễ nhất là dùng thư
+		viện</strong>; một trong những thư viện tốt và được dùng nhiều nhất là <strong>Retrofit</strong>.
+	</p>
+	<p>
+		Câu đó đúng nhưng đáng mở rộng, vì "dễ nhất" không nói được thư viện tiết kiệm cho bạn những gì. Nếu tự làm bằng
+		API thuần của Java/Android, bạn phải tự viết: mở kết nối HTTP, ghép URL với query string và tự
+		<strong>encode</strong> các ký tự đặc biệt (khoảng trắng, tiếng Việt có dấu), đặt header, đọc
+		<code>InputStream</code> ra chuỗi, kiểm tra HTTP status code, tự chuyển việc đó sang thread khác, tự quản lý
+		timeout và retry, tự parse JSON. Retrofit (cùng OkHttp bên dưới nó) làm hết những việc đó, và bạn chỉ còn phải
+		<strong>mô tả</strong> API bằng một interface.
+	</p>
+	<h3 id="alternatives">6.1. Alternatives — các thư viện khác</h3>
+	<p class="src">Nguồn: <code>{BOOK}</code> (Alternatives, dòng 144–147)</p>
+	<p>Sách nêu rõ mình chọn Retrofit nhưng có lựa chọn khác:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Thư viện</th><th>Sách nói gì</th><th>Bổ sung để bạn định hướng</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Retrofit</strong></td>
+				<td>Chọn dùng trong chapter này</td>
+				<td>Của Square. Chuẩn de-facto trong thế giới Android thuần. Biết nó là gần như làm việc được với mọi app Android hiện có.</td>
+			</tr>
+			<tr>
+				<td><strong>Fuel</strong></td>
+				<td>"Mới hơn và vẫn đang được cập nhật"</td>
+				<td>API kiểu chuỗi hàm ngắn gọn, cộng đồng nhỏ hơn nhiều.</td>
+			</tr>
+			<tr>
+				<td><strong>Ktor</strong></td>
+				<td>"Dùng trong thế giới Multiplatform, nhưng cũng dùng được trong Android"</td>
+				<td>Của JetBrains. Nếu bạn định viết code dùng chung cho cả Android và iOS (Kotlin Multiplatform), Ktor Client là lựa chọn tự nhiên vì Retrofit chỉ chạy trên JVM/Android.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Sách cũng nói thêm ở đoạn giới thiệu Retrofit (dòng 151–153): Retrofit do <strong>Square</strong> phát triển, là
+		một <strong>type-safe HTTP client</strong> (client HTTP an toàn về kiểu dữ liệu) cho Android và Java/Kotlin. "An
+		toàn về kiểu" nghĩa là compiler kiểm tra được: bạn khai báo hàm trả về <code>SearchRecipesResponse</code>, thì mọi
+		chỗ dùng kết quả đều được kiểm tra kiểu lúc biên dịch, không phải tự đoán từ một <code>Map</code> hay
+		<code>JSONObject</code> lúc chạy. Và sách tóm gọn cách nó hoạt động: <strong>bạn tạo một interface và dùng
+		annotation; một builder đọc thông tin đó rồi tự sinh code gọi mạng cho bạn.</strong>
+	</p>
+
+	<h3 id="them-retrofit">6.2. Thêm Retrofit</h3>
+	<p class="src">Nguồn: <code>{BOOK}</code> (Adding Retrofit, dòng 157–178) · <code>{AAF_GRADLE}/gradle/libs.versions.toml</code> (dòng 20, 66–67)</p>
+	<Code code={tomlRetrofit} lang="toml" theme="github-dark" />
+	<Code code={gradleRetrofit} lang="kotlin" theme="github-dark" />
+	<p>
+		Chú ý dòng <code># Retrofit</code> — đó là comment trong file TOML, sách cố tình thêm để nhóm các dependency liên
+		quan lại cho dễ đọc. File thật trong <code>final</code> có đúng comment này ở dòng 66.
+	</p>
+	<p>
+		Bước này chỉ thêm <strong>thư viện Retrofit lõi</strong>. Nó biết cách gọi HTTP nhưng <em>chưa</em> biết cách hiểu
+		JSON — đó là lý do phần tiếp theo phải thêm Moshi cùng một converter cầu nối giữa hai thứ.
+	</p>
+
+	<h2 id="response-parsing">7. Response Parsing — Moshi biến JSON thành object Kotlin</h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (Response Parsing, dòng 182)</p>
+	<p>
+		Sách giải thích nhu cầu: dữ liệu server trả về thường là <strong>một chuỗi JSON</strong>, nên bạn cần cách dễ dàng
+		để chuyển chuỗi đó thành model và ngược lại. Thư viện được chọn là <strong>Moshi</strong> — cũng do Square làm.
+		Sách nhắc có thư viện khác, phổ biến là <strong>Gson</strong>, nhưng Moshi mới hơn và hiện đại hơn.
+	</p>
+	<p class="hint">
+		<strong>Vì sao Moshi "hiện đại hơn" Gson — điều sách không nói ra.</strong> Gson ra đời trước Kotlin, nên nó không
+		hiểu khái niệm <em>nullable</em> của Kotlin. Nếu JSON thiếu một field mà bạn khai báo <code>val title:
+		String</code> (không nullable), Gson vẫn tạo object với <code>title</code> đang là <code>null</code> — và app crash
+		ở một chỗ hoàn toàn khác, rất lâu sau, cực khó truy nguyên. Gson cũng bỏ qua giá trị mặc định trong constructor
+		Kotlin. Moshi được thiết kế có hiểu biết về Kotlin: thiếu field không nullable thì nó báo lỗi ngay lúc parse, và
+		nó tôn trọng giá trị mặc định. Đây là lý do thực tế để chọn Moshi, không chỉ vì "mới hơn".
+	</p>
+	<p>Cụ thể, đây là hình dạng JSON mà Spoonacular trả về cho lời gọi tìm kiếm (rút gọn cho dễ nhìn):</p>
+	<Code code={jsonShape} lang="json" theme="github-dark" />
+	<p>
+		Nhìn vào đó bạn thấy ngay việc Moshi phải làm: ghép <code>"results"</code> (một mảng) vào một
+		<code>List&lt;Recipe&gt;</code>, ghép <code>"totalResults"</code> vào một <code>Int</code>, và bỏ qua hàng chục
+		field khác mà app không quan tâm. Sách có nhắc điều cuối này khi đọc tài liệu API (dòng 246): rất nhiều field được
+		trả về, nhưng <em>bạn không cần phần lớn trong số đó</em> — và đó là một tính chất quan trọng: <strong>Moshi bỏ
+		qua field lạ mà không báo lỗi</strong>, nên bạn chỉ cần khai báo những gì mình dùng.
+	</p>
+
+	<h3 id="them-moshi">7.1. Thêm Moshi (bản reflection)</h3>
+	<p class="src">Nguồn: <code>{BOOK}</code> (Adding Moshi, dòng 186–206)</p>
+	<Code code={tomlMoshiReflect} lang="toml" theme="github-dark" />
+	<Code code={gradleMoshiReflect} lang="kotlin" theme="github-dark" />
+	<p>Hai dependency ở đây làm hai việc khác nhau, đừng lẫn:</p>
+	<ul>
+		<li>
+			<code>moshi-kotlin</code> — Moshi cùng phần hỗ trợ Kotlin <strong>bằng reflection</strong> (đọc cấu trúc class
+			lúc chạy để biết nó có field nào).
+		</li>
+		<li>
+			<code>retrofit-moshi-converter</code> (<code>com.squareup.retrofit2:converter-moshi</code>) —
+			<strong>cầu nối</strong>: dạy Retrofit cách dùng Moshi để chuyển body của response thành object. Không có nó,
+			Retrofit và Moshi vẫn là hai thư viện không biết nhau.
+		</li>
+	</ul>
+	<p class="notice">
+		<strong>Điểm lệch #2 — <code>moshi-kotlin</code> không tồn tại trong <code>final</code>.</strong> Ở mục 18, sách sẽ
+		bảo bạn <strong>xoá</strong> <code>moshi-kotlin</code> và thay bằng cặp <code>moshi</code> +
+		<code>moshiCodeGen</code>. Bản <code>final</code> của <code>aaf-materials/</code> chỉ chứa
+		<strong>trạng thái cuối</strong>, nên nếu bạn <code>diff</code> giữa <code>starter</code> và <code>final</code> thì
+		<strong>không bao giờ thấy bước reflection</strong> ở giữa: file
+		<code>{AAF_GRADLE}/gradle/libs.versions.toml</code> không có dòng nào tên <code>moshi-kotlin</code>. Điều này bình
+		thường (project mẫu chỉ lưu 2 mốc, không lưu từng bước), nhưng cần biết để không nghĩ mình đọc sai sách. Trong
+		lesson này, mọi chỗ dùng reflection đều được ghi rõ là <em>trạng thái trung gian theo sách</em>.
+	</p>
+	<h2 id="signup">8. Đăng ký Spoonacular API và lấy API key</h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (Signing Up With the Recipe API, dòng 210–261)</p>
+	<p>
+		Nội dung remote của app là <strong>Spoonacular Recipe API</strong> (<code>https://spoonacular.com/food-api</code>).
+		Sách dẫn qua 7 ảnh chụp màn hình; dịch thành các bước để bạn tự làm:
+	</p>
+	<ol class="chain">
+		<li>Mở <code>https://spoonacular.com/food-api</code>, bấm <strong>Start Now</strong> ở góc trên phải để tạo tài khoản.</li>
+		<li>Điền email + mật khẩu, tick đồng ý điều khoản, bấm <strong>Sign up</strong>. Chọn <strong>free tier</strong> (gói miễn phí) để hoàn tất.</li>
+		<li>Xác nhận email, rồi đăng nhập theo link trong email.</li>
+		<li>Bạn vào <strong>API Console</strong> — có biểu đồ, nó sẽ bắt đầu có dữ liệu khi app của bạn gọi API.</li>
+		<li>Mở phần <strong>documents</strong> để xem tài liệu endpoint tìm công thức. Kéo xuống sẽ thấy rất nhiều field được trả về (bạn chỉ cần vài cái) cùng <strong>path</strong> và danh sách <strong>parameter</strong> của lời gọi <code>GET</code>. Sách khuyên bookmark trang này.</li>
+		<li>Bấm <strong>My Console</strong> → phần <strong>Profile</strong>.</li>
+		<li>Bấm <strong>Show/Hide API Key</strong>, copy key và <strong>lưu vào nơi an toàn</strong>.</li>
+	</ol>
+	<p class="notice">
+		<strong>Sách cảnh báo về rate limit</strong> (<code>{BOOK}</code> dòng 267): bản developer miễn phí
+		<strong>bị giới hạn số lượt gọi</strong>. Nếu bạn gọi nhiều, bạn sẽ nhận JSON có lỗi và email nhắc về hạn mức. Điều
+		này ảnh hưởng trực tiếp tới cách bạn học: <strong>đừng bấm tìm kiếm liên tục</strong>. Chú ý thêm là app này có
+		<em>phân trang tự động</em> (mục 18) — cuộn danh sách xuống là app tự gọi thêm request. Cuộn nhiều lần trong lúc
+		thử nghiệm có thể ngốn hạn mức nhanh hơn bạn tưởng.
+	</p>
+	<p class="hint">
+		<strong>Không có API key thì học được không?</strong> Được, nhưng chỉ tới mức đọc code. Toàn bộ phần kiến trúc —
+		coroutine, Flow, interface Retrofit, Moshi, cách ViewModel bắt lỗi — bạn đọc và hiểu được mà không cần chạy. Chỉ
+		phần "chạy app và thấy danh sách công thức hiện ra" là cần key. Nếu bạn không muốn tạo tài khoản, hãy đọc mục 13
+		thật kỹ: khối <code>catch</code> ở đó chính là đường đi của code khi không có key — app không crash, chỉ hiện danh
+		sách rỗng.
+	</p>
+
+	<h2 id="response-model">9. Model cho response — <code>SearchRecipesResponse</code></h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (SpoonacularService, dòng 271–291)</p>
+	<p>
+		Trước khi viết lời gọi, cần một class mô tả <em>hình dạng</em> dữ liệu trả về. Sách hướng dẫn: click phải vào
+		<code>main/java/com/kodeco/recipefinder/data/models</code>, tạo file Kotlin mới tên
+		<strong><code>SearchRecipesResponse.kt</code></strong>, rồi thêm:
+	</p>
+	<Code code={responseBook} lang="kotlin" theme="github-dark" />
+	<p>
+		So sánh với JSON ở mục 7: ba field <code>offset</code>, <code>number</code>, <code>totalResults</code> trùng tên
+		hoàn toàn với JSON nên Moshi tự ghép được. Field thứ tư là chỗ thú vị. Trong JSON nó tên
+		<strong><code>"results"</code></strong>, nhưng cái tên đó quá chung chung khi đọc code Kotlin. Nên sách dùng
+		annotation <strong><code>@Json(name = "results")</code></strong> để nói với Moshi: <em>"field JSON tên results,
+		hãy ghép nó vào biến Kotlin tên recipes"</em>.
+	</p>
+	<p class="hint">
+		<strong>Mental model cho <code>@Json</code>:</strong> nó là một <em>bảng phiên dịch tên</em> giữa hai thế giới. Bên
+		server dùng quy ước riêng của họ (có thể là <code>snake_case</code>, có thể là tên viết tắt lạ), bên Kotlin bạn
+		muốn tên rõ ràng theo <code>camelCase</code>. <code>@Json</code> cho phép hai bên khác nhau mà không phải sửa bên
+		nào. Đây cũng là lý do <strong>không nên</strong> đặt tên biến Kotlin theo JSON một cách máy móc — bạn có công cụ
+		để đặt tên tốt hơn.
+	</p>
+	<p>Bản <code>final</code> có thêm một annotation nữa (kết quả của mục 18, chưa cần hiểu lúc này):</p>
+	<p class="src">Nguồn: <code>{AAF}/data/models/SearchRecipesResponse.kt</code> (dòng 37–47)</p>
+	<Code code={responseFinal} lang="kotlin" theme="github-dark" />
+	<p>
+		File <code>Recipe.kt</code> thì đã tồn tại từ <code>starter</code> — chapter 8 chỉ thêm cho nó một annotation. Đây
+		là class mô tả một công thức trong danh sách kết quả, và nó rất nhỏ vì màn hình danh sách chỉ cần ba thứ:
+	</p>
+	<p class="src">Nguồn: <code>{AAF}/data/models/Recipe.kt</code> (dòng 37–44)</p>
+	<Code code={recipeModelFinal} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>image: String?</code> có dấu <code>?</code> — nullable, vì có công thức không kèm ảnh. Đây đúng là chỗ mà
+		Moshi hơn Gson: nếu JSON thiếu <code>image</code>, bạn nhận <code>null</code> một cách <em>có kiểm soát</em> và
+		Kotlin buộc bạn xử lý; còn nếu JSON thiếu <code>title</code> (không nullable), Moshi báo lỗi ngay lúc parse thay vì
+		để app crash sau đó.
+	</p>
+	<p class="hint">
+		Ba class model của chapter này tạo thành một thứ bậc dễ nhớ:
+		<strong><code>SearchRecipesResponse</code></strong> là "cả trang kết quả" (gồm metadata phân trang + danh sách);
+		<strong><code>Recipe</code></strong> là "một thẻ nhỏ trong lưới" (chỉ id, tên, ảnh);
+		<strong><code>RecipeInformationResponse</code></strong> (đã có sẵn trong <code>starter</code>) là "trang chi tiết
+		đầy đủ" (tóm tắt, hướng dẫn, thời gian nấu, danh sách nguyên liệu...). Hai lời gọi API ở mục 10 tương ứng đúng với
+		hai class: một trả về trang kết quả, một trả về chi tiết.
+	</p>
+	<h2 id="api-key">10. <code>SpoonacularService</code> — khai báo API bằng interface</h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (SpoonacularService, dòng 269, 293–321)</p>
+	<p>
+		Sách mô tả trước cấu trúc sẽ làm: để lấy dữ liệu từ recipe API, bạn tạo <strong>một interface Kotlin</strong> (mô
+		tả các lời gọi) và <strong>một object</strong> (quản lý kết nối). File này chứa API key, ID và URL.
+	</p>
+	<p>Mở file <code>SpoonacularService.kt</code> và thêm các import:</p>
+	<Code code={serviceImports} lang="kotlin" theme="github-dark" />
+	<p>Rồi khai báo API key:</p>
+	<Code code={apiKeyConst} lang="kotlin" theme="github-dark" />
+	<p class="notice">
+		<strong>Cảnh báo chính sách của sách</strong> (<code>{BOOK}</code> dòng 314, dịch ý): <em>đừng bao giờ commit API
+		key lên repository công khai; luôn lưu key ở nơi an toàn và tham chiếu từ đó. Trong tutorial này key được đặt thẳng
+		vào code cho gọn. Cách Google thường khuyến nghị là dùng thư viện</em> <code>secrets-gradle-plugin</code>
+		(<code>https://github.com/google/secrets-gradle-plugin</code>).
+	</p>
+	<p>
+		Sau đó thay chuỗi <code>"&lt;Replace with API Key&gt;"</code> bằng key thật bạn lấy ở mục 8. Chú ý: chuỗi này là
+		<strong>chỗ trống</strong> để bạn điền, không phải một key hỏng. Nếu để nguyên, mọi lời gọi mạng sẽ thất bại và
+		danh sách công thức luôn rỗng.
+	</p>
+	<p class="notice">
+		<strong>Điểm lệch #3 — bản <code>final</code> làm đúng thứ sách vừa cảnh báo không được làm.</strong> File
+		<code>{AAF}/network/SpoonacularService.kt</code> <strong>dòng 47</strong> chứa
+		<code>const val apiKey = "&lt;Replace with API Key&gt;"</code> và file này <em>đã được commit</em> vào repo công
+		khai <code>kodecocodes/aaf-materials</code>. May là giá trị chỉ là placeholder nên không có key thật bị lộ — nhưng
+		<strong>cấu trúc code thì đang mời bạn phạm lỗi</strong>: bạn dán key thật vào đúng dòng đó, và nếu bạn từng commit
+		project của mình, key đi theo luôn. Cách làm đúng ngay từ đầu: đặt key vào <code>local.properties</code> (file này
+		mặc định nằm trong <code>.gitignore</code>), đọc ra qua <code>BuildConfig</code> hoặc
+		<code>secrets-gradle-plugin</code>, rồi tham chiếu <code>BuildConfig.SPOONACULAR_KEY</code>. Sách nói đúng ở phần
+		chữ; chỉ có code mẫu là đi đường tắt.
+	</p>
+	<p class="hint">
+		<strong>Một lỗi nữa của cách này, ít người để ý:</strong> key được nhúng thẳng vào <em>chuỗi path</em> của
+		annotation (<code>@GET("recipes/complexSearch?&amp;apiKey=$apiKey")</code>). Annotation trong Kotlin/Java được
+		đánh giá <strong>lúc biên dịch</strong>, nên giá trị key bị "đóng băng" vào file <code>.class</code> trong APK.
+		Nghĩa là dù bạn đọc key từ <code>BuildConfig</code>, nó vẫn nằm trong APK ở dạng có thể dịch ngược ra. Với API
+		<em>không</em> nhạy cảm về tiền như Spoonacular free tier thì chấp nhận được khi học; với API tính phí thật, cách
+		đúng là <strong>không để key trong app</strong> mà đặt một server trung gian của bạn giữ key.
+	</p>
+
+	<h3 id="two-calls">10.1. Hai lời gọi mà service này cần</h3>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 318–321)</p>
+	<p>Sách nêu rõ service làm hai network call:</p>
+	<ul>
+		<li>Một để <strong>tìm công thức theo từ khoá</strong> — endpoint "Search Recipes Complex".</li>
+		<li>Một để <strong>lấy chi tiết của một công thức cụ thể</strong> — endpoint "Get Recipe Information".</li>
+	</ul>
+
+	<h3 id="interface">10.2. Interface và ba annotation của Retrofit</h3>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 326–346) · <code>{AAF}/network/SpoonacularService.kt</code> (dòng 49–59)</p>
+	<Code code={serviceInterface} lang="kotlin" theme="github-dark" />
+	<p>Ba điểm được sách đánh số:</p>
+	<ol>
+		<li>
+			Annotation <code>@GET</code> chỉ định URL cho lời gọi này. Sách lưu ý: nó <strong>không chứa phần đầu của
+			URL</strong> — phần đó sẽ được thêm sau (ở <code>BASE_URL</code>, mục 11).
+		</li>
+		<li>
+			Tạo một hàm <code>suspend</code> nhận <strong>ba query parameter</strong>: từ khoá tìm kiếm, điểm bắt đầu trong
+			danh sách kết quả, và số kết quả muốn lấy. Hàm trả về <code>SearchRecipesResponse</code>.
+		</li>
+		<li>
+			Tạo hàm <code>suspend</code> thứ hai, truy vấn <strong>một công thức theo ID</strong>, trả về
+			<code>RecipeInformationResponse</code>.
+		</li>
+	</ol>
+	<p>
+		Sách còn nhắc thêm hai chi tiết ở dòng 348: bạn <strong>đặt API key vào trong URL</strong>, và lời gọi thứ hai dùng
+		<strong><code>&#123;id&#125;</code></strong> để thay ID vào URL.
+	</p>
+	<p>Ba annotation này khác nhau về vai trò, cần phân biệt rõ:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Annotation</th><th>Gắn vào</th><th>Làm gì</th><th>Trong app này</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>@GET("path")</code></td>
+				<td>Hàm</td>
+				<td>Khai báo HTTP method là GET và path (phần sau <code>BASE_URL</code>)</td>
+				<td><code>recipes/complexSearch</code> và <code>recipes/&#123;id&#125;/information</code></td>
+			</tr>
+			<tr>
+				<td><code>@Query("query")</code></td>
+				<td>Tham số</td>
+				<td>Thêm tham số vào <strong>query string</strong> — phần sau dấu <code>?</code>, dạng <code>ten=giatri</code></td>
+				<td><code>query</code>, <code>offset</code>, <code>number</code></td>
+			</tr>
+			<tr>
+				<td><code>@Path("id")</code></td>
+				<td>Tham số</td>
+				<td>Thay thế <strong>ô giữ chỗ <code>&#123;id&#125;</code> trong chính path</strong> bằng giá trị truyền vào</td>
+				<td><code>id</code> của công thức</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Ví dụ cụ thể: gọi <code>queryRecipes("sushi", 0, 20)</code> thì Retrofit dựng ra URL
+		<code>https://api.spoonacular.com/recipes/complexSearch?&amp;apiKey=...&amp;query=sushi&amp;offset=0&amp;number=20</code>.
+		Còn <code>queryRecipe(716429)</code> dựng ra
+		<code>https://api.spoonacular.com/recipes/716429/information?includeNutrition=false&amp;apiKey=...</code> — chú ý
+		<code>716429</code> nằm <em>giữa</em> path, không nằm sau dấu <code>?</code>. Đó chính là sự khác nhau giữa
+		<code>@Path</code> và <code>@Query</code>.
+	</p>
+	<p class="hint">
+		<strong>Retrofit tự lo việc encode.</strong> Nếu người dùng gõ từ khoá có khoảng trắng hoặc tiếng Việt có dấu, ví
+		dụ <code>"canh chua"</code>, thì <code>@Query</code> tự chuyển thành <code>query=canh%20chua</code>. Bạn không phải
+		nối chuỗi URL bằng tay — và đây là một trong những nguồn bug kinh điển mà thư viện đã xoá bỏ cho bạn.
+	</p>
+	<p class="hint">
+		<strong>Cả hai hàm đều là <code>suspend</code> nhưng đều <em>không</em> có thân hàm.</strong> Đó là điểm lạ nhất
+		với người mới: bạn viết interface, không viết code thực thi. Retrofit dùng cơ chế <strong>dynamic proxy</strong>
+		lúc chạy để sinh ra một object thật cài đặt interface đó, đọc các annotation và ghép URL. Từ khoá
+		<code>suspend</code> thì nói với Retrofit: <em>đừng trả về <code>Call&lt;T&gt;</code> cho tôi tự
+		<code>enqueue</code>, hãy cho tôi <code>T</code> trực tiếp và tự tạm dừng coroutine trong lúc chờ</em>. Trước khi
+		Retrofit hỗ trợ <code>suspend</code> (từ bản 2.6.0), code này dài gấp ba với callback lồng nhau.
+	</p>
+
+	<h2 id="retrofit-instance">11. <code>RetrofitInstance</code> — lắp Retrofit và Moshi lại</h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 351–382)</p>
+	<p>
+		Có interface rồi, bạn cần một <em>instance</em> Retrofit thật để nó tạo ra bản cài đặt của interface. Sách viết
+		đoạn này (phiên bản dùng reflection, tức là <strong>trước</strong> mục 18):
+	</p>
+	<Code code={retrofitInstanceBook} lang="kotlin" theme="github-dark" />
+	<p>Bốn điểm sách đánh số:</p>
+	<ol>
+		<li>
+			Cung cấp <strong>base URL</strong> cho các lời gọi. Đoạn này được <strong>ghép vào trước</strong> tất cả path
+			bạn đã khai trong interface.
+		</li>
+		<li>
+			Cung cấp một instance Moshi có dùng factory <code>KotlinJsonAdapterFactory</code> để parse JSON.
+		</li>
+		<li>
+			Dùng Retrofit builder để lắp base URL và Moshi lại, rồi gọi <code>build()</code> để tạo instance Retrofit. Sách
+			giải thích luôn <code>lazy</code>: nghĩa là <strong>nó chưa được tạo cho tới lần dùng đầu tiên, sau đó được
+			cache và không tạo lại</strong>.
+		</li>
+		<li>
+			Một biến để nơi khác dùng khi cần gọi service.
+		</li>
+	</ol>
+	<p>Rồi sách kết: "You now have all you need to make network calls."</p>
+	<h3 id="object-lazy">11.1. Vì sao là <code>object</code> + <code>by lazy</code></h3>
+	<p>
+		Đây là chỗ đáng dừng lại vì nó là một quyết định thiết kế, không chỉ là cú pháp. Từ khoá
+		<strong><code>object</code></strong> trong Kotlin tạo ra <strong>singleton</strong> — chỉ tồn tại đúng một bản
+		trong toàn app, không cần bạn viết constructor hay quản lý vòng đời. Kết hợp với <code>by lazy</code>, bạn được ba
+		thứ:
+	</p>
+	<ul>
+		<li>
+			<strong>Không lãng phí khi chưa dùng.</strong> App khởi động không phải dựng Retrofit; nó chỉ được dựng lần đầu
+			ai đó thật sự gọi API.
+		</li>
+		<li>
+			<strong>Chỉ dựng một lần.</strong> Đây là phần quan trọng nhất về hiệu năng: bên dưới Retrofit là OkHttp, và
+			OkHttp giữ một <strong>connection pool</strong> (bể kết nối) cùng thread pool. Nếu bạn tạo Retrofit mới mỗi lần
+			gọi API, mỗi lần lại phải bắt tay TCP + TLS lại từ đầu — chậm và tốn pin. Dùng lại một instance thì các lời gọi
+			sau tận dụng được kết nối đã mở.
+		</li>
+		<li>
+			<strong>An toàn thread.</strong> <code>by lazy</code> mặc định dùng chế độ <code>SYNCHRONIZED</code>, nên hai
+			coroutine gọi cùng lúc vẫn chỉ tạo ra một instance. Đối chiếu với Chương 10.2, ở đó Room phải tự viết
+			<code>@Volatile</code> + <code>synchronized</code> bằng tay để đạt cùng hiệu quả — <code>object</code> +
+			<code>by lazy</code> là cách Kotlin làm việc đó cho bạn.
+		</li>
+	</ul>
+	<p class="hint">
+		<strong>Ba lớp xếp lên nhau, nắm được thứ tự này là hiểu cả kiến trúc:</strong>
+		<code>SpoonacularService</code> (interface — <em>mô tả</em> gọi gì) →
+		<code>Retrofit</code> (<em>biết cách</em> gọi HTTP và ghép URL) →
+		<code>MoshiConverterFactory</code> (<em>biết cách</em> đổi JSON ↔ Kotlin). Dòng
+		<code>.addConverterFactory(MoshiConverterFactory.create(provideMoshi()))</code> chính là chỗ tầng 2 và tầng 3 được
+		nối vào nhau. Bỏ dòng đó thì Retrofit không biết làm gì với body JSON và sẽ ném lỗi lúc chạy.
+	</p>
+	<p class="hint">
+		<strong>Chú ý dấu <code>/</code> ở cuối <code>BASE_URL</code>.</strong>
+		<code>"https://api.spoonacular.com/"</code> có dấu gạch chéo cuối, và các path trong <code>@GET</code>
+		<em>không</em> có gạch chéo đầu (<code>"recipes/complexSearch..."</code>). Đây là quy ước Retrofit yêu cầu; nếu bạn
+		bỏ dấu <code>/</code> cuối base URL, Retrofit ném <code>IllegalArgumentException</code> ngay lúc
+		<code>build()</code>. Còn nếu path bắt đầu bằng <code>/</code>, nó được coi là đường dẫn tuyệt đối và
+		<strong>xoá luôn phần path của base URL</strong> — một lỗi rất khó nhìn ra.
+	</p>
+</section>
+

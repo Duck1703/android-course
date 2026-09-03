@@ -1,0 +1,488 @@
+---
+// Chapter 5: Jetpack Compose — viết lại ở Task 35 (Phase 5 "Depth pass").
+// Nguyên tắc: bám sát content/book/ch05-jetpack-compose.md (941 dòng, 13 heading),
+// mọi code lấy từ aaf-materials/05-jetpack-compose/projects/{starter,final}/ kèm số dòng đã xác minh.
+// Giải thích tự viết tiếng Việt — không copy nguyên văn sách (xem CLAUDE.md mục Bản quyền).
+// [TASK48] Chuong 5.1 — Composable function — khối xây dựng của Compose
+
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/05-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat";
+
+const STARTER = "aaf-materials/05-jetpack-compose/projects/starter/app/src/main/java/com/kodeco/chat";
+
+const greetingCode = `@Composable
+fun Greeting(name: String, modifier: Modifier = Modifier) {
+  Text(
+    text = "Hello $name!",
+    modifier = modifier
+  )
+}`;
+
+const starterMainActivityCode = `class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {
+      Column {
+        val context = LocalContext.current
+        var chatInputText by remember { mutableStateOf(context.getString(R.string.chat_entry_default)) }
+        var chatOutputText by remember { mutableStateOf(context.getString(R.string.chat_display_default)) }
+        Text(text = chatOutputText)
+
+        OutlinedTextField(
+          value = chatInputText,
+          onValueChange = {
+            chatInputText = it
+          },
+          label = { Text(text = stringResource(id = R.string.chat_entry_label)) }
+        )
+
+        Button(onClick = {
+          chatOutputText = chatInputText
+          chatInputText = ""
+        }) {
+          Text(text = stringResource(id = R.string.send_button))
+        }
+      }
+    }
+  }
+}`;
+
+const setContentDefCode = `public fun ComponentActivity.setContent(
+  parent: CompositionContext? = null,
+  content: @Composable () -> Unit
+) {...}`;
+
+const conversationContentV1Code = `@Composable
+fun ConversationContent() {
+  Column {
+    val context = LocalContext.current
+    var chatInputText by remember { mutableStateOf(context.getString(R.string.chat_entry_default)) }
+    var chatOutputText by remember { mutableStateOf(context.getString(R.string.chat_display_default)) }
+    Text(text = chatOutputText)
+
+    OutlinedTextField(
+      value = chatInputText,
+      onValueChange = {
+        chatInputText = it
+      },
+      label = { Text(text = stringResource(id = R.string.chat_entry_label)) }
+    )
+
+    Button(onClick = {
+      chatOutputText = chatInputText
+      chatInputText = ""
+    }) {
+      Text(text = stringResource(id = R.string.send_button))
+    }
+  }
+}`;
+
+const mainActivitySimpleCode = `class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {
+      ConversationContent()
+    }
+  }
+}`;
+
+const buttonCode = `Button(onClick = {
+    chatOutputText = chatInputText
+    chatInputText = ""
+}) {
+    Text(text = stringResource(id = R.string.send_button))
+}`;
+
+const outlinedTextFieldSignatureCode = `// 1
+@OptIn(ExperimentalMaterial3Api::class)
+// 2
+@Composable
+fun OutlinedTextField(
+  value: String,
+  onValueChange: (String) -> Unit,
+  modifier: Modifier = Modifier,
+  enabled: Boolean = true,
+  readOnly: Boolean = false,
+  textStyle: TextStyle = LocalTextStyle.current,
+  // 3
+  label: @Composable (() -> Unit)? = null,
+  // 4
+  placeholder: @Composable (() -> Unit)? = null,
+  leadingIcon: @Composable (() -> Unit)? = null,
+  trailingIcon: @Composable (() -> Unit)? = null,
+  // ... còn nhiều tham số nữa: prefix, suffix, supportingText, isError,
+  // visualTransformation, keyboardOptions, keyboardActions, singleLine,
+  // maxLines, minLines, interactionSource, shape, colors
+) {...`;
+
+const conversationContentV2Code = `@Composable
+fun ConversationContent() {
+  Column {
+    val context = LocalContext.current
+    var chatInputText by remember { mutableStateOf("") }
+    var chatOutputText by remember { mutableStateOf(context.getString(R.string.chat_display_default)) }
+    Text(text = chatOutputText)
+
+    OutlinedTextField(
+      value = chatInputText,
+      placeholder = { Text(text = stringResource(id = R.string.chat_entry_default)) },
+      onValueChange = {
+        chatInputText = it
+      },
+    )
+
+    Button(onClick = {
+      chatOutputText = chatInputText
+      chatInputText = ""
+    }) {
+      Text(text = stringResource(id = R.string.send_button))
+    }
+
+  }
+}`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Bạn sẽ học được gì trong bài này</strong>
+		<ul>
+			<li>Composable function là gì, vì sao nó thay thế được layout XML, và <code>setContent</code> hoạt động ra sao.</li>
+			<li>3 quy tắc bắt buộc của composable + lý do chúng được đặt tên kiểu <em>Pascal case</em>.</li>
+			<li>4 layout group nền tảng: <code>Column</code>, <code>Row</code>, <code>Box</code>, <code>Surface</code> — và giới hạn riêng của <code>Surface</code>.</li>
+			<li>Cách đọc source code của một Compose component để tự tìm ra tham số mình cần (ví dụ thật: sửa lỗi UX của ô nhập chat).</li>
+			<li><code>Modifier</code>: thứ tự nối chuỗi, <code>fillMaxSize</code>, và <code>weight</code> — cùng bug layout thật mà <code>weight</code> đã sửa.</li>
+			<li><code>@Preview</code>: xem UI không cần build app, cập nhật sống khi sửa code.</li>
+			<li><code>LazyColumn</code> + <em>lazy loading</em>, và cách chia UI tin nhắn thành nhiều composable nhỏ.</li>
+			<li>Theme và font Google tải về, để đổi toàn bộ diện mạo app chỉ bằng 1 lớp bọc.</li>
+		</ul>
+	</div>
+
+	<div class="callout">
+		<strong>App của chapter này:</strong> <em>Kodeco Chat</em> — một màn hình chat. Kết thúc chapter, app hiển thị được
+		danh sách tin nhắn có avatar, tên người gửi, thời gian, bong bóng chat màu khác nhau cho "tôi" và "người khác",
+		link bấm được, app bar phía trên và ô nhập liệu phía dưới. Nhưng <strong>chưa gửi được tin nhắn mới</strong> và
+		<strong>chưa kết nối mạng</strong> — dữ liệu đến từ 1 file giả (<code>FakeData.kt</code>). Sách cố ý làm vậy để
+		chapter này chỉ tập trung vào <em>UI</em>; phần <code>ViewModel</code>/state để chapter 6, phần mạng để chapter 8.
+	</div>
+
+	<div class="callout journey">
+		<strong>Hành trình starter → final của chapter này.</strong> Project <code>starter</code> chỉ có
+		<strong>4 file <code>.kt</code></strong>: <code>MainActivity.kt</code> và 3 file theme mặc định
+		(<code>ui/theme/Color.kt</code>, <code>Theme.kt</code>, <code>Type.kt</code>). Project <code>final</code> có
+		<strong>20 file <code>.kt</code></strong>. Toàn bộ 16 file mới sinh ra trong chapter này:
+		<ul>
+			<li><code>conversation/</code> — <code>Conversation.kt</code>, <code>ConversationUiState.kt</code>,
+				<code>UserInput.kt</code>, <code>MessageFormatter.kt</code>, <code>BackHandler.kt</code></li>
+			<li><code>components/</code> — <code>KodecochatAppBar.kt</code>, <code>KodecochatIcon.kt</code></li>
+			<li><code>data/</code> — <code>FakeData.kt</code>, <code>model/User.kt</code>,
+				<code>model/MessageUiModel.kt</code>, <code>model/DateExtensions.kt</code></li>
+			<li><code>theme/</code> — <code>Color.kt</code>, <code>Themes.kt</code>, <code>Typography.kt</code>
+				(khác với <code>ui/theme/</code> mặc định của starter)</li>
+			<li><code>utilities/</code> — <code>Extensions.kt</code>, <code>UiExtras.kt</code></li>
+		</ul>
+		Sách không bắt bạn tự viết hết 16 file. Có những file bạn <strong>copy từ project final</strong> (font, formatter,
+		model, <code>UserInput</code>) — sách nói rõ từng lần copy. Phần bạn <em>thật sự tự viết</em> là
+		<code>Conversation.kt</code> và <code>ConversationUiState.kt</code>. Bài học dưới đây đi theo đúng thứ tự đó.
+	</div>
+
+	<h2 id="tai-sao-compose">1. Vì sao Android chuyển sang Compose?</h2>
+	<p>
+		Trước đây giao diện Android được viết bằng <strong>file XML</strong>: bạn khai báo layout trong một file riêng,
+		rồi trong code Kotlin/Java đi "tìm" từng view ra để gán dữ liệu và xử lý sự kiện. Sách mở đầu chapter bằng việc
+		nói rõ: Android development <em>đã chuyển</em> — Compose bây giờ là framework tiêu chuẩn, không còn là lựa chọn
+		thử nghiệm.
+	</p>
+	<p>Sách nêu các lợi ích cụ thể của Compose UI so với View system cũ:</p>
+	<ul>
+		<li>Thời gian build giảm đáng kể.</li>
+		<li>Kích thước APK (file cài app) nhỏ hơn.</li>
+		<li>Hiệu năng lúc chạy tốt hơn.</li>
+		<li>Dựng UI dễ hơn, trực quan hơn, dễ bảo trì và dễ debug hơn.</li>
+	</ul>
+	<div class="hint">
+		<strong>Một điểm dễ hiểu sai ngay từ đầu.</strong> "Compose" không chỉ là UI. Sách nhấn mạnh: Compose là tên gọi
+		của <strong>cả một họ framework viết bằng Kotlin</strong>, và <em>Compose UI chỉ là 1 trong 7 framework</em> đó —
+		framework phụ trách riêng tầng giao diện. Compose bản thân nó thậm chí không chỉ dành cho Android. Ví dụ sách đưa
+		ra: đội phát triển của Slack đã xây framework <em>Circuit</em> trên nền Compose. Nói cách khác, khi người ta nói
+		"học Compose" trong ngữ cảnh làm app Android, thường họ đang nói <strong>Compose UI</strong>.
+	</div>
+	<h3>Bức tranh kiến trúc mà chapter này nằm trong</h3>
+	<p>
+		Sách đặt Compose vào một bối cảnh lớn hơn ngay từ trang đầu, và đây là đoạn rất đáng đọc kỹ vì nó giải thích
+		<em>vì sao chapter 5 và 6 lại chia ra như vậy</em>:
+	</p>
+	<ul>
+		<li>
+			Android hiện đại đã dịch từ <strong>MVVM</strong> (Model-View-ViewModel) sang <strong>MVI</strong>
+			(Model-View-Intent), với Compose UI thay cho XML ở tầng View.
+		</li>
+		<li>
+			Ý tưởng cốt lõi của MVI là <strong>unidirectional data flow</strong> (dữ liệu chảy một chiều): dữ liệu đi từ
+			nguồn → lên UI theo một hướng duy nhất, không có chuyện UI và data cùng sửa lẫn nhau lung tung.
+		</li>
+		<li>
+			App thường có <em>nhiều</em> nguồn dữ liệu (lưu trữ trên máy, mạng...). Chúng được gói lại sau một lớp trung
+			gian gọi là <strong>Repository</strong>, để phần còn lại của app không cần biết dữ liệu thật ra đến từ đâu.
+		</li>
+		<li>
+			<code>ViewModel</code> gọi các hàm của Repository, rồi đẩy dữ liệu một chiều lên UI thông qua <strong>Flow</strong>.
+			Flow gồm một bên <em>phát</em> dữ liệu và các bên <em>đăng ký nhận</em>. Điểm hay về bộ nhớ: Flow
+			<strong>không tiêu tốn bộ nhớ khi chưa có ai đang nghe</strong>. Android còn có các bản Flow biết vòng đời
+			(lifecycle aware) — khi một màn hình không còn hiển thị, dữ liệu ngừng được tiêu thụ và bộ nhớ được giải phóng.
+		</li>
+	</ul>
+	<p>
+		Chapter 5 (bài này) chỉ làm <strong>tầng UI</strong>. Toàn bộ <code>ViewModel</code>, MVI, Repository, Navigation
+		là nội dung <strong>chapter 6</strong>. Biết trước sơ đồ này giúp bạn không thắc mắc "sao data ở đây lại giả?" khi
+		đọc tới phần <code>FakeData.kt</code> ở dưới.
+	</p>
+
+	<h2 id="composable">2. Composable function — khối xây dựng duy nhất của Compose</h2>
+	<p>
+		Sách bắt đầu bằng đúng đoạn code mà Android Studio tự sinh ra cho bạn ở chapter 2, khi tạo project mới:
+	</p>
+	<Code code={greetingCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Sách chỉ ra <strong>hai điều đáng chú ý</strong> trong đoạn này, và cả hai đều quan trọng hơn vẻ ngoài của nó:
+		thứ nhất, đây là một <strong>function</strong> (không phải class, không phải file XML); thứ hai, nó được đánh dấu
+		annotation <code>@Composable</code>. Chỉ cần 2 thứ đó là bạn đã tạo ra một thành phần UI trong Compose — nói theo
+		đúng thuật ngữ Compose thì bạn đã tạo ra một <em>composable</em>.
+	</p>
+	<div class="hint">
+		<strong>Mental model (hình dung trong đầu):</strong> ở View system cũ, "UI = cây object" — bạn tạo object, giữ tham
+		chiếu tới nó, rồi gọi hàm để sửa nó (<code>textView.setText(...)</code>). Ở Compose, "UI = kết quả của việc gọi
+		hàm" — bạn <em>mô tả</em> giao diện nên trông thế nào với dữ liệu hiện tại, và khi dữ liệu đổi thì hàm được gọi
+		lại. Không có object nào để bạn giữ và sửa. Đây gọi là <strong>declarative UI</strong> (khai báo), khác với
+		<em>imperative</em> (ra lệnh từng bước) của cách cũ. Sách phát biểu gọn: "You declare everything about how your UI
+		should look using composable functions."
+	</div>
+
+	<h3>Câu hỏi bẫy của sách: <code>@Composable</code> ở đâu trong <code>MainActivity</code>?</h3>
+	<p>
+		Đây là chỗ sách dạy rất hay. Bạn mở <code>MainActivity.kt</code> của project <code>starter</code> và được yêu cầu
+		đi tìm annotation <code>@Composable</code>. Đây là toàn bộ file thật (đã bỏ phần header license):
+	</p>
+	<p class="src">Nguồn: <code>{STARTER}/MainActivity.kt</code> (dòng 51–79)</p>
+	<Code code={starterMainActivityCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Bên trong <code>setContent { }</code> rõ ràng đang có <code>Column</code>, <code>Text</code>,
+		<code>OutlinedTextField</code>, <code>Button</code> — toàn bộ đều là composable. Nhưng
+		<strong>không có chữ <code>@Composable</code> nào trong file này cả.</strong> Vậy nó ở đâu?
+	</p>
+	<p>
+		Sách hướng dẫn bạn Ctrl-click (Cmd-click trên Mac) vào <code>setContent</code> để Android Studio nhảy vào định
+		nghĩa gốc của nó trong <code>ComponentActivity.kt</code> của thư viện:
+	</p>
+	<Code code={setContentDefCode} lang="kotlin" theme="github-dark" />
+	<p>Hai phát hiện, và sách gọi đúng đây là khoảnh khắc "Aha!":</p>
+	<ol>
+		<li>
+			<code>setContent</code> là một <strong>extension function của <code>ComponentActivity</code></strong> — hãy để ý
+			dấu chấm trong <code>ComponentActivity.setContent(...)</code>. Extension function là cách Kotlin
+			<em>thêm hàm mới cho một class có sẵn mà không cần sửa source code của class đó</em>. Vì vậy
+			<code>MainActivity</code> (là subclass của <code>ComponentActivity</code>) tự nhiên có hàm
+			<code>setContent</code> để gọi, dù bản thân bạn không viết hàm này.
+		</li>
+		<li>
+			Tham số <code>content</code> đã được đánh dấu <code>@Composable</code> ngay trong chữ ký:
+			<code>content: @Composable () -&gt; Unit</code>. Đó chính là lý do bạn <strong>không cần</strong> viết lại
+			<code>@Composable</code> khi đặt <code>Column</code> vào trong <code>setContent { }</code> — annotation đã nằm
+			ở đây rồi.
+		</li>
+	</ol>
+	<p>
+		Gọi <code>setContent()</code> có nghĩa: đặt cái composable bạn truyền vào làm <strong>root view</strong> (gốc của
+		cây giao diện). Từ gốc đó bạn thêm bao nhiêu thành phần cũng được, và mọi composable khác của app đều được gọi từ
+		bên trong cái "vùng chứa" này.
+	</p>
+	<div class="hint">
+		<strong>Vì sao đoạn này quan trọng hơn nó trông:</strong> sách đang dạy bạn một <em>kỹ năng</em>, không chỉ một
+		kiến thức — <strong>đọc source code của framework để hiểu framework</strong>. Nguyên văn ý sách: trong suốt sự
+		nghiệp làm app, bạn sẽ hiểu sâu hơn rất nhiều bằng cách đọc source code của các framework mình dùng. Chúng ta sẽ
+		dùng lại đúng kỹ năng này ở mục 4 (<code>OutlinedTextField</code>) và mục 6 (<code>KodecochatAppBar</code>).
+	</div>
+
+	<h2 id="tach-composable">3. Tách composable ra file riêng — và 3 quy tắc phải nhớ</h2>
+	<p>
+		Bước tiếp theo trong sách trông tầm thường: tạo package mới tên <code>conversation</code>, tạo file
+		<code>Conversation.kt</code> trong đó (chọn kiểu <em>File</em>, không phải <em>Class</em>), viết một composable rỗng
+		rồi <strong>cắt toàn bộ nội dung trong <code>setContent { }</code> dán vào đó</strong>:
+	</p>
+	<p class="src">
+		Theo sách (chapter 5, mục "Compose Fundamentals"). Trong project <code>final</code>, file này là
+		<code>{FINAL}/conversation/Conversation.kt</code> — nhưng ở thời điểm này nội dung còn rất đơn giản như dưới đây.
+	</p>
+	<Code code={conversationContentV1Code} lang="kotlin" theme="github-dark" />
+	<p>Rồi <code>MainActivity</code> gọn lại chỉ còn một dòng gọi hàm:</p>
+	<Code code={mainActivitySimpleCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Build và chạy — app hoạt động <strong>giống y như trước</strong>. Không có gì mới trên màn hình. Nhưng sách dừng
+		lại để chỉ ra 2 điều mà động tác copy/paste này vừa dạy:
+	</p>
+	<ol>
+		<li>
+			<code>Conversation.kt</code> là một <strong>file, không phải class</strong>. Nó chỉ "chứa" một hàm Compose.
+			Hoàn toàn có thể để hàm đó trong <code>MainActivity.kt</code> — nhưng khi codebase phình ra, dồn tất cả vào một
+			file sẽ thành cực hình. Đây là lý do kỹ thuật thật, không phải quy ước cho đẹp.
+		</li>
+		<li>
+			Bạn vừa tạo ra một composable <strong>tái sử dụng được</strong> tên <code>ConversationContent</code>. Sách ví
+			chuyện này như <em>dựng một tác phẩm điêu khắc lớn từ các viên Lego rời</em> — và gọi tính tái sử dụng này là
+			"nền móng" (cornerstone) của Compose UI.
+		</li>
+	</ol>
+
+	<h3>3 quy tắc của composable function</h3>
+	<p>Sách liệt kê thành 3 gạch đầu dòng. Cả 3 đều là quy tắc <em>bắt buộc</em>, không phải khuyến nghị:</p>
+	<ul>
+		<li>
+			Composable <strong>chỉ có thể được gọi từ một composable khác</strong>. Bạn không thể gọi
+			<code>Text(...)</code> từ một hàm Kotlin thường.
+		</li>
+		<li>Composable <strong>có thể nhận tham số</strong> và dùng tham số đó để dựng UI.</li>
+		<li>
+			Composable <strong>chỉ có thể được gọi từ trong một compose scope</strong> — sách so sánh: giống cách coroutine
+			phải chạy trong một scope.
+		</li>
+	</ul>
+	<div class="hint">
+		<strong>Ba quy tắc này giải thích cho nhau.</strong> Vì composable chỉ gọi được từ composable (quy tắc 1), phải có
+		một điểm khởi đầu nào đó "mở" ra được cái scope đầu tiên — và điểm đó chính là
+		<code>setContent { }</code> ở mục 2, nhờ tham số <code>content: @Composable () -&gt; Unit</code>. Ba quy tắc và
+		phát hiện ở mục 2 là <em>cùng một câu chuyện</em>.
+	</div>
+
+	<h3>4 element bạn vừa dùng — sách giải thích từng cái</h3>
+	<table class="api">
+		<thead><tr><th>Composable</th><th>Vai trò theo sách</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><code>Text</code></td>
+				<td>Thành phần chữ cơ bản: hiển thị chữ <em>và</em> cung cấp thông tin cho trợ năng (accessibility).</td>
+			</tr>
+			<tr>
+				<td><code>OutlinedTextField</code></td>
+				<td>
+					Khác <code>Text</code> ở chỗ nó cho <strong>người dùng gõ chữ vào</strong>. Biến thể "outlined" có kiểu
+					hiển thị nhẹ, ít nhấn mạnh (de-emphasized).
+				</td>
+			</tr>
+			<tr>
+				<td><code>Button</code></td>
+				<td>Đúng như tên: người dùng bấm để khởi động một hành động.</td>
+			</tr>
+			<tr>
+				<td><code>Column</code></td>
+				<td>
+					<strong>Khác loại</strong> với 3 cái trên. <code>Text</code>/<code>TextField</code>/<code>Button</code> là
+					<em>UI element</em>; <code>Column</code> là một <em>layout composable</em> — nó không tự vẽ gì, nó
+					<strong>sắp xếp</strong> các thành phần con (children) của mình.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		Sách gợi ý một mẹo thực hành: Ctrl-click vào từng composable trên để nhảy vào định nghĩa của nó. Mỗi cái đều có
+		một khối comment chi tiết phía trên, liệt kê tham số tuỳ chỉnh được và link tới code mẫu. Đây là tài liệu tốt nhất
+		và luôn khớp đúng phiên bản bạn đang dùng.
+	</p>
+
+	<h3>Lambda làm tham số: đọc lại <code>Button</code></h3>
+	<Code code={buttonCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đoạn này bạn đã viết ở trên rồi, nhưng sách bắt đọc lại để thấy một điều: <code>Button()</code> nhận tham số
+		<code>onClick</code>, và <strong>tham số đó bản thân là một function</strong>. Trong Kotlin, function có thể nhận
+		function khác làm tham số — gọi là <em>lambda</em>. Ở đây <code>onClick</code> được định nghĩa
+		<strong>inline</strong> (viết luôn tại chỗ) và nó quy định điều gì xảy ra khi nút được bấm. Còn phần trong dấu
+		ngoặc nhọn cuối cùng — cái <code>Text(...)</code> — chính là <strong>nội dung (label) của nút</strong>.
+	</p>
+	<p>
+		Sách bổ sung: <code>Button()</code> là class nút <em>nền</em>, tuỳ biến được rất nhiều. Nếu bạn không cần mức tuỳ
+		biến đó, Material Design có <strong>5 loại nút con</strong> sẵn dùng.
+	</p>
+
+	<h3>Vì sao composable viết Pascal case?</h3>
+	<p>
+		Bạn có thể đã để ý: hàm Kotlin thường viết <em>camelCase</em> (<code>conversationContent</code>), nhưng composable
+		lại viết <em>PascalCase</em> (<code>ConversationContent</code>) — chữ đầu viết hoa, giống tên class. Sách giải
+		thích lý do, và lý do này rất hợp logic: <strong>composable function trả về đối tượng UI</strong>, nên nó
+		"mượn" luôn quy ước đặt tên của class. Khi đọc code, <code>Column</code> nhìn như một class hơn là một hàm — và về
+		mặt ý nghĩa thì đúng là như vậy.
+	</p>
+
+	<h2 id="ux-placeholder">4. Case study: đọc source code để sửa một lỗi UX thật</h2>
+	<p>
+		Mục này trong sách tên "Improving the UI &amp; UX". Nó ngắn nhưng là <strong>ví dụ mẫu về cách làm việc</strong>
+		nên đừng bỏ qua.
+	</p>
+	<p>
+		<strong>Vấn đề:</strong> ô nhập chat đang hiện sẵn chữ mặc định. Khi người dùng muốn gõ, họ phải
+		<em>tự xoá</em> chữ đó đi trước. Sách phân tích đúng bản chất: bước xoá thủ công này làm gián đoạn dòng chảy của
+		người dùng và tạo thêm một rào cản trong đầu họ. Bất cứ thứ gì làm UI kém mượt, kém trực quan đều dẫn tới trải
+		nghiệm tệ.
+	</p>
+	<p>
+		<strong>Cách tìm nguyên nhân:</strong> Ctrl-click vào <code>OutlinedTextField</code> để xem chữ ký thật của nó.
+		Đây là điểm mấu chốt — thay vì tra Google, bạn đọc chính thứ mình đang dùng:
+	</p>
+	<Code code={outlinedTextFieldSignatureCode} lang="kotlin" theme="github-dark" />
+	<p>Sách đánh số 4 chỗ trong chữ ký này:</p>
+	<ol>
+		<li>
+			<code>@OptIn(ExperimentalMaterial3Api::class)</code> — bạn sẽ thấy <code>OptIn</code> kèm chữ "Experimental" rất
+			nhiều trong Compose và các framework khác. Các framework này đã trưởng thành, nhưng vẫn liên tục phát triển; nên
+			để dùng một số tính năng mới bạn phải "đồng ý tham gia" (opt in) một cách tường minh. Android Studio thường tự
+			gợi ý thêm annotation này khi cần, và <em>cũng cảnh báo khi tính năng đã hết thử nghiệm và annotation nên bị
+			xoá đi</em>.
+		</li>
+		<li><code>@Composable</code> — như quy tắc đã học, bắt buộc phải có.</li>
+		<li>
+			<code>label</code> — tham số bạn đang dùng. Theo comment trong source, <code>label</code> đáng lẽ hiển thị một
+			nhãn <em>trong lòng</em> text field. Nhưng trên UI thật, nhãn "Enter Chat Text" lại nằm lẫn vào đường viền của
+			text field, không đúng như mong đợi. Lý do: <strong>chỗ đó đang bị chiếm</strong> bởi chữ mặc định "Type your
+			text here".
+		</li>
+		<li>
+			<code>placeholder</code> — và đây là câu trả lời. Tài liệu ghi: "the optional placeholder to be displayed when
+			the text field is in focus and the input text is empty" — chữ gợi ý chỉ hiện khi ô đang được chọn và
+			<strong>chưa có nội dung</strong>, tự biến mất khi người dùng bắt đầu gõ. Đúng chính xác thứ cần.
+		</li>
+	</ol>
+
+	<h3>Trước / sau</h3>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">Trước</div>
+			<ul>
+				<li><code>chatInputText</code> khởi tạo bằng chữ mặc định lấy từ <code>R.string.chat_entry_default</code></li>
+				<li>Truyền <code>label = &#123; Text(...) &#125;</code></li>
+				<li>Người dùng phải tự xoá chữ trước khi gõ</li>
+				<li>Nhãn hiển thị sai vị trí (lẫn vào viền)</li>
+			</ul>
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">Sau</div>
+			<ul>
+				<li><code>chatInputText</code> khởi tạo bằng <strong>chuỗi rỗng</strong> <code>""</code></li>
+				<li>Chữ mặc định chuyển sang <code>placeholder = &#123; Text(...) &#125;</code></li>
+				<li>Bắt đầu gõ là chữ gợi ý tự mất</li>
+				<li><code>label</code> bị <strong>xoá</strong> vì giờ đã dư</li>
+			</ul>
+		</div>
+	</div>
+	<Code code={conversationContentV2Code} lang="kotlin" theme="github-dark" />
+	<p>
+		Sách kết mục này bằng một câu đáng ghi nhớ, đại ý: <em>chính nhờ đọc source code của <code>OutlinedTextField</code>
+		mà bạn hiểu rõ hơn cách dùng nó</em>. Đây là lần thứ hai trong chapter sách dùng cùng một phương pháp — và sẽ còn
+		một lần nữa ở mục 6.
+	</p>
+	<div class="hint">
+		<strong>Lỗi thường gặp cho người mới:</strong> nhầm <code>label</code> với <code>placeholder</code>. Phân biệt cho
+		dễ nhớ — <code>label</code> là <em>tên của ô</em> (thường trượt lên trên viền khi bạn gõ, và
+		<strong>ở lại</strong>); <code>placeholder</code> là <em>gợi ý bên trong ô</em> và <strong>biến mất</strong> khi có
+		chữ. Dùng cả hai cùng lúc thì chúng tranh nhau chỗ, đúng như bug bạn vừa sửa.
+	</div>
+
+</section>
+

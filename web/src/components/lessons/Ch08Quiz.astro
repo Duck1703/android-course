@@ -1,83 +1,479 @@
 ---
-// Quiz + bài tập nhỏ cho lesson Chapter 8 (Networking).
-// Câu hỏi lấy ý từ docs/LEARNING_MAP.md (mục Chapter 8 > Gợi ý Exercise/Quiz), tự viết đáp án + giải thích.
+// Quiz + bài tập cho lesson Chapter 8 (Networking).
+// Câu hỏi tự viết, bám nội dung content/book/ch08-networking.md và code thật trong
+// aaf-materials/08-networking/projects/{starter,final}/ (Quyết định #7 trong docs/PROJECT_PLAN.md).
 // Quiz chấm bằng vanilla JS phía client (đúng tinh thần "gần như 0 JS trừ chỗ cần tương tác" trong CLAUDE.md).
+
+const AAF = "aaf-materials/08-networking/projects/final/app/src/main/java/com/kodeco/recipefinder";
 ---
 
 <section class="quiz" id="quiz">
 	<h2>Quiz nhanh</h2>
-	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+	<p class="intro">
+		19 câu, mỗi câu chọn 1 đáp án. Bấm "Kiểm tra đáp án" để xem điểm và phần giải thích của từng câu. Nếu có câu sai,
+		phần giải thích chỉ luôn mục nào trong lesson cần đọc lại.
+	</p>
 
 	<form id="quiz-form">
 		<fieldset data-answer="b">
-			<legend>1. Vì sao gọi API mạng cần chạy trong coroutine thay vì chạy thẳng trên main thread (luồng giao diện chính)?</legend>
-			<label><input type="radio" name="q1" value="a" /> Vì coroutine giúp app có giao diện đẹp hơn</label>
-			<label><input type="radio" name="q1" value="b" /> Vì gọi mạng có độ trễ (chờ phản hồi) — chạy trên main thread sẽ làm đứng/treo giao diện</label>
-			<label><input type="radio" name="q1" value="c" /> Vì Retrofit bắt buộc phải dùng coroutine, không có lý do kỹ thuật nào khác</label>
+			<legend>1. Vì sao không được gọi API mạng thẳng trên main thread (luồng giao diện chính)?</legend>
+			<label><input type="radio" name="q1" value="a" /> Vì Android chặn mọi truy cập internet từ main thread bằng tường lửa</label>
+			<label><input type="radio" name="q1" value="b" /> Vì main thread còn phải vẽ giao diện và nhận sự kiện chạm — nó đứng chờ mạng thì app "đóng băng"</label>
+			<label><input type="radio" name="q1" value="c" /> Vì main thread không có quyền đọc dữ liệu JSON</label>
 			<p class="explain" hidden>
-				Gọi API luôn phải chờ mạng phản hồi (có thể mất vài trăm ms đến vài giây). Nếu chạy thẳng trên main
-				thread, toàn bộ giao diện sẽ "đứng hình" trong lúc chờ — người dùng không bấm được gì. Coroutine
-				(kết hợp <code>suspend</code> + <code>viewModelScope.launch</code>) cho phép chờ ở nền mà không
-				chặn thread vẽ giao diện.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="a">
-			<legend>2. <code>StateFlow</code> trong <code>RecipeViewModel</code> dùng để làm gì?</legend>
-			<label><input type="radio" name="q2" value="a" /> Giữ 1 trạng thái và tự động báo cho UI biết mỗi khi trạng thái đó thay đổi (thay thế vai trò của <code>LiveData</code>)</label>
-			<label><input type="radio" name="q2" value="b" /> Gửi trực tiếp request HTTP lên server, thay cho Retrofit</label>
-			<label><input type="radio" name="q2" value="c" /> Lưu dữ liệu vĩnh viễn xuống ổ đĩa của điện thoại</label>
-			<p class="explain" hidden>
-				<code>MutableStateFlow</code> (private, chỉ ViewModel sửa) và bản chỉ-đọc <code>asStateFlow()</code>
-				(public, UI được xem) là cách Flow báo cho Composable biết "có dữ liệu mới rồi, vẽ lại đi" — cùng
-				vai trò LiveData trước đây nhưng là API mới hơn, hoạt động tốt với coroutine. Lưu ý cách nói cho
-				chính xác: <code>LiveData</code> <strong>chưa bị deprecated</strong> (tính đến 27-08-2026) và vẫn chạy
-				bình thường — chỉ là code Kotlin/Compose mới hầu như luôn chọn <code>StateFlow</code>.
+				Main thread có khoảng 16 ms cho mỗi khung hình để giữ 60 khung/giây. Một lời gọi mạng mất từ vài trăm ms đến
+				vài giây — trong khoảng đó giao diện không vẽ lại được, nút bấm không phản hồi. Android còn ném
+				<code>NetworkOnMainThreadException</code> để chặn hẳn lỗi này. Xem lại mục 3 của lesson.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="c">
-			<legend>3. Trong <code>SpoonacularService</code>, annotation <code>@GET("recipes/{"{id}"}/information...")</code> dùng để làm gì?</legend>
-			<label><input type="radio" name="q3" value="a" /> Parse (chuyển đổi) JSON trả về thành object Kotlin</label>
-			<label><input type="radio" name="q3" value="b" /> Lưu API key vào bộ nhớ máy an toàn hơn</label>
-			<label><input type="radio" name="q3" value="c" /> Khai báo hàm bên dưới sẽ gọi HTTP method GET tới đúng đường dẫn (path) đó</label>
+			<legend>2. <code>Dispatchers.IO</code> khác <code>Dispatchers.Default</code> ở điểm nào?</legend>
+			<label><input type="radio" name="q2" value="a" /> Không khác gì, chỉ là hai tên gọi của cùng một thread pool</label>
+			<label><input type="radio" name="q2" value="b" /> <code>IO</code> chạy trên main thread, <code>Default</code> chạy ở nền</label>
+			<label><input type="radio" name="q2" value="c" /> <code>IO</code> dành cho việc chờ đọc/ghi (mạng, file) nên có nhiều thread; <code>Default</code> dành cho tính toán CPU nên số thread bằng số core</label>
 			<p class="explain" hidden>
-				<code>@GET</code> là annotation của Retrofit, khai báo path + phương thức HTTP cho hàm ngay bên
-				dưới nó. Việc parse JSON thành object Kotlin (đáp án a) là việc của <strong>Moshi</strong>, một thư
-				viện khác đứng sau Retrofit (qua <code>MoshiConverterFactory</code>), không phải việc của
-				<code>@GET</code>.
+				Việc chờ I/O phần lớn thời gian là "ngồi không", nên mở nhiều thread cùng chờ vẫn hiệu quả —
+				<code>Dispatchers.IO</code> cho phép tới 64 thread. Việc tính toán thì ngược lại: nhiều thread hơn số core
+				chỉ làm hệ điều hành mất công đổi qua đổi lại, nên <code>Dispatchers.Default</code> giới hạn theo số core.
+				Xem lại mục 3.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. Từ khoá <code>suspend</code> nói lên điều gì về một hàm?</legend>
+			<label><input type="radio" name="q3" value="a" /> Hàm này có thể tạm dừng giữa đường và tiếp tục sau, nên chỉ gọi được từ trong coroutine hoặc từ một hàm <code>suspend</code> khác</label>
+			<label><input type="radio" name="q3" value="b" /> Hàm này luôn chạy trên một thread mới</label>
+			<label><input type="radio" name="q3" value="c" /> Hàm này chạy chậm hơn hàm thường</label>
+			<p class="explain" hidden>
+				<code>suspend</code> không tự tạo thread và không tự làm gì chạy song song — nó chỉ đánh dấu "hàm này có
+				điểm dừng". Hệ quả quan trọng là <strong>tính lan truyền</strong>: gọi hàm <code>suspend</code> thì hàm gọi
+				cũng phải <code>suspend</code>, cứ thế lan lên tới nơi có <code>launch</code>. Xem lại mục 4.1.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>4. Điều gì chặn sự lan truyền của <code>suspend</code> lên trên?</legend>
+			<label><input type="radio" name="q4" value="a" /> Từ khoá <code>override</code></label>
+			<label><input type="radio" name="q4" value="b" /> Một lời gọi <code>launch</code> (hoặc <code>async</code>) trên một <code>CoroutineScope</code></label>
+			<label><input type="radio" name="q4" value="c" /> Annotation <code>@Composable</code></label>
+			<p class="explain" hidden>
+				<code>launch</code> là ranh giới: bên trong nó là thế giới coroutine (gọi được hàm <code>suspend</code>),
+				bên ngoài là hàm thường. Đó là lý do <code>queryRecipes</code> trong
+				<code>{AAF}/viewmodels/RecipeViewModel.kt</code> <strong>không</strong> cần <code>suspend</code> — nó chỉ mở
+				<code>viewModelScope.launch</code> rồi trả về ngay. Xem lại mục 4.4.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>5. <code>viewModelScope</code> giải quyết vấn đề gì mà một scope tự tạo không giải quyết được?</legend>
+			<label><input type="radio" name="q5" value="a" /> Nó làm lời gọi mạng nhanh hơn</label>
+			<label><input type="radio" name="q5" value="b" /> Nó tự thử lại (retry) khi mạng lỗi</label>
+			<label><input type="radio" name="q5" value="c" /> Nó gắn vòng đời coroutine vào vòng đời ViewModel — ViewModel bị dọn thì mọi coroutine trong scope tự bị huỷ</label>
+			<p class="explain" hidden>
+				Nếu bạn tự mở coroutine bằng <code>GlobalScope</code>, coroutine đó sống tiếp sau khi người dùng rời màn
+				hình, rồi cố cập nhật một state không còn ai đọc — vừa rò rỉ bộ nhớ vừa có thể crash.
+				<code>viewModelScope</code> lưu scope trong tag của ViewModel và huỷ nó trong <code>onCleared()</code>. Xem
+				lại mục 4.2.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>6. <code>viewModelScope</code> dùng <code>SupervisorJob()</code> thay vì <code>Job()</code>. Khác biệt thực tế là gì?</legend>
+			<label><input type="radio" name="q6" value="a" /> Với <code>SupervisorJob</code>, một coroutine con lỗi thì các coroutine con khác vẫn tiếp tục chạy</label>
+			<label><input type="radio" name="q6" value="b" /> <code>SupervisorJob</code> tự động ghi log mọi lỗi</label>
+			<label><input type="radio" name="q6" value="c" /> <code>SupervisorJob</code> cho phép chạy nhiều coroutine hơn cùng lúc</label>
+			<p class="explain" hidden>
+				Với <code>Job()</code> thường, lỗi lan lên cha rồi lan xuống mọi con — một request thất bại kéo cả màn hình
+				chết theo. Trong một ViewModel thường có nhiều việc độc lập (tải danh sách, tải chi tiết, đọc bookmark), nên
+				<code>SupervisorJob</code> là lựa chọn đúng. Xem lại mục 4.3.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>7. Cặp <code>private val _recipeListState = MutableStateFlow(...)</code> và <code>val recipeListState = _recipeListState.asStateFlow()</code> phục vụ mục đích gì?</legend>
+			<label><input type="radio" name="q7" value="a" /> Tạo hai bản sao dữ liệu để so sánh khi có lỗi</label>
+			<label><input type="radio" name="q7" value="b" /> Chỉ ViewModel được ghi giá trị; UI chỉ được đọc — quyền hạn ép bằng kiểu dữ liệu, không bằng lời nhắc</label>
+			<label><input type="radio" name="q7" value="c" /> Bản public dùng cho Compose, bản private dùng cho unit test</label>
+			<p class="explain" hidden>
+				<code>MutableStateFlow</code> có <code>.value</code> ghi được; <code>StateFlow</code> thì không.
+				<code>asStateFlow()</code> bọc lại thành kiểu chỉ-đọc, nên nếu một Composable thử gán giá trị,
+				<strong>compiler báo lỗi ngay</strong> chứ không phải chờ ai đó review code phát hiện. Xem lại mục 5.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>8. Trong Composable, vì sao nên dùng <code>collectAsState()</code> thay vì tự <code>collect</code>?</legend>
+			<label><input type="radio" name="q8" value="a" /> Vì <code>collect</code> không tồn tại trong Compose</label>
+			<label><input type="radio" name="q8" value="b" /> Vì <code>collectAsState()</code> chạy nhanh hơn</label>
+			<label><input type="radio" name="q8" value="c" /> Vì <code>collectAsState()</code> tự đăng ký/huỷ đăng ký theo composition và tự kích hoạt recompose khi có giá trị mới</label>
+			<p class="explain" hidden>
+				<code>collectAsState()</code> biến flow thành <code>State&lt;T&gt;</code> — thứ mà Compose theo dõi được.
+				Nó cũng tự dọn khi Composable rời khỏi màn hình, nên bạn không phải nhớ huỷ. Tự <code>collect</code> chỉ nên
+				dùng khi cần kiểm soát riêng, và phải nằm trong <code>LaunchedEffect</code>. Xem lại mục 5.1.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>9. Vì sao <code>RecipeList.kt</code> mở <strong>hai</strong> khối <code>scope.launch</code> riêng biệt thay vì viết cả hai việc trong một khối?</legend>
+			<label><input type="radio" name="q9" value="a" /> Vì <code>collect</code> không bao giờ kết thúc — lệnh viết sau nó trong cùng một khối sẽ không bao giờ chạy</label>
+			<label><input type="radio" name="q9" value="b" /> Vì mỗi <code>launch</code> chỉ được chứa đúng một câu lệnh</label>
+			<label><input type="radio" name="q9" value="c" /> Vì hai việc phải chạy trên hai dispatcher khác nhau</label>
+			<p class="explain" hidden>
+				<code>collect</code> là vòng lặp vô hạn chờ giá trị mới. Nếu bạn viết
+				<code>flow.collect &#123;...&#125;</code> rồi mới gọi <code>queryRecipes()</code> ngay bên dưới trong cùng
+				<code>launch</code>, lời gọi mạng <strong>không bao giờ xảy ra</strong> và bạn sẽ nhìn một màn hình trống mà
+				không hiểu vì sao. Đây là một trong những lỗi coroutine khó tự phát hiện nhất. Xem lại mục 5.2.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>10. <code>LaunchedEffect(Unit)</code> có hành vi gì?</legend>
+			<label><input type="radio" name="q10" value="a" /> Chạy lại sau mỗi lần recompose</label>
+			<label><input type="radio" name="q10" value="b" /> Chạy đúng một lần khi Composable xuất hiện, và không chạy lại khi recompose</label>
+			<label><input type="radio" name="q10" value="c" /> Chỉ chạy khi người dùng chạm vào màn hình</label>
+			<p class="explain" hidden>
+				<code>LaunchedEffect</code> chạy lại khi <em>key</em> của nó đổi. <code>Unit</code> là hằng số không bao giờ
+				đổi, nên khối lệnh chạy một lần duy nhất — đúng cho việc "khi màn hình mở thì tải dữ liệu". Nếu bạn truyền
+				một biến đổi liên tục làm key, bạn sẽ gọi API hàng chục lần. Xem lại mục 5.2 và 17.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>11. Retrofit làm gì với <code>interface SpoonacularService</code> mà bạn viết?</legend>
+			<label><input type="radio" name="q11" value="a" /> Bắt bạn tự viết một class implement interface đó</label>
+			<label><input type="radio" name="q11" value="b" /> Sinh code cho interface đó lúc biên dịch, giống KSP</label>
+			<label><input type="radio" name="q11" value="c" /> Lúc chạy, đọc annotation và tự dựng một đối tượng thực thi interface đó (dynamic proxy)</label>
+			<p class="explain" hidden>
+				Bạn chỉ khai <em>hình dạng</em> của API; <code>retrofit.create(SpoonacularService::class.java)</code> trả về
+				một đối tượng do Retrofit dựng lúc chạy, đọc <code>@GET</code>/<code>@Query</code>/<code>@Path</code> để
+				biết phải gửi request nào. Đây là lý do bạn không bao giờ thấy class nào implement interface này trong
+				project. Xem lại mục 10.2.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>12. Khác biệt giữa <code>@Query</code> và <code>@Path</code> là gì?</legend>
+			<label><input type="radio" name="q12" value="a" /> <code>@Query</code> thêm tham số sau dấu <code>?</code> của URL; <code>@Path</code> thay một chỗ trống <code>&#123;...&#125;</code> nằm ngay trong đường dẫn</label>
+			<label><input type="radio" name="q12" value="b" /> <code>@Query</code> dùng cho GET, <code>@Path</code> dùng cho POST</label>
+			<label><input type="radio" name="q12" value="c" /> <code>@Query</code> mã hoá dữ liệu, <code>@Path</code> thì không</label>
+			<p class="explain" hidden>
+				Ví dụ cụ thể: <code>recipes/complexSearch?query=pasta&amp;offset=0</code> — <code>query</code> và
+				<code>offset</code> là <code>@Query</code>. Còn <code>recipes/716429/information</code> — số
+				<code>716429</code> nằm <em>trong</em> đường dẫn, nên khai bằng <code>@Path("id")</code> ứng với chỗ trống
+				<code>&#123;id&#125;</code>. Xem lại mục 10.2.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>13. Vì sao <code>baseUrl</code> của Retrofit bắt buộc phải kết thúc bằng dấu <code>/</code>?</legend>
+			<label><input type="radio" name="q13" value="a" /> Chỉ là quy ước cho dễ đọc, không có tác dụng gì</label>
+			<label><input type="radio" name="q13" value="b" /> Retrofit ném <code>IllegalArgumentException</code> ngay khi dựng nếu thiếu, vì cần ghép chính xác phần path phía sau</label>
+			<label><input type="radio" name="q13" value="c" /> Vì Spoonacular yêu cầu như vậy</label>
+			<p class="explain" hidden>
+				Đây là một trong những lỗi hay gặp nhất khi mới dùng Retrofit, và may là nó "fail fast" — báo lỗi ngay lúc
+				khởi tạo chứ không âm thầm gọi sai URL. Xem lại mục 11.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>14. <code>RetrofitInstance</code> khai bằng <code>object</code> và dùng <code>by lazy</code>. Lợi ích thực tế là gì?</legend>
+			<label><input type="radio" name="q14" value="a" /> Giúp code ngắn hơn, không có lợi ích khác</label>
+			<label><input type="radio" name="q14" value="b" /> Bắt buộc phải làm vậy, nếu không Retrofit không chạy</label>
+			<label><input type="radio" name="q14" value="c" /> Chỉ tạo đúng một instance Retrofit cho cả app, khởi tạo trễ tới lần dùng đầu tiên — nhờ đó connection pool của OkHttp được tái sử dụng</label>
+			<p class="explain" hidden>
+				Mỗi lần dựng <code>Retrofit</code> mới là dựng luôn một <code>OkHttpClient</code> mới với thread pool và
+				connection pool riêng. Nếu mỗi lời gọi tạo một instance, app phải bắt tay TLS lại từ đầu mỗi lần — chậm và
+				tốn pin. <code>object</code> + <code>by lazy</code> (mặc định thread-safe kiểu SYNCHRONIZED) cho bạn một
+				singleton khởi tạo an toàn. Xem lại mục 11.1.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>15. Vì sao phải có class <code>SearchRecipesResponse</code> bọc ngoài <code>List&lt;Recipe&gt;</code> chứ không để hàm trả về thẳng danh sách?</legend>
+			<label><input type="radio" name="q15" value="a" /> Vì JSON server trả về là một object có các field <code>results</code>, <code>offset</code>, <code>number</code>, <code>totalResults</code> — cấu trúc class phải phản chiếu cấu trúc JSON</label>
+			<label><input type="radio" name="q15" value="b" /> Vì Moshi không parse được <code>List</code></label>
+			<label><input type="radio" name="q15" value="c" /> Vì Retrofit yêu cầu mọi hàm phải trả về một class có hậu tố <code>Response</code></label>
+			<p class="explain" hidden>
+				Moshi map theo hình dạng: JSON là object thì phía Kotlin phải là một class có đúng các field đó. Bonus là
+				bạn nhận được luôn <code>totalResults</code> và <code>offset</code> — chính là dữ liệu cần cho phân trang ở
+				mục 17. Xem lại mục 9.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>16. Annotation <code>@Json(name = "results")</code> dùng khi nào?</legend>
+			<label><input type="radio" name="q16" value="a" /> Khi muốn field đó không bị parse</label>
+			<label><input type="radio" name="q16" value="b" /> Khi tên field trong JSON khác tên biến bạn muốn dùng trong Kotlin</label>
+			<label><input type="radio" name="q16" value="c" /> Khi field có thể null</label>
+			<p class="explain" hidden>
+				Nếu tên trùng khớp thì Moshi tự map, không cần annotation. <code>@Json(name = ...)</code> là cầu nối khi bạn
+				muốn đặt tên Kotlin dễ đọc hơn (ví dụ JSON trả <code>results</code> nhưng bạn muốn gọi là
+				<code>recipes</code>), hoặc khi JSON dùng <code>snake_case</code> mà Kotlin quy ước
+				<code>camelCase</code>. Xem lại mục 9.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>17. Moshi codegen (KSP) tốt hơn Moshi reflection ở những điểm nào?</legend>
+			<label><input type="radio" name="q17" value="a" /> Build nhanh hơn và code ít hơn</label>
+			<label><input type="radio" name="q17" value="b" /> Hỗ trợ nhiều kiểu dữ liệu hơn</label>
+			<label><input type="radio" name="q17" value="c" /> Chạy nhanh hơn, APK nhẹ hơn, và lỗi kiểu bị phát hiện lúc build thay vì lúc chạy</label>
+			<p class="explain" hidden>
+				Đánh đổi nằm ở chiều ngược lại: codegen làm <strong>build lâu hơn</strong> vì phải sinh code cho từng class.
+				Cái bạn nhận lại là adapter đã có sẵn khi app chạy (không phải soi class lúc runtime) và lỗi khai báo sai bị
+				bắt sớm. Xem lại bảng so sánh ở mục 18.1.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>18. Khác biệt giữa <code>implementation(libs.moshi)</code> và <code>ksp(libs.moshiCodeGen)</code> trong <code>build.gradle.kts</code>?</legend>
+			<label><input type="radio" name="q18" value="a" /> <code>implementation</code> đưa thư viện vào app để chạy; <code>ksp</code> chỉ chạy lúc build để sinh code, không nằm trong APK</label>
+			<label><input type="radio" name="q18" value="b" /> <code>ksp</code> là bản mới của <code>implementation</code>, nên thay thế hoàn toàn</label>
+			<label><input type="radio" name="q18" value="c" /> Cả hai giống nhau, chỉ khác tên gọi</label>
+			<p class="explain" hidden>
+				Đây là lý do phải khai <strong>cả hai</strong>: <code>moshi</code> là thư viện app dùng lúc chạy, còn
+				<code>moshi-kotlin-codegen</code> là công cụ sinh code lúc build. Nếu chỉ khai
+				<code>implementation(libs.moshiCodeGen)</code>, bộ sinh code không chạy và annotation
+				<code>@JsonClass</code> không có tác dụng. Xem lại mục 18.2.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>19. Đọc <code>{AAF}/viewmodels/RecipeViewModel.kt</code>, hàm <code>queryRecipes</code> khi gặp lỗi mạng sẽ làm gì — và tại sao đó là vấn đề?</legend>
+			<label><input type="radio" name="q19" value="a" /> Nó crash app để lập trình viên phát hiện lỗi ngay</label>
+			<label><input type="radio" name="q19" value="b" /> Nó ghi log Timber rồi gán danh sách rỗng — nên người dùng không phân biệt được "mất mạng" với "không tìm thấy công thức nào"</label>
+			<label><input type="radio" name="q19" value="c" /> Nó tự động thử lại 3 lần rồi mới báo lỗi</label>
+			<p class="explain" hidden>
+				<code>catch (e: Exception) &#123; Timber.e(...); _recipeListState.value = listOf() &#125;</code> — log chỉ
+				lập trình viên thấy, còn người dùng thấy đúng một màn hình trống. Trạng thái lỗi và trạng thái rỗng bị gộp
+				thành một. Đây là bài tập mở rộng số 1 ở mục 23. Xem lại mục 13.1.
 			</p>
 		</fieldset>
 
 		<button type="submit">Kiểm tra đáp án</button>
 		<p id="quiz-score" hidden></p>
 	</form>
-
+	<h2>Sắp xếp đúng thứ tự</h2>
+	<p class="intro">
+		Người dùng gõ "sushi" rồi bấm icon kính lúp. Bảy bước dưới đây xảy ra theo một thứ tự nhất định. Hãy đánh số 1–7,
+		rồi bấm "Kiểm tra thứ tự". (Đây chính là chuỗi ở mục 14 của lesson, rút gọn lại.)
+	</p>
+	<ul class="order-list" id="save-order">
+		<li data-correct="4">
+			<select aria-label="Thứ tự cho bước: Retrofit dựng URL và OkHttp gửi request">
+				<option value="">-- số thứ tự --</option>
+				<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+				<option value="5">5</option>
+				<option value="6">6</option>
+				<option value="7">7</option>
+			</select>
+			<span>Retrofit dựng URL đầy đủ, OkHttp gửi request đi và coroutine <strong>tạm dừng</strong> tại đó</span>
+		</li>
+		<li data-correct="7">
+			<select aria-label="Thứ tự cho bước: Compose vẽ lại lưới công thức">
+				<option value="">-- số thứ tự --</option>
+				<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+				<option value="5">5</option>
+				<option value="6">6</option>
+				<option value="7">7</option>
+			</select>
+			<span>Compose vẽ lại — lưới công thức hiện ra thay cho vòng xoay loading</span>
+		</li>
+		<li data-correct="1">
+			<select aria-label="Thứ tự cho bước: người dùng bấm icon kính lúp trong SearchRow">
+				<option value="">-- số thứ tự --</option>
+				<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+				<option value="5">5</option>
+				<option value="6">6</option>
+				<option value="7">7</option>
+			</select>
+			<span><code>SearchRow.kt</code>: <code>.clickable</code> chạy <code>setSearching(true)</code> rồi
+				<code>keyboard?.hide()</code></span>
+		</li>
+		<li data-correct="5">
+			<select aria-label="Thứ tự cho bước: Moshi parse JSON thành SearchRecipesResponse">
+				<option value="">-- số thứ tự --</option>
+				<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+				<option value="5">5</option>
+				<option value="6">6</option>
+				<option value="7">7</option>
+			</select>
+			<span>Server trả JSON → Moshi parse thành <code>SearchRecipesResponse</code> → coroutine tiếp tục chạy</span>
+		</li>
+		<li data-correct="2">
+			<select aria-label="Thứ tự cho bước: hàm searchRecipes kiểm tra từ khoá rỗng">
+				<option value="">-- số thứ tự --</option>
+				<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+				<option value="5">5</option>
+				<option value="6">6</option>
+				<option value="7">7</option>
+			</select>
+			<span><code>searchRecipes("sushi", viewModel)</code> trong <code>ImageRow.kt</code> kiểm tra từ khoá không rỗng</span>
+		</li>
+		<li data-correct="6">
+			<select aria-label="Thứ tự cho bước: gán giá trị cho StateFlow">
+				<option value="">-- số thứ tự --</option>
+				<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+				<option value="5">5</option>
+				<option value="6">6</option>
+				<option value="7">7</option>
+			</select>
+			<span><code>_recipeListState.value = ...</code> và <code>_queryState.value = ...</code> → hai flow phát giá trị mới</span>
+		</li>
+		<li data-correct="3">
+			<select aria-label="Thứ tự cho bước: ViewModel mở coroutine bằng viewModelScope.launch">
+				<option value="">-- số thứ tự --</option>
+				<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+				<option value="5">5</option>
+				<option value="6">6</option>
+				<option value="7">7</option>
+			</select>
+			<span><code>viewModel.queryRecipes(...)</code> mở <code>viewModelScope.launch</code> và trả về ngay</span>
+		</li>
+	</ul>
+	<button type="button" id="check-order">Kiểm tra thứ tự</button>
+	<p id="order-result" role="status" aria-live="polite" hidden></p>
 	<h2>Bài tập nhỏ</h2>
+
 	<div class="exercise">
 		<p>
-			Mở project <code>aaf-materials/08-networking/projects/final/</code> bằng Android Studio (hoặc mở trực
-			tiếp file bằng trình soạn thảo text), tìm file:
+			<strong>Bài 1 — đọc chữ ký hàm trong interface Retrofit.</strong> Mở project
+			<code>aaf-materials/08-networking/projects/final/</code> bằng Android Studio (hoặc mở file bằng trình soạn thảo
+			text bất kỳ), vào file:
 		</p>
 		<pre><code>app/src/main/java/com/kodeco/recipefinder/network/SpoonacularService.kt</code></pre>
-		<p>
-			Đọc hàm <code>queryRecipe</code> (khoảng dòng 57–58, ngay dưới hàm <code>queryRecipes</code> có "s").
-			Dựa đúng vào code thật trong file, trả lời 3 câu:
-		</p>
+		<p>Đọc hàm <code>queryRecipe</code> (dòng 57–58, ngay dưới hàm <code>queryRecipes</code> có "s"). Trả lời 4 câu:</p>
 		<ol>
-			<li>HTTP method của endpoint này là gì?</li>
-			<li>Đường dẫn (path) của endpoint là gì?</li>
-			<li>Hàm này trả về (return) kiểu dữ liệu Kotlin nào?</li>
+			<li>HTTP method của endpoint này là gì, và bạn biết điều đó từ đâu?</li>
+			<li>Đường dẫn (path) là gì? Phần nào trong đường dẫn là chỗ trống sẽ được thay lúc chạy?</li>
+			<li>Hàm trả về kiểu Kotlin nào? Ai chịu trách nhiệm biến JSON thành kiểu đó?</li>
+			<li>Hàm có từ khoá <code>suspend</code>. Điều đó buộc người gọi phải làm gì?</li>
 		</ol>
 		<details>
-			<summary>Gợi ý nếu chưa tìm ra đáp án</summary>
+			<summary>Đáp án</summary>
 			<p>
-				Method: <strong>GET</strong> (khai qua annotation <code>@GET</code>). Path:
-				<strong><code>recipes/{"{id}"}/information</code></strong> (phần <code>{"{id}"}</code> được thay
-				bằng tham số thật nhờ annotation <code>@Path("id")</code> gắn trên tham số <code>id: Int</code>
-				của hàm). Kiểu dữ liệu trả về: <strong><code>RecipeInformationResponse</code></strong> — 1
-				<code>data class</code> Kotlin mô tả cấu trúc JSON chi tiết 1 công thức nấu ăn mà Spoonacular trả
-				về, được Moshi tự parse từ JSON sang object này.
+				(1) <strong>GET</strong>, biết qua annotation <code>@GET</code>. (2) Path là
+				<code>recipes/&#123;id&#125;/information</code>, phần <code>&#123;id&#125;</code> là chỗ trống, được thay bằng
+				giá trị tham số nhờ <code>@Path("id")</code>. Phần <code>?includeNutrition=false&amp;apiKey=$apiKey</code>
+				phía sau là query string viết cứng trong annotation. (3) Trả về
+				<code>RecipeInformationResponse</code> — một <code>data class</code> mô tả JSON chi tiết công thức;
+				<strong>Moshi</strong> làm việc parse, thông qua <code>MoshiConverterFactory</code> mà Retrofit được cài ở
+				<code>RetrofitInstance</code>. (4) Người gọi phải ở trong một coroutine (hoặc cũng là hàm
+				<code>suspend</code>) — trong app này là <code>viewModelScope.launch</code> bên trong
+				<code>RecipeViewModel</code>.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise">
+		<p>
+			<strong>Bài 2 — đếm và phân loại các <code>StateFlow</code>.</strong> Mở
+			<code>app/src/main/java/com/kodeco/recipefinder/viewmodels/RecipeViewModel.kt</code>, đọc khối khai báo state (dòng
+			73–89). Trả lời:
+		</p>
+		<ol>
+			<li>Có bao nhiêu cặp <code>MutableStateFlow</code> / <code>asStateFlow()</code>?</li>
+			<li>Trong số đó, cặp nào <strong>thật sự được dùng</strong> ở Chương 8, và cặp nào đang chờ chương sau?</li>
+			<li>
+				Vì sao <code>_recipeState</code> khai kiểu <code>RecipeInformationResponse?</code> (có dấu <code>?</code>) mà
+				<code>_recipeListState</code> thì không?
+			</li>
+		</ol>
+		<details>
+			<summary>Đáp án</summary>
+			<p>
+				(1) <strong>Sáu cặp</strong>: <code>recipeListState</code>, <code>recipeState</code>, <code>queryState</code>,
+				<code>uiState</code>, <code>bookmarksState</code>, <code>ingredientsState</code>. (2) Chương 8 dùng bốn cặp
+				đầu. <code>bookmarksState</code> và <code>ingredientsState</code> chỉ được các hàm TODO rỗng chạm tới — chúng
+				là phần việc của Chương 10.3 (nối Room vào ViewModel qua Repository). (3) Vì "chưa tải xong" và "tải lỗi" cần một giá trị biểu diễn
+				trạng thái không-có-dữ-liệu, và với một object đơn lẻ thì <code>null</code> là cách tự nhiên nhất. Với danh
+				sách thì đã có <code>listOf()</code> rỗng làm giá trị đó, nên không cần nullable — tuy nhiên đây cũng chính là
+				nguồn của vấn đề "lỗi trông giống rỗng" ở câu 19.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise">
+		<p>
+			<strong>Bài 3 — tìm chỗ hai lời gọi mạng khác nhau.</strong> Không mở lesson, chỉ dùng chức năng tìm kiếm trong
+			Android Studio (<code>Ctrl+Shift+F</code> / <code>Cmd+Shift+F</code>) trên project <code>final</code>. Tìm
+			<code>spoonacularService.</code> và trả lời:
+		</p>
+		<ol>
+			<li>Có mấy chỗ trong toàn project gọi tới <code>spoonacularService</code>? Nằm ở file nào?</li>
+			<li>Hai hàm gọi chúng có gì <strong>khác nhau</strong> về khai báo (từ khoá và tham số của <code>launch</code>)?</li>
+			<li>Theo bạn, sự khác nhau đó có lý do kỹ thuật không? Nếu phải chọn một kiểu cho cả hai, bạn chọn kiểu nào?</li>
+		</ol>
+		<details>
+			<summary>Đáp án</summary>
+			<p>
+				(1) <strong>Hai chỗ</strong>, cùng nằm trong <code>viewmodels/RecipeViewModel.kt</code>: trong
+				<code>queryRecipes</code> (dòng 95–111) và trong <code>queryRecipe</code> (dòng 117–129). Ngoài ra dòng 71 là
+				chỗ lấy instance từ <code>RetrofitInstance</code>. (2) <code>queryRecipes</code> là hàm
+				<strong>thường</strong> và gọi <code>viewModelScope.launch &#123; ... &#125;</code> không tham số;
+				<code>queryRecipe</code> là hàm <strong><code>suspend</code></strong> và gọi
+				<code>viewModelScope.launch(Dispatchers.Default)</code>. (3) Không có lý do kỹ thuật — đây là điểm lệch #6 và
+				#7 trong lesson. Kiểu nên chọn: <strong>bỏ <code>suspend</code></strong> ở
+				<code>queryRecipe</code> cho giống <code>queryRecipes</code>, và nếu muốn đổi dispatcher thì dùng
+				<code>Dispatchers.IO</code> chứ không phải <code>Default</code>.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise">
+		<p>
+			<strong>Bài 4 — thử phá rồi sửa (làm trên bản copy).</strong> Bài này cần chạy được app, nên hãy làm sau khi bạn
+			đã có API key và app hiển thị được danh sách công thức. <strong>Copy project ra một thư mục khác</strong> trước
+			khi sửa — không sửa trực tiếp trong <code>aaf-materials/</code>.
+		</p>
+		<p>Trong bản copy, mở <code>ui/recipes/RecipeList.kt</code> và gộp hai khối <code>scope.launch</code> thành một:</p>
+		<pre><code>{`scope.launch {
+  viewModel.recipeListState.collect { list ->
+    recipeListState.value = list
+  }
+  // dán lệnh của khối launch thứ hai vào đây
+  viewModel.uiState.collect { ... }
+}`}</code></pre>
+		<p>Chạy app, tìm một từ khoá, và trả lời:</p>
+		<ol>
+			<li>Hiện tượng gì xảy ra trên màn hình?</li>
+			<li>Logcat có báo lỗi gì không?</li>
+			<li>Giải thích bằng lời của bạn: vì sao lệnh thứ hai không chạy?</li>
+			<li>Sau khi hiểu xong, hoàn tác về hai khối riêng và xác nhận app hoạt động lại bình thường.</li>
+		</ol>
+		<details>
+			<summary>Đáp án</summary>
+			<p>
+				(1) Danh sách vẫn hiện được (khối <code>collect</code> đầu vẫn chạy) nhưng <strong>vòng xoay loading không bao
+				giờ tắt</strong>, vì lệnh <code>collect</code> thứ hai — nơi theo dõi <code>uiState</code> — không bao giờ được
+				thực thi. Nếu bạn đổi thứ tự hai khối, triệu chứng đổi theo: cái nào viết trước thì cái đó chạy. (2)
+				<strong>Không có lỗi nào trong Logcat</strong> — và đây chính là điểm khiến lỗi này khó tìm: không crash,
+				không exception, chỉ là một phần app im lặng không hoạt động. (3) <code>collect</code> là vòng lặp treo vô hạn,
+				chờ giá trị tiếp theo của flow mãi mãi; nó không bao giờ trả về, nên dòng code bên dưới nó trong cùng một
+				coroutine là code không bao giờ tới lượt. (4) Sửa bằng cách tách thành hai <code>launch</code> — hai coroutine
+				độc lập, mỗi cái treo trên flow của riêng nó.
 			</p>
 		</details>
 	</div>
@@ -113,109 +509,31 @@
 			scoreEl.removeAttribute("hidden");
 		}
 	});
-</script>
 
-<style>
-	.quiz h2 {
-		margin-top: 2.2rem;
-		font-size: 1.15rem;
-		color: #1a202c;
-		border-bottom: 1px solid #e2e8f0;
-		padding-bottom: 0.35rem;
-	}
-	.intro {
-		color: #718096;
-		font-size: 0.9rem;
-	}
-	fieldset {
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 0.9rem 1.1rem;
-		margin-bottom: 1rem;
-		background: #fff;
-	}
-	fieldset.correct {
-		border-color: #68d391;
-		background: #f0fff4;
-	}
-	fieldset.incorrect {
-		border-color: #fc8181;
-		background: #fff5f5;
-	}
-	legend {
-		font-weight: 600;
-		font-size: 0.92rem;
-		padding: 0 0.3rem;
-	}
-	label {
-		display: block;
-		font-size: 0.9rem;
-		margin: 0.35rem 0;
-		color: #2d3748;
-	}
-	.explain {
-		margin-top: 0.6rem;
-		font-size: 0.85rem;
-		color: #4a5568;
-		border-top: 1px dashed #e2e8f0;
-		padding-top: 0.5rem;
-	}
-	button[type="submit"] {
-		background: #2b6cb0;
-		color: #fff;
-		border: none;
-		padding: 0.55rem 1.1rem;
-		border-radius: 8px;
-		font-size: 0.9rem;
-		cursor: pointer;
-	}
-	button[type="submit"]:hover {
-		background: #2c5282;
-	}
-	#quiz-score {
-		margin-top: 0.8rem;
-		font-weight: 600;
-		color: #2d3748;
-	}
-	.exercise {
-		background: #fff;
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 1rem 1.2rem;
-		font-size: 0.92rem;
-		line-height: 1.6;
-		color: #2d3748;
-	}
-	.exercise pre {
-		background: #1a202c;
-		color: #e2e8f0;
-		padding: 0.6rem 0.9rem;
-		border-radius: 6px;
-		overflow-x: auto;
-		font-size: 0.85rem;
-	}
-	.exercise code {
-		background: #edf2f7;
-		padding: 0.1rem 0.35rem;
-		border-radius: 4px;
-	}
-	.exercise pre code {
-		background: none;
-		padding: 0;
-	}
-	.exercise ol {
-		margin: 0.6rem 0;
-		padding-left: 1.4rem;
-	}
-	.exercise li {
-		margin: 0.3rem 0;
-	}
-	details {
-		margin-top: 0.8rem;
-		font-size: 0.88rem;
-	}
-	details summary {
-		cursor: pointer;
-		color: #2b6cb0;
-	}
-</style>
+	const orderBtn = document.getElementById("check-order");
+	const orderResult = document.getElementById("order-result");
+
+	orderBtn?.addEventListener("click", () => {
+		const items = document.querySelectorAll("#save-order li");
+		let correct = 0;
+
+		items.forEach((li) => {
+			const select = li.querySelector<HTMLSelectElement>("select");
+			li.classList.remove("correct", "incorrect");
+			if (select?.value === li.getAttribute("data-correct")) {
+				correct++;
+				li.classList.add("correct");
+			} else {
+				li.classList.add("incorrect");
+			}
+		});
+
+		if (orderResult) {
+			orderResult.textContent =
+				correct === items.length
+					? `Chính xác cả ${items.length} bước — bạn đã nắm được đường đi của một lời gọi mạng.`
+					: `Đúng ${correct}/${items.length} bước. Nhớ hướng đi một chiều: UI → ViewModel → Service → mạng, rồi kết quả quay về qua StateFlow.`;
+			orderResult.removeAttribute("hidden");
+		}
+	});
+</script>

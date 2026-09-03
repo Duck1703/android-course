@@ -1,0 +1,769 @@
+---
+// Lesson Chapter 7: Advanced Architecture — viết lại hoàn toàn ở Task 44 (Phase 5 "Depth pass").
+// Nguồn chính (source of truth): content/book/ch07-advanced-architecture.md (456 dòng).
+// Project minh hoạ: aaf-materials/07-advanced-architecture/projects/{starter,final}/ (app "Kodeco Chat").
+// Mọi số dòng trích dẫn trong bài đã mở file thật để kiểm bằng Read tool trước khi viết.
+// Giải thích tự viết tiếng Việt — không copy nguyên văn sách (xem CLAUDE.md mục Bản quyền).
+// Chapter 7 là chapter cuối mạch app "Kodeco Chat" (ch5 → ch6 → ch7, package com.kodeco.chat).
+// [TASK48] Chuong 7.4 — Toàn bộ đường dây, code chết và những chỗ đã lỗi thời
+
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/07-advanced-architecture/projects/final/app/src/main/java/com/kodeco/chat";
+
+const STARTER = "aaf-materials/07-advanced-architecture/projects/starter/app/src/main/java/com/kodeco/chat";
+
+const BOOK = "content/book/ch07-advanced-architecture.md";
+
+const dateExtensionsCode = `import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.toInstant
+
+fun String.toInstant(): kotlinx.datetime.Instant {
+  return this.toInstant()
+}
+
+fun LocalDateTime.toIso8601String(): String {
+  var dateString = this.toString()
+  val dateParts = dateString.split(".")
+  dateString = dateParts[0]
+  dateString += "Z"
+  return dateString
+}`;
+
+const deadCodeCode = `private fun addSubscriptionForRoom(chatRoom: ChatRoom) {
+    val messageSubscription = ditto.store[chatRoom.messagesCollectionId].findAll().subscribe()
+}
+
+// This function without room param is for qrCode join private room, where there isn't yet a room
+private fun addPrivateRoomSubscriptions(
+  roomId: String,
+  collectionId: String,
+  messagesId: String
+) {
+  ditto.let { ditto: Ditto ->
+    val privateRoomCollection = ditto.store.collection(collectionId)
+    val roomSubscription = privateRoomCollection.findAll().subscribe()
+    val privateRoomLiveQuery: DittoLiveQuery = privateRoomCollection
+      .findAll()
+      .sort(createdOnKey, DittoSortDirection.Ascending)
+      .observeLocal { docs, _ ->
+        val roomDocs = docs
+        val privateChatRooms = docs.map { ChatRoom(it) }
+      }
+    val messagesSubscription = ditto.store.collection(messagesId).findAll().subscribe()
+  }
+}`;
+
+const dqlCode = `// SDK 4.5 — legacy query builder (sách dùng cái này)
+val collection = ditto.store.collection("users")
+val subscription = collection.findAll().subscribe()
+val liveQuery = collection.findAll().observeLocal { docs, _ ->
+  allUsers.value = docs.map { User(it) }
+}
+collection.upsert(mapOf("_id" to id, "firstName" to first))
+
+// SDK 4.12+ / 5.x — DQL
+ditto.sync.registerSubscription("SELECT * FROM users")
+ditto.store.registerObserver("SELECT * FROM users") { result ->
+  allUsers.value = result.items.map { /* tự parse JSON */ }
+}
+ditto.store.execute(
+  "INSERT INTO users DOCUMENTS (:doc) ON ID CONFLICT DO UPDATE",
+  mapOf("doc" to mapOf("_id" to id, "firstName" to first))
+)`;
+
+const dittoV5Code = `// v4.5 (sách)
+implementation("live.ditto:ditto:4.5.0")
+
+ditto = Ditto(
+  androidDependencies,
+  DittoIdentity.OnlinePlayground(androidDependencies, appId, token)
+)
+ditto.startSync()
+
+// v5.x (2026)
+implementation("com.ditto:ditto-kotlin:5.1.0")
+
+val config = DittoConfig(
+  databaseId = BuildConfig.DITTO_APP_ID,
+  connect = Connect.Server("your-app.cloud.ditto.live")
+)
+val ditto = DittoFactory.create(config)
+ditto.auth?.login(BuildConfig.DITTO_TOKEN, DittoAuthenticationProvider.development())
+ditto.startSync()`;
+
+const publicRoomForIdCode = `override suspend fun publicRoomForId(roomId: String): ChatRoom {
+  val document = ditto.store.collection(publicRoomsCollectionId).findById(roomId).exec()
+  document?.let {
+    return ChatRoom(document)
+  }
+  return ChatRoom(
+    id = publicKey,
+    name = publicRoomTitleKey,
+    createdOn = Clock.System.now(),
+    messagesCollectionId = DEFAULT_PUBLIC_ROOM_MESSAGES_COLLECTION_ID,
+    isPrivate = false,
+    collectionID = publicKey,
+    createdBy = "Ditto System"
+  )
+}`;
+---
+
+<section class="lesson">
+	<h2 id="xoa-fakedata">Xoá FakeData.kt: dấu mốc app trở thành thật</h2>
+
+	<p>
+		Bước cuối của sách là dùng <em>Safe Delete</em> (chuột phải ▸ Refactor ▸ Safe Delete) trên
+		<code>data/FakeData.kt</code>, và bỏ dòng <code>import ... initialMessages</code> trong
+		<code>MainViewModel</code>.
+	</p>
+
+	<p>
+		File đó chứa <code>sampleMessageTexts</code> (3 tin nhắn của <code>userId = "other"</code> và <code>"me"</code>,
+		tất cả đóng băng ở <code>Instant.parse("2023-11-16T05:48:01Z")</code>), <code>meUser = User(id = "me", ...)</code>,
+		<code>otherUser</code>, và <code>val initialMessages</code>. Trong bản <code>starter</code>,
+		<code>initialMessages</code> được import ở <code>MainViewModel.kt</code> dòng 43 và dùng ở dòng 74.
+	</p>
+
+	<p class="src">Nguồn: {STARTER}/data/FakeData.kt (file này không tồn tại trong <code>final</code>). Đã grep xác nhận điểm dùng duy nhất là <code>MainViewModel.kt</code>.</p>
+
+	<div class="hint">
+		<strong>Vì sao dùng Safe Delete chứ không nhấn Delete?</strong> Safe Delete <em>quét toàn project</em> tìm mọi chỗ còn tham
+		chiếu tới thứ bạn sắp xoá, và hiện danh sách để bạn xử lý <em>trước khi</em> xoá. Nhấn Delete thẳng thì bạn phải chờ tới
+		lúc build mới biết mình vừa làm hỏng cái gì. Trong project này Safe Delete sẽ báo đúng một chỗ: dòng import trong
+		<code>MainViewModel</code>.
+	</div>
+
+	<p>
+		Về mặt biểu tượng, đây là dòng cuối của mạch app Kodeco Chat: chapter 5 dựng UI, chapter 6 làm UI nâng cao,
+		chapter 7 nối UI vào dữ liệu thật <em>và xoá dữ liệu giả đi</em>. Nếu bạn build và chạy trên hai thiết bị lúc này,
+		gõ ở máy này thì máy kia hiện — không cần internet.
+	</p>
+
+	<h2 id="duong-day">Toàn bộ đường dây, từ đầu đến cuối</h2>
+
+	<p>
+		Đến đây bạn đã thấy từng mảnh. Ghép lại thành một hình. Đường <strong>ghi</strong> (bạn gõ tin nhắn):
+	</p>
+
+	<ol class="chain">
+		<li>Người dùng bấm gửi → <code>ConversationUiState.addMessage(msg, photoUri)</code> (<code>ConversationUiState.kt</code> dòng 69–71)</li>
+		<li>→ <code>viewModel.onCreateNewMessageClick(msg, photoUri, null)</code></li>
+		<li>→ tạo object <code>Message</code>, kiểm tra <code>photoUri == null</code>, vào <code>viewModelScope.launch</code></li>
+		<li>→ <code>repository.createMessageForRoom(...)</code></li>
+		<li>→ đổi thời gian sang chuỗi ISO/UTC, gói thành <code>Map</code>, <code>collection.upsert(doc)</code></li>
+		<li>→ ghi vào <strong>database local</strong>, hàm trả về ngay</li>
+		<li>→ (song song, phía sau) engine sync lan document ra mesh qua BLE/Wi-Fi</li>
+	</ol>
+
+	<p>Đường <strong>đọc</strong> — và điểm mấu chốt là nó <em>giống nhau</em> bất kể tin nhắn từ máy bạn hay máy khác:</p>
+
+	<ol class="chain">
+		<li>Database local thay đổi (do bạn ghi, hoặc do peer gửi tới)</li>
+		<li>→ <code>DittoLiveQuery.observeLocal</code> callback reo, nhận <code>docs</code></li>
+		<li>→ <code>docs.map &#123; Message(it) &#125;</code> — <code>DittoDocument</code> thành model</li>
+		<li>→ <code>allMessagesForRoom.value = ...</code> — <code>MutableStateFlow</code> phát giá trị mới</li>
+		<li>→ <code>combine(getAllUsers(), getAllMessagesForRoom(...))</code> chạy lại, ghép user vào từng tin nhắn</li>
+		<li>→ <code>collectAsStateWithLifecycle</code> nhận, cập nhật Compose <code>State</code></li>
+		<li>→ Compose re-compose, <code>.asReversed()</code>, <code>LazyColumn(reverseLayout = true)</code> vẽ lại</li>
+	</ol>
+
+	<div class="callout">
+		<p>
+			<strong>Điều đáng nhớ nhất của chapter này:</strong> không có dòng code nào tên là "refresh", "reload", hay
+			"updateUI". Bạn không <em>đẩy</em> dữ liệu lên UI; bạn <em>mô tả</em> UI phụ thuộc vào cái gì, rồi để hệ thống
+			tự chạy khi cái đó đổi. Ditto reo chuông ở một đầu, Compose vẽ lại ở đầu kia, và ở giữa là ba mắt xích
+			(<code>StateFlow</code> → <code>combine</code> → <code>collectAsStateWithLifecycle</code>).
+			Đây là mô hình <em>reactive</em>, và nó là cùng một mô hình bạn sẽ dùng lại với Retrofit ở Chương 8 và
+			Room ở Chương 10.3 — chỉ đổi cái nguồn ở đầu bên trái.
+		</p>
+	</div>
+
+	<h2 id="date-extensions">DateExtensions.kt: hàm tự gọi chính nó</h2>
+
+	<p>
+		File này sách không nhắc tới (nó đã có sẵn từ chapter trước), nhưng nó được dùng ở <em>bốn</em> chỗ quan trọng trong
+		chapter 7: <code>createMessageForRoom</code>, <code>createRoom</code>, và hai constructor
+		<code>Message(document)</code>/<code>ChatRoom(document)</code>. Nội dung:
+	</p>
+
+	<Code code={dateExtensionsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: {FINAL}/data/model/DateExtensions.kt dòng 37–50 (đã mở file thật để đọc, không phải suy đoán).</p>
+
+	<p>
+		Đọc kỹ ba dòng đầu: một extension function tên <code>String.toInstant()</code>, và bên trong nó gọi
+		<code>this.toInstant()</code>. <strong>Trông y như một hàm gọi chính nó vô hạn</strong> — công thức chuẩn của
+		<code>StackOverflowError</code>. Nhưng app chạy được. Vì sao?
+	</p>
+
+	<h3>Câu trả lời nằm ở quy tắc chọn hàm của Kotlin</h3>
+
+	<p>
+		Kotlin phân giải một lời gọi có receiver tường minh (<code>this.toInstant()</code>) theo <em>thứ tự các nhóm ứng viên</em>.
+		Nó xét từng nhóm và <strong>chọn nhóm đầu tiên có ít nhất một hàm dùng được</strong> — rồi mới so sánh trong nhóm đó:
+	</p>
+
+	<ol>
+		<li>Hàm thành viên (member) của class</li>
+		<li>Extension khai báo cục bộ</li>
+		<li><strong>Extension được import tường minh</strong> ← <code>import kotlinx.datetime.toInstant</code> ở dòng 38 nằm đây</li>
+		<li><strong>Extension khai báo cùng package</strong> ← chính hàm này nằm đây</li>
+		<li>Extension import bằng <code>*</code></li>
+		<li>Extension import ngầm (stdlib)</li>
+	</ol>
+
+	<p class="src">Quy tắc theo đặc tả Kotlin: <a href="https://kotlinlang.org/spec/overload-resolution.html" target="_blank" rel="noopener">kotlinlang.org/spec/overload-resolution.html</a> — mục thứ tự nhóm ứng viên.</p>
+
+	<p>
+		Vậy nhóm 3 được xét <em>trước</em> nhóm 4. Nếu extension import ở dòng 38 thực sự áp dụng được cho
+		<code>String</code>, thì lời gọi <code>this.toInstant()</code> đi tới <strong>hàm của thư viện</strong>, không phải
+		hàm này — và không có đệ quy.
+	</p>
+
+	<p>
+		Tôi đã kiểm tra thật: project dùng kotlinx-datetime <strong>0.4.0</strong> (khai ở
+		<code>gradle/libs.versions.toml</code>), và trong source của thư viện ở đúng tag <code>v0.4.0</code>, file
+		<code>core/common/src/Instant.kt</code> dòng 215 có:
+		<code>public fun String.toInstant(): Instant = Instant.parse(this)</code>. Hàm đó <em>tồn tại</em>.
+	</p>
+
+	<div class="callout note">
+		<p>
+			<strong>Nói cho chính xác:</strong> tôi xác nhận được hai điều — thư viện 0.4.0 <em>có</em>
+			<code>String.toInstant()</code>, và đặc tả Kotlin xét import tường minh trước khai báo cùng package.
+			Kết hợp lại thì đây là lời giải thích hợp lý nhất cho việc app không crash. Nhưng tôi <em>không</em> compile được
+			project để xác nhận bằng thực nghiệm (cần Android SDK + <code>keys.properties</code>), nên hãy coi đây là suy luận
+			có căn cứ, không phải kết quả chạy thật. Cách kiểm tra dứt điểm nếu bạn có Android Studio: đặt con trỏ vào
+			<code>toInstant()</code> ở dòng 41 và bấm <em>Ctrl+B</em> (Go to Declaration) — IDE sẽ chỉ đúng hàm nào được chọn.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>Dù giải thích được, đây vẫn là code nên sửa.</strong> Ba lý do:
+		</p>
+		<ul>
+			<li>
+				<strong>Nó vô dụng.</strong> Hàm chỉ chuyển tiếp sang hàm thư viện, không thêm gì. Xoá cả hàm và giữ nguyên
+				<code>import kotlinx.datetime.toInstant</code> thì mọi chỗ gọi vẫn chạy đúng.
+			</li>
+			<li>
+				<strong>Nó cực kỳ dễ vỡ.</strong> Ai đó xoá dòng import ở 38 (IDE hay đề nghị "remove unused import" —
+				và trông nó <em>như</em> unused!) thì nhóm 3 rỗng, lời gọi rơi xuống nhóm 4, hàm gọi chính nó,
+				và app crash <code>StackOverflowError</code> ở mọi tin nhắn. Một lần "dọn import" vô hại biến thành crash toàn app.
+			</li>
+			<li>
+				<strong>Nó không compile được với thư viện hiện nay.</strong> kotlinx-datetime <strong>0.8.0</strong> đã
+				<em>bỏ hoàn toàn</em> các extension trên <code>String</code> — chỉ còn
+				<code>LocalDateTime.toInstant(TimeZone)</code> và <code>(UtcOffset)</code>. Nâng thư viện lên là dòng
+				<code>import kotlinx.datetime.toInstant</code> không phân giải được nữa. (Đáng chú ý: changelog của thư viện
+				không hề nhắc tới việc bỏ <code>String.toInstant</code>, nên đây là kiểu breaking change im lặng.)
+				Thay bằng <code>Instant.parse(this)</code> là cách viết đúng và ổn định.
+			</li>
+		</ul>
+	</div>
+
+	<p>
+		Hàm thứ hai, <code>toIso8601String()</code>, thì đơn giản hơn nhưng cũng thô: nó lấy chuỗi
+		<code>"2026-08-28T15:04:01.123"</code>, cắt ở dấu chấm để bỏ phần milli, rồi nối <code>"Z"</code> vào.
+		Chuỗi <code>"Z"</code> nghĩa là UTC. Cách này chỉ đúng vì hàm gọi nó <em>đã</em> chuyển sang UTC bằng
+		<code>toLocalDateTime(TimeZone.UTC)</code> trước — nếu ai đó truyền vào một <code>LocalDateTime</code> ở múi giờ khác,
+		nó sẽ gắn nhãn "Z" cho một thời điểm không phải UTC, và thứ tự tin nhắn giữa các máy sẽ sai. Một hàm đúng-nhờ-hoàn-cảnh,
+		không đúng-do-thiết-kế.
+	</p>
+
+	<h2 id="dead-code">Code chết mà sách không nhắc</h2>
+
+	<p>
+		Khi bạn đọc <code>RepositoryImpl.kt</code>, bạn sẽ gặp hai hàm này và có thể mất thời gian cố hiểu chúng.
+		Tiết kiệm thời gian cho bạn: <strong>chúng không làm gì cả.</strong>
+	</p>
+
+	<Code code={deadCodeCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: {FINAL}/data/repository/RepositoryImpl.kt — <code>addSubscriptionForRoom</code> dòng 238–240, <code>addPrivateRoomSubscriptions</code> 243–261.</p>
+
+	<ul>
+		<li>
+			<strong><code>addSubscriptionForRoom</code></strong> — được gọi thật (từ <code>createRoom</code>, dòng 231),
+			nhưng nó gán subscription vào một <code>val</code> cục bộ rồi hàm kết thúc. Biến mất tham chiếu → subscription
+			bị GC dọn → <strong>đăng ký im lặng không có hiệu lực</strong>. Đúng đúng cái bẫy mô tả ở mục
+			<a href="#state-holders">ba cái hộp</a>. Muốn nó hoạt động thì phải lưu vào một field của class.
+		</li>
+		<li>
+			<strong><code>addPrivateRoomSubscriptions</code></strong> — <em>không nơi nào gọi</em>. Bên trong có 4 biến cục bộ
+			được gán rồi bỏ (<code>roomSubscription</code>, <code>privateRoomLiveQuery</code>, <code>roomDocs</code>,
+			<code>privateChatRooms</code>, <code>messagesSubscription</code>). Comment nói nó dành cho tính năng "quét QR để
+			vào phòng riêng" — một tính năng chưa được làm.
+		</li>
+	</ul>
+
+	<p>
+		Vì sao chúng ở đó? Vì project <code>final</code> của sách được lược ra từ một app Ditto đầy đủ hơn (có nhiều phòng,
+		phòng riêng, QR code). Phần bị cắt để lại vết. Điều này cũng đúng cho <code>createRoom</code> (200–236) và
+		<code>publicRoomForId</code> (296–310): cả hai <strong>không được gọi từ đâu</strong> trong app hiện tại —
+		app chỉ dùng một phòng hardcode trong <code>MainViewModel</code>. Chúng có mặt để bạn làm thử thách "nhiều phòng chat".
+	</p>
+
+	<Code code={publicRoomForIdCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: {FINAL}/data/repository/RepositoryImpl.kt dòng 296–310.</p>
+
+	<p>
+		Đáng đọc hàm này vì nó minh hoạ hai thứ chưa gặp: <code>.findById(roomId).exec()</code> — đọc
+		<strong>một lần</strong>, trả về <code>DittoDocument?</code> (nullable), khác hẳn <code>observeLocal</code>;
+		và pattern "không tìm thấy thì trả về giá trị mặc định thay vì null hoặc exception". Với hệ P2P thì lựa chọn này hợp lý:
+		phòng có thể chưa sync về máy này, và app vẫn nên hiển thị được cái gì đó.
+	</p>
+
+	<h2 id="bang-khac-biet">Bảng tổng hợp: sách nói vs code thật</h2>
+
+	<p>
+		Chapter này có nhiều chỗ lệch hơn hẳn các chapter trước, nên gom tất cả vào một bảng. Cột cuối là khuyến nghị của tôi
+		khi hai bên khác nhau.
+	</p>
+
+	<table class="cmp">
+		<thead>
+			<tr><th>#</th><th>Sách / listing in trong sách</th><th>Code thật trong <code>final</code></th><th>Nên theo cái nào</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>1</td>
+				<td><code>val currentRoom = _currentChatRoom.asStateFlow()</code> (public)</td>
+				<td><code>private val currentRoom</code> — <code>MainViewModel.kt</code> dòng 84</td>
+				<td><strong>Code thật.</strong> Không có gì ngoài ViewModel cần đọc nó.</td>
+			</tr>
+			<tr>
+				<td>2</td>
+				<td><code>fun updateUserInfo(...)</code> (public)</td>
+				<td><code>private fun updateUserInfo(...)</code> — dòng 107</td>
+				<td><strong>Code thật.</strong> Chỉ <code>init</code> gọi nó.</td>
+			</tr>
+			<tr>
+				<td>3</td>
+				<td><code>init</code> lấy tên thiết bị làm tên user</td>
+				<td><code>val firstName = "My"</code> <em>che</em> property của class (dòng 102–103 vs 68–69)</td>
+				<td><strong>Sửa cả hai.</strong> Bỏ <code>val</code> để gán vào property, nếu không tham số mặc định của <code>updateUserInfo</code> vô nghĩa.</td>
+			</tr>
+			<tr>
+				<td>4</td>
+				<td>Key Points: Repository giúp app độc lập với nguồn dữ liệu</td>
+				<td><code>Repository.kt</code> dòng 41 <code>import live.ditto.DittoAttachment</code></td>
+				<td><strong>Theo tinh thần sách, sửa code.</strong> Dùng type riêng của app trong interface, để <code>Impl</code> dịch.</td>
+			</tr>
+			<tr>
+				<td>5</td>
+				<td>KDoc: "Data Store in Chapter 8"</td>
+				<td>Data Store là <strong>chapter 9</strong>; chapter 8 là Networking (2 chỗ: <code>RepositoryImpl.kt</code> 155, <code>MainViewModel.kt</code> 61)</td>
+				<td><strong>Đọc là chapter 9.</strong> Ý nội dung vẫn đúng, chỉ lệch số.</td>
+			</tr>
+			<tr>
+				<td>6</td>
+				<td>Không nhắc <code>DateExtensions.kt</code></td>
+				<td><code>fun String.toInstant() = this.toInstant()</code> — chạy được nhờ thứ tự phân giải, vỡ nếu xoá import</td>
+				<td><strong>Sửa code.</strong> Thay bằng <code>Instant.parse(this)</code>.</td>
+			</tr>
+			<tr>
+				<td>7</td>
+				<td>Không nhắc scope</td>
+				<td><code>GlobalScope.launch</code> — <code>RepositoryImpl.kt</code> dòng 139</td>
+				<td><strong>Đừng bắt chước.</strong> Nhận <code>CoroutineScope</code> qua constructor.</td>
+			</tr>
+			<tr>
+				<td>8</td>
+				<td>Không nhắc</td>
+				<td>Code chết: <code>addPrivateRoomSubscriptions</code> (243–261), <code>messagesDocs</code>/<code>usersDocs</code>, <code>Message.authorImage</code>, biến cục bộ trong <code>addSubscriptionForRoom</code></td>
+				<td><strong>Bỏ qua khi đọc.</strong> Xoá được nếu bạn tự viết lại.</td>
+			</tr>
+			<tr>
+				<td>9</td>
+				<td>"Tạo <code>keys.properties</code>"</td>
+				<td>File nằm trong <code>.gitignore</code>, không ship kèm → Gradle lỗi ngay lúc configure</td>
+				<td><strong>Tự tạo file trước khi mở project.</strong> Xem mục <a href="#keys-properties">keys.properties</a>.</td>
+			</tr>
+			<tr>
+				<td>10</td>
+				<td>Không nhắc</td>
+				<td><code>createMessageForRoom</code> không ghi <code>_id</code> (Ditto tự sinh) còn <code>addUser</code> thì có → id do ViewModel sinh bị vứt</td>
+				<td><strong>Biết để dùng về sau.</strong> Cần sửa nếu muốn sửa/xoá tin nhắn.</td>
+			</tr>
+			<tr>
+				<td>11</td>
+				<td>"code khung cho attachment"</td>
+				<td><code>if (message.photoUri == null)</code> dòng 129 → tin nhắn có ảnh bị bỏ, không báo lỗi</td>
+				<td><strong>Ít nhất hiện Toast.</strong> Hoặc làm thử thách 1.</td>
+			</tr>
+			<tr>
+				<td>12</td>
+				<td>Không nhắc manifest</td>
+				<td><code>final</code> xoá <code>android:label="@string/app_name"</code> khỏi <code>&lt;activity&gt;</code> (starter có ở dòng 52)</td>
+				<td><strong>Không quan trọng.</strong> Activity thừa hưởng label của <code>&lt;application&gt;</code>.</td>
+			</tr>
+			<tr>
+				<td>13</td>
+				<td>Gọi <code>requestPermissions(missing, 0)</code></td>
+				<td>Không có <code>onRequestPermissionsResult</code> / <code>refreshPermissions()</code> ở đâu cả</td>
+				<td><strong>Thêm vào.</strong> Tài liệu Ditto hiện tại yêu cầu <code>refreshPermissions()</code> sau khi được cấp quyền.</td>
+			</tr>
+			<tr>
+				<td>14</td>
+				<td><code>ditto.startSync()</code></td>
+				<td>Không có <code>stopSync()</code>/<code>close()</code>/<code>onDestroy()</code></td>
+				<td><strong>Thêm vào app thật.</strong> Hoặc chuyển Ditto lên tầng Application.</td>
+			</tr>
+			<tr>
+				<td>15</td>
+				<td>Không nhắc</td>
+				<td>Ba file <code>DateExtensions.kt</code>, <code>MessageUiModel.kt</code>, <code>utilities/Extensions.kt</code> khác nhau starter↔final <em>chỉ ở dấu newline cuối file</em>; <code>UserInput.kt</code>, <code>Conversation.kt</code>, <code>KodecochatIcon.kt</code> bị refactor mà sách không nói</td>
+				<td><strong>Không cần lo.</strong> Không ảnh hưởng bài học.</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p class="src">Bảng này do tôi lập bằng cách chạy <code>diff -r</code> giữa <code>starter</code> và <code>final</code>, rồi mở từng file để xác minh số dòng.</p>
+
+	<h2 id="phien-ban">Sách 2023 vs thực tế 2026: Ditto đã đổi nhiều</h2>
+
+	<p>
+		Sách dùng Ditto <strong>4.5.0</strong>. Tại thời điểm bài này được viết (tháng 8/2026), bản mới nhất là
+		<strong>5.1.0</strong> (ra ngày 18/08/2026; v5.0.0 ra 05/05/2026). Và đây không phải kiểu "nâng số version cho vui" —
+		gần như <em>mọi dòng</em> trong <code>setupDitto()</code> đều đã đổi.
+	</p>
+
+	<p class="src">Nguồn version: <a href="https://docs.ditto.live/sdk/latest/release-notes/kotlin" target="_blank" rel="noopener">docs.ditto.live — Kotlin release notes</a>. (Maven Central chặn truy vấn metadata tự động nên tôi lấy từ release notes chính thức.)</p>
+
+	<h3>1. Toạ độ thư viện đã đổi tên</h3>
+
+	<Code code={dittoV5Code} lang="kotlin" theme="github-dark" />
+
+	<p>
+		<code>live.ditto:ditto</code> → <code>com.ditto:ditto-kotlin</code>. Nghĩa là bạn <em>không thể</em> chỉ sửa số
+		<code>4.5.0</code> thành <code>5.1.0</code> trong <code>libs.versions.toml</code> — phải sửa cả dòng
+		<code>module</code>. Nếu chỉ sửa số version thì Gradle báo "Could not find live.ditto:ditto:5.1.0", và thông báo đó
+		không hề gợi ý rằng tên artifact đã đổi.
+	</p>
+
+	<h3>2. Cách khởi tạo và xác thực đã khác hoàn toàn</h3>
+
+	<table class="cmp">
+		<thead>
+			<tr><th>Khái niệm</th><th>v4.5 (sách)</th><th>v5.x (2026)</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Tạo instance</td>
+				<td><code>Ditto(dependencies, identity)</code></td>
+				<td><code>DittoFactory.create(DittoConfig(...))</code></td>
+			</tr>
+			<tr>
+				<td>Định danh app</td>
+				<td><code>appId</code> trong <code>DittoIdentity.OnlinePlayground</code></td>
+				<td><code>databaseId</code> trong <code>DittoConfig</code></td>
+			</tr>
+			<tr>
+				<td>Chọn cách kết nối</td>
+				<td>Ngầm theo loại identity</td>
+				<td><code>connect = Connect.Server(url)</code> hoặc <code>Connect.SmallPeersOnly</code> — <strong>tường minh</strong></td>
+			</tr>
+			<tr>
+				<td>Xác thực</td>
+				<td>token nằm trong identity</td>
+				<td><code>ditto.auth?.login(token, DittoAuthenticationProvider.development())</code></td>
+			</tr>
+			<tr>
+				<td>Object dependencies</td>
+				<td><code>DefaultAndroidDittoDependencies(context)</code>, truyền 2 lần</td>
+				<td>Không còn</td>
+			</tr>
+			<tr>
+				<td>Helper permission</td>
+				<td><code>live.ditto.transports.DittoSyncPermissions</code></td>
+				<td><code>com.ditto.kotlin.transports.DittoSyncPermissions</code></td>
+			</tr>
+			<tr>
+				<td>Sau khi được cấp quyền</td>
+				<td>(sách không gọi gì)</td>
+				<td><code>ditto.refreshPermissions()</code> — <strong>bắt buộc</strong>, không gọi thì sync trễ</td>
+			</tr>
+			<tr>
+				<td>Yêu cầu tối thiểu</td>
+				<td>minSdk 30, compileSdk 34, AGP 8.2.0</td>
+				<td>minSdk 24, compileSdk 36, <strong>JDK 17</strong></td>
+			</tr>
+			<tr>
+				<td>Sync khi app ở background</td>
+				<td>không đề cập</td>
+				<td>cần <code>DefaultDittoForegroundService</code> + <code>FOREGROUND_SERVICE</code>, <code>FOREGROUND_SERVICE_CONNECTED_DEVICE</code>, <code>POST_NOTIFICATIONS</code></td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p>
+		Đáng chú ý là <code>ditto.auth</code> giờ <strong>nullable</strong> — nếu bạn cấu hình <code>Connect.SmallPeersOnly</code>
+		(chỉ P2P, không cloud) thì không có đối tượng auth nào. Kiểu dữ liệu phản ánh đúng thực tế: chỉ P2P thì không cần đăng nhập.
+	</p>
+
+	<h3>3. Cách truy vấn: query builder → DQL</h3>
+
+	<p>
+		Đây là thay đổi ảnh hưởng nhiều dòng code nhất. Từ SDK <strong>4.12</strong>, Ditto bắt đầu đánh dấu deprecated toàn bộ
+		"legacy query builder" (<code>collection()</code>, <code>findAll()</code>, <code>observeLocal()</code>,
+		<code>upsert()</code>) và chuyển sang <strong>DQL</strong> — một ngôn ngữ giống SQL:
+	</p>
+
+	<Code code={dqlCode} lang="kotlin" theme="github-dark" />
+
+	<table class="cmp">
+		<thead>
+			<tr><th>Việc cần làm</th><th>Query builder (sách)</th><th>DQL (hiện tại)</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Đăng ký nhận dữ liệu từ mesh</td>
+				<td><code>collection(k).findAll().subscribe()</code></td>
+				<td><code>ditto.sync.registerSubscription("SELECT * FROM k")</code></td>
+			</tr>
+			<tr>
+				<td>Theo dõi thay đổi cục bộ</td>
+				<td><code>.observeLocal &#123; docs, _ -> &#125;</code></td>
+				<td><code>ditto.store.registerObserver("SELECT * FROM k") &#123; result -> result.items &#125;</code></td>
+			</tr>
+			<tr>
+				<td>Ghi / cập nhật</td>
+				<td><code>collection.upsert(map)</code></td>
+				<td><code>ditto.store.execute("INSERT INTO k DOCUMENTS (:doc) ON ID CONFLICT DO UPDATE", mapOf("doc" to map))</code></td>
+			</tr>
+			<tr>
+				<td>Sắp xếp</td>
+				<td><code>.sort(key, DittoSortDirection.Ascending)</code></td>
+				<td><code>ORDER BY createdOn ASC</code> trong câu query</td>
+			</tr>
+			<tr>
+				<td>Đọc một document</td>
+				<td><code>.findById(id).exec()</code></td>
+				<td><code>SELECT * FROM k WHERE _id = 'abc'</code></td>
+			</tr>
+		</tbody>
+	</table>
+
+	<div class="callout note">
+		<p>
+			<strong>Ba cái bẫy khi bạn tự chuyển sang DQL:</strong>
+		</p>
+		<ul>
+			<li>
+				DQL dùng <strong>một</strong> dấu <code>=</code> để so sánh (không phải <code>==</code>), và chuỗi phải nằm trong
+				<strong>dấu nháy đơn</strong> <code>'abc'</code>. Nháy kép là lỗi cú pháp.
+			</li>
+			<li>
+				DQL <strong>không tự map document sang model</strong>. Query builder cho bạn <code>DittoDocument</code> với
+				<code>.stringValue</code>/<code>.booleanValue</code> tiện lợi; DQL trả về <code>QueryResultItem</code> và bạn phải
+				tự parse JSON. Nghĩa là các constructor <code>Message(document)</code>, <code>User(document)</code>,
+				<code>ChatRoom(document)</code> trong chapter này <strong>phải viết lại</strong> — thường bằng
+				kotlinx.serialization.
+			</li>
+			<li>
+				Vẫn phải giữ tham chiếu tới subscription và observer, y như cũ. Cái bẫy "quên giữ tham chiếu → im lặng ngừng
+				nhận dữ liệu" không mất đi.
+			</li>
+		</ul>
+	</div>
+
+	<h3>4. Những thứ khác cũng đã cũ</h3>
+
+	<ul>
+		<li>
+			<strong>AGP 8.2.0 → 9.x.</strong> Từ AGP 9, hỗ trợ Kotlin được tích hợp sẵn, không cần plugin
+			<code>org.jetbrains.kotlin.android</code> riêng nữa.
+		</li>
+		<li>
+			<strong>Kotlin 1.9.10 → 2.x.</strong> Compose compiler đã thành plugin Kotlin, nên block
+			<code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code>
+			(<code>build.gradle.kts</code> dòng 90–91) <em>không còn dùng nữa</em> — thay bằng plugin
+			<code>org.jetbrains.kotlin.plugin.compose</code>. Đây là chỗ mọi project cũ đều vướng khi nâng Kotlin.
+		</li>
+		<li>
+			<strong>kotlinx-datetime 0.4.0 → 0.8.0.</strong> Đã nói ở mục <a href="#date-extensions">DateExtensions</a>.
+		</li>
+	</ul>
+
+	<div class="callout">
+		<p>
+			<strong>Vậy phần nào của chapter này còn giá trị?</strong> Gần như tất cả phần <em>quan trọng</em>:
+			Repository pattern, singleton, <code>Flow</code>/<code>StateFlow</code>, <code>combine</code>,
+			<code>collectAsStateWithLifecycle</code>, <code>keys.properties</code>/<code>BuildConfig</code>, version catalog,
+			mô hình subscription + observer, và cách nghĩ về local-first — <strong>không đổi một chút nào</strong>.
+			Chỉ có <em>cú pháp gọi SDK Ditto</em> là cũ. Nếu bạn học chapter này để lấy kiến trúc, bạn không mất gì.
+			Nếu bạn học để copy code Ditto vào app 2026, bạn sẽ phải dịch lại từng dòng.
+		</p>
+	</div>
+
+	<h2 id="sai-lam">Những chỗ dễ sai khi bạn tự làm</h2>
+
+	<table class="api">
+		<thead>
+			<tr><th>Triệu chứng</th><th>Nguyên nhân thường gặp</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Gradle lỗi ngay khi mở project, chưa compile gì</td>
+				<td>Thiếu <code>keys.properties</code> ở gốc project. Tạo file, điền 2 dòng.</td>
+			</tr>
+			<tr>
+				<td>"Unresolved reference: BuildConfig"</td>
+				<td>Thiếu <code>buildConfig = true</code> trong <code>buildFeatures</code>, hoặc cần Clean Project.</td>
+			</tr>
+			<tr>
+				<td>Build debug được, build release lỗi</td>
+				<td>Khai <code>buildConfigField</code> ở <code>debug</code> mà quên <code>release</code>.</td>
+			</tr>
+			<tr>
+				<td>App crash <code>UninitializedPropertyAccessException</code></td>
+				<td>Có đường code đọc <code>ditto</code> trước <code>setupDitto()</code>. Chuyển <code>setupDitto()</code> lên trước <code>setContent</code>.</td>
+			</tr>
+			<tr>
+				<td>App chạy, ghi được, nhưng máy kia không thấy gì</td>
+				<td>Thiếu <code>startSync()</code>; hoặc quyền Bluetooth chưa được cấp; hoặc hai máy khác App ID; hoặc chỉ có <em>một</em> máy (Ditto cần ≥2 peer).</td>
+			</tr>
+			<tr>
+				<td>Thấy tin nhắn của mình, không thấy của người khác</td>
+				<td>Có live query nhưng thiếu <code>.subscribe()</code>, hoặc subscription bị GC vì không giữ tham chiếu.</td>
+			</tr>
+			<tr>
+				<td>Dữ liệu về nhưng UI không đổi</td>
+				<td>Thiếu <code>observeLocal</code>; hoặc gán <code>allUsers.value</code> vào <em>instance khác</em> của Repository (singleton bị tạo 2 lần); hoặc dùng <code>Flow</code> thường thay <code>StateFlow</code>.</td>
+			</tr>
+			<tr>
+				<td>Tin nhắn hiện đúng nhưng tên người gửi rỗng</td>
+				<td>Document user chưa sync về (bình thường trong P2P, sẽ tự đúng); hoặc gõ sai tên key nên <code>.stringValue</code> trả chuỗi rỗng.</td>
+			</tr>
+			<tr>
+				<td>Tin nhắn hiện ngược thứ tự</td>
+				<td>Bỏ <code>.asReversed()</code> mà vẫn để <code>reverseLayout = true</code> (hoặc ngược lại).</td>
+			</tr>
+			<tr>
+				<td>Bấm gửi ảnh, không có gì xảy ra</td>
+				<td>Không phải bug của bạn — <code>if (message.photoUri == null)</code> ở <code>MainViewModel</code> dòng 129.</td>
+			</tr>
+			<tr>
+				<td><code>StackOverflowError</code> mỗi khi có tin nhắn</td>
+				<td>Import <code>kotlinx.datetime.toInstant</code> trong <code>DateExtensions.kt</code> đã bị xoá (xem mục <a href="#date-extensions">DateExtensions</a>).</td>
+			</tr>
+			<tr>
+				<td>Tin nhắn hai phòng lẫn vào nhau</td>
+				<td>Gọi <code>getAllMessagesForRoom()</code> cho nhiều phòng — nó ghi đè cùng một <code>allMessagesForRoom</code>.</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h2 id="key-points">Điểm cần nhớ</h2>
+
+	<p>
+		Sách chỉ có 2 gạch đầu dòng ở mục Key Points. Dưới đây là bản đầy đủ hơn do tôi viết lại sau khi đối chiếu cả chapter
+		với code thật:
+	</p>
+
+	<ul>
+		<li>
+			<strong>Repository là một tầng, không phải một class.</strong> Interface + implementation, đứng giữa nguồn dữ liệu và
+			phần còn lại của app. Nó che giấu nguồn, tập trung logic truy vấn, dịch model lưu trữ thành model domain, mở đường
+			cho test, và là nguồn sự thật duy nhất.
+		</li>
+		<li>
+			<strong>Đọc-liên-tục thì trả <code>Flow</code>; ghi hoặc đọc-một-lần thì <code>suspend</code>.</strong>
+			Quy ước này lặp lại ở Retrofit (ch8), Data Store (ch9), Room (ch10).
+		</li>
+		<li>
+			<strong>Bên trong <code>MutableStateFlow</code>, bên ngoài <code>Flow</code>.</strong> Một chiều dữ liệu được áp đặt
+			bằng hệ thống kiểu, không bằng lời hứa.
+		</li>
+		<li>
+			<strong>Subscription và live query là hai thứ khác nhau.</strong> Subscription = đường ống kéo dữ liệu từ mesh về.
+			Live query = chuông reo khi database local đổi. Thiếu một trong hai thì app hoạt động <em>một nửa</em>, và
+			nửa thiếu đó không báo lỗi.
+		</li>
+		<li>
+			<strong>Phải giữ tham chiếu tới subscription/live query trong một field.</strong> Gán vào biến cục bộ là
+			để nó bị GC dọn, và app im lặng ngừng nhận dữ liệu — không exception, không log.
+		</li>
+		<li>
+			<strong><code>combine()</code> là JOIN của thế giới reactive.</strong> Nó chờ cả hai flow có giá trị, rồi chạy lại
+			mỗi khi <em>bất kỳ</em> flow nào đổi. Nó là <em>cold</em> — không ai collect thì không chạy.
+		</li>
+		<li>
+			<strong><code>collectAsStateWithLifecycle</code> thay vì <code>collectAsState</code></strong> cho mọi flow gắn với
+			nguồn dữ liệu ngoài. Nó tự ngừng khi app xuống background — tiết kiệm pin thật, không phải tối ưu lý thuyết.
+		</li>
+		<li>
+			<strong>Local-first nghĩa là hàm ghi trả về ngay.</strong> <code>upsert()</code> ghi vào database trong máy;
+			việc lan ra mesh do engine làm phía sau. Vì vậy tin nhắn của bạn và tin nhắn của người khác đi <em>cùng một
+			đường</em> lên UI — không cần optimistic update, không có hai nhánh code.
+		</li>
+		<li>
+			<strong>Bí mật không bao giờ nằm trong code.</strong> <code>keys.properties</code> (gitignore) →
+			<code>buildConfigField</code> → <code>BuildConfig.X</code>. Phải khai ở <em>cả</em> debug và release, và phải bật
+			<code>buildConfig = true</code> từ AGP 8.
+		</li>
+		<li>
+			<strong>Khi API buộc dùng chuỗi, đổi chuỗi thành hằng số càng sớm càng tốt.</strong> Đó là toàn bộ giá trị của
+			<code>Constants.kt</code>: chuyển lỗi runtime im lặng thành lỗi compile ồn ào.
+		</li>
+		<li>
+			<strong>Singleton bằng tay cần <code>@Volatile</code> + double-checked <code>synchronized</code></strong> —
+			hoặc đơn giản hơn, dùng <code>object</code> của Kotlin. Trong app thật thì dùng DI thay vì singleton.
+		</li>
+		<li>
+			<strong>Project của sách có bug thật.</strong> Biến bị che trong <code>init</code>, getter có tác dụng phụ,
+			<code>GlobalScope</code>, code chết, extension tự gọi chính nó, tin nhắn có ảnh bị vứt im lặng.
+			Đọc code có phê phán — kể cả code trong sách giáo khoa.
+		</li>
+	</ul>
+
+	<h2 id="thu-thach">Thử thách sách đề nghị</h2>
+
+	<ol>
+		<li>
+			<strong>Gửi ảnh qua Ditto attachment.</strong> Bắt đầu từ dòng 129 trong <code>MainViewModel.kt</code> — cái
+			<code>if (message.photoUri == null)</code> đang chặn. Bạn cần đọc bytes từ <code>photoUri</code>, tạo một
+			<code>DittoAttachment</code>, và truyền nó vào <code>createMessageForRoom(...)</code> (tham số
+			<code>attachment</code> đã có trong interface nhưng luôn được gọi với <code>null</code>).
+			Phía đọc thì <code>Message.attachmentToken</code> đã sẵn — thiếu phần tải attachment về và hiển thị.
+		</li>
+		<li>
+			<strong>Nhiều phòng chat.</strong> Nguyên liệu đã có sẵn nhưng chưa dùng: <code>createRoom()</code>,
+			<code>publicRoomForId()</code>, <code>getAllPublicRooms()</code>, <code>_currentChatRoom</code>.
+			Trước khi làm, đọc lại mục <a href="#init-chain">getter có tác dụng phụ</a> — bạn sẽ phải sửa
+			<code>getAllMessagesForRoom()</code> để nó huỷ live query cũ trước khi mở query mới, nếu không tin nhắn hai phòng
+			sẽ lẫn vào nhau.
+		</li>
+		<li>
+			<strong>Lưu <code>userId</code> lại giữa các lần mở app.</strong> Hiện <code>userId</code> là
+			<code>UUID.randomUUID()</code> sinh mới mỗi lần chạy, nên bạn "thành người khác" sau mỗi lần khởi động lại — và mọi
+			tin nhắn cũ của bạn hiện như của người lạ. Đây chính là việc mà KDoc trong <code>RepositoryImpl</code> và
+			<code>MainViewModel</code> nhắc đến (dù ghi sai số chương): <strong>Data Store ở Chương 9</strong> là công cụ đúng
+			cho một giá trị đơn lẻ như thế này, còn <strong>Room ở Chương 10.1</strong> nếu bạn muốn lưu cả cấu trúc.
+		</li>
+	</ol>
+
+	<p class="src">Nguồn 3 thử thách: {BOOK} — mục "Where to Go From Here?". Gợi ý điểm bắt đầu và cảnh báo do tôi thêm sau khi đọc code.</p>
+
+	<h2 id="tiep-theo">Chương tiếp theo</h2>
+
+	<div class="callout journey">
+		<p>
+			<strong>Chapter 8 — Networking.</strong> Bạn vừa xây một Repository cho một nguồn dữ liệu <em>rất dễ tính</em>:
+			đọc-ghi cục bộ nên luôn tức thời, luôn thành công, không có "đang tải", không có "mất mạng", không có mã lỗi HTTP.
+			Chapter 8 đổi nguồn thành một REST API thật (Retrofit + Moshi, app "Recipe Finder") — và bạn sẽ thấy tầng Repository
+			<em>phải</em> lớn thêm bao nhiêu để hấp thụ những thứ Ditto đã che cho bạn: trạng thái loading, lỗi mạng, retry,
+			parse JSON, chuyển thread.
+		</p>
+		<p>
+			Điểm hay là <strong>hình dáng kiến trúc không đổi</strong>. Vẫn interface + Impl, vẫn <code>Flow</code> cho đọc,
+			vẫn <code>suspend</code> cho ghi, vẫn ViewModel chỉ lắp flow và chuyển tiếp hành động, vẫn
+			<code>collectAsStateWithLifecycle</code> ở Compose. Chỉ có phần bên trong <code>Impl</code> là khác.
+			Đó là bằng chứng thực tế cho lời hứa của Repository pattern — và cũng là lý do chapter 7 nên được học kỹ hơn
+			chapter 8 về mặt tư duy.
+		</p>
+	</div>
+
+</section>
+

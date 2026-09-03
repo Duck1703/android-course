@@ -1,0 +1,562 @@
+---
+// Chương 10.1 — Vì sao cần database, và đưa Room vào project.
+// Code TOML/Kotlin trích nguyên văn từ aaf-materials/10-room-db/projects/final/ theo Quyết định #7 (docs/PROJECT_PLAN.md).
+// Phần giải thích tự viết tiếng Việt, diễn giải từ content/book/ch10-room-database.md — không copy nguyên văn.
+import { Code } from "astro:components";
+
+const BOOK = "content/book/ch10-room-database.md";
+const AAF = "aaf-materials/10-room-db/projects/final/app/src/main/java/com/kodeco/recipefinder";
+const AAF_GRADLE = "aaf-materials/10-room-db/projects/final";
+
+const tomlCode = `[versions]
+room = "2.5.2"
+
+[libraries]
+# Room
+room = { module = "androidx.room:room-ktx", version.ref = "room" }
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }`;
+
+const gradleCode = `plugins {
+  alias(libs.plugins.androidApplication)
+  alias(libs.plugins.kotlinAndroid)
+  alias(libs.plugins.devtoolsKsp)
+  id("kotlin-parcelize")          // <- dòng phải thêm cho @Parcelize
+}
+
+dependencies {
+  // ... các dependency cũ từ Chương 8, 9
+
+  // Room
+  implementation(libs.room)
+  implementation(libs.room.runtime)
+  ksp(libs.room.compiler)
+}`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Bạn sẽ học được gì trong chương này</strong>
+		<ul>
+			<li>Vì sao <em>database</em> mới là công cụ đúng cho tính năng bookmark, trong khi DataStore ở Chương 9 thì không — và ranh giới quyết định nằm chính xác ở đâu.</li>
+			<li>Ba thành phần của Room — <code>@Database</code>, <code>@Entity</code>, <code>@Dao</code> — và mỗi cái tương ứng với khái niệm database nào.</li>
+			<li>Kiến trúc 5 lớp mà cả Chương 10 bắt buộc tuân theo, cùng quy tắc "giao tiếp một chiều" và 3 lợi ích cụ thể của nó.</li>
+			<li><strong>Android Architecture Components</strong> là bộ thư viện gì, Room nằm ở đâu trong bộ đó, và bạn đã gặp thành phần nào rồi mà không biết tên.</li>
+			<li>Cách dựng app <em>theo từng miếng</em> (just-in-time) thay vì bóc từng lớp một, và vì sao ẩn dụ đó quan trọng hơn nó nghe.</li>
+			<li>Khai đủ ba thư viện Room vào Gradle bằng <strong>Version Catalog</strong> và từ khoá <code>ksp</code>, kèm lý do <code>room-compiler</code> không được khai bằng <code>implementation</code>.</li>
+		</ul>
+		<p>
+			Ba chương nhỏ tiếp theo sẽ dạy phần còn lại của Chương 10, để bạn biết trước lộ trình:
+			<strong>Chương 10.2</strong> — khai báo bảng bằng <code>@Entity</code> / <code>@PrimaryKey</code> /
+			<code>@ColumnInfo</code> (kèm lý do project dùng <code>autoGenerate = false</code> chứ không phải
+			<code>true</code>), viết DAO cho đủ bốn thao tác <strong>CRUD</strong>, cách Room thay <code>:id</code> bằng
+			tham số hàm, <code>OnConflictStrategy</code> quyết định gì, và tính năng đáng giá nhất của Room là
+			<strong>kiểm tra câu SQL ngay lúc biên dịch</strong>. <strong>Chương 10.3</strong> — pattern
+			<strong>Singleton</strong> với <code>@Volatile</code> + <code>synchronized</code>, pattern
+			<strong>Repository</strong> và câu trả lời cho "vì sao thêm một lớp chỉ để gọi xuống DAO", ba lớp model song
+			song (<code>RecipeDb</code> / <code>Recipe</code> / <code>RecipeInformationResponse</code>) cùng file
+			<code>Conversions.kt</code> dịch qua lại, và cách phát repository xuống toàn bộ cây Composable bằng
+			<strong>CompositionLocal</strong>. <strong>Chương 10.4</strong> — nối tất cả vào UI, các lựa chọn khác ngoài
+			Room, và bảng <strong>bảy điểm lệch</strong> giữa lý thuyết thường được dạy và code trong project mẫu, kèm
+			hướng nên theo cái nào.
+		</p>
+	</div>
+	<div class="callout">
+		<strong>App của Chương 10:</strong> vẫn là <em>Recipe Finder</em> (<code>com.kodeco.recipefinder</code>). Chương
+		này mở đầu bằng đúng tình huống đã được hứa ở Chương 9 rồi hoãn lại: bạn tìm được công thức hay, nhưng app chưa
+		có bookmark và chưa có danh sách đi chợ (groceries) — ra tới cửa hàng lại phải tìm lại từ đầu để biết cần mua
+		gì.
+		<p>
+			Hết Chương 10, app làm được ba việc mới: <strong>(1)</strong> bấm icon bookmark ở trang chi tiết để lưu công
+			thức xuống máy; <strong>(2)</strong> mở tab Bookmarks xem lại danh sách đã lưu, quẹt ngang để xoá;
+			<strong>(3)</strong> mở tab Groceries thấy toàn bộ nguyên liệu của các công thức đã bookmark gom lại thành một
+			danh sách. Cả ba đều sống sót sau khi tắt app — vì lần này dữ liệu nằm trong một database SQLite thật trên máy.
+		</p>
+	</div>
+	<div class="callout journey">
+		<strong>Hành trình starter → final của Chương 10</strong>
+		<p>
+			So với Chương 9 (chỉ thêm 1 file), Chương 10 là chương <em>nặng tay</em> nhất của nhóm chương về lưu trữ dữ
+			liệu (Chương 9–11): <strong>16 file khác nhau</strong> giữa <code>starter</code> và <code>final</code>, trong
+			đó <strong>6 file hoàn toàn mới</strong>.
+		</p>
+		<ul>
+			<li><strong>Bạn tự viết từ số 0 (6 file mới):</strong> cả package <code>data/database/</code> —
+				<code>RecipeDb.kt</code>, <code>IngredientDb.kt</code>, <code>RecipeDao.kt</code>,
+				<code>IngredientDao.kt</code>, <code>RecipeDatabase.kt</code> — cộng
+				<code>data/RecipeRepository.kt</code>.</li>
+			<li><strong>Bạn bỏ dấu comment (1 file):</strong> <code>data/Conversions.kt</code> — trong
+				<code>starter</code> toàn bộ thân file bị bọc trong <code>/* ... */</code> (dòng 34 tới 156 của file đó),
+				và hướng dẫn gốc chỉ nói gọn một câu "uncomment the code".</li>
+			<li><strong>Bạn sửa vài dòng:</strong> <code>gradle/libs.versions.toml</code>,
+				<code>app/build.gradle.kts</code>, <code>RecipeApp.kt</code>, <code>MainActivity.kt</code>,
+				<code>viewmodels/RecipeViewModel.kt</code>, <code>ui/RecipeDetails.kt</code>,
+				<code>ui/recipes/ShowBookmarks.kt</code>, <code>ui/recipes/RecipeList.kt</code>,
+				<code>ui/groceries/GroceryList.kt</code>, và 4 <code>@Preview</code>.</li>
+		</ul>
+		<p>
+			<strong>Một cái bẫy khi bạn tự so sánh 2 project:</strong> nếu chạy <code>diff</code> giữa
+			<code>starter</code> và <code>final</code>, file <code>ui/MainScreen.kt</code> sẽ bị báo là "khác nhau". Đừng
+			đi tìm xem nó khác chỗ nào — chương này đã kiểm rồi: nó chỉ khác <em>ký tự xuống dòng</em> (Windows CRLF so
+			với Unix LF) và thiếu một dòng trống cuối file. Nội dung code y hệt. Chương 10 không sửa gì trong
+			<code>MainScreen.kt</code>.
+		</p>
+		<p>
+			<strong>Về phần tổng kết:</strong> tài liệu gốc đóng gói cả Chương 10 bằng một mục "Key Points" cực mỏng —
+			đúng 2 dòng, đại ý "Room rất tiện, tạo database dễ". Với một chương dựng cả một tầng dữ liệu mới, 2 dòng đó
+			không đủ. Khoá học này viết lại phần tổng kết riêng, chi tiết hơn hẳn tài liệu gốc. Ngoài ra Chương 10 có 7
+			điểm lệch giữa lý thuyết thường được dạy và code trong project <code>final</code>, gom lại ở
+			<strong>Chương 10.4, mục 20</strong> — có điểm khá nghiêm trọng: <em>cái tên database mà hầu hết tài liệu dạy
+			bạn đặt lại không bao giờ được dùng thật</em>.
+		</p>
+	</div>
+	<h2 id="sqlite">1. SQLite — cách lưu dữ liệu "thứ ba" mà Chương 9 đã kể tên</h2>
+	<p>
+		Ở mục 1 của Chương 9 có ba cách lưu dữ liệu xuống thiết bị: ghi file theo một định dạng bạn tự lo, dùng thư viện
+		key-value cho dữ liệu đơn giản, và <strong>dùng database SQLite</strong> cho dữ liệu phức tạp hơn. Chương 9 làm
+		cách thứ hai. Chương 10 làm cách thứ ba.
+	</p>
+	<p>
+		Ý mở đầu rất ngắn nhưng đáng đọc kỹ: một trong những cách <em>tốt nhất</em> để lưu dữ liệu lâu dài là dùng
+		database, và Android cho phép app truy cập hệ database <strong>SQLite</strong> có sẵn trong hệ điều hành. SQLite
+		cho bạn <em>thêm</em> (insert), <em>đọc</em> (read), <em>sửa</em> (update) và <em>xoá</em> (remove) dữ liệu
+		<strong>có cấu trúc</strong>, được lưu bền trên ổ đĩa.
+	</p>
+	<div class="callout">
+		<strong>Giải thích cho người mới: "database" và "SQLite" là gì</strong>
+		<p>
+			Một <strong>database</strong> (cơ sở dữ liệu) là chỗ lưu dữ liệu được tổ chức thành <em>bảng</em> — hình dung
+			như một file Excel: mỗi bảng có các <strong>cột</strong> (column) đã đặt tên và định kiểu sẵn, mỗi
+			<strong>dòng</strong> (row) là một bản ghi cụ thể.
+		</p>
+		<p>
+			<strong>SQLite</strong> là một loại database đặc biệt gọn: nó không cần server chạy riêng, không cần mạng, toàn
+			bộ database chỉ là <em>một file duy nhất</em> nằm trong vùng dữ liệu riêng của app trên máy. Android đóng gói
+			SQLite sẵn trong hệ điều hành, nên bạn không phải cài thêm gì — chỉ cần biết cách nói chuyện với nó.
+		</p>
+		<p>
+			Cách "nói chuyện" đó là <strong>SQL</strong> (Structured Query Language) — một ngôn ngữ ra lệnh cho database
+			dạng gần như tiếng Anh: <code>SELECT * FROM recipes WHERE id = 5</code> nghĩa là "lấy tất cả cột, từ bảng
+			recipes, ở những dòng có id bằng 5". Nói thẳng luôn: bạn <em>không cần</em> biết nhiều SQL để dựng app này —
+			cả Chương 10 chỉ dùng 4 câu lệnh, tất cả đều đơn giản như ví dụ trên.
+		</p>
+	</div>
+	<p>
+		Chương 10 có 2 mục tiêu, và cả 2 đều nên đọc như một lời cam kết để đối chiếu lại lúc học xong: bạn sẽ biết cách
+		<strong>thêm, lấy và xoá</strong> recipe hoặc ingredient; và biết dùng <strong>Repository pattern</strong> để làm
+		những việc đó theo một cách tổng quát (generic), không dính chặt vào Room. (<em>Repository</em> là một lớp trung
+		gian đứng giữa nơi lưu dữ liệu và phần còn lại của app; Chương 10.3 sẽ dựng nó.)
+	</p>
+	<div class="callout note">
+		<strong>Nối với Chương 9: vì sao DataStore không làm được việc này</strong>
+		<p>
+			Chương 9 dạy lưu <em>danh sách từ khoá đã tìm</em> bằng DataStore, và bạn đã thấy nó phải dùng mẹo: nối cả
+			danh sách thành một chuỗi bằng dấu phẩy (<code>joinToString(",")</code>) rồi cắt ra lúc đọc. Với danh sách từ
+			khoá thì tạm được. Nhưng bookmark thì mỗi công thức có <em>id, tên, ảnh, mô tả, hướng dẫn, thời gian nấu, số
+			phần ăn</em>, cộng một danh sách nguyên liệu con — nhồi tất cả vào một chuỗi là tự đẩy mình vào ngõ cụt.
+		</p>
+		<p>
+			Điểm quyết định không phải là "nhiều dữ liệu quá", mà là <strong>bạn cần hỏi có điều kiện</strong>. Với
+			DataStore bạn chỉ lấy được đúng giá trị ứng với một key. Với database bạn hỏi được "cho tôi mọi nguyên liệu
+			thuộc công thức số 715538" — và đó chính xác là câu app cần hỏi để dựng danh sách đi chợ.
+		</p>
+	</div>
+	<h2 id="room">2. Room — ba thành phần bạn phải nắm trước khi viết dòng code nào</h2>
+	<p>
+		Dùng SQLite trực tiếp trên Android khá tốn công: câu SQL là chuỗi text (gõ sai không ai báo), và bạn phải tự viết
+		code chuyển một dòng dữ liệu thành object Kotlin rồi ngược lại. <strong>Room</strong> — do Google tạo năm
+		<strong>2018</strong> — phủ thêm một lớp lên trên chính SQLite đó để việc này dễ hơn nhiều. Chú ý cách diễn đạt
+		cho chính xác: Room <em>không thay thế</em> SQLite, nó bọc lấy SQLite. Bên dưới vẫn là database SQLite của
+		Android.
+	</p>
+	<p>
+		Trước khi lao vào code, phải hiểu <strong>ba thành phần cơ bản</strong> của Room. Bảng dưới đây gom lại đúng ba
+		thành phần đó, thêm cột "ứng với gì trong database" để bạn nối ngay với khái niệm database ở mục 1.
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Thành phần</th><th>Định nghĩa</th><th>Ứng với gì trong database</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Database</strong><br /><code>@Database</code></td>
+				<td>Là interface <em>chính</em> tới database SQLite bên dưới. Nó giữ một hoặc nhiều DAO, và được đánh dấu
+					kèm danh sách <em>tất cả</em> Entity mà database dùng. Class database phải kế thừa
+					<code>RoomDatabase</code>.</td>
+				<td>Cả cái file database — tương ứng "một file Excel".</td>
+			</tr>
+			<tr>
+				<td><strong>Entity</strong><br /><code>@Entity</code></td>
+				<td>Đại diện <em>một loại dữ liệu</em> được lưu. Room tạo một bảng cho mỗi entity, và các dòng của bảng là
+					từng item entity cụ thể. Mọi property của class tự động thành field trong database, trừ khi bạn đánh
+					dấu <code>@Ignore</code>. Phải chỉ định ít nhất một property làm khoá chính bằng
+					<code>@PrimaryKey</code>.</td>
+				<td>Một <em>bảng</em> (class) và các <em>dòng</em> (object).</td>
+			</tr>
+			<tr>
+				<td><strong>DAO</strong><br /><code>@Dao</code></td>
+				<td>DAO đáng được gọi là "<em>the heroes of Room</em>" — nhân vật chính. Đây là nơi bạn định nghĩa interface
+					để truy cập database. <strong>DAO phải là phần duy nhất của app nói chuyện trực tiếp với
+					database.</strong> Class database bắt buộc có ít nhất một hàm abstract trả về một interface có
+					<code>@Dao</code>.</td>
+				<td>Tập hợp các <em>câu lệnh</em> được phép chạy.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Ba thành phần đó ăn khớp với nhau theo một chuỗi rất dễ nhớ: <code>@Database</code> là cửa vào duy nhất, nó khai
+		báo mình gồm những <code>@Entity</code> nào (tức có những bảng nào) và phát ra những <code>@Dao</code> nào (tức
+		cho phép chạy những câu lệnh nào). Mọi lời gọi dữ liệu trong app đi theo đúng hướng: code của bạn → Database →
+		DAO → bảng của Entity. Không có đường tắt nào bỏ qua DAO.
+	</p>
+	<div class="callout">
+		<strong>Mental model: Room như một nhà hàng</strong>
+		<p>
+			Ba thành phần này nghe trừu tượng khi mới đọc. Cách hình dung giúp nhớ lâu:
+		</p>
+		<ul>
+			<li><strong>Entity</strong> là <em>thực đơn mô tả từng món</em> — nó nói rõ một "RecipeDb" gồm những gì: id,
+				tên, ảnh, thời gian nấu. Nó chỉ mô tả <em>hình dạng dữ liệu</em>, không làm gì cả.</li>
+			<li><strong>DAO</strong> là <em>người bồi bàn</em>. Bạn không được tự vào bếp. Bạn chỉ được gọi những gì bồi
+				bàn nhận: "thêm công thức này", "tìm công thức id = 5", "xoá công thức này". Ngoài các câu đó, không có
+				cách nào khác chạm tới bếp.</li>
+			<li><strong>Database</strong> là <em>cả nhà hàng</em> — nó biết có những bàn (bảng) nào, và giao cho bạn người
+				bồi bàn nào.</li>
+		</ul>
+		<p>
+			Quy tắc "DAO là phần duy nhất nói chuyện trực tiếp với database" chính là quy tắc "khách không tự vào bếp".
+			Nghe như thủ tục rườm rà, nhưng nó là lý do vì sao sau này đổi cách lưu dữ liệu mà app không sập: chỉ cần đổi
+			bếp, giữ nguyên bồi bàn.
+		</p>
+	</div>
+	<h2 id="architecture-components">3. Room nằm trong bộ Android Architecture Components</h2>
+	<p>
+		Đáng dừng lại một nhịp để đặt Room vào bối cảnh: Room không phải một thư viện lẻ, nó là <em>một phần</em> của bộ
+		thư viện lớn hơn tên <strong>Android Architecture Components</strong> — bộ thư viện do Google làm ra để giải quyết
+		mấy vấn đề kiến trúc mà app Android nào cũng gặp (lưu dữ liệu, sống sót qua vòng đời, tách UI khỏi logic). Ba
+		thành phần còn lại trong bộ đó:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Thành phần</th><th>Nó là gì</th><th>Bạn đã gặp chưa?</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Lifecycle management</strong></td>
+				<td>Cung cấp một số class giúp xây các object "biết vòng đời" (lifecycle-aware).</td>
+				<td>Gián tiếp — <code>LaunchedEffect</code> và <code>rememberCoroutineScope</code> ở Chương 6 dựa trên
+					chính ý tưởng này.</td>
+			</tr>
+			<tr>
+				<td><strong>LiveData</strong></td>
+				<td>Giữ dữ liệu có thể được "quan sát" (observe) khi thay đổi, và tôn trọng vòng đời.</td>
+				<td><strong>Không</strong> — project này dùng <code>StateFlow</code> thay cho <code>LiveData</code>. Xem
+					mục "Cạm bẫy &amp; tài liệu lỗi thời" ở cuối chương.</td>
+			</tr>
+			<tr>
+				<td><strong>ViewModel</strong></td>
+				<td>Quản lý dữ liệu liên quan tới View mà không bị dính vào các thay đổi cấu hình (configuration change,
+					ví dụ quay ngang màn hình). Nó là <em>cây cầu</em> giữa UI và phần còn lại của app.</td>
+				<td><strong>Rồi</strong> — <code>RecipeViewModel</code> từ Chương 6.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Còn một câu đáng ghi nhớ về <em>cách học</em> bộ thư viện này: <em>đừng lo về chi tiết của các thành phần này ngay
+		lúc này</em> — bạn sẽ gặp chúng dần khi dựng app. Đây là kiểu học "đúng lúc cần" (just-in-time), và cả Chương 10
+		được tổ chức theo đúng tinh thần đó, như mục 5 sẽ giải thích.
+	</p>
+
+	<h2 id="app-architecture">4. Kiến trúc app — 5 lớp và quy tắc giao tiếp một chiều</h2>
+	<p>
+		Trước khi tạo class Room đầu tiên, có một bước bắt buộc mà nhiều người mới muốn bỏ qua: <strong>tổ chức lại app
+		cho có kiến trúc rõ ràng</strong>. Cụ thể là chia app thành các vùng trách nhiệm tách biệt:
+	</p>
+	<ol class="chain">
+		<li><strong>Data access and persistence</strong> — truy cập và lưu bền dữ liệu (Room).</li>
+		<li><strong>Data model</strong> — mô hình dữ liệu (Model).</li>
+		<li><strong>Data abstraction</strong> — lớp trừu tượng hoá dữ liệu (Repository).</li>
+		<li><strong>Business/Domain logic</strong> — logic nghiệp vụ (ViewModel).</li>
+		<li><strong>User interface</strong> — giao diện người dùng (Activity/Fragment).</li>
+	</ol>
+	<p>
+		<strong>Mục tiêu then chốt</strong> (key goal) của cách chia này: đảm bảo giao tiếp giữa các lớp chỉ chảy theo
+		<strong>một chiều</strong>. Kết quả là một kiến trúc <em>loosely coupled</em> — các lớp ít dính vào nhau — nên sửa
+		một lớp không gây tác dụng phụ lan sang lớp khác.
+	</p>
+	<p>
+		Diễn đạt "một chiều" đó thành bảng cho dễ kiểm: mỗi lớp chỉ được gọi xuống lớp ngay dưới nó, và không lớp nào
+		được gọi ngược lên.
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Lớp</th><th>Được phép biết về</th><th>Không được biết về</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>User interface (Composable)</td><td>ViewModel</td><td>Repository, DAO, Database, Entity</td></tr>
+			<tr><td>Business/Domain logic (ViewModel)</td><td>Repository, Model</td><td>UI, DAO, Database</td></tr>
+			<tr><td>Data abstraction (Repository)</td><td>DAO, Model</td><td>ViewModel, UI</td></tr>
+			<tr><td>Data access + persistence (Room)</td><td>Entity, SQLite</td><td>Repository, ViewModel, UI</td></tr>
+			<tr><td>Data model (Model)</td><td>Không lớp nào — nó chỉ là hình dạng dữ liệu</td><td>Tất cả các lớp còn lại</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Trong cách chia đó có hai điều cụ thể mà bạn nên kiểm chứng lại trong code thật:
+	</p>
+	<ul>
+		<li>Lớp <strong>UI hoàn toàn độc lập</strong> với mọi lớp khác, <em>trừ</em> ViewModel.</li>
+		<li>Lớp <strong>ViewModel không biết gì về UI</strong>.</li>
+	</ul>
+	<div class="callout">
+		<strong>Kiểm chứng ngay trên code Recipe Finder</strong>
+		<p>
+			Hai câu trên nghe như khẩu hiệu. Nhưng bạn kiểm được:
+		</p>
+		<ul>
+			<li>Mở <code>viewmodels/RecipeViewModel.kt</code> và tìm bất kỳ import nào của một Composable, một
+				<code>Modifier</code>, một màu, một <code>Context</code> của màn hình — <strong>không có</strong>. ViewModel
+				chỉ biết <code>Prefs</code>, <code>RecipeRepository</code>, <code>SpoonacularService</code> và các model.
+				Đó là "ViewModel không biết gì về UI" ở dạng kiểm được bằng mắt.</li>
+			<li>Mở <code>ui/recipes/ShowBookmarks.kt</code> và tìm import của <code>RecipeDao</code> hay
+				<code>RecipeDatabase</code> — <strong>cũng không có</strong>. Composable chỉ gọi
+				<code>viewModel.getBookmarks()</code> và <code>viewModel.deleteBookmark(...)</code>. Nó không hề biết dữ
+				liệu tới từ database.</li>
+		</ul>
+		<p>
+			Đây là điều đáng chú ý nhất về Chương 10: <em>Room là chủ đề của chương, nhưng gần như không file UI nào nhìn
+			thấy Room.</em> Nếu bạn thấy một Composable gọi thẳng vào DAO, đó là dấu hiệu kiến trúc đã bị phá.
+		</p>
+	</div>
+	<p>
+		Thái độ ở đây cần rất rõ: khi dựng phần còn lại của app, <strong>không nhân nhượng</strong> (won't compromise)
+		trong việc tuân theo đúng luồng giao tiếp một chiều đó. Có lúc tuân thủ nghiêm sẽ tốn công hơn, nhưng với app lớn
+		thì đáng. Và ngay cả với app nhỏ, có ba lợi ích nhìn thấy được liền:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Lợi ích</th><th>Nghĩa là gì trong thực tế</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Cách bạn lưu dữ liệu trong Room có thể <strong>thay hoàn toàn</strong> với tác động tối thiểu. Chỉ lớp
+					<em>Persistence</em> và lớp cha ngay trên nó là <em>Data Access</em> bị ảnh hưởng.</td>
+				<td>Muốn đổi từ Room sang Realm, hay sang cache trên server? Bạn sửa <code>data/database/</code> và
+					<code>RecipeRepository</code>. ViewModel và toàn bộ UI không đổi một dòng.</td>
+			</tr>
+			<tr>
+				<td>Bạn có thể <strong>thay lớp UI</strong> mà không lớp nào khác cần biết.</td>
+				<td>Viết lại toàn bộ giao diện, kể cả đổi hẳn sang một style khác, mà tầng dữ liệu không đổi.</td>
+			</tr>
+			<tr>
+				<td>Bạn <strong>test được mọi lớp</strong> mà không cần UI nào đang chạy.</td>
+				<td>Test <code>RecipeRepository</code> hay <code>RecipeViewModel</code> bằng test thường, không cần mở
+					emulator để bấm màn hình.</td>
+			</tr>
+		</tbody>
+	</table>
+	<h2 id="development-approach">5. Cách tiếp cận khi dựng: cắt bánh theo miếng, không bóc theo lớp</h2>
+	<p>
+		Đây là một trong những ý hay nhất của cả Chương 10, và rất dễ đọc trượt. Hãy ví kiến trúc như một
+		<strong>chiếc bánh nhiều lớp</strong>, rồi tự hỏi: bạn có bao giờ thấy ai ăn bánh bằng cách bóc từng lớp một chưa?
+		Nghe đã thấy kỳ. App cũng vậy — bạn <em>không</em> dựng app theo từng lớp một, mà dựng theo
+		<strong>từng miếng</strong> (slice). Mỗi miếng cắt xuyên qua tất cả các lớp.
+	</p>
+	<div class="callout">
+		<strong>Vì sao ẩn dụ này quan trọng hơn nó nghe</strong>
+		<p>
+			Cách làm "theo lớp" nghe rất hợp lý với người mới: viết xong <em>hết</em> tầng database, rồi viết xong
+			<em>hết</em> Repository, rồi <em>hết</em> ViewModel, cuối cùng mới làm UI. Vấn đề: bạn sẽ code hàng chục hàm mà
+			không chạy được gì để kiểm tra. Đến lúc nối lại mới phát hiện sai, và bạn không biết sai ở lớp nào.
+		</p>
+		<p>
+			Cách "theo miếng" nghĩa là: chọn <em>một tính năng</em> — ví dụ "bookmark một công thức" — rồi làm đủ mọi lớp
+			cho riêng nó: entity <code>RecipeDb</code> → hàm <code>addRecipe</code> trong DAO → hàm
+			<code>insertRecipe</code> trong Repository → hàm <code>bookmarkRecipe</code> trong ViewModel → icon bookmark
+			trong UI. Xong miếng đó là <strong>chạy thử được ngay</strong>. Có lỗi thì lỗi nằm trong một miếng nhỏ.
+		</p>
+		<p>
+			Đúng ra, Chương 10 <em>được dạy theo kiểu lớp</em> (mục 6 của chương này cùng mục 7–10 của Chương 10.2 dựng
+			hết tầng Room, rồi mới tới Repository, rồi ViewModel, rồi UI) — cách dạy được phép làm vậy vì cần giới thiệu
+			khái niệm theo nhóm cho dễ hiểu. Khi bạn tự làm project của mình, làm theo miếng.
+		</p>
+	</div>
+	<p>
+		Có bốn thư mục sẽ dùng suốt Chương 10, và đây là bản đồ để bạn định vị mọi file trong phần còn lại của chương:
+	</p>
+	<pre class="tree">app/src/main/java/com/kodeco/recipefinder/
+├── data/
+│   ├── database/     ← Data access + persistence: Room Database và các DAO
+│   │                   (RecipeDb, IngredientDb, RecipeDao, IngredientDao, RecipeDatabase)
+│   ├── models/       ← Model objects: các model của UI và của API
+│   ├── Conversions.kt      ← (project thêm) dịch giữa model DB và model UI
+│   ├── Prefs.kt            ← (Chương 9) DataStore
+│   └── RecipeRepository.kt ← (project thêm) lớp Data abstraction
+├── ui/               ← User interface: mọi View và logic điều khiển View
+└── viewmodels/       ← Business/Domain logic: các ViewModel điều khiển UI và logic app</pre>
+	<p>
+		Bốn thư mục này map một-một với năm lớp ở mục 4: <code>data/database/</code> là lớp persistence,
+		<code>data/models/</code> là lớp data model, <code>RecipeRepository.kt</code> là lớp data abstraction,
+		<code>viewmodels/</code> là lớp business logic, <code>ui/</code> là lớp giao diện. Nhìn cây thư mục là đọc ra
+		kiến trúc.
+	</p>
+	<h2 id="adding-room">6. Thêm thư viện Room vào project</h2>
+	<p>
+		Nếu bạn đang đi tiếp từ app của các chương trước thì dùng luôn app đó. Nếu mở <code>starter</code> của chương này,
+		có một việc rất dễ quên: mở <code>SpoonacularService.kt</code> và điền <strong><code>apiKey</code></strong> bằng
+		API key của bạn từ tài khoản spoonacular.com. Quên bước này thì phần tìm công thức không chạy, và bạn sẽ tưởng
+		lỗi do Room.
+	</p>
+	<p>
+		Việc thứ nhất: khai báo phiên bản và ba thư viện Room trong <code>libs.versions.toml</code> — file "danh mục
+		dependency tập trung" bạn đã học ở Chương 4.
+	</p>
+	<Code code={tomlCode} lang="toml" theme="github-dark" />
+	<p>
+		Việc thứ hai: thêm plugin và ba dependency vào <code>app/build.gradle.kts</code>.
+	</p>
+	<Code code={gradleCode} lang="kotlin" theme="github-dark" />
+	<table class="api">
+		<thead>
+			<tr><th>Dòng</th><th>Nó làm gì</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>id("kotlin-parcelize")</code></td>
+				<td>Khi dùng annotation <code>@Parcelize</code>, plugin này <em>tự sinh code</em> cho các kiểu
+					<code>Parcelable</code>. Không có plugin, <code>@Parcelize</code> báo lỗi.</td>
+			</tr>
+			<tr>
+				<td><code>implementation(libs.room)</code></td>
+				<td>Trỏ tới <code>androidx.room:room-ktx</code> — phần Room dành cho Kotlin, chính là thứ cho phép DAO có
+					hàm <code>suspend</code>.</td>
+			</tr>
+			<tr>
+				<td><code>implementation(libs.room.runtime)</code></td>
+				<td><code>room-runtime</code> — phần chạy lúc app đang chạy: <code>RoomDatabase</code>,
+					<code>Room.databaseBuilder</code>...</td>
+			</tr>
+			<tr>
+				<td><code>ksp(libs.room.compiler)</code></td>
+				<td><code>room-compiler</code> — bộ <em>sinh code</em>. Nó đọc các annotation của bạn <strong>lúc
+					build</strong> và viết ra class cài đặt thật cho DAO và Database. Chú ý từ khoá là
+					<code>ksp(</code>, không phải <code>implementation(</code>.</td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="callout note">
+		<strong><code>@Parcelize</code> và <code>Parcelable</code> là gì — vì bạn vừa gặp tên nó</strong>
+		<p>
+			<strong><code>Parcelable</code></strong> là một "giao ước" của Android: một object muốn được <em>gói lại</em>
+			để chuyển giữa các thành phần của app (truyền qua Intent giữa hai màn hình, hoặc cất tạm khi hệ thống huỷ
+			Activity rồi dựng lại) thì phải biết cách tự viết mình ra thành dữ liệu thô và tự đọc mình về. Viết tay phần
+			đó rất dài dòng và dễ sai.
+		</p>
+		<p>
+			<strong><code>@Parcelize</code></strong> là annotation giúp bạn khỏi phải viết tay: gắn nó lên một
+			<code>data class</code>, plugin <code>kotlin-parcelize</code> sẽ tự sinh toàn bộ đoạn code gói/mở đó lúc
+			build. Đó là lý do dòng <code>id("kotlin-parcelize")</code> phải có mặt trong <code>plugins &#123; ... &#125;</code>
+			ngay từ bây giờ — class <code>RecipeDb</code> mà Chương 10.2 sắp viết có gắn <code>@Parcelize</code>, và thiếu
+			plugin thì build đứt ngay tại đó.
+		</p>
+	</div>
+	<div class="callout">
+		<strong>KSP là gì, và vì sao <code>room-compiler</code> phải dùng <code>ksp(</code> chứ không phải
+		<code>implementation(</code></strong>
+		<p>
+			<strong>KSP</strong> (Kotlin Symbol Processing) là cơ chế cho phép một thư viện <em>đọc code của bạn lúc biên
+			dịch</em> rồi <em>sinh thêm code Kotlin mới</em>. Với Room, cái được sinh ra là những class như
+			<code>RecipeDao_Impl</code> và <code>RecipeDatabase_Impl</code> — phần thực sự chứa câu SQL và code chuyển
+			row ↔ object mà bạn không phải viết.
+		</p>
+		<p>
+			Vì vậy phân biệt hai từ khoá này rất quan trọng: <code>implementation(...)</code> nghĩa là "gói này đi kèm app
+			và chạy cùng app"; <code>ksp(...)</code> nghĩa là "gói này chỉ làm việc lúc build, không đi vào file APK".
+			<code>room-compiler</code> thuộc loại thứ hai — nó xong việc trước khi app khởi động. Nếu bạn khai nhầm thành
+			<code>implementation(libs.room.compiler)</code> thì Room sẽ không sinh code, và app báo lỗi kiểu "cannot find
+			implementation for RecipeDatabase".
+		</p>
+		<p>
+			Bạn đã gặp <code>ksp</code> ở Chương 8 rồi — <code>ksp(libs.moshiCodeGen)</code> cho Moshi (thư viện đọc JSON)
+			hoạt động theo đúng nguyên lý này. Room và Moshi dùng chung cơ chế.
+		</p>
+	</div>
+	<p>
+		Cuối cùng: <strong>Gradle sync</strong>. Sau bước này Android Studio mới nhận ra các annotation của Room.
+	</p>
+	<div class="callout">
+		<strong>Tổng kết Chương 10.1</strong>
+		<ul>
+			<li><strong>SQLite</strong> là cách lưu dữ liệu "thứ ba": một file database duy nhất nằm trong vùng dữ liệu
+				riêng của app, có sẵn trong hệ điều hành Android, nói chuyện bằng <strong>SQL</strong>. Bạn chỉ cần bốn câu
+				lệnh đơn giản cho cả Chương 10.</li>
+			<li><strong>Ranh giới chọn công cụ:</strong> DataStore chỉ trả về giá trị ứng với một key; database trả lời được
+				câu hỏi <em>có điều kiện</em> ("mọi nguyên liệu thuộc công thức số 715538"). Cần hỏi có điều kiện là cần
+				database.</li>
+			<li><strong>Room</strong> không thay thế SQLite, nó bọc lấy SQLite. Ba thành phần: <code>@Database</code> (cả
+				file database) · <code>@Entity</code> (một bảng, các dòng) · <code>@Dao</code> (tập câu lệnh được phép chạy,
+				và là <em>phần duy nhất</em> chạm trực tiếp vào database).</li>
+			<li>Room là một phần của <strong>Android Architecture Components</strong>, cùng Lifecycle management, LiveData và
+				ViewModel.</li>
+			<li><strong>Kiến trúc 5 lớp</strong> — persistence → model → abstraction → business logic → UI — với giao tiếp
+				<em>một chiều</em>. Ba lợi ích: đổi cách lưu dữ liệu mà UI không đổi · đổi UI mà tầng dữ liệu không đổi ·
+				test được mọi lớp không cần emulator.</li>
+			<li><strong>Dựng theo miếng</strong>, không bóc theo lớp: mỗi tính năng đi xuyên đủ năm lớp rồi chạy thử ngay.</li>
+			<li><strong>Gradle:</strong> ba dependency Room khai trong Version Catalog; <code>room-ktx</code> và
+				<code>room-runtime</code> dùng <code>implementation(</code>, <code>room-compiler</code> dùng
+				<code>ksp(</code> vì nó chỉ làm việc lúc build. Cộng plugin <code>kotlin-parcelize</code> cho
+				<code>@Parcelize</code>. Xong thì Gradle sync.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Tiếp theo — Chương 10.2:</strong> thư viện đã có, kiến trúc đã rõ, giờ tới lúc viết code Room thật. Chương
+		10.2 dựng đủ ba mảnh bạn vừa gặp tên ở mục 2 theo đúng thứ tự Room yêu cầu: <code>@Entity</code> để khai báo bảng
+		bằng một <code>data class</code>, <code>@Dao</code> để định nghĩa mọi thao tác được phép với dữ liệu, và
+		<code>@Database</code> để gói tất cả lại thành một cửa vào duy nhất.
+	</p>
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Hai chỗ dưới đây là nơi tài liệu bạn đọc trên mạng dễ dẫn bạn đi lệch. Đọc trước để khỏi mất buổi tối đi tìm lỗi
+		không tồn tại.
+	</p>
+	<p class="notice">
+		<strong>1. LiveData được liệt kê như thành phần chính, nhưng hôm nay StateFlow mới là lựa chọn mặc định.</strong>
+		Hầu hết tài liệu về Android Architecture Components đều kể <code>LiveData</code> trong bốn thành phần chính — và
+		đúng, nó là một phần của bộ đó. Nhưng project Recipe Finder <em>không dùng</em> <code>LiveData</code> ở bất kỳ
+		đâu: nó dùng <code>MutableStateFlow</code> / <code>StateFlow</code> (bạn thấy ở <code>RecipeViewModel</code> từ
+		Chương 6). Đây không phải lý thuyết sai: <code>LiveData</code> vẫn tồn tại và vẫn chạy được. Chỉ là với app viết
+		bằng Compose + coroutine như app này, <code>StateFlow</code> là lựa chọn được khuyến nghị hơn, và tài liệu Android
+		hiện nay cũng hướng người mới học sang <code>StateFlow</code>. (<strong><code>StateFlow</code></strong> là một
+		"dòng dữ liệu" của Kotlin coroutine luôn giữ đúng một giá trị hiện tại và phát ra giá trị mới mỗi khi nó thay đổi;
+		Compose đọc nó bằng <code>collectAsState()</code> và tự vẽ lại UI theo.) Nếu bạn đọc tutorial Room cũ thấy
+		<code>fun getAll(): LiveData&lt;List&lt;X&gt;&gt;</code> trong DAO thì đừng bối rối — đó là cách viết cùng ý
+		tưởng, bản Flow tương đương là <code>fun getAll(): Flow&lt;List&lt;X&gt;&gt;</code>.
+	</p>
+	<p class="notice">
+		<strong>2. "Tất cả class Room Entity nằm trong <code>data/models</code>" — mô tả này lệch với code thật.</strong>
+		Nhiều tài liệu mô tả cây thư mục bằng câu gọn "<code>data/models</code> chứa tất cả các class Room Entity". Trong
+		project thật, hai Entity <code>RecipeDb</code> và <code>IngredientDb</code> nằm ở <code>data/database/</code>,
+		<em>không</em> ở <code>data/models/</code> — và chính phần hướng dẫn thao tác về Entity cũng bảo bạn tạo chúng
+		trong package <code>database</code>. Nên đây chỉ là một câu mô tả tổng quát bị lệch với hướng dẫn thao tác ngay
+		sau đó. Theo hướng dẫn thao tác (và theo code thật): Entity đặt trong <code>data/database/</code>. Thư mục
+		<code>data/models/</code> giữ các model của UI và của API (<code>Recipe</code>,
+		<code>RecipeInformationResponse</code>, <code>Ingredient</code>...). Đây là chỗ người mới hay sai: tạo Entity
+		trong <code>models/</code> theo mô tả, rồi bối rối vì đường dẫn import trong các bước sau không khớp.
+	</p>
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 15–128 (SQLite · Room · Architecture Components ·
+			kiến trúc 5 lớp · cách dựng theo miếng · khai thư viện Room). Các sơ đồ gốc: <code>img120.png</code>,
+			<code>img121.png</code>, <code>img122.png</code> — khoá học này diễn giải lại bằng chữ và bảng, không kèm ảnh.
+		</li>
+		<li>
+			<strong>Code thật đã đối chiếu:</strong> <code>{AAF_GRADLE}/gradle/libs.versions.toml</code> (dòng 23, 79–81) ·
+			<code>{AAF_GRADLE}/app/build.gradle.kts</code> (dòng 1–5, 83–85) · cấu trúc thư mục kiểm trực tiếp trong
+			<code>{AAF}/</code>.
+		</li>
+		<li>
+			<strong>Phần bổ sung ngoài giáo trình:</strong> so sánh <code>LiveData</code> với <code>StateFlow</code>; đính
+			chính vị trí thật của ba class Room.
+		</li>
+	</ul>
+</section>

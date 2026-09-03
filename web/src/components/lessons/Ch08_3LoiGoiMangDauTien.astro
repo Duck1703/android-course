@@ -1,0 +1,386 @@
+---
+// Lesson Chapter 8 — Networking (coroutines, Flow, Retrofit, Moshi).
+// Nguồn chính: content/book/ch08-networking.md (trích từ EPUB "Android Fundamentals by Tutorials", Kodeco).
+// Nguồn code: aaf-materials/08-networking/projects/{starter,final}/ — dùng theo Quyết định #7 trong docs/PROJECT_PLAN.md.
+// [TASK48] Chuong 8.3 — Lời gọi mạng đầu tiên và phân trang
+
+import { Code } from "astro:components";
+
+const BOOK = "content/book/ch08-networking.md";
+
+const AAF = "aaf-materials/08-networking/projects/final/app/src/main/java/com/kodeco/recipefinder";
+
+const AAF_START = "aaf-materials/08-networking/projects/starter";
+
+const serviceFieldViewModel = `private val spoonacularService = RetrofitInstance.spoonacularService`;
+
+const queryRecipesBook = `viewModelScope.launch {
+  try {
+    // 1
+    val response = spoonacularService.queryRecipes(query, offset, number)
+    // 2
+    _recipeListState.value = response.recipes
+    // 3
+    _queryState.value =
+        QueryState(query, offset, number, response.totalResults)
+  } catch (e: Exception) {
+    Timber.e(e, "Problems getting Recipes")
+    // 4
+    _recipeListState.value = listOf()
+  }
+}`;
+
+const queryRecipesFinal = `fun queryRecipes(
+  query: String,
+  offset: Int,
+  number: Int = PAGE_SIZE
+) {
+  viewModelScope.launch {
+    try {
+      val response = spoonacularService.queryRecipes(query, offset, number)
+      _recipeListState.value = response.recipes
+      _queryState.value =
+        QueryState(query, offset, number, response.totalResults)
+    } catch (e: Exception) {
+      Timber.e(e, "Problems getting Recipes")
+      _recipeListState.value = listOf()
+    }
+  }
+}`;
+
+const searchRowTrigger = `Box(modifier = Modifier
+  .align(Alignment.CenterVertically)
+  .clickable {
+    if (searchText.isNotEmpty()) {
+      viewModel.setSearching(true)
+      keyboard?.hide()
+      searchRecipes(searchText.trim(), viewModel)
+    }
+  }) {
+  Icon(
+    Icons.Filled.Search,
+    contentDescription = "Search",
+  )
+}`;
+
+const searchRecipesHelper = `fun searchRecipes(searchString: String, viewModel: RecipeViewModel) {
+  if (searchString.isNotEmpty()) {
+    viewModel.addPreviousSearch(searchString)
+    viewModel.queryRecipes(searchString, viewModel.queryState.value.offset)
+  } else {
+    viewModel.setSearching(false)
+  }
+}`;
+
+const pagingSnippet = `val lazyGridState: LazyGridState = rememberLazyGridState()
+val loadMore = remember(lazyGridState) {
+  derivedStateOf {
+    val lastVisibleIndex =
+      lazyGridState.firstVisibleItemIndex + lazyGridState.layoutInfo.visibleItemsInfo.size
+    lastVisibleIndex + PAGING_OFFSET > recipes.value.size &&
+        lastVisibleIndex < queryState.totalResults
+  }
+}
+var firstTime by remember {
+  mutableStateOf(true)
+}
+LaunchedEffect(loadMore) {
+  val offset = if (firstTime) 0 else queryState.offset + PAGE_SIZE
+  firstTime = false
+  viewModel.updateQueryState(queryState.copy(offset = offset))
+  searchRecipes(queryState.query, viewModel)
+}`;
+---
+
+<section class="lesson">
+	<h2 id="viewmodel">12. Nối service vào ViewModel</h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (Implement the ViewModel, dòng 388–400) · <code>{AAF}/viewmodels/RecipeViewModel.kt</code> (dòng 71)</p>
+	<p>
+		Sách hướng dẫn mở <code>viewmodels/RecipeViewModel.kt</code>, tìm comment <code>// TODO: Add Service</code> và thay
+		bằng:
+	</p>
+	<Code code={serviceFieldViewModel} lang="kotlin" theme="github-dark" />
+	<p>
+		Một dòng, nhưng nó là điểm nối giữa hai tầng: ViewModel giờ có tay cầm để gọi mạng. Vì
+		<code>RetrofitInstance</code> là <code>object</code> singleton, dòng này <em>không</em> tạo ra kết nối mới — nó chỉ
+		lấy tham chiếu tới service dùng chung.
+	</p>
+	<p class="hint">
+		<strong>Nhìn trước để hiểu vì sao Chương 10.3 phải refactor chỗ này.</strong> Ở đây ViewModel gọi thẳng vào network
+		layer. Cách này gọn khi chỉ có một nguồn dữ liệu. Sang Chương 10.3, dữ liệu đến từ <em>hai</em> nguồn (mạng và
+		database Room), lúc đó sách chèn thêm một tầng <strong>Repository</strong> ở giữa để ViewModel không cần biết dữ
+		liệu đến từ đâu. Nếu bạn thấy dòng trên "hơi trực tiếp", cảm giác đó đúng — và sách sẽ sửa nó hai chương sau.
+	</p>
+
+	<h2 id="query-recipes">13. <code>queryRecipes</code> — lời gọi mạng đầu tiên</h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 402–425)</p>
+	<p>Thay comment <code>// TODO: query recipes</code> bằng:</p>
+	<Code code={queryRecipesBook} lang="kotlin" theme="github-dark" />
+	<p>Bốn điểm sách đánh số:</p>
+	<ol>
+		<li>Dùng service để tìm công thức khớp với từ khoá, offset và số lượng đã cho.</li>
+		<li>Thay danh sách công thức hiện tại bằng danh sách mới từ response của API.</li>
+		<li>Cập nhật query state để chứa thông tin mới nhất.</li>
+		<li>Nếu có lỗi thì đặt danh sách về rỗng.</li>
+	</ol>
+	<p class="hint">
+		<strong>Lỗi chính tả nhỏ trong sách:</strong> điểm 4 in ra là <em>"Sets the list to an empty listIf there were any
+		errors."</em> (<code>{BOOK}</code> dòng 425) — thiếu dấu chấm và khoảng trắng giữa <code>list</code> và
+		<code>If</code>. Ý nghĩa vẫn rõ, ghi lại để bạn không tưởng mình đọc sai.
+	</p>
+	<p>Bản <code>final</code> có toàn bộ hàm như sau (giống đoạn sách, chỉ thêm khung hàm bao ngoài):</p>
+	<p class="src">Nguồn: <code>{AAF}/viewmodels/RecipeViewModel.kt</code> (dòng 95–111)</p>
+	<Code code={queryRecipesFinal} lang="kotlin" theme="github-dark" />
+	<h3 id="doc-ky-query-recipes">13.1. Đọc kỹ 4 quyết định thiết kế trong 16 dòng này</h3>
+	<p>
+		Đoạn code ngắn nhưng chứa gần như mọi thứ đã học ở trên. Đọc theo bốn góc:
+	</p>
+	<p>
+		<strong>Thứ nhất, hàm này <em>không</em> có <code>suspend</code>.</strong> Nó là hàm thường, gọi được từ bất cứ đâu
+		— kể cả từ một <code>onClick</code> của Compose. Bên trong nó tự mở coroutine bằng
+		<code>viewModelScope.launch</code>. Đây là <strong>pattern đúng cho một hàm "khởi động một việc"</strong>: người gọi
+		không cần biết gì về coroutine, không cần chờ. Ghi nhớ điều này để so sánh với <code>queryRecipe</code> ở mục 19,
+		nơi cùng một việc lại được viết khác.
+	</p>
+	<p>
+		<strong>Thứ hai, thứ tự cập nhật state.</strong> Danh sách được set <em>trước</em>, query state được set
+		<em>sau</em>. Không phải tuỳ tiện: nhìn lại <code>RecipeList.kt</code> ở mục 5.3, khối
+		<code>collect</code> trên <code>queryState</code> là chỗ gọi <code>setSearching(false)</code> để
+		<strong>tắt vòng xoay loading</strong>. Nếu tắt loading trước khi danh sách kịp vào state, người dùng sẽ thấy một
+		nhịp màn hình trống. Set danh sách trước rồi mới báo "xong" là đúng thứ tự.
+	</p>
+	<p>
+		<strong>Thứ ba, <code>try/catch</code> bao trọn lời gọi mạng.</strong> Đây không phải phòng thủ quá mức — gọi mạng
+		là thao tác <em>chắc chắn sẽ</em> thất bại đôi lúc: mất wifi, DNS lỗi, server 500, hết rate limit, JSON sai định
+		dạng, hoặc bạn quên dán API key. Nếu không bắt, exception này lan ra khỏi coroutine và app crash.
+		<code>catch (e: Exception)</code> là bắt rất rộng, nhưng ở đây hợp lý vì cả bốn tầng (OkHttp, Retrofit, Moshi,
+		Kotlin) đều có thể ném các loại exception khác nhau.
+	</p>
+	<p>
+		<strong>Thứ tư, cách xử lý lỗi là "đặt về rỗng" chứ không phải "báo lỗi".</strong> Timber ghi log cho developer,
+		còn người dùng chỉ thấy danh sách trống — <em>không phân biệt được</em> với "tìm không ra kết quả nào". Sách chọn
+		vậy cho gọn, nhưng cần biết đây là một hạn chế thật:
+	</p>
+	<p class="notice">
+		<strong>Common mistake — trạng thái lỗi và trạng thái rỗng bị gộp làm một.</strong> Một app thật cần phân biệt ba
+		tình huống: <em>đang tải</em>, <em>tải xong nhưng không có kết quả</em>, <em>tải thất bại</em>. Code này chỉ có hai
+		state (<code>searching</code> và danh sách), nên tình huống thứ ba biến mất khỏi giao diện — người dùng mất mạng sẽ
+		nghĩ "món này không có công thức". Cách sửa quen thuộc là dùng một <code>sealed class UiState &#123; Loading /
+		Success(data) / Error(message) &#125;</code> làm kiểu cho <code>StateFlow</code>, thay vì hai flow riêng lẻ. Đây là
+		kiến thức ngoài sách, nêu ra để bạn đọc code có phê phán — không phải để nói sách sai.
+	</p>
+	<p class="hint">
+		<strong><code>Timber</code> là gì?</strong> Một thư viện log của Jake Wharton, bọc quanh <code>android.util.Log</code>
+		của Android. Lợi ích chính: bạn không phải truyền TAG mỗi lần (Timber tự lấy tên class), và bạn
+		<strong>bật/tắt log theo môi trường ở một chỗ duy nhất</strong>. Trong project này việc đó nằm ở
+		<code>{AAF}/RecipeApp.kt</code> (dòng 44–48): chỉ khi <code>BuildConfig.DEBUG</code> mới
+		<code>plant(Timber.DebugTree())</code> — nghĩa là bản release không in log ra logcat. Đây là chi tiết bảo mật nhỏ
+		nhưng thật: log của bản release có thể chứa thông tin bạn không muốn lộ.
+	</p>
+
+	<h2 id="ai-goi">14. Ai gọi <code>queryRecipes</code>? — đi ngược từ cú chạm của người dùng</h2>
+	<p>
+		Sách không đi tìm chỗ này (nó đã tồn tại trong <code>starter</code>), nhưng nếu không lần ra thì bạn chỉ hiểu một
+		nửa: hàm vừa viết được ai gọi, và khi nào?
+	</p>
+	<p class="src">Nguồn: <code>{AAF}/ui/recipes/SearchRow.kt</code> (dòng 92–104)</p>
+	<Code code={searchRowTrigger} lang="kotlin" theme="github-dark" />
+	<p>
+		Icon kính lúp có <code>.clickable &#123; ... &#125;</code>. Khi bấm, ba việc xảy ra theo thứ tự:
+		<code>setSearching(true)</code> (bật vòng xoay loading), <code>keyboard?.hide()</code> (ẩn bàn phím ảo), rồi gọi
+		<code>searchRecipes(searchText.trim(), viewModel)</code>. Cùng ba việc đó cũng chạy khi người dùng bấm nút
+		<em>Search</em> trên bàn phím (<code>keyboardActions</code>, dòng 113–119) — hai đường vào, một hành vi.
+	</p>
+	<p>
+		<code>searchRecipes</code> là một hàm tự do (không phải Composable, không thuộc class nào), nằm ở một chỗ hơi lạ:
+	</p>
+	<p class="src">Nguồn: <code>{AAF}/ui/recipes/ImageRow.kt</code> (dòng 70–77)</p>
+	<Code code={searchRecipesHelper} lang="kotlin" theme="github-dark" />
+	<p>
+		Nó là một <strong>lớp bảo vệ</strong>: từ khoá rỗng thì không gọi mạng, chỉ tắt loading. Có từ khoá thì ghi lại vào
+		danh sách tìm kiếm trước đó rồi mới gọi <code>viewModel.queryRecipes(...)</code>, lấy <code>offset</code> hiện tại
+		từ <code>queryState.value</code>.
+	</p>
+	<p class="notice">
+		<strong>Hai điểm đáng nhắc khi đọc chỗ này.</strong> Thứ nhất, <code>viewModel.addPreviousSearch(searchString)</code>
+		ở đây <strong>không làm gì cả</strong> — thân hàm rỗng với <code>// TODO: Add Previous Search</code>
+		(<code>{AAF}/viewmodels/RecipeViewModel.kt</code> dòng 147–149); nó là việc của Chapter 9. Thứ hai, hàm
+		<code>searchRecipes</code> nằm trong file <strong><code>ImageRow.kt</code></strong> — một file về giao diện dải ảnh
+		trang trí, hoàn toàn không liên quan tới tìm kiếm. Nó được gọi từ <code>SearchRow.kt</code> và
+		<code>ShowRecipeList.kt</code>. Kotlin cho phép vậy (hàm top-level cùng package dùng được lẫn nhau), nhưng đây là
+		kiểu đặt file khiến người mới mất thời gian tìm. Nếu tự viết, hãy đặt hàm này cạnh chỗ dùng nó.
+	</p>
+	<ol class="chain">
+		<li>Người dùng gõ "sushi" rồi bấm kính lúp — <code>SearchRow.kt</code></li>
+		<li><code>setSearching(true)</code> → <code>uiState</code> đổi → <code>ShowRecipeList</code> hiện <code>Progress()</code></li>
+		<li><code>searchRecipes("sushi", viewModel)</code> — <code>ImageRow.kt</code></li>
+		<li><code>viewModel.queryRecipes("sushi", offset)</code> — mở coroutine</li>
+		<li><code>spoonacularService.queryRecipes(...)</code> — Retrofit dựng URL, OkHttp gửi request, coroutine tạm dừng</li>
+		<li>Server trả JSON → Moshi parse thành <code>SearchRecipesResponse</code> → coroutine tiếp tục</li>
+		<li><code>_recipeListState.value = response.recipes</code> → flow phát giá trị mới</li>
+		<li><code>_queryState.value = QueryState(...)</code> → flow thứ hai phát giá trị</li>
+		<li>Trong <code>RecipeList.kt</code>: khối <code>collect</code> nhận danh sách, khối <code>collect</code> kia gọi <code>setSearching(false)</code></li>
+		<li>Compose vẽ lại — lưới công thức hiện ra thay cho vòng xoay</li>
+	</ol>
+	<p>
+		Mười bước đó là <strong>toàn bộ chapter 8 trong một luồng</strong>. Nếu bạn nhớ được chuỗi này, bạn nắm được cách
+		mọi app Android hiện đại lấy dữ liệu từ mạng lên màn hình.
+	</p>
+	<h2 id="run-app">15. Run the App — chạy và đọc kết quả</h2>
+	<p class="src">Nguồn: <code>{BOOK}</code> (Run the App, dòng 447–472)</p>
+	<p>Sách cho chạy app trên máy thật hoặc emulator, rồi đi qua đúng bốn bước:</p>
+	<ol class="chain">
+		<li>Bấm <strong>Play</strong> để chạy — màn hình Recipes hiện ra, danh sách trống.</li>
+		<li>Gõ một từ khoá vào thanh tìm kiếm (sách dùng ví dụ <em>Sushi</em>).</li>
+		<li>Bấm <strong>icon Search</strong>.</li>
+		<li>Vòng xoay tiến trình quay một lúc, rồi danh sách công thức hiện ra dạng lưới.</li>
+	</ol>
+	<p>
+		Rồi sách để lại một mẹo gỡ lỗi (dòng 472): <em>nếu bạn không thấy công thức nào, hãy kiểm tra xem đã đặt API Key
+		vào file <code>SpoonacularService.kt</code> chưa.</em>
+	</p>
+	<p class="hint">
+		<strong>Danh sách công thức trống — đọc log để biết vì sao.</strong> Vì mọi lỗi đều bị gộp thành "danh sách rỗng"
+		(mục 13.1), nơi duy nhất phân biệt được nguyên nhân là <strong>logcat</strong>. Mở tab Logcat trong Android Studio,
+		lọc theo chữ <code>Problems getting Recipes</code> — đó là thông điệp Timber trong khối <code>catch</code>. Ba nội
+		dung hay gặp: <code>HTTP 401</code> nghĩa là API key sai hoặc chưa dán; <code>HTTP 402</code> nghĩa là đã hết hạn
+		mức miễn phí trong ngày; <code>UnknownHostException</code> nghĩa là máy/emulator không có mạng. Nếu logcat hoàn
+		toàn trống, khả năng cao là <code>queryRecipes</code> chưa được gọi — kiểm tra lại chuỗi ở mục 14.
+	</p>
+	<p class="hint">
+		<strong>Quyền INTERNET.</strong> Một app Android không được gọi mạng nếu thiếu khai báo quyền trong manifest. Sách
+		không nhắc bước này vì <code>starter</code> đã có sẵn: <code>&lt;uses-permission
+		android:name="android.permission.INTERNET" /&gt;</code> tại
+		<code>{AAF_START}/app/src/main/AndroidManifest.xml</code> dòng 5. Nếu bạn tạo
+		project mới từ đầu và quên dòng này, mọi lời gọi ném <code>SecurityException</code> — một lỗi rất hay gặp và rất dễ
+		sửa. Đây là loại "quyền thường" (normal permission), được cấp lúc cài đặt, không cần hỏi người dùng lúc chạy.
+	</p>
+
+	<h2 id="ben-duoi">16. Bên dưới một lời gọi <code>suspend</code> — điều gì thật sự diễn ra</h2>
+	<p>
+		Phần này không có trong sách; nó trả lời một câu hỏi mà mọi người mới đều thắc mắc sau khi code chạy được:
+		<em>nếu <code>viewModelScope</code> chạy trên UI thread, tại sao gọi mạng trong đó lại không làm treo màn hình?</em>
+		Câu trả lời làm sáng tỏ cả cơ chế coroutine.
+	</p>
+	<ol class="chain">
+		<li>
+			<code>viewModelScope.launch</code> bắt đầu chạy khối code <strong>ngay trên UI thread</strong> (vì
+			<code>Dispatchers.Main.immediate</code>).
+		</li>
+		<li>
+			Chạy tới <code>spoonacularService.queryRecipes(...)</code>. Đây là hàm <code>suspend</code>: Retrofit
+			<strong>chuyển việc gửi request sang thread pool riêng của OkHttp</strong>, đăng ký một callback, rồi
+			<strong>suspend coroutine</strong>.
+		</li>
+		<li>
+			Suspend nghĩa là: coroutine lưu lại "tôi đang ở dòng nào, biến nào đang giữ gì" rồi <strong>trả UI thread lại
+			cho Android</strong>. UI thread quay về vẽ khung hình và nhận cú chạm như thường — <em>không có gì bị
+			chặn</em>.
+		</li>
+		<li>
+			Vài trăm milisecond sau, OkHttp có response. Moshi parse JSON (trên thread của OkHttp).
+		</li>
+		<li>
+			Retrofit gọi <code>resume</code> để đánh thức coroutine. Vì scope có dispatcher là
+			<code>Dispatchers.Main</code>, phần code <em>sau</em> lời gọi được <strong>đưa trở lại UI thread</strong>.
+		</li>
+		<li>
+			Dòng <code>_recipeListState.value = response.recipes</code> chạy trên UI thread — đúng chỗ, vì đây là state mà
+			Compose đang đọc.
+		</li>
+	</ol>
+	<p>
+		Đó là lý do bạn <strong>không cần</strong> viết <code>withContext(Dispatchers.IO)</code> quanh lời gọi Retrofit:
+		Retrofit đã tự chuyển thread cho bạn. Và nó cũng giải thích vì sao <code>launch(Dispatchers.Default)</code> ở mục 19
+		gần như không thay đổi hành vi gì — việc chờ mạng vốn đã không nằm trên dispatcher đó.
+	</p>
+	<p class="notice">
+		<strong>Đừng suy rộng quy tắc này.</strong> "Không cần <code>withContext</code>" chỉ đúng với <em>thư viện đã hỗ
+		trợ <code>suspend</code></em> như Retrofit hay Room. Nếu bạn tự gọi một API kiểu chặn thread — đọc file bằng
+		<code>File.readText()</code>, dùng <code>HttpURLConnection</code>, hay gọi một SDK Java cũ — thì bạn
+		<strong>bắt buộc</strong> phải bọc trong <code>withContext(Dispatchers.IO)</code>, nếu không sẽ treo UI. Chương 10.3
+		có ví dụ đúng của việc này khi gọi DAO của Room.
+	</p>
+
+	<h3 id="before-after">16.1. Before / after — cùng lời gọi này viết theo lối cũ</h3>
+	<p>
+		Để thấy <code>suspend</code> tiết kiệm được gì, đây là cùng một việc viết bằng callback — cách bắt buộc phải dùng
+		trước khi Retrofit hỗ trợ <code>suspend</code> (bản 2.6.0, năm 2019):
+	</p>
+	<div class="ba">
+		<div class="ba-col">
+			<p class="ba-head">Trước — callback</p>
+			<ul>
+				<li>Interface khai báo <code>fun queryRecipes(...): Call&lt;SearchRecipesResponse&gt;</code></li>
+				<li>Gọi <code>.enqueue(object : Callback&lt;...&gt; &#123; onResponse / onFailure &#125;)</code></li>
+				<li>Trong <code>onResponse</code> phải tự kiểm tra <code>response.isSuccessful</code>, rồi tự xử lý <code>body()</code> có thể <code>null</code></li>
+				<li>Không dùng được <code>try/catch</code> — lỗi mạng đi vào <code>onFailure</code>, lỗi HTTP đi vào <code>onResponse</code>: <strong>hai đường xử lý lỗi khác nhau</strong></li>
+				<li>Muốn gọi 2 API liên tiếp thì phải lồng callback trong callback</li>
+				<li>Tự huỷ bằng <code>call.cancel()</code> trong <code>onCleared()</code>, dễ quên → memory leak</li>
+			</ul>
+		</div>
+		<div class="ba-col">
+			<p class="ba-head">Sau — <code>suspend</code></p>
+			<ul>
+				<li>Interface khai báo <code>suspend fun queryRecipes(...): SearchRecipesResponse</code></li>
+				<li>Gọi thẳng như hàm thường, kết quả là giá trị trả về</li>
+				<li>Kiểu trả về không nullable — Retrofit ném exception nếu HTTP lỗi</li>
+				<li><strong>Một khối <code>try/catch</code> duy nhất</strong> bắt cả lỗi mạng, lỗi HTTP và lỗi parse</li>
+				<li>Gọi 2 API liên tiếp: viết hai dòng nối nhau, đọc như code tuần tự</li>
+				<li><code>viewModelScope</code> tự cancel khi ViewModel bị huỷ — không phải nhớ gì</li>
+			</ul>
+		</div>
+	</div>
+	<p>
+		Đây là ý nghĩa thật của câu "coroutine giúp viết code bất đồng bộ như code tuần tự". Không phải nhanh hơn — mà là
+		<strong>đọc được</strong>, và xử lý lỗi gom về một chỗ.
+	</p>
+
+	<h2 id="paging">17. Phân trang tự động — nơi <code>queryState</code> phát huy tác dụng</h2>
+	<p>
+		Sách không nói về phần này (nó có sẵn trong <code>starter</code>), nhưng nếu bỏ qua thì ba field
+		<code>offset</code>, <code>number</code>, <code>totalResults</code> trong <code>QueryState</code> trở thành vô nghĩa
+		— chúng tồn tại <em>chỉ vì</em> cơ chế này.
+	</p>
+	<p class="src">Nguồn: <code>{AAF}/ui/recipes/ShowRecipeList.kt</code> (dòng 76–93)</p>
+	<Code code={pagingSnippet} lang="kotlin" theme="github-dark" />
+	<p>Cơ chế đọc từ trên xuống:</p>
+	<ul>
+		<li>
+			<code>rememberLazyGridState()</code> cho bạn một object theo dõi <strong>vị trí cuộn</strong> của lưới: item đầu
+			đang hiện là item nào, có bao nhiêu item đang nhìn thấy.
+		</li>
+		<li>
+			<code>derivedStateOf</code> tính ra một giá trị <code>Boolean</code> <em>suy ra từ</em> state khác:
+			"đã cuộn gần cuối chưa?". Điều kiện gồm hai phần — chỉ số item cuối đang thấy cộng
+			<code>PAGING_OFFSET</code> (bằng 6, khai ở <code>{AAF}/ui/recipes/RecipeList.kt</code> dòng 55) vượt quá số item
+			hiện có, <strong>và</strong> vẫn còn kết quả chưa lấy (<code>lastVisibleIndex &lt;
+			queryState.totalResults</code>). Con số 6 nghĩa là "tải trước khi còn cách đáy 6 ô", để người dùng không phải
+			nhìn thấy khoảng chờ.
+		</li>
+		<li>
+			<code>LaunchedEffect(loadMore)</code> — key là <code>loadMore</code>, nên mỗi lần điều kiện đó đổi, khối này
+			chạy lại: tăng <code>offset</code> thêm <code>PAGE_SIZE</code> (20) rồi gọi lại
+			<code>searchRecipes</code>.
+		</li>
+		<li>
+			<code>firstTime</code> xử lý lần chạy đầu: lần đầu <code>offset</code> phải là 0, các lần sau mới cộng thêm.
+		</li>
+	</ul>
+	<p>
+		Nhớ lại mục 13: mỗi lần <code>queryRecipes</code> thành công, nó <strong>thay hẳn</strong> danh sách bằng
+		<code>response.recipes</code> chứ không nối thêm. Vậy phân trang này hoạt động thế nào? Vì
+		<code>totalResults</code> từ response được lưu vào <code>queryState</code>, và mỗi trang mới ghi đè danh sách cũ —
+		nghĩa là <strong>lưới không thật sự dài ra, nó nhảy sang 20 kết quả tiếp theo</strong>.
+	</p>
+	<p class="notice">
+		<strong>Things to notice — đây là một điểm chưa hoàn thiện trong project mẫu.</strong> Một "infinite scroll" đúng
+		nghĩa phải <em>nối</em> danh sách: <code>_recipeListState.value = _recipeListState.value + response.recipes</code>.
+		Code hiện tại ghi đè, nên khi cuộn tới đáy, 20 item cũ biến mất và 20 item mới thay vào — người dùng bị mất chỗ.
+		Kết hợp với việc <code>LaunchedEffect(loadMore)</code> kích hoạt theo <em>vị trí cuộn</em>, còn có nguy cơ gọi API
+		nhiều lần liên tiếp — điều đáng lo với API bị rate limit (mục 8). Trong project thật, phần này thường được giao hẳn
+		cho thư viện <strong>Paging 3</strong> của Jetpack, thứ mà sách không dạy. Nêu ra ở đây để bạn hiểu vì sao app mẫu
+		cuộn hơi lạ — không phải bạn cài sai.
+	</p>
+</section>
+

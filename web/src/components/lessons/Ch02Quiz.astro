@@ -59,6 +59,109 @@ const brokenMainActivityCode = `class MainActivity : ComponentActivity() {
 			</p>
 		</fieldset>
 
+		<fieldset data-answer="c">
+			<legend>4. Vì sao sách nhấn mạnh ô <code>Package name</code> phải đúng là <code>com.kodeco.chat</code>?</legend>
+			<label><input type="radio" name="q4" value="a" /> Vì Google Play chỉ chấp nhận package bắt đầu bằng <code>com.</code></label>
+			<label><input type="radio" name="q4" value="b" /> Vì nó quyết định tên hiển thị của app dưới icon</label>
+			<label><input type="radio" name="q4" value="c" /> Vì nó là danh tính duy nhất của app <em>và</em> quyết định đường dẫn thư mục chứa code</label>
+			<p class="explain" hidden>
+				Package name là <strong>danh tính duy nhất</strong> của app trên hệ Android và trên Google Play — hai app
+				không được trùng. Nó cũng là tên package Kotlin, nên nó tạo ra đường dẫn
+				<code>app/src/main/java/com/kodeco/chat/</code>. Nhập khác đi thì mọi trích dẫn file trong sách sẽ lệch.
+				Tên hiển thị dưới icon là ô <strong>Name</strong>, sau này nằm ở <code>res/values/strings.xml</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>5. <code>Minimum SDK</code> nghĩa là gì?</legend>
+			<label><input type="radio" name="q5" value="a" /> Phiên bản Android <strong>thấp nhất</strong> mà app chịu cài</label>
+			<label><input type="radio" name="q5" value="b" /> Phiên bản Android mà máy ảo của bạn sẽ chạy</label>
+			<label><input type="radio" name="q5" value="c" /> Phiên bản Android Studio tối thiểu để mở project</label>
+			<p class="explain" hidden>
+				Đặt thấp = nhiều máy cài được nhưng bạn không dùng được API mới; đặt cao = ngược lại. Đừng nhầm với
+				<em>System Image</em> khi tạo AVD — đó là phiên bản Android <strong>máy ảo</strong> sẽ chạy. App
+				<code>minSdk 28</code> chạy tốt trên máy API 34; ngược lại thì không.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>6. Sách yêu cầu chọn <code>Minimum SDK = API 28</code>. Project mẫu của chapter thật ra khai bao nhiêu?</legend>
+			<label><input type="radio" name="q6" value="a" /> Đúng 28 — sách và code luôn khớp nhau</label>
+			<label><input type="radio" name="q6" value="b" /> <code>minSdk = 30</code> — code kèm sách lệch với lời sách</label>
+			<label><input type="radio" name="q6" value="c" /> Project không khai <code>minSdk</code>, Gradle tự chọn</label>
+			<p class="explain" hidden>
+				Mở <code>app/build.gradle.kts</code> dòng 12 sẽ thấy <code>minSdk = 30</code> (Android 11), dù sách viết
+				API 28. Hệ quả thực tế gần như không có — cả 28 và 30 đều chạy được toàn bộ code trong sách — nhưng nếu
+				bạn tự tạo project theo lời sách rồi so với project mẫu, bạn sẽ thấy số khác nhau và tưởng mình làm sai.
+				Bạn không làm sai.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>7. Trong <code>AndroidManifest.xml</code>, thứ gì làm app <strong>xuất hiện trong danh sách app</strong> trên điện thoại?</legend>
+			<label><input type="radio" name="q7" value="a" /> <code>android:icon="@mipmap/ic_launcher"</code></label>
+			<label><input type="radio" name="q7" value="b" /> <code>android:exported="true"</code></label>
+			<label><input type="radio" name="q7" value="c" /> Cặp <code>action.MAIN</code> + <code>category.LAUNCHER</code> trong <code>&lt;intent-filter&gt;</code></label>
+			<p class="explain" hidden>
+				<code>MAIN</code> = điểm vào chính của app; <code>LAUNCHER</code> = hiện icon ở launcher. Xoá cặp này thì
+				app vẫn cài được nhưng <strong>bạn không tìm thấy nó đâu để mở</strong>. <code>android:icon</code> chỉ
+				quyết định <em>hình</em> icon, còn <code>exported="true"</code> là điều kiện cần (cho phép thành phần
+				ngoài app mở Activity) nhưng chưa đủ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>8. Vì sao Android <strong>tắt sẵn</strong> USB Debugging trên mọi thiết bị?</legend>
+			<label><input type="radio" name="q8" value="a" /> Vì nó làm máy chạy chậm và nóng</label>
+			<label><input type="radio" name="q8" value="b" /> Vì đó là một lỗ hổng bảo mật tiềm tàng — máy tính được cho phép sẽ cài app, đọc log, truy cập dữ liệu app</label>
+			<label><input type="radio" name="q8" value="c" /> Vì nó chỉ hoạt động khi máy đã root</label>
+			<p class="explain" hidden>
+				Sách nói thẳng: <em>cấp quyền USB debugging là một lỗ hổng bảo mật tiềm tàng</em>, nên phần lớn thiết bị
+				tắt sẵn. Nó mở kênh <code>adb</code> — kênh Android Studio dùng để cài app, đọc log, truy cập dữ liệu.
+				Vì vậy: chỉ bật khi cần lập trình, và <strong>không bấm Allow trên máy tính lạ</strong>. Hộp thoại
+				<em>RSA key fingerprint</em> hiện ra sau đó chính là lớp bảo vệ thứ hai cho việc này.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>9. <strong>Live Edit</strong> khác <code>@Preview</code> ở điểm nào?</legend>
+			<label><input type="radio" name="q9" value="a" /> Không khác — hai tên gọi của cùng một tính năng</label>
+			<label><input type="radio" name="q9" value="b" /> <code>@Preview</code> cần thiết bị thật, Live Edit thì không</label>
+			<label><input type="radio" name="q9" value="c" /> <code>@Preview</code> vẽ composable <em>trong IDE</em>; Live Edit đẩy thay đổi code vào <em>app đang chạy thật</em> trên thiết bị</label>
+			<p class="explain" hidden>
+				Ngược lại đáp án b: <code>@Preview</code> <strong>không</strong> cần thiết bị, còn Live Edit thì cần app
+				đang chạy trên máy ảo/máy thật. Live Edit là lý do sách nói bạn có thể thấy chữ đổi từ "Android" sang tên
+				mình mà không bấm chạy lại. Giới hạn: Live Edit xử lý tốt thay đổi <em>bên trong</em> hàm composable; đổi
+				chữ ký hàm, thêm class hay sửa Gradle thì vẫn phải build lại.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>10. Trong cửa sổ Android SDK, khác biệt giữa tab <strong>SDK Platforms</strong> và <strong>SDK Tools</strong> là gì?</legend>
+			<label><input type="radio" name="q10" value="a" /> Platforms = các <em>phiên bản Android</em>; Tools = các <em>công cụ build</em> (build-tools, platform-tools, emulator…)</label>
+			<label><input type="radio" name="q10" value="b" /> Platforms = bản dành cho điện thoại; Tools = bản dành cho Wear OS và TV</label>
+			<label><input type="radio" name="q10" value="c" /> Platforms là bản trả phí, Tools là bản miễn phí</label>
+			<p class="explain" hidden>
+				Cách nhớ: <em>Platforms</em> = "Android bản nào" (cái app chạy trên). <em>Tools</em> = "dụng cụ để build"
+				(cái tạo ra app, trong đó có <code>adb</code> nằm ở platform-tools). Thiếu Platform → không build được
+				cho bản đó. Thiếu Tools → không build được gì cả. Cả hai cài cùng cách: tick → <em>Apply</em> →
+				<em>OK</em>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>11. Vì sao sách 2023 (giả định Android 14 / API 34) vẫn học được bằng Android Studio bản 2026?</legend>
+			<label><input type="radio" name="q11" value="a" /> Vì Android Studio có chế độ tương thích ngược, chạy như bản cũ</label>
+			<label><input type="radio" name="q11" value="b" /> Vì Google đã <strong>tách rời</strong> phiên bản Android Studio khỏi phiên bản Android — một Studio build được cho mọi bản SDK</label>
+			<label><input type="radio" name="q11" value="c" /> Vì Android không còn ra bản mới sau API 34</label>
+			<p class="explain" hidden>
+				Sách nêu đúng sự thật này ở phần "Installing New Versions of Android Studio": Google đã decouple Studio
+				khỏi phiên bản Android, nên một Studio duy nhất build được app cho bất kỳ phiên bản hệ điều hành, kể cả
+				SDK ra sau. Bạn chỉ cần <em>khai</em> đúng bản SDK trong <code>build.gradle.kts</code>. Đó cũng là lý do
+				bài học ghi chú chỗ UI đã đổi thay vì viết lại kiến thức.
+			</p>
+		</fieldset>
+
 		<button type="submit">Kiểm tra đáp án</button>
 		<p id="quiz-score" hidden></p>
 	</form>
@@ -83,6 +186,35 @@ const brokenMainActivityCode = `class MainActivity : ComponentActivity() {
 				chữ hiện lên khi chạy app thật) và 1 ở dòng 44 (bên trong <code>GreetingPreview</code>, chỉ ảnh
 				hưởng khung xem trước <code>@Preview</code>). Sửa dòng 25 để app thật đổi chữ; sửa dòng 44 để khung
 				Preview đổi chữ. Muốn cả 2 nơi đồng bộ, sửa cả hai.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<p>
+			<strong>Bài tập 2 — đọc file cấu hình (gắn với mục 7 của bài học).</strong> Vẫn trong project
+			<code>02-getting-started-with-android-studio/projects/final/</code>, mở
+			<code>app/build.gradle.kts</code> và trả lời 3 câu bằng cách <em>tìm trong file</em>, không đoán:
+		</p>
+		<ol>
+			<li>App này biên dịch bằng SDK bản bao nhiêu? (gợi ý: từ khoá <code>compileSdk</code>)</li>
+			<li>App cài được từ Android bản nào trở lên? (gợi ý: <code>minSdk</code>)</li>
+			<li>
+				Mở tiếp <code>build.gradle.kts</code> ở <em>gốc</em> project: bản Kotlin của project là bao nhiêu? (gợi ý:
+				dòng có <code>org.jetbrains.kotlin.android</code>)
+			</li>
+		</ol>
+		<details>
+			<summary>Đáp án</summary>
+			<p>
+				(1) <code>compileSdk = 34</code> — dòng 8. (2) <code>minSdk = 30</code> — dòng 12, tức Android 11; chú ý
+				con số này <strong>khác</strong> API 28 mà sách yêu cầu chọn khi tạo project, xem mục 7.4 của bài học.
+				(3) Kotlin <code>1.9.10</code>, đi cùng Android Gradle Plugin <code>8.2.0</code> — hai con số định vị
+				project vào khoảng cuối 2023.
+			</p>
+			<p>
+				Mục đích bài này: tập <em>đọc</em> file Gradle thay vì sợ nó. Chapter 4 sẽ giải thích từng phần một cách
+				đầy đủ.
 			</p>
 		</details>
 	</div>
@@ -119,114 +251,3 @@ const brokenMainActivityCode = `class MainActivity : ComponentActivity() {
 		}
 	});
 </script>
-
-<style>
-	.quiz h2 {
-		margin-top: 2.2rem;
-		font-size: 1.15rem;
-		color: #1a202c;
-		border-bottom: 1px solid #e2e8f0;
-		padding-bottom: 0.35rem;
-	}
-	.intro {
-		color: #718096;
-		font-size: 0.9rem;
-	}
-	fieldset {
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 0.9rem 1.1rem;
-		margin-bottom: 1rem;
-		background: #fff;
-	}
-	fieldset.correct {
-		border-color: #68d391;
-		background: #f0fff4;
-	}
-	fieldset.incorrect {
-		border-color: #fc8181;
-		background: #fff5f5;
-	}
-	legend {
-		font-weight: 600;
-		font-size: 0.92rem;
-		padding: 0 0.3rem;
-	}
-	label {
-		display: block;
-		font-size: 0.9rem;
-		margin: 0.35rem 0;
-		color: #2d3748;
-	}
-	.explain {
-		margin-top: 0.6rem;
-		font-size: 0.85rem;
-		color: #4a5568;
-		border-top: 1px dashed #e2e8f0;
-		padding-top: 0.5rem;
-	}
-	button[type="submit"] {
-		background: #2b6cb0;
-		color: #fff;
-		border: none;
-		padding: 0.55rem 1.1rem;
-		border-radius: 8px;
-		font-size: 0.9rem;
-		cursor: pointer;
-	}
-	button[type="submit"]:hover {
-		background: #2c5282;
-	}
-	#quiz-score {
-		margin-top: 0.8rem;
-		font-weight: 600;
-		color: #2d3748;
-	}
-	.exercise {
-		background: #fff;
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 1rem 1.2rem;
-		font-size: 0.92rem;
-		line-height: 1.6;
-		color: #2d3748;
-	}
-	.exercise pre {
-		background: #1a202c;
-		color: #e2e8f0;
-		padding: 0.6rem 0.9rem;
-		border-radius: 6px;
-		overflow-x: auto;
-		font-size: 0.85rem;
-	}
-	.exercise code {
-		background: #edf2f7;
-		padding: 0.1rem 0.35rem;
-		border-radius: 4px;
-	}
-	.exercise pre code {
-		background: none;
-		padding: 0;
-	}
-	fieldset pre.quiz-code {
-		background: #1a202c;
-		color: #e2e8f0;
-		padding: 0.6rem 0.9rem;
-		border-radius: 6px;
-		overflow-x: auto;
-		font-size: 0.85rem;
-		margin: 0.6rem 0;
-	}
-	fieldset pre.quiz-code code {
-		background: none;
-		padding: 0;
-	}
-	details {
-		margin-top: 0.8rem;
-		font-size: 0.88rem;
-	}
-	details summary {
-		cursor: pointer;
-		color: #2b6cb0;
-	}
-</style>

@@ -1,0 +1,379 @@
+---
+// Quiz + bài tập cho Chương 1.1 — Android và Kotlin (mục 1 framework khổng lồ, 2 chọn Kotlin, 3 security sandbox).
+// Tách từ quiz gộp Ch01Quiz.astro theo cùng ranh giới với 4 chương nhỏ của Chương 1.
+// Kế thừa ý từ quiz gộp: câu cũ 4 (sandbox chặn mấy chiều) -> câu 6, câu cũ 5 (vì sao sandbox đứng trước
+//   phần component) -> câu 8, câu cũ 8 (Chương 1 không có project kèm theo) -> câu 9.
+//   Sáu câu còn lại viết mới cho phạm vi mục 1–3. Đã viết lại lời dẫn của các câu cũ để bỏ giọng bám nguồn gốc
+//   ("nguồn nói...", "được đặt trước...") và sửa tham chiếu chéo sang đúng tên chương nhỏ.
+// Mọi chi tiết đã tự kiểm lại trên aaf-materials/ trước khi khẳng định:
+//   - 4 file .keep của thư mục Chương 1 đều 0 byte (assets, projects/starter, projects/final, projects/challenge)
+//   - uses-permission INTERNET nằm ở dòng 5 manifest Chương 8 (final + starter), lặp lại ở Chương 9/10/11 vì
+//     cùng là app Recipe Finder -> vẫn đúng khi nói "dòng xin quyền duy nhất, xuất hiện lần đầu ở Chương 8"
+//   - không project nào khai uses-feature (tìm cả 11 project: 0 kết quả)
+//   - đối chiếu tham chiếu chéo: Content Provider ở Chương 1.2 mục 4.3, Content Resolver ở mục 5.1,
+//     Manifest ở Chương 1.3 mục 6, external storage / bộ nhớ chung ở Chương 11 mục 6–7
+// Quiz chấm bằng vanilla JS phía client; file này không có bài sắp thứ tự nên script chỉ chấm phần MCQ.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		9 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau khi chấm — kể cả ở câu bạn
+		làm đúng, nên đọc hết: nhiều chi tiết đáng nhớ nằm trong phần nói vì sao hai đáp án còn lại sai.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="a">
+			<legend>1. Vì sao framework Android buộc phải khổng lồ?</legend>
+			<label>
+				<input type="radio" name="q1" value="a" /> Vì app phải làm được rất nhiều loại việc và chạm tới hầu hết tính
+				năng của một chiếc smartphone — định vị, âm thanh, video, mạng — cộng thêm một khối lớn tiện ích dành riêng cho
+				lập trình viên
+			</label>
+			<label>
+				<input type="radio" name="q1" value="b" /> Vì Android tích tụ code cũ qua nhiều năm mà không ai dọn, nên phần
+				lớn framework là code chết không còn dùng
+			</label>
+			<label>
+				<input type="radio" name="q1" value="c" /> Vì framework viết bằng hai ngôn ngữ, nên mỗi API phải có hai bản —
+				một bản Java và một bản Kotlin
+			</label>
+			<p class="explain" hidden>
+				Kích thước của Android là <strong>hệ quả bắt buộc của phạm vi công việc</strong>, không phải lỗi thiết kế: người
+				ta chờ app làm được mọi thứ, nên bộ code nền phải đỡ được mọi thứ. Đáp án b nghe hợp lý với bất kỳ hệ thống lâu
+				năm nào, nhưng nó đảo ngược nguyên nhân — framework lớn vì <em>có nhiều việc phải đỡ</em>, và còn lớn thêm vì
+				chứa nhiều phần <em>"developer quality of life"</em> đang được dùng rất nhiều. Đáp án c hấp dẫn vì framework
+				Android <em>thật sự</em> là hỗn hợp Java và Kotlin (mục 2 của chương này), nhưng hỗn hợp không có nghĩa là mọi
+				thứ bị nhân đôi. Điều cần nhớ: ngay cả người làm Android nhiều năm cũng có lúc thấy ngợp — đó là kích thước
+				bình thường của nền tảng này, không phải dấu hiệu bạn kém.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. Chiến lược học Android được khuyến nghị ở chương này là gì — và vì sao nó khả thi?</legend>
+			<label>
+				<input type="radio" name="q2" value="a" /> Đọc hết tài liệu framework trước khi viết dòng code đầu tiên, vì thiếu
+				nền tảng thì sẽ code sai kiến trúc rồi phải làm lại
+			</label>
+			<label>
+				<input type="radio" name="q2" value="b" /> Học thuộc danh sách class quan trọng nhất của framework, phần còn lại
+				thì tra cứu khi cần
+			</label>
+			<label>
+				<input type="radio" name="q2" value="c" /> "Học tới đâu cần tới đó" — khả thi vì bạn không cần biết hết framework
+				mới viết được app đúng cách và dễ bảo trì
+			</label>
+			<p class="explain" hidden>
+				Điểm mấu chốt không phải câu khẩu hiệu, mà là <strong>điều kiện làm cho nó đúng</strong>: Android được thiết kế
+				sao cho bạn viết được app tốt mà <em>không</em> phải biết hết. Nếu điều đó không đúng thì "học tới đâu cần tới đó"
+				sẽ là lời khuyên tệ. Đáp án a là cái bẫy phổ biến nhất với người mới — nó nghe có trách nhiệm, nhưng với một
+				framework mà người làm nhiều năm vẫn thấy ngợp thì "đọc hết rồi mới làm" nghĩa là không bao giờ tới lúc làm. Đáp
+				án b sai ở chỗ khác: vấn đề không phải học <em>bao nhiêu</em> class, mà là học <em>lúc nào</em> — bạn học một API
+				khi có việc cần tới nó, vì lúc đó bạn có ngữ cảnh để hiểu nó giải quyết vấn đề gì.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>3. React Native và Flutter cho bạn lợi thế gì, và thường phải đánh đổi bằng gì?</legend>
+			<label>
+				<input type="radio" name="q3" value="a" /> Lợi thế hiệu năng cao hơn code native vì có tầng tối ưu riêng; đánh đổi
+				là phải viết code hai lần cho hai nền tảng
+			</label>
+			<label>
+				<input type="radio" name="q3" value="b" /> Lợi thế phát triển cho Android và iOS cùng lúc, một phần việc đã được
+				làm sẵn; đánh đổi thường là hiệu năng giảm hoặc thiếu sẵn một số API
+			</label>
+			<label>
+				<input type="radio" name="q3" value="c" /> Không có đánh đổi nào đáng kể — đó là lý do chúng dần thay thế cách viết
+				native
+			</label>
+			<p class="explain" hidden>
+				Đáp án a đảo ngược đúng cả hai nửa: thứ chạy qua tầng trung gian thì khó nhanh <em>hơn</em> thứ chạy trực tiếp, và
+				"viết hai lần cho hai nền tảng" chính là vấn đề mà framework đa nền tảng <em>giải quyết</em>, không phải cái giá của
+				nó. Đáp án c sai vì có đánh đổi thật, rất cụ thể: hiệu năng, và <strong>độ sẵn có của API</strong> — khi Android ra
+				tính năng mới, framework bên ngoài phải chờ được cập nhật mới dùng được, còn code native dùng được ngay. Nhớ cặp
+				lợi–hại này, vì hai trong năm lý do chọn Kotlin ở câu sau được viết ra để trả lời đúng nó.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				4. Trong năm lý do chọn Kotlin, lý do "được hỗ trợ native" dẫn tới kết quả gì — theo đúng chuỗi nhân quả của nó?
+			</legend>
+			<label>
+				<input type="radio" name="q4" value="a" /> Hỗ trợ native → ít vấn đề tương thích hơn → hỗ trợ API tốt hơn và hiệu
+				năng tốt hơn
+			</label>
+			<label>
+				<input type="radio" name="q4" value="b" /> Hỗ trợ native → code được biên dịch sang Java → chạy được trên cả máy ảo
+				Java lẫn Android
+			</label>
+			<label>
+				<input type="radio" name="q4" value="c" /> Hỗ trợ native → Google bắt buộc dùng Kotlin từ 2019 → Java bị ngừng hỗ
+				trợ trên Android
+			</label>
+			<p class="explain" hidden>
+				Đây là một <strong>chuỗi</strong>, không phải một ưu điểm rời: được nền tảng hỗ trợ trực tiếp thì bớt lớp tương
+				thích ở giữa, bớt lớp ở giữa thì API mới dùng được ngay và code chạy nhanh hơn. Đáp án c sai ở một chữ rất quan
+				trọng: Google <em>khuyến nghị</em> Kotlin từ 2019, chứ không <em>bắt buộc</em> — Java vẫn là ngôn ngữ native được hỗ
+				trợ, và bản thân framework Android vẫn là hỗn hợp cả hai. Nhầm "khuyến nghị" thành "bắt buộc" sẽ làm bạn bối rối khi
+				gặp code Java trong tài liệu hoặc trong chính framework.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				5. Lý do thứ năm — "Kotlin multiplatform đã đủ mạnh để cạnh tranh với các giải pháp hybrid" — có vai trò gì trong
+				lập luận?
+			</legend>
+			<label>
+				<input type="radio" name="q5" value="a" /> Là lý do yếu nhất, thêm vào cho đủ năm ý; multiplatform không liên quan
+				tới việc học Android
+			</label>
+			<label>
+				<input type="radio" name="q5" value="b" /> Nói rằng bạn sẽ dùng Kotlin Multiplatform trong khoá học này để build app
+				cho cả Android và iOS
+			</label>
+			<label>
+				<input type="radio" name="q5" value="c" /> Nó tước đi lợi thế riêng của Flutter/React Native — "làm hai nền tảng
+				cùng lúc" giờ không còn là độc quyền của họ
+			</label>
+			<p class="explain" hidden>
+				Năm lý do đó không phải danh sách ngẫu nhiên mà là lập luận có bố cục: lý do 4 trả lời trade-off
+				<em>hiệu năng và API</em> của framework bên ngoài, lý do 5 trả lời <em>lợi thế đa nền tảng</em> của họ. Nhận ra bố
+				cục này thì bạn nhớ được cả năm ý, thay vì học vẹt. Đáp án b là suy diễn quá xa: khoá học chỉ làm app Android — nói
+				multiplatform "đã đủ mạnh" là nói về khả năng của Kotlin, không phải kế hoạch của khoá học.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>6. Security sandbox của Android chặn theo <strong>mấy chiều</strong>?</legend>
+			<label><input type="radio" name="q6" value="a" /> Một chiều — chỉ chặn app khác nhìn vào app của bạn</label>
+			<label><input type="radio" name="q6" value="b" /> Một chiều — chỉ chặn app của bạn nhìn ra ngoài</label>
+			<label>
+				<input type="radio" name="q6" value="c" /> Hai chiều — app khác không nhìn vào được, và app của bạn cũng không tự
+				tiện ra ngoài được
+			</label>
+			<p class="explain" hidden>
+				Cả <strong>hai chiều</strong>. Từ ngoài nhìn vào: không app nào khác biết chuyện gì diễn ra trong app của bạn. Từ
+				trong nhìn ra: app của bạn không truy cập được app khác, file cụ thể hay thông tin thiết bị — trừ khi được cho phép.
+				Người mới thường chỉ nhớ một chiều, và chiều bị quên thường là chiều thứ hai — đúng chiều gây ra phần lớn rắc rối
+				thực tế khi viết app (xin quyền, đọc file, gọi sang app khác). Câu tiếp theo hỏi về điểm tinh tế hơn: ai là người
+				quyết định mỗi chiều.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>7. Ai quyết định mỗi chiều của sandbox?</legend>
+			<label>
+				<input type="radio" name="q7" value="a" /> Hệ thống Android quyết định cả hai chiều — app không có tiếng nói nào
+			</label>
+			<label>
+				<input type="radio" name="q7" value="b" /> Chiều "ngoài nhìn vào" do chính app của bạn quyết định; chiều "trong nhìn
+				ra" do hệ thống Android quyết định
+			</label>
+			<label>
+				<input type="radio" name="q7" value="c" /> Người dùng quyết định cả hai chiều qua màn hình Settings của điện thoại
+			</label>
+			<p class="explain" hidden>
+				Hai chiều có <strong>hai chủ thể khác nhau</strong>, và đây là chi tiết dễ bỏ qua nhất của mục 3. Dữ liệu bên trong
+				app là của app: <em>app tự quyết định</em> có mở ra cho ai không — đó là lý do <strong>Content Provider</strong>
+				(Chương 1.2, mục 4.3) tồn tại: một loại component sinh ra để app chủ động chia sẻ dữ liệu của mình ra ngoài. Còn
+				việc app được chạm tới cái gì của hệ thống thì <em>hệ thống quyết định</em> — nên mới có chuyện xin quyền. Đáp án c
+				lẫn hai thứ: người dùng bấm đồng ý trong hộp thoại quyền, nhưng người <em>ra luật</em> là hệ thống, và luật đó áp
+				cho chiều thứ hai.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				8. Vì sao cần hiểu security sandbox (mục 3 của chương này) <strong>trước</strong> khi học về các app component ở
+				Chương 1.2?
+			</legend>
+			<label>
+				<input type="radio" name="q8" value="a" /> Vì bảo mật là chủ đề khó nhất, cần học sớm để có thời gian ngấm
+			</label>
+			<label>
+				<input type="radio" name="q8" value="b" /> Vì sandbox là tiền đề: app bị cô lập nên mới cần Manifest để khai báo, và
+				cần Intent để giao tiếp qua hệ thống
+			</label>
+			<label><input type="radio" name="q8" value="c" /> Không có lý do gì — thứ tự hai phần này đổi chỗ cũng được</label>
+			<p class="explain" hidden>
+				Sandbox <strong>giải thích lý do tồn tại</strong> của hai chương nhỏ kế tiếp. Vì app bị cô lập, hệ thống phải biết
+				trước app có thành phần gì → sinh ra <strong>Manifest</strong> (Chương 1.3, mục 6). Vì app không tự cầm tay gọi app
+				khác được, mọi giao tiếp phải đi qua hệ thống → sinh ra <strong>Intent</strong> (Chương 1.2, mục 5). Học theo thứ tự
+				này thì Manifest và Intent không còn là hai quy ước rườm rà phải nhớ, mà là hệ quả bắt buộc của một nguyên tắc bảo
+				mật. Đáp án a lẫn "khó" với "làm nền": sandbox thực ra là một trong những khái niệm dễ nhất của chương này — nó được
+				đặt sớm vì các thứ sau <em>dựa vào</em> nó, không vì nó khó.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				9. Chương 1 có project Android kèm theo không? (Xem trong
+				<code>aaf-materials/01-welcome-to-android-and-kotlin/</code>)
+			</legend>
+			<label>
+				<input type="radio" name="q9" value="a" /> Không — chỉ có 4 file <code>.keep</code> rỗng 0 byte, nên code minh hoạ
+				phải lấy từ Chương 2
+			</label>
+			<label>
+				<input type="radio" name="q9" value="b" /> Có — một project <code>starter</code> và một <code>final</code> đầy đủ
+			</label>
+			<label><input type="radio" name="q9" value="c" /> Có, nhưng chỉ project <code>challenge</code></label>
+			<p class="explain" hidden>
+				Chương 1 là chương lý thuyết — nó vẽ bản đồ chứ không xây app nào, nên <strong>không</strong> có project. Bốn đường
+				dẫn <code>assets/</code>, <code>projects/starter/</code>, <code>projects/final/</code>,
+				<code>projects/challenge/</code> chỉ chứa file <code>.keep</code> rỗng 0 byte — loại file chỉ tồn tại để git giữ lại
+				một thư mục trống. Vì vậy mọi code thật xuất hiện trong Chương 1 đều <em>mượn</em> từ project của chương khác (chủ
+				yếu là app <strong>Kodeco Chat</strong> của Chương 2, và manifest của Chương 8 ở mục 3 chương này), và luôn ghi rõ
+				nguồn. Biết điều này giúp bạn khỏi đi tìm một project không tồn tại rồi tưởng mình tải thiếu.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+
+	<h2>Bài tập</h2>
+	<p class="intro">
+		Hai bài dưới đây không kiểm tra việc bạn nhớ chữ, mà kiểm tra việc bạn <em>dùng được</em> hai mô hình tư duy của chương
+		này: chọn công nghệ theo ràng buộc thật, và đọc một tình huống qua hai chiều của sandbox. Tự trả lời trước rồi mới mở đáp
+		án — phần đáp án có thêm vài chi tiết không nằm trong phần lý thuyết của chương.
+	</p>
+
+	<div class="exercise">
+		<h3>Bài tập 1 — Chọn công nghệ cho bốn tình huống</h3>
+		<p>
+			Với mỗi tình huống, chọn <strong>native (Kotlin)</strong> hay <strong>framework đa nền tảng (Flutter / React
+			Native)</strong>, và nói rõ <em>ràng buộc nào</em> quyết định lựa chọn đó — chứ không chỉ nói "cái nào tốt hơn".
+		</p>
+		<ol>
+			<li>Startup 2 người, cần app Android <em>và</em> iOS ra mắt trong 3 tháng, giao diện đơn giản: danh sách và form.</li>
+			<li>App ghi âm cần dùng một API xử lý âm thanh mà Android vừa ra ở bản mới nhất.</li>
+			<li>App camera thời gian thực, thêm hiệu ứng lên từng khung hình khi đang xem trước.</li>
+			<li>Bạn — người đang học Android lần đầu và muốn hiểu nền tảng hoạt động thế nào.</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>1. Framework đa nền tảng.</strong> Ràng buộc quyết định là <em>hai nền tảng, ít người, thời gian ngắn</em>,
+				trong khi phần giao diện lại thuộc loại đơn giản — đúng vùng mà "một phần việc đã được làm sẵn cho bạn" phát huy
+				nhiều nhất, và trade-off hiệu năng gần như không cảm nhận được với danh sách và form. Lưu ý: nếu bạn thạo Kotlin thì
+				Kotlin Multiplatform cũng là câu trả lời hợp lệ cho tình huống này — đó chính là ý của lý do thứ năm khi chọn Kotlin.
+			</p>
+			<p>
+				<strong>2. Native.</strong> Ràng buộc quyết định là <em>API vừa mới ra</em>. Đây đúng là trade-off "API availability":
+				code native gọi được API mới ngay khi Android phát hành, còn framework bên ngoài phải chờ có người bọc API đó lại
+				cho nó. Đây là loại ràng buộc <strong>chặn cứng</strong> — không có cách nào lách bằng cách viết code giỏi hơn.
+			</p>
+			<p>
+				<strong>3. Native.</strong> Ràng buộc quyết định là <em>hiệu năng</em>: xử lý từng khung hình khi đang xem trước là
+				việc nặng và phải xong đúng hạn thời gian, nên mọi tầng trung gian đều là chi phí. Đây là trade-off hiệu năng ở dạng
+				gay gắt nhất của nó.
+			</p>
+			<p>
+				<strong>4. Native.</strong> Ràng buộc ở đây không phải kỹ thuật mà là <em>mục tiêu học</em>: bạn muốn hiểu nền tảng,
+				nên đi qua tầng trung gian sẽ che mất đúng những thứ bạn cần thấy — Activity, Manifest, resource, Gradle. Sau khi
+				hiểu nền tảng rồi, học framework đa nền tảng sẽ dễ hơn nhiều so với chiều ngược lại.
+			</p>
+			<p>
+				<strong>Rút ra — và đây là ý quan trọng nhất của bài này:</strong> trong bốn tình huống trên
+				<em>không có lựa chọn nào sai tuyệt đối</em>. Bạn hoàn toàn viết được app camera bằng Flutter, và viết được app
+				danh sách + form bằng Kotlin native; thứ đổi là <em>cái giá phải trả</em>. Nên câu hỏi đúng không bao giờ là "cái
+				nào tốt hơn" mà là "<em>ràng buộc nào đang chi phối</em>": số nền tảng, thời gian, độ mới của API, mức nặng của
+				việc xử lý, hay mục tiêu học. Ba trong bốn tình huống trên ra native, nhưng vì <em>ba lý do khác nhau hoàn
+				toàn</em> — và tình huống 1 cho thấy khi ràng buộc đổi thì câu trả lời cũng đổi. Nếu bạn chọn khác đáp án nhưng
+				chỉ ra được ràng buộc mình đang ưu tiên và cái giá mình chấp nhận trả, bạn đã làm đúng bài này.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 2 — Dự đoán: sandbox có chặn không?</h3>
+		<p>
+			Năm tình huống dưới đây. Với mỗi tình huống, tự trả lời <strong>ba</strong> câu trước khi mở đáp án: (1) sandbox có
+			chặn không? (2) nếu có, đây là chiều <em>"ngoài nhìn vào"</em> hay chiều <em>"trong nhìn ra"</em>? (3) ai là người
+			quyết định — app của bạn, hay hệ thống Android?
+		</p>
+		<ol>
+			<li>App A muốn đọc thẳng một file dữ liệu riêng mà app B lưu trong vùng của app B.</li>
+			<li>App của bạn muốn đọc danh bạ điện thoại của người dùng.</li>
+			<li>App của bạn ghi một file vào vùng dữ liệu riêng của chính nó.</li>
+			<li>App của bạn muốn gọi một API trên internet để tải dữ liệu về.</li>
+			<li>App của bạn muốn đọc một file ảnh nằm trong bộ nhớ chung của máy, do app khác tạo ra.</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>1. Bị chặn — chiều "ngoài nhìn vào", và người quyết định là app B.</strong> Đây là chiều thứ nhất nhìn từ
+				phía app B: dữ liệu của B là của B, không app nào khác thấy được. Điểm đáng nhớ: app B <em>không phải làm gì cả</em>
+				để được bảo vệ — cô lập là trạng thái mặc định của nền tảng, không phải tính năng bạn phải bật. Và nếu B thật sự
+				muốn chia sẻ, B phải chủ động mở cửa bằng <strong>Content Provider</strong> (Chương 1.2, mục 4.3).
+			</p>
+			<p>
+				<strong>2. Bị chặn — chiều "trong nhìn ra", hệ thống quyết định.</strong> Danh bạ là dữ liệu của người dùng, nằm
+				ngoài sandbox của bạn. Đây là loại quyền phải <em>hỏi người dùng lúc app đang chạy</em>: khai trong Manifest là chưa
+				đủ, người dùng có quyền bấm từ chối, và app vẫn phải chạy được khi bị từ chối. Khác hẳn tình huống 4 phía dưới.
+			</p>
+			<p>
+				<strong>3. Không bị chặn.</strong> Đây là <em>bên trong</em> sandbox — chính là "căn hộ" của app, nó tự do làm gì
+				cũng được, không xin ai. Tình huống này có mặt ở đây để bạn thấy sandbox <strong>không</strong> phải một cái rào cản
+				gây khó dễ chung: tuyệt đại đa số việc app làm hằng ngày (lưu cài đặt, lưu database, ghi cache) đều diễn ra gọn
+				trong vùng riêng và không cần một dòng khai báo nào. Vùng đó cũng là nơi database của Chương 10 sẽ nằm.
+			</p>
+			<p>
+				<strong>4. Bị chặn theo mặc định — chiều "trong nhìn ra", hệ thống quyết định — nhưng chỉ cần khai báo là mở.</strong>
+				Internet nằm ngoài sandbox nên vẫn thuộc chiều thứ hai; điểm khác là nó là <em>normal permission</em>: chỉ cần dòng
+				<code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code> trong Manifest, hệ thống cấp luôn
+				lúc cài, không hiện hộp thoại nào. Nếu bạn khai dòng này rồi ngồi chờ hộp thoại để test thì sẽ chờ mãi. Trong cả 11
+				project của khoá học, đây là dòng xin quyền <strong>duy nhất</strong>, và nó xuất hiện lần đầu đúng ở Chương 8 — chương
+				đầu tiên cần bước ra khỏi sandbox thật sự.
+			</p>
+			<p>
+				<strong>5. Bị chặn — chiều "trong nhìn ra", hệ thống quyết định.</strong> Bộ nhớ chung nghe như "chung nên ai cũng
+				đọc được", nhưng không: đó vẫn là vùng ngoài sandbox của bạn, nên vẫn phải được hệ thống cho phép. Các bản Android
+				mới còn siết thêm — thường app chỉ đọc được ảnh do <em>chính nó</em> tạo, còn muốn đọc file của người khác thì phải
+				để <em>người dùng tự chọn file</em>. Chương 11 dạy chi tiết các cách làm việc này.
+			</p>
+			<p>
+				<strong>Rút ra một cách phân loại dùng được mãi:</strong> hỏi "thứ này thuộc <em>ai</em>?". Của chính app bạn → bên
+				trong sandbox, tự do (tình huống 3). Của app khác → chiều một, app đó quyết định, mặc định là đóng (tình huống 1). Của
+				người dùng hoặc của hệ thống → chiều hai, hệ thống quyết định, mặc định là chặn (tình huống 2, 4, 5) — chỉ khác nhau ở
+				<em>cách</em> mở: khai báo là đủ, hay phải hỏi người dùng. Đây cũng chính là lý do Manifest và Intent tồn tại.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>

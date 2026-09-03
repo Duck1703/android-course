@@ -1,0 +1,645 @@
+---
+// Chương 10.3: Repository, Conversions và ViewModel — tách ra từ chương 10 gốc.
+// Code Kotlin trích nguyên văn từ aaf-materials/10-room-db/projects/final/ theo Quyết định #7 (docs/PROJECT_PLAN.md).
+// Phần giải thích tự viết tiếng Việt, diễn giải lại từ giáo trình — không copy nguyên văn.
+import { Code } from "astro:components";
+
+const BOOK = "content/book/ch10-room-database.md";
+const AAF = "aaf-materials/10-room-db/projects/final/app/src/main/java/com/kodeco/recipefinder";
+
+const repositoryCode = `class RecipeRepository(recipeDatabase: RecipeDatabase) {
+  private val recipeDao: RecipeDao = recipeDatabase.recipeDao()
+  private val ingredientDao: IngredientDao = recipeDatabase.ingredientDao()
+
+  suspend fun findAllRecipes(): List<RecipeDb> {
+    return recipeDao.getAllRecipes()
+  }
+
+  suspend fun findBookmarkById(id: Int): RecipeDb {
+    return recipeDao.findRecipeById(id)
+  }
+
+  suspend fun findRecipeById(id: Int): RecipeDb {
+    return recipeDao.findRecipeById(id)
+  }
+
+  suspend fun findAllIngredients(): List<IngredientDb> {
+    return ingredientDao.getAllIngredients()
+  }
+
+  suspend fun findRecipeIngredients(recipeId: Int): List<IngredientDb> {
+    return ingredientDao.findIngredientsByRecipe(recipeId)
+  }
+
+  suspend fun insertRecipe(recipe: RecipeDb) {
+    recipeDao.addRecipe(recipe)
+  }
+
+  suspend fun insertIngredients(ingredients: List<IngredientDb>) {
+    ingredients.forEach {
+        ingredientDao.addIngredient(it)
+    }
+  }
+
+  suspend fun deleteRecipe(recipe: RecipeDb) {
+    recipeDao.deleteRecipe(recipe)
+  }
+
+  suspend fun deleteRecipeById(recipeId: Int) {
+    recipeDao.deleteRecipeById(recipeId)
+  }
+
+  suspend fun deleteIngredient(ingredient: IngredientDb) {
+    ingredientDao.deleteIngredient(ingredient)
+  }
+
+  suspend fun deleteIngredients(ingredients: List<IngredientDb>) {
+    ingredients.forEach {
+        ingredientDao.deleteIngredient(it)
+    }
+  }
+
+  suspend fun deleteRecipeIngredients(recipeId: Int) {
+    val ingredients = findRecipeIngredients(recipeId)
+    ingredients.forEach {
+        ingredientDao.deleteIngredient(it)
+    }
+  }
+}`;
+
+const conversionsCode = `fun recipeToDb(recipe: Recipe): RecipeDb {
+  return RecipeDb(id = recipe.id, title = recipe.title, image = recipe.image)
+}
+
+fun recipeDbToRecipe(recipe: RecipeDb): Recipe {
+  return Recipe(id = recipe.id, title = recipe.title, image = recipe.image)
+}
+
+fun recipeDbsToRecipes(recipes: List<RecipeDb>): List<Recipe> {
+  val modelRecipes = mutableListOf<Recipe>()
+  recipes.forEach {
+    modelRecipes.add(recipeDbToRecipe(it))
+  }
+  return modelRecipes
+}`;
+
+const conversionsFullCode = `fun recipeInformationToRecipeDb(recipe: RecipeInformationResponse): RecipeDb {
+  return RecipeDb(
+    id = recipe.id,
+    title = recipe.title,
+    image = recipe.image,
+    summary = recipe.summary,
+    instructions = recipe.instructions,
+    sourceUrl = recipe.sourceUrl,
+    preparationMinutes = recipe.preparationMinutes,
+    cookingMinutes = recipe.cookingMinutes,
+    readyInMinutes = recipe.readyInMinutes,
+    servings = recipe.servings
+  )
+}`;
+
+const vmCtorCode = `class RecipeViewModel(
+  private val prefs: Prefs,
+  private val repository: RecipeRepository,
+) : ViewModel() {`;
+
+const vmReadCode = `suspend fun getBookmarks() {
+  withContext(Dispatchers.IO) {
+    val allRecipes = repository.findAllRecipes()
+    _bookmarksState.value = recipeDbsToRecipes(allRecipes).toMutableList()
+  }
+}
+
+suspend fun getIngredients() {
+  withContext(Dispatchers.IO) {
+    val allIngredients = repository.findAllIngredients()
+    _ingredientsState.value = ingredientDbsToIngredients(allIngredients).toMutableList()
+  }
+}
+
+suspend fun getBookmark(bookmarkId: Int) {
+  withContext(Dispatchers.IO) {
+    val recipe = repository.findRecipeById(bookmarkId)
+    val ingredients = repository.findRecipeIngredients(bookmarkId)
+    _recipeState.value =
+      recipeDbToRecipeInformation(recipe, ingredientDbsToExtendedIngredients(ingredients))
+  }
+}`;
+
+const vmWriteCode = `suspend fun bookmarkRecipe(recipe: RecipeInformationResponse) {
+  withContext(Dispatchers.IO) {
+    repository.insertRecipe(recipeInformationToRecipeDb(recipe))
+    repository.insertIngredients(
+      extendedIngredientsToIngredientDbs(
+        recipe.id,
+        recipe.extendedIngredients
+      )
+    )
+  }
+}`;
+
+const vmDeleteCode = `suspend fun deleteBookmark(recipe: Recipe) {
+  withContext(Dispatchers.IO) {
+    val recipeDb = recipeToDb(recipe)
+    repository.deleteRecipe(recipeDb)
+    repository.deleteRecipeIngredients(recipe.id)
+    val localList = _bookmarksState.value.toMutableList()
+    localList.remove(recipe)
+    _bookmarksState.value = localList
+  }
+}
+
+suspend fun deleteBookmark(recipeId: Int) {
+  withContext(Dispatchers.IO) {
+    repository.deleteRecipeById(recipeId)
+    repository.deleteRecipeIngredients(recipeId)
+    val localList = _bookmarksState.value.toMutableList()
+    localList.removeIf {
+      it.id == recipeId
+    }
+    _bookmarksState.value = localList
+  }
+}`;
+
+const recipeAppCode = `class RecipeApp : Application() {
+  lateinit var prefs: Prefs
+  lateinit var repository: RecipeRepository
+
+  override fun onCreate() {
+    super.onCreate()
+    if (BuildConfig.DEBUG) {
+      plant(Timber.DebugTree())
+    }
+    prefs = Prefs(this)
+    repository = RecipeRepository(
+      Room.databaseBuilder(
+        this,
+        RecipeDatabase::class.java,
+        "Recipes"
+      ).build()
+    )
+  }
+}`;
+
+const localProviderCode = `val LocalNavigatorProvider =
+  compositionLocalOf<NavHostController> { error("No navigation provided") }
+
+val LocalRepositoryProvider =
+  compositionLocalOf<RecipeRepository> { error("No repository provided") }
+
+val LocalPrefsProvider =
+  compositionLocalOf<Prefs> { error("No prefs provided") }`;
+
+const localProviderUseCode = `CompositionLocalProvider(
+  LocalNavigatorProvider provides navController,
+  LocalPrefsProvider provides (application as RecipeApp).prefs,
+  LocalRepositoryProvider provides (application as RecipeApp).repository,
+) {`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Bạn sẽ học được gì trong chương này</strong>
+		<ul>
+			<li><strong>Repository pattern</strong> — vì sao cần thêm một lớp trung gian giữa Room và phần còn lại của app, và
+				vì sao gần như mọi hàm trong <code>RecipeRepository</code> lại "mỏng" một cách có chủ đích.</li>
+			<li><strong>Ba họ model song song</strong> — cùng một "công thức" tồn tại dưới ba hình dạng khác nhau, và
+				<code>Conversions.kt</code> là nơi dịch qua lại giữa chúng.</li>
+			<li><strong>ViewModel dùng repository</strong> — khuôn bốn bước lặp lại ở mọi hàm đọc dữ liệu, hàm ghi bookmark,
+				và hai hàm xoá cùng tên khác tham số (overload).</li>
+			<li><strong>Tạo database thật ở đâu</strong> — <code>RecipeApp</code>, class <code>Application</code>, và
+				<code>lateinit var</code>.</li>
+			<li><strong>CompositionLocal</strong> — cách phát một object xuống toàn bộ cây Composable mà không phải khoan
+				tham số xuyên từng tầng.</li>
+		</ul>
+	</div>
+
+	<p>
+		Ở Chương 10.2 bạn đã viết xong ba lớp Room cơ bản: hai entity (<code>RecipeDb</code>, <code>IngredientDb</code>) mô
+		tả hai bảng, hai DAO (<code>RecipeDao</code>, <code>IngredientDao</code>) mô tả mọi thao tác được phép với dữ liệu,
+		và class <code>RecipeDatabase</code> gắn tất cả lại — trong đó có hàm <code>getInstance()</code> với pattern
+		Singleton được giải thích ở Chương 10.2, mục 10. Đến chương này mới là lúc những thứ đó thực sự được <em>gọi</em>:
+		bạn sẽ dựng lớp đứng trên DAO (Repository), lớp dịch dữ liệu giữa các tầng (Conversions), lớp gọi Repository
+		(ViewModel), và cuối cùng là chỗ database được tạo thật rồi phát xuống toàn bộ giao diện.
+	</p>
+
+	<h2 id="repository">11. Repository — thêm một lớp trừu tượng giữa Room và phần còn lại của app</h2>
+	<p>
+		Các class Room cơ bản đã xong. Nhưng còn <em>một lớp trừu tượng nữa</em> phải thêm vào, nằm giữa Room và phần còn
+		lại của code. Lý do: làm vậy giúp <strong>đổi cách và đổi chỗ lưu dữ liệu của app trở nên dễ dàng</strong>. Lớp
+		trừu tượng này được cung cấp bằng <strong>Repository pattern</strong>.
+	</p>
+	<p>
+		<strong>Repository pattern là gì?</strong> Đây là một cách tổ chức code: bạn tạo một class duy nhất đứng giữa "nơi
+		chứa dữ liệu" (database, server, file) và "nơi dùng dữ liệu" (ViewModel, giao diện). Phần còn lại của app chỉ nói
+		chuyện với class đó, không bao giờ chạm trực tiếp vào database. Định nghĩa gọn và nên nhớ nguyên: <em>một kho dữ
+		liệu tổng quát, có thể quản lý nhiều nguồn dữ liệu nhưng phơi ra một interface hợp nhất cho phần còn lại của
+		app.</em>
+	</p>
+	<p>
+		Cụ thể ở đây: một class duy nhất tên <code>RecipeRepository</code> để quản lý các bookmark. Bên trong, nó dùng
+		<code>RecipeDao</code> và <code>IngredientDao</code> lấy từ <code>RecipeDatabase</code> để truy cập recipe và
+		ingredient trong database. Nó định nghĩa vài hàm cơ bản để lưu và tải. Tạo <code>RecipeRepository.kt</code> trong
+		package <code>data</code> — chú ý: <strong>trong <code>data/</code>, không phải <code>data/database/</code></strong>,
+		vì nó thuộc lớp <em>Data abstraction</em> chứ không phải lớp <em>persistence</em>.
+	</p>
+	<Code code={repositoryCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Năm điểm cần nắm trong đoạn code trên: <strong>(1)</strong> định nghĩa class <code>RecipeRepository</code> với
+		constructor nhận vào <code>RecipeDatabase</code>; <strong>(2)</strong> repository dùng hai property này làm nguồn dữ
+		liệu — một là <code>RecipeDao</code>, một là object DAO từ <code>IngredientDao</code>; <strong>(3)</strong>
+		<code>findAllRecipes()</code> trả về danh sách tất cả recipe; <strong>(4)</strong> tạo <code>insertRecipe()</code>
+		để thêm một recipe; <strong>(5)</strong> thêm <code>deleteRecipe()</code> để xoá một recipe cụ thể. Cách dùng class
+		này chi tiết sẽ hiện ra rõ hơn khi dựng ViewModel ở mục 13 bên dưới.
+	</p>
+	<div class="callout">
+		<strong>Điều đáng chú ý: các hàm này "mỏng" một cách có chủ đích</strong>
+		<p>
+			Đọc 12 hàm của <code>RecipeRepository</code>, bạn sẽ thấy gần như hàm nào cũng chỉ có <em>một dòng</em> gọi thẳng
+			xuống DAO. <code>insertRecipe()</code> gọi <code>recipeDao.addRecipe()</code>. <code>deleteRecipe()</code> gọi
+			<code>recipeDao.deleteRecipe()</code>. Người mới hay thắc mắc: <em>vậy thêm lớp này để làm gì, sao không gọi DAO
+			trực tiếp?</em>
+		</p>
+		<p>
+			Câu trả lời nằm ở chỗ <strong>ai được nhìn thấy cái gì</strong>. Nhờ có Repository:
+		</p>
+		<ul>
+			<li><code>RecipeViewModel</code> <em>không</em> import <code>RecipeDao</code>, <em>không</em> import
+				<code>RecipeDatabase</code>. Nó chỉ biết <code>RecipeRepository</code>. Đổi Room sang thứ khác, ViewModel
+				không đổi.</li>
+			<li>Có chỗ để <em>gộp nhiều nguồn</em>. Nếu mai này bookmark cần lấy từ cả database và cả server, hàm
+				<code>findAllRecipes()</code> là nơi trộn hai nguồn lại — mọi lớp trên không hay biết.</li>
+			<li>Có chỗ để <em>gộp nhiều thao tác thành một</em>. Chính file này đã làm: xem hàm cuối bên dưới.</li>
+		</ul>
+	</div>
+	<p>
+		Hàm <code>deleteRecipeIngredients(recipeId)</code> là hàm duy nhất trong file <em>không</em> mỏng, và nó minh hoạ
+		đúng giá trị thứ ba vừa nói:
+	</p>
+	<pre class="tree">suspend fun deleteRecipeIngredients(recipeId: Int) &#123;
+  val ingredients = findRecipeIngredients(recipeId)   // 1. tìm mọi nguyên liệu của công thức
+  ingredients.forEach &#123;
+      ingredientDao.deleteIngredient(it)              // 2. xoá từng cái
+  &#125;
+&#125;</pre>
+	<p>
+		Nó gói hai bước — truy vấn rồi xoá vòng lặp — thành một hàm mà ViewModel gọi bằng một dòng. Đây chính là lý do
+		Repository tồn tại: nó cho phép lớp trên nói <em>"xoá nguyên liệu của công thức này"</em> thay vì phải tự biết là
+		việc đó gồm mấy bước.
+	</p>
+	<p class="notice">
+		<strong>Ba điều đáng chú ý trong file này mà lý thuyết không nói tới (đã kiểm bằng cách tìm toàn bộ project):</strong>
+	</p>
+	<ul>
+		<li><code>findBookmarkById(id)</code> và <code>findRecipeById(id)</code> có thân hàm <strong>y hệt nhau</strong> —
+			cùng gọi <code>recipeDao.findRecipeById(id)</code>. Hai tên khác nhau cho cùng một việc, có lẽ vì lúc viết còn
+			định phân biệt "bookmark" và "recipe" như hai khái niệm.</li>
+		<li><code>findBookmarkById()</code>, <code>deleteIngredient()</code>, <code>deleteIngredients()</code>
+			<strong>không được gọi ở bất kỳ đâu</strong> trong app. Chúng là API dự phòng, không phải code đang chạy.</li>
+		<li>Việc "xoá công thức" thực tế luôn cần <strong>hai</strong> lời gọi repository — <code>deleteRecipe(...)</code> và
+			<code>deleteRecipeIngredients(...)</code> — vì như Chương 10.2, mục 8.2 đã nói, không có khoá ngoại nào tự dọn
+			hộ. Đây là chỗ dễ sinh bug: quên lời gọi thứ hai thì nguyên liệu "mồ côi" vẫn nằm trong bảng và vẫn hiện ở danh
+			sách đi chợ, dù công thức đã bị xoá.</li>
+	</ul>
+
+	<h2 id="conversions">12. Ba lớp model song song, và vì sao cần <code>Conversions.kt</code></h2>
+	<p>
+		Trước khi dùng repository trong ViewModel, có một việc nghe rất nhẹ phải làm: <em>mở
+		<code>data/Conversions.kt</code> và bỏ comment phần code</em>. Trong project <code>starter</code>, toàn bộ thân file
+		bị bọc trong <code>/* ... */</code> (từ dòng 34 tới dòng 156 của file Kotlin đó). Lý thuyết không giải thích gì thêm
+		về file này — nhưng nó là mảnh ghép giải thích <em>vì sao</em> tầng dữ liệu phải tách khỏi tầng UI, nên chương này
+		tách nó thành một mục riêng.
+	</p>
+	<p>
+		Vấn đề nó giải quyết: cùng một "công thức" tồn tại dưới <strong>ba</strong> hình dạng khác nhau trong app này.
+	</p>
+	<table class="cmp">
+		<thead>
+			<tr><th>Class</th><th>Thuộc về đâu</th><th>Vì sao phải tồn tại riêng</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>RecipeInformationResponse</code></td>
+				<td>Tầng mạng (Chương 8) — <code>data/models/</code></td>
+				<td>Hình dạng do <strong>API Spoonacular quyết định</strong>. Có <code>extendedIngredients</code>, và nhiều
+					field mà app không dùng. Bạn không được đổi nó — server quyết.</td>
+			</tr>
+			<tr>
+				<td><code>RecipeDb</code></td>
+				<td>Tầng database (Chương 10) — <code>data/database/</code></td>
+				<td>Hình dạng do <strong>bảng database quyết định</strong>: chỉ các kiểu SQLite lưu được, không chứa danh
+					sách con (danh sách nguyên liệu phải nằm ở bảng riêng).</td>
+			</tr>
+			<tr>
+				<td><code>Recipe</code></td>
+				<td>Tầng UI — <code>data/models/</code></td>
+				<td>Hình dạng do <strong>giao diện cần gì quyết định</strong>: card bookmark chỉ cần id, tên, ảnh. Không cần
+					biết hướng dẫn nấu hay số phần ăn.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		<code>Conversions.kt</code> chứa <strong>11 hàm</strong> làm nhiệm vụ dịch giữa ba hình dạng đó. Đây là ba hàm tiêu
+		biểu:
+	</p>
+	<Code code={conversionsCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Nhìn <code>recipeToDb()</code> thật kỹ — nó chỉ điền <strong>ba</strong> field: <code>id</code>,
+		<code>title</code>, <code>image</code>. Bảy field còn lại của <code>RecipeDb</code> nhận giá trị mặc định. Đây
+		chính là chỗ khai thác điểm 3 đã nêu ở Chương 10.2, mục 8.1: <em>nhờ có giá trị mặc định, bạn tạo được một recipe
+		chỉ với một phần property.</em>
+	</p>
+	<div class="callout note">
+		<strong>Điều đáng chú ý: một object <code>RecipeDb</code> "thiếu dữ liệu" được truyền vào lệnh xoá</strong>
+		<p>
+			Ở mục 13 bạn sẽ thấy <code>deleteBookmark(recipe: Recipe)</code> gọi <code>recipeToDb(recipe)</code> rồi truyền
+			kết quả vào <code>repository.deleteRecipe(recipeDb)</code>. Nghĩa là object truyền xuống database có
+			<code>summary</code> rỗng, <code>instructions</code> rỗng, mọi thời gian nấu bằng 0 — <em>không giống</em> dòng
+			thật đang nằm trong bảng.
+		</p>
+		<p>
+			<strong>Vẫn đúng.</strong> Vì <code>@Delete</code> chỉ dùng <strong>khoá chính</strong> để tìm dòng cần xoá; các
+			field khác bị bỏ qua hoàn toàn. Room sinh ra câu tương đương <code>DELETE FROM recipes WHERE id = ?</code>.
+		</p>
+		<p>
+			<strong>Nhưng đây là chỗ rất dễ hiểu sai và sinh bug thật:</strong> nếu bạn quen tay áp dụng cùng mẹo đó cho
+			<code>@Update</code> — <code>updateRecipeDetails(recipeToDb(recipe))</code> — thì bạn vừa <em>ghi đè</em> dòng
+			đầy đủ trong database bằng một object rỗng: mất hết summary, mất hết hướng dẫn nấu. Quy tắc để nhớ:
+			<em><code>@Delete</code> chỉ cần khoá chính; <code>@Update</code> cần object đầy đủ.</em>
+		</p>
+	</div>
+	<p>
+		Ngược lại, khi <em>lưu</em> một bookmark thì cần bản đầy đủ — và có một hàm riêng cho việc đó:
+	</p>
+	<Code code={conversionsFullCode} lang="kotlin" theme="github-dark" />
+	<p>
+		So sánh hai hàm này cạnh nhau là cách nhanh nhất để hiểu cả file: <code>recipeToDb()</code> dịch từ model UI
+		(nghèo thông tin) nên chỉ điền được 3 field; <code>recipeInformationToRecipeDb()</code> dịch từ model API (giàu
+		thông tin) nên điền được 10 field. Cùng đích đến <code>RecipeDb</code>, nhưng nguồn khác nhau thì kết quả khác
+		nhau — và đó là lý do app phải cẩn thận dùng đúng hàm ở đúng chỗ.
+	</p>
+
+	<h2 id="viewmodels">13. ViewModel — nối repository vào logic app</h2>
+	<p>
+		Repository đã xong, và ViewModel là "chỗ hoàn hảo" để dùng nó. Mở <code>RecipeViewModel.kt</code>, tìm
+		<code>// TODO: Add Repository</code> và cập nhật constructor:
+	</p>
+	<Code code={vmCtorCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Chú ý cách <code>prefs</code> (Chương 9) và <code>repository</code> (Chương 10) nằm cạnh nhau: cả hai là
+		<em>dependency</em> được truyền vào từ bên ngoài, không phải do ViewModel tự tạo. Đây là mẫu bạn đã gặp ở Chương 9
+		với <code>viewModelFactory</code>, giờ được dùng lại nguyên xi cho một dependency thứ hai. Lý thuyết không dừng lại
+		giải thích, nhưng đây là lợi ích cụ thể: nhờ vậy test được ViewModel bằng một repository giả (fake) mà không cần
+		database thật.
+	</p>
+	<h3>13.1. Ba hàm đọc dữ liệu</h3>
+	<p>
+		Việc cần làm là thay ba TODO — <code>// TODO: get Bookmarks</code>, hàm <code>getIngredients()</code>, và
+		<code>// TODO: Get Bookmark</code>:
+	</p>
+	<Code code={vmReadCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Từng hàm có thể giải thích rất gọn, nhưng cả ba đều theo <strong>đúng một khuôn bốn bước</strong> — nhận ra khuôn
+		này là nhận ra cách cả tầng dữ liệu hoạt động:
+	</p>
+	<ol class="chain">
+		<li><strong>Chuyển sang luồng IO:</strong> <code>withContext(Dispatchers.IO)</code>. Với
+			<code>getBookmarks()</code> điều này rất rõ: việc này chạy lời gọi trên IO coroutine dispatcher, <em>đảm bảo nó
+			chạy ở background</em>.</li>
+		<li><strong>Gọi repository</strong> để lấy dữ liệu dạng DB (<code>List&lt;RecipeDb&gt;</code>,
+			<code>List&lt;IngredientDb&gt;</code>).</li>
+		<li><strong>Dịch sang model UI</strong> bằng một hàm trong <code>Conversions.kt</code>
+			(<code>recipeDbsToRecipes</code>, <code>ingredientDbsToIngredients</code>,
+			<code>recipeDbToRecipeInformation</code>).</li>
+		<li><strong>Gán vào state</strong> — <code>_bookmarksState.value = ...</code>. Tác dụng của bước này rất thẳng:
+			<em>nó thông báo cho UI biết có thay đổi</em>.</li>
+	</ol>
+	<div class="callout">
+		<strong>Vì sao bước 4 làm cho UI tự cập nhật (nối lại Chương 6)</strong>
+		<p>
+			<code>_bookmarksState</code> là một <code>MutableStateFlow</code> — một "dòng chảy giá trị" mà nơi khác có thể
+			đăng ký lắng nghe; hễ <code>.value</code> đổi thì mọi người đang lắng nghe đều nhận được giá trị mới. Ở đây UI
+			đang <em>lắng nghe</em> nó (bạn sẽ thấy <code>viewModel.bookmarksState.collect &#123; ... &#125;</code> trong
+			<code>ShowBookmarks</code> ở Chương 10.4, mục 16). Nên chỉ cần gán giá trị mới cho <code>.value</code>, Compose
+			sẽ vẽ lại danh sách. Không có dòng nào gọi "hãy làm mới màn hình".
+		</p>
+		<p>
+			Đây là điểm nối quan trọng giữa Chương 6, 9 và 10: <strong>database → repository → ViewModel state → UI</strong>
+			là một dây chuyền một chiều, đúng như quy tắc kiến trúc ở Chương 10.1, mục 4. Database không biết UI tồn tại; UI
+			không biết database tồn tại; state là chỗ hai bên gặp nhau.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Một chi tiết dễ trượt trong <code>getBookmark()</code>:</strong> hàm này gọi <em>hai</em> lần repository —
+		<code>findRecipeById(bookmarkId)</code> lấy công thức, rồi <code>findRecipeIngredients(bookmarkId)</code> lấy danh
+		sách nguyên liệu — rồi ghép cả hai thành một <code>RecipeInformationResponse</code> bằng
+		<code>recipeDbToRecipeInformation(recipe, ingredientDbsToExtendedIngredients(ingredients))</code>. Nghĩa là: cái mà
+		trên mạng về trong <em>một</em> response JSON thì trong database phải <em>ghép lại từ hai bảng</em>. Đó là hệ quả
+		trực tiếp của việc bảng SQLite không lưu được danh sách con, như mục 12 phía trên đã nói.
+	</p>
+	<h3>13.2. Hàm ghi bookmark</h3>
+	<Code code={vmWriteCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Nói gọn: ở đây bạn cần chèn <em>recipe và các nguyên liệu của nó</em>. Đây là bản đối xứng của
+		<code>getBookmark()</code>: đọc thì ghép từ hai bảng, ghi thì tách ra hai bảng. Chú ý
+		<code>extendedIngredientsToIngredientDbs(recipe.id, recipe.extendedIngredients)</code> — <code>recipe.id</code>
+		được truyền vào để mỗi <code>IngredientDb</code> nhớ được nó thuộc công thức nào (chính cột
+		<code>recipeId</code> ở Chương 10.2, mục 8.2).
+	</p>
+	<h3>13.3. Hai hàm xoá bookmark — cùng tên, khác tham số</h3>
+	<Code code={vmDeleteCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Bốn bước của hàm thứ nhất: <strong>(1)</strong> chuyển model recipe của UI sang model recipe của DB;
+		<strong>(2)</strong> xoá recipe và các nguyên liệu khỏi repository; <strong>(3)</strong> chuyển danh sách bookmark
+		hiện tại sang danh sách mutable; <strong>(4)</strong> bỏ recipe khỏi danh sách và cập nhật lại bookmark state.
+	</p>
+	<p>
+		Về hàm thứ hai: đây là <em>cách xoá thay thế</em>, dùng khi bạn chỉ có recipe ID mà không có object recipe. Nó
+		"giống code bạn vừa viết", khác biệt chính là dùng các hàm repository nhận <code>recipeId</code>.
+	</p>
+	<div class="callout">
+		<strong>Vì sao cần <em>hai</em> hàm cùng tên <code>deleteBookmark</code></strong>
+		<p>
+			Kotlin cho phép hai hàm trùng tên nếu khác tham số — gọi là <em>overload</em>. Ở đây hai hàm phục vụ hai màn hình
+			khác nhau, và điểm khác biệt không phải kiểu tham số mà là <strong>UI đang có gì trong tay</strong>:
+		</p>
+		<ul>
+			<li><code>deleteBookmark(recipe: Recipe)</code> — dùng ở <strong>ShowBookmarks</strong> (quẹt xoá). Ở đó UI đang
+				hiển thị cả object <code>Recipe</code>, nên truyền luôn object. Nhờ vậy bước 4 xoá được đúng phần tử khỏi
+				danh sách bằng <code>localList.remove(recipe)</code>.</li>
+			<li><code>deleteBookmark(recipeId: Int)</code> — dùng ở <strong>RecipeDetails</strong> (bấm lại icon bookmark để
+				bỏ lưu). Ở đó UI đang giữ một <code>RecipeInformationResponse</code>, không phải <code>Recipe</code>, nên chỉ
+				truyền được id. Vì không có object để so sánh, nó phải tìm bằng điều kiện:
+				<code>localList.removeIf &#123; it.id == recipeId &#125;</code>.</li>
+		</ul>
+		<p>
+			Cả hai đều làm <em>ba việc</em>, không phải một: xoá recipe khỏi database, xoá nguyên liệu khỏi database, và cập
+			nhật state trong bộ nhớ. Bỏ việc thứ ba thì dữ liệu đã xoá nhưng màn hình vẫn hiện — vì như mục 13.1 đã nói, UI
+			chỉ vẽ lại khi state đổi.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Một điểm không đồng nhất trong file này, đáng để ý:</strong> <code>getBookmarks()</code>,
+		<code>bookmarkRecipe()</code>, <code>deleteBookmark()</code> đều là <code>suspend</code> + dùng
+		<code>withContext(Dispatchers.IO)</code> — đúng chuẩn. Nhưng hàm <code>queryRecipe(id)</code> từ Chương 8 vẫn viết
+		kiểu <code>suspend fun</code> mà bên trong lại <code>viewModelScope.launch(Dispatchers.Default)</code> — vừa
+		<code>suspend</code> vừa tự phóng coroutine mới. Đó là hai cách nghĩ trộn nhau: <code>suspend</code> nghĩa là "người
+		gọi quyết định chạy ở đâu", <code>launch</code> nghĩa là "tôi tự quyết định". Các hàm Chương 10 làm đúng cách thứ
+		nhất. Sự không đồng nhất này còn nguyên trong project <code>final</code>, không phải bạn làm sai.
+	</p>
+
+	<h2 id="instantiating">14. Tạo repository trong <code>RecipeApp</code></h2>
+	<p>
+		Đã dùng repository, giờ phải tạo nó. Có một sự tương tự để dựa vào: <em>giống cách instance <code>Prefs</code> được
+		tạo trong <code>RecipeApp</code></em> ở Chương 9, bạn tạo một instance <code>RecipeRepository</code> mới ở cùng chỗ.
+		Thay <code>// TODO: Add Repository</code> thứ nhất bằng khai báo property, thứ hai bằng đoạn khởi tạo.
+	</p>
+	<Code code={recipeAppCode} lang="kotlin" theme="github-dark" />
+	<div class="callout">
+		<strong><code>Application</code> là gì, và vì sao repository đặt ở đây</strong>
+		<p>
+			<code>RecipeApp</code> kế thừa <code>Application</code> — class đại diện cho <em>chính app</em>, không phải một
+			màn hình. Nó được tạo <strong>một lần duy nhất</strong>, <em>trước</em> mọi Activity, và sống cho tới khi hệ điều
+			hành thu hồi tiến trình app. <code>onCreate()</code> của nó là chỗ chạy sớm nhất mà code của bạn được chạy.
+		</p>
+		<p>
+			Vì vậy đặt <code>repository</code> ở đây giải quyết hai chuyện một lúc: <strong>(1)</strong> chỉ có đúng một
+			repository và một database cho cả app — tức là singleton, bằng cách khác với
+			<code>getInstance()</code>; <strong>(2)</strong> mọi màn hình đều lấy được nó, vì màn hình nào cũng truy cập được
+			<code>application</code>.
+		</p>
+		<p>
+			<code>lateinit var</code> nghĩa là "biến này chắc chắn sẽ có giá trị, nhưng chưa phải lúc khai báo". Cần thiết vì
+			<code>RecipeRepository</code> cần <code>this</code> (chính app) làm <code>Context</code>, mà
+			<code>this</code> chỉ dùng được bên trong <code>onCreate()</code>.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Nhắc lại điểm lệch #1 và #2 ngay tại dòng code sinh ra chúng:</strong> ở Chương 10.2 bạn đã được cảnh báo hai
+		điều — tên database được chốt trong phần lý thuyết (<code>recipe_database</code>) không phải tên dùng thật, và cả
+		khối <code>getInstance()</code> với <code>@Volatile</code> + <code>synchronized</code> là code không bao giờ được
+		gọi. Đoạn <code>RecipeApp</code> phía trên chính là chỗ sinh ra cả hai điểm đó: tên database ở đây là
+		<code>"Recipes"</code> (không phải <code>"recipe_database"</code>), và ở đây <em>không</em> có
+		<code>fallbackToDestructiveMigration()</code> — chỉ <code>.build()</code>. Nghĩa là ở app thật, nếu bạn tăng
+		<code>version</code> lên 2 mà không viết migration, app sẽ <strong>crash</strong> chứ không âm thầm xoá dữ liệu. Xét
+		riêng chuyện đó thì đây lại là hành vi <em>an toàn hơn</em> đoạn code trong <code>getInstance()</code> — ít nhất lỗi
+		lộ ra ngay. Việc app khởi tạo database ở <code>RecipeApp</code> bằng <code>lateinit var</code> thay vì gọi
+		<code>getInstance()</code> là một cách làm singleton khác, đơn giản hơn: <code>onCreate()</code> chạy đúng một lần
+		mỗi lần app khởi động nên không cần khoá luồng nào cả.
+	</p>
+
+	<h2 id="local-provider">15. Local Repository Provider — phát repository xuống cả cây Composable</h2>
+	<p>
+		Đến đây một câu hỏi rất thực tế xuất hiện: <em>rất nhiều class dùng repository — làm sao đưa nó tới mọi composable
+		trong UI?</em> Câu trả lời: dùng khái niệm <strong>Local Provider</strong>. Đó là cách cung cấp một class cho các
+		composable khác — bạn tạo class ở một composable cấp cao rồi dùng Local Provider để phát instance đó xuống.
+	</p>
+	<p>
+		<strong>CompositionLocal là gì?</strong> Đây là cơ chế của Jetpack Compose cho phép một Composable "đặt" một giá trị
+		vào ngữ cảnh, rồi mọi Composable nằm bên dưới nó trong cây giao diện đọc được giá trị đó mà không cần ai truyền tay
+		qua từng tầng. <code>compositionLocalOf</code> là hàm tạo ra một "ống dẫn" như vậy.
+	</p>
+	<p>
+		Mở <code>MainActivity.kt</code>, thêm ngay sau biến toàn cục <code>LocalNavigatorProvider</code>:
+	</p>
+	<Code code={localProviderCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Rồi tìm <code>// TODO: Add LocalRepositoryProvider</code> và thay bằng dòng cung cấp giá trị thật:
+	</p>
+	<Code code={localProviderUseCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Tóm một câu: đoạn này lấy <code>RecipeRepository</code> đã tạo và lưu trong <code>RecipeApp</code> rồi thêm vào local
+		repository provider.
+	</p>
+	<div class="callout">
+		<strong>CompositionLocal — mental model "đường ống chạy dọc cây"</strong>
+		<p>
+			Không có cơ chế này, muốn đưa repository từ <code>MainActivity</code> tới một Composable nằm sâu 5 tầng, bạn phải
+			thêm tham số <code>repository</code> vào <em>cả 5</em> Composable trung gian — dù 4 trong 5 chẳng dùng tới nó.
+			Người ta gọi cảnh đó là <em>prop drilling</em> (khoan tham số xuyên tầng).
+		</p>
+		<p>
+			<code>compositionLocalOf</code> tạo một "đường ống" chạy dọc cây UI. <code>CompositionLocalProvider(X provides
+			value)</code> mở van ở một chỗ, và mọi Composable <em>bên dưới</em> chỗ đó đọc được bằng <code>X.current</code> —
+			không cần tầng trung gian nào biết. Bạn đã dùng chính cơ chế này cho <code>LocalNavigatorProvider</code> (Chương
+			8) và <code>LocalPrefsProvider</code> (Chương 9); repository là ứng dụng thứ ba.
+		</p>
+		<p>
+			Chú ý phần <code>&#123; error("No repository provided") &#125;</code> — đó là <em>giá trị mặc định</em>, và ở đây
+			nó cố tình <strong>ném lỗi</strong>. Nghĩa là: nếu bạn đọc <code>LocalRepositoryProvider.current</code> ở một chỗ
+			<em>không</em> nằm dưới <code>CompositionLocalProvider</code>, app sẽ nổ kèm thông báo rõ ràng, thay vì lặng lẽ
+			đưa cho bạn một repository rỗng. Đây là một lựa chọn thiết kế tốt: sai thì phải sai to và sai ngay.
+		</p>
+	</div>
+	<p>
+		Chương 10.4 sẽ dùng lại provider này ở bốn chỗ khác nhau.
+	</p>
+
+	<h2 id="tong-ket-10-3">Tổng kết Chương 10.3</h2>
+	<p>
+		Chương này đưa Room ra khỏi tầng database và nối nó vào phần còn lại của app. Bốn mảnh ghép, theo đúng thứ tự dữ liệu
+		đi qua:
+	</p>
+	<ul>
+		<li><strong>Repository</strong> — <code>RecipeRepository</code> nhận <code>RecipeDatabase</code> ở constructor, lấy
+			ra hai DAO, rồi phơi 12 hàm cho lớp trên. Đa số mỏng một dòng; giá trị của lớp này là <em>che DAO khỏi ViewModel</em>,
+			<em>tạo chỗ gộp nhiều nguồn</em>, và <em>tạo chỗ gộp nhiều thao tác</em> (<code>deleteRecipeIngredients</code>).</li>
+		<li><strong>Conversions</strong> — cùng một công thức có ba hình dạng: <code>RecipeInformationResponse</code> (do
+			server quyết), <code>RecipeDb</code> (do bảng quyết), <code>Recipe</code> (do giao diện quyết). 11 hàm dịch qua
+			lại. Chọn sai hàm là mất dữ liệu: <code>recipeToDb()</code> chỉ điền 3 field, đủ cho <code>@Delete</code> nhưng
+			nguy hiểm với <code>@Update</code>.</li>
+		<li><strong>ViewModel</strong> — mọi hàm đọc theo khuôn bốn bước: sang <code>Dispatchers.IO</code> → gọi repository →
+			dịch sang model UI → gán vào state. Hàm ghi là bản đối xứng của hàm đọc (đọc ghép hai bảng, ghi tách hai bảng).
+			Hai <code>deleteBookmark</code> overload phục vụ hai màn hình có "trong tay" hai loại dữ liệu khác nhau, và cả hai
+			đều phải làm đủ ba việc: xoá recipe, xoá nguyên liệu, cập nhật state.</li>
+		<li><strong>Nơi tạo và nơi phát</strong> — database và repository được tạo một lần trong
+			<code>RecipeApp.onCreate()</code> bằng <code>lateinit var</code>, rồi phát xuống toàn bộ cây Compose bằng
+			<code>compositionLocalOf</code> + <code>CompositionLocalProvider</code>, tránh phải khoan tham số qua từng tầng.</li>
+	</ul>
+	<p>
+		Đến đây tầng dữ liệu đã hoàn chỉnh nhưng chưa có màn hình nào dùng nó. Chương 10.4 sẽ nối phần này vào giao diện
+		thật: quẹt để xoá bookmark, màn hình chi tiết lấy dữ liệu từ hai nguồn, danh sách đi chợ, và các
+		<code>@Preview</code>.
+	</p>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Gom lại các cảnh báo trong chương này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía
+		trên:
+	</p>
+	<ul>
+		<li><strong>Object thiếu dữ liệu + <code>@Update</code></strong>: mẹo truyền một <code>RecipeDb</code> chỉ có 3 field
+			<em>chỉ</em> an toàn với <code>@Delete</code> (vì <code>@Delete</code> chỉ đọc khoá chính). Áp cùng mẹo cho
+			<code>@Update</code> là ghi đè mất summary và hướng dẫn nấu.</li>
+		<li><strong>Xoá công thức luôn cần hai lời gọi</strong>: <code>deleteRecipe(...)</code> và
+			<code>deleteRecipeIngredients(...)</code>. Không có ràng buộc nào trong database tự dọn nguyên liệu hộ bạn — quên
+			lời gọi thứ hai thì nguyên liệu "mồ côi" vẫn hiện ở danh sách đi chợ.</li>
+		<li><strong>Xoá xong mà màn hình không đổi</strong>: hàm xoá nào cũng phải cập nhật state trong bộ nhớ. Bỏ bước đó
+			thì dữ liệu đã mất nhưng UI vẫn vẽ như cũ, vì UI chỉ vẽ lại khi state đổi.</li>
+		<li><strong>Trộn <code>suspend</code> với <code>launch</code></strong>: một hàm vừa khai <code>suspend</code> vừa tự
+			<code>launch</code> coroutine mới là hai cách nghĩ đánh nhau. Chuẩn hiện nay là hàm <code>suspend</code> chỉ dùng
+			<code>withContext(...)</code>, để người gọi quyết định vòng đời coroutine. Code cũ trong project vẫn còn kiểu
+			trộn này — không phải bạn làm sai.</li>
+		<li><strong>Hai cách làm singleton cùng tồn tại</strong>: lý thuyết dạy khối <code>getInstance()</code> với
+			<code>@Volatile</code> và <code>synchronized</code>, còn code thật lại tạo database trực tiếp trong
+			<code>RecipeApp</code> với tên <code>"Recipes"</code> và không có
+			<code>fallbackToDestructiveMigration()</code>. Hãy chọn <em>một</em> cách và xoá cách còn lại, đừng giữ cả hai
+			trong cùng một project.</li>
+		<li><strong>Đọc <code>X.current</code> ngoài phạm vi provider</strong>: nếu Composable của bạn không nằm dưới
+			<code>CompositionLocalProvider</code>, <code>LocalRepositoryProvider.current</code> sẽ ném lỗi "No repository
+			provided". Đó là hành vi cố ý, không phải bug.</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li><strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 421–677 (Repository · Conversions · ViewModel · khởi
+			tạo database · CompositionLocal provider).</li>
+		<li><strong>Code thật (nguyên văn):</strong> <code>{AAF}/data/RecipeRepository.kt</code> (dòng 43–101; hai overload ở
+			dòng 95–100) · <code>{AAF}/data/Conversions.kt</code> (dòng 44–157; trích dòng 44–54 và 78–91) ·
+			<code>{AAF}/data/models/</code> · <code>{AAF}/viewmodels/RecipeViewModel.kt</code> (dòng 75–78, 154–175, 177–187,
+			215–236; so sánh dòng 140–152 với 154–159) · <code>{AAF}/RecipeApp.kt</code> (dòng 46–66) ·
+			<code>{AAF}/MainActivity.kt</code> (dòng 60–67, 80–83).</li>
+		<li><strong>Phần bổ sung ngoài giáo trình:</strong> bảng ba họ model · khuôn bốn bước của các hàm ViewModel · ba phát
+			hiện khi tìm toàn bộ project về <code>RecipeRepository</code>.</li>
+	</ul>
+</section>

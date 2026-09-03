@@ -1,0 +1,281 @@
+---
+// Quiz + bài tập nhỏ cho Chương 10.1. Câu hỏi bám nội dung Ch10_1RoomLaGi.astro.
+// Cả 7 câu MCQ đều viết mới cho phạm vi mục 1–6; KHÔNG chuyển câu nào từ quiz gộp cũ sang
+// (các câu cũ về @Dao, ORM, ba annotation, Room-vs-SharedPreferences thuộc phạm vi Chương 10.2 trở đi).
+// Quiz chấm bằng vanilla JS phía client; file này không có bài sắp thứ tự nên script chỉ chấm phần MCQ.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		7 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn
+		làm đúng, nên đọc hết.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. SQLite là gì, và nó nằm ở đâu?</legend>
+			<label><input type="radio" name="q1" value="a" /> Một dịch vụ database chạy trên server của Google, app phải có mạng mới đọc được dữ liệu đã lưu</label>
+			<label><input type="radio" name="q1" value="b" /> Một hệ database rất gọn, có sẵn trong hệ điều hành Android; cả database chỉ là <em>một file duy nhất</em> nằm trong vùng dữ liệu riêng của app</label>
+			<label><input type="radio" name="q1" value="c" /> Một thư viện bạn phải khai vào Gradle rồi mới dùng được, giống <code>Retrofit</code></label>
+			<p class="explain" hidden>
+				SQLite không cần server chạy riêng và không cần mạng. Android đóng gói nó sẵn trong hệ điều hành, nên bạn
+				không phải cài thêm gì — việc duy nhất phải học là cách nói chuyện với nó bằng <strong>SQL</strong>. Vì cả
+				database chỉ là một file trong vùng dữ liệu riêng của app, dữ liệu sống sót sau khi tắt app và app khác không
+				đọc được. Thứ phải khai vào Gradle là <strong>Room</strong> — lớp bọc bên trên SQLite — chứ không phải bản
+				thân SQLite.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. Đâu là điểm quyết định để biết DataStore là đủ hay buộc phải dùng database?</legend>
+			<label><input type="radio" name="q2" value="a" /> Số lượng dữ liệu: dưới 100 bản ghi thì DataStore, nhiều hơn thì database</label>
+			<label><input type="radio" name="q2" value="b" /> App có cần internet hay không: có mạng thì dùng DataStore, offline thì dùng database</label>
+			<label><input type="radio" name="q2" value="c" /> Bạn có cần <em>hỏi có điều kiện</em> hay không: DataStore chỉ trả về giá trị ứng với một key, còn database trả lời được "cho tôi mọi nguyên liệu thuộc công thức số 715538"</label>
+			<p class="explain" hidden>
+				Rất dễ nhớ nhầm rằng ranh giới là "nhiều dữ liệu quá". Không phải — bạn hoàn toàn có thể nhồi hàng trăm mục
+				vào một chuỗi DataStore, chỉ là vô dụng. Vấn đề thật là <strong>kiểu câu hỏi</strong>: với DataStore bạn đưa
+				một key và nhận về đúng giá trị của key đó, không lọc, không ghép. Với database bạn hỏi được câu có điều kiện
+				(<code>WHERE</code>), và đó chính xác là câu app Recipe Finder cần hỏi để dựng danh sách đi chợ từ các công
+				thức đã bookmark. Chương 9 đã phải dùng mẹo <code>joinToString(",")</code> cho danh sách từ khoá — với
+				bookmark (mỗi công thức có id, tên, ảnh, hướng dẫn, thời gian nấu, số phần ăn, cộng một danh sách nguyên liệu
+				con) thì mẹo đó là ngõ cụt.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. Theo quy tắc giao tiếp <em>một chiều</em> của kiến trúc 5 lớp, phát biểu nào đúng?</legend>
+			<label><input type="radio" name="q3" value="a" /> Composable chỉ được biết về ViewModel; ViewModel biết Repository và Model; Repository biết DAO và Model — không lớp nào gọi ngược lên lớp trên</label>
+			<label><input type="radio" name="q3" value="b" /> Composable được gọi thẳng DAO cho các truy vấn đơn giản, chỉ truy vấn phức tạp mới phải đi qua Repository</label>
+			<label><input type="radio" name="q3" value="c" /> Repository được giữ tham chiếu tới ViewModel để thông báo cho nó mỗi khi dữ liệu đổi</label>
+			<p class="explain" hidden>
+				Mỗi lớp chỉ được gọi <em>xuống</em> lớp ngay dưới nó, và không lớp nào được gọi ngược lên. Vì thế UI hoàn toàn
+				độc lập với mọi lớp khác trừ ViewModel, còn ViewModel không biết gì về UI. Bạn kiểm được điều này bằng mắt
+				trong code thật: <code>viewmodels/RecipeViewModel.kt</code> không import một Composable hay
+				<code>Modifier</code> nào, và <code>ui/recipes/ShowBookmarks.kt</code> không import
+				<code>RecipeDao</code> hay <code>RecipeDatabase</code> — nó chỉ gọi
+				<code>viewModel.getBookmarks()</code>. Một Composable gọi thẳng vào DAO là dấu hiệu kiến trúc đã bị phá.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>4. Lợi ích <em>thật</em> của việc tách app thành 5 lớp là gì?</legend>
+			<label><input type="radio" name="q4" value="a" /> App chạy nhanh hơn vì mỗi lớp được hệ điều hành cấp riêng một luồng</label>
+			<label><input type="radio" name="q4" value="b" /> Đổi cách lưu dữ liệu mà UI không đổi một dòng · đổi hẳn giao diện mà tầng dữ liệu không đổi · test được mọi lớp bằng test thường, không cần mở emulator</label>
+			<label><input type="radio" name="q4" value="c" /> Room yêu cầu đúng 5 lớp, thiếu lớp nào thì code sinh lúc build sẽ lỗi</label>
+			<p class="explain" hidden>
+				Tách lớp không làm app nhanh hơn, và Room không hề bắt buộc kiến trúc nào. Ba lợi ích nhìn thấy được liền:
+				(1) muốn đổi Room sang Realm hay sang cache trên server thì chỉ sửa <code>data/database/</code> và
+				<code>RecipeRepository</code>, ViewModel và toàn bộ UI giữ nguyên; (2) viết lại toàn bộ giao diện mà tầng dữ
+				liệu không đổi; (3) test <code>RecipeRepository</code> hay <code>RecipeViewModel</code> bằng test thường vì
+				chúng không dính vào màn hình. Lợi ích (1) và (2) đến từ đúng cùng một thứ: giao tiếp một chiều làm các lớp
+				<em>loosely coupled</em>, sửa một lớp không gây tác dụng phụ lan sang lớp khác.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>5. Vì sao dựng app "theo miếng" (mỗi tính năng xuyên đủ 5 lớp) tốt hơn "bóc theo lớp" (viết xong hết tầng database rồi mới sang Repository)?</legend>
+			<label><input type="radio" name="q5" value="a" /> Vì làm theo miếng viết ít code hơn hẳn cho cùng một tính năng</label>
+			<label><input type="radio" name="q5" value="b" /> Vì làm theo lớp sẽ phá quy tắc giao tiếp một chiều</label>
+			<label><input type="radio" name="q5" value="c" /> Vì xong một miếng là chạy thử được ngay, nên khi có lỗi thì lỗi nằm gọn trong một miếng nhỏ, thay vì viết hàng chục hàm rồi tới lúc nối lại mới biết sai mà không rõ sai ở lớp nào</label>
+			<p class="explain" hidden>
+				Hãy ví kiến trúc như một chiếc bánh nhiều lớp: không ai ăn bánh bằng cách bóc từng lớp một. Một "miếng" là
+				một tính năng cắt xuyên đủ năm lớp — ví dụ "bookmark một công thức": entity <code>RecipeDb</code> → hàm
+				<code>addRecipe</code> trong DAO → <code>insertRecipe</code> trong Repository → <code>bookmarkRecipe</code>
+				trong ViewModel → icon bookmark trong UI. Lượng code không đổi và quy tắc một chiều vẫn được tôn trọng ở cả
+				hai cách; cái đổi là <em>thời điểm bạn nhận được phản hồi</em>. Chú ý một điều dễ gây bối rối: bản thân Chương
+				10 lại được <em>dạy</em> theo kiểu lớp (dựng hết tầng Room, rồi Repository, rồi ViewModel, rồi UI) vì cần giới
+				thiệu khái niệm theo nhóm cho dễ hiểu. Khi tự làm project của mình, làm theo miếng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>6. Vì sao <code>room-compiler</code> được khai bằng <code>ksp(libs.room.compiler)</code> chứ không phải <code>implementation(libs.room.compiler)</code>?</legend>
+			<label><input type="radio" name="q6" value="a" /> Vì nó chỉ làm việc <strong>lúc build</strong> — đọc annotation của bạn rồi sinh ra các class như <code>RecipeDao_Impl</code> — và không cần đi vào file APK</label>
+			<label><input type="radio" name="q6" value="b" /> Vì <code>ksp(</code> tải bản mới nhất của thư viện, còn <code>implementation(</code> khoá cứng theo version trong Version Catalog</label>
+			<label><input type="radio" name="q6" value="c" /> Vì <code>room-compiler</code> viết bằng Java nên phải khai bằng một từ khoá khác</label>
+			<p class="explain" hidden>
+				<strong>KSP</strong> (Kotlin Symbol Processing) là cơ chế cho một thư viện đọc code của bạn lúc biên dịch rồi
+				sinh thêm code Kotlin mới. Phân biệt hai từ khoá: <code>implementation(...)</code> = "gói này đi kèm app và
+				chạy cùng app"; <code>ksp(...)</code> = "gói này chỉ làm việc lúc build, không đi vào APK".
+				<code>room-compiler</code> thuộc loại thứ hai — nó xong việc trước khi app khởi động. Khai nhầm thành
+				<code>implementation</code> thì Room không sinh code, và app báo lỗi kiểu "cannot find implementation for
+				RecipeDatabase". Còn <code>room-ktx</code> và <code>room-runtime</code> đúng là dùng
+				<code>implementation(</code> vì chúng phải có mặt lúc app chạy. Bạn đã gặp cơ chế này ở Chương 8 với
+				<code>ksp(libs.moshiCodeGen)</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>7. Plugin <code>kotlin-parcelize</code> giải quyết việc gì, và thiếu nó thì lỗi xuất hiện ở đâu?</legend>
+			<label><input type="radio" name="q7" value="a" /> Nó nén file database SQLite lại cho nhỏ hơn; thiếu nó thì app vẫn chạy, chỉ tốn thêm dung lượng</label>
+			<label><input type="radio" name="q7" value="b" /> Nó cho phép DAO có hàm <code>suspend</code>; thiếu nó thì truy vấn chạy trên luồng chính và giao diện đứng hình</label>
+			<label><input type="radio" name="q7" value="c" /> Nó tự sinh code <code>Parcelable</code> cho class có gắn <code>@Parcelize</code>; thiếu nó thì build đứt ngay tại class đó</label>
+			<p class="explain" hidden>
+				<code>Parcelable</code> là giao ước của Android cho một object muốn được <em>gói lại</em> để chuyển giữa các
+				thành phần của app (truyền qua Intent giữa hai màn hình, hoặc cất tạm khi hệ thống huỷ Activity rồi dựng lại):
+				nó phải biết tự viết mình ra thành dữ liệu thô và tự đọc mình về. Viết tay phần đó rất dài dòng và dễ sai, nên
+				bạn chỉ gắn <code>@Parcelize</code> lên <code>data class</code> và để plugin sinh code lúc build. Đó là lý do
+				dòng <code>id("kotlin-parcelize")</code> phải có trong khối <code>plugins &#123; ... &#125;</code> ngay từ
+				Chương 10.1, dù class dùng nó (<code>RecipeDb</code>) mới xuất hiện ở Chương 10.2 — thiếu plugin thì
+				<code>@Parcelize</code> báo lỗi và build đứt. Việc "cho phép DAO có hàm <code>suspend</code>" ở đáp án b là
+				của <code>room-ktx</code>, không phải plugin này.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+
+	<h2>Bài tập nhỏ</h2>
+	<div class="exercise">
+		<p>
+			<strong>Bài 1 — chọn công cụ lưu dữ liệu cho 4 tình huống.</strong> Không cần mở Android Studio, không cần chạy
+			Gradle. Dưới đây là bốn thứ mà app Recipe Finder có thể phải lưu xuống máy. Với mỗi tình huống, tự trả lời:
+			<strong>DataStore là đủ</strong> hay <strong>phải dùng database (Room)</strong>? Bắt buộc giải thích bằng đúng một
+			tiêu chí đã học ở mục 1: <em>có phải hỏi có điều kiện không?</em> — tức có cần lọc/tìm theo điều kiện, hay chỉ cần
+			đưa một key rồi nhận về đúng giá trị của key đó.
+		</p>
+		<ol>
+			<li>Người dùng đã bật chế độ tối (dark mode) hay chưa.</li>
+			<li>Toàn bộ nguyên liệu của <em>các công thức đã bookmark</em>, gom lại thành danh sách đi chợ.</li>
+			<li>Màn hình cuối cùng người dùng đang mở, để lần sau mở app quay lại đúng tab đó.</li>
+			<li>Danh sách công thức đã bookmark, mỗi công thức gồm id, tên, ảnh, hướng dẫn nấu, thời gian nấu, số phần ăn —
+				và phải mở được đúng <em>một</em> công thức theo id khi bấm vào nó.</li>
+		</ol>
+		<details>
+			<summary>Đáp án đầy đủ cho cả 4 tình huống</summary>
+			<p>
+				<strong>1. Dark mode — DataStore là đủ.</strong> Đây đúng là một cặp key-value: key
+				<code>"dark_mode"</code>, giá trị <code>true</code>/<code>false</code>. Không có câu hỏi có điều kiện nào cần
+				đặt ra. Đúng loại việc mà <code>Prefs.kt</code> của Chương 9 đang làm.
+			</p>
+			<p>
+				<strong>2. Danh sách đi chợ — phải dùng Room.</strong> Đây là ví dụ rõ nhất của câu hỏi có điều kiện: "cho tôi
+				mọi nguyên liệu thuộc công thức số 715538", rồi lặp lại cho từng công thức đã bookmark. DataStore không lọc
+				được — bạn sẽ phải đọc hết mọi thứ lên rồi tự lọc trong Kotlin, tức là tự làm tay đúng việc mà database sinh
+				ra để làm. Chú ý thêm: các nguyên liệu nằm ở một bảng riêng và phải biết mình thuộc công thức nào, nên đây còn
+				là quan hệ giữa hai bảng — càng ngoài tầm DataStore.
+			</p>
+			<p>
+				<strong>3. Tab đang mở — DataStore là đủ.</strong> Một key, một giá trị (tên tab hoặc số thứ tự tab). Không
+				lọc, không ghép, không quan hệ. Dùng Room cho việc này là dựng cả một database chỉ để lưu một chữ.
+			</p>
+			<p>
+				<strong>4. Danh sách bookmark — phải dùng Room.</strong> Có hai lý do cộng lại. Thứ nhất, mỗi công thức có
+				nhiều field và số công thức thì tăng dần, nên nhồi tất cả vào một chuỗi bằng
+				<code>joinToString(",")</code> là ngõ cụt — chỉ cần một tên công thức chứa dấu phẩy là dữ liệu vỡ. Thứ hai và
+				quan trọng hơn: bạn cần lấy ra <em>đúng một</em> công thức theo id, và cần xoá <em>đúng một</em> công thức khi
+				người dùng quẹt ngang. Cả hai đều là câu hỏi có điều kiện.
+			</p>
+			<p>
+				<strong>Rút ra:</strong> đếm số bản ghi không phải tiêu chí. Tình huống 1 và 3 vẫn dùng DataStore dù app có
+				thêm bao nhiêu cài đặt nữa, còn tình huống 2 vẫn cần database ngay cả khi chỉ có <em>một</em> công thức được
+				bookmark. Câu hỏi luôn là: tôi có phải hỏi kèm điều kiện không?
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise">
+		<p>
+			<strong>Bài 2 — tự tìm 3 dòng Room và 1 dòng plugin trong file Gradle thật.</strong> Mở hai file sau trong project
+			<code>aaf-materials/10-room-db/projects/final/</code> (chỉ đọc, đừng sửa gì):
+			<code>gradle/libs.versions.toml</code> và <code>app/build.gradle.kts</code>. Tự tìm bằng mắt hoặc bằng
+			<em>Find in Files</em> (Ctrl+Shift+F) với từ khoá <code>room</code> và <code>parcelize</code>, rồi trả lời:
+		</p>
+		<ol>
+			<li>Trong <code>libs.versions.toml</code>, ba thư viện Room được khai ở những dòng nào, và mỗi dòng trỏ tới
+				module <code>androidx.room:...</code> nào? Số version <code>room</code> nằm ở dòng nào?</li>
+			<li>Trong <code>app/build.gradle.kts</code>, ba dòng Room nằm ở đâu? Dòng nào dùng <code>implementation</code>,
+				dòng nào dùng <code>ksp</code>, và <strong>vì sao</strong> khác nhau?</li>
+			<li>Dòng plugin <code>kotlin-parcelize</code> nằm ở đâu, và nó khác hai dòng plugin phía trên nó ở chỗ nào về
+				cách viết?</li>
+		</ol>
+		<details>
+			<summary>Đáp án kèm số dòng thật</summary>
+			<p>
+				<strong>1. <code>gradle/libs.versions.toml</code>.</strong> Số version ở <strong>dòng 23</strong>:
+				<code>room = "2.5.2"</code>, trong khối <code>[versions]</code>. Ba thư viện ở
+				<strong>dòng 79–81</strong> của khối <code>[libraries]</code>, ngay dưới dòng comment <code># Room</code>
+				(dòng 78):
+			</p>
+			<ul>
+				<li>dòng 79 — <code>room</code> trỏ tới module <code>androidx.room:room-ktx</code></li>
+				<li>dòng 80 — <code>room-runtime</code> trỏ tới <code>androidx.room:room-runtime</code></li>
+				<li>dòng 81 — <code>room-compiler</code> trỏ tới <code>androidx.room:room-compiler</code></li>
+			</ul>
+			<p>
+				Cả ba đều dùng <code>version.ref = "room"</code>, nên đổi <em>một</em> số ở dòng 23 là nâng version cho cả ba
+				— đó chính là điểm cộng của Version Catalog. Đáng để ý thêm: plugin KSP được khai riêng ở
+				<strong>dòng 86</strong> trong khối <code>[plugins]</code> (<code>devtoolsKsp</code>), với version ở
+				<strong>dòng 24</strong>. Không có KSP thì từ khoá <code>ksp(</code> ở file dưới không tồn tại.
+			</p>
+			<p>
+				<strong>2. <code>app/build.gradle.kts</code>.</strong> Ba dòng Room nằm ở <strong>dòng 83–85</strong>, ngay
+				dưới comment <code>//Room</code> (dòng 82):
+			</p>
+			<ul>
+				<li>dòng 83 — <code>implementation(libs.room)</code></li>
+				<li>dòng 84 — <code>implementation(libs.room.runtime)</code></li>
+				<li>dòng 85 — <code>ksp(libs.room.compiler)</code></li>
+			</ul>
+			<p>
+				Hai dòng đầu dùng <code>implementation</code> vì <code>room-ktx</code> và <code>room-runtime</code> phải có
+				mặt <em>lúc app đang chạy</em>: <code>RoomDatabase</code>, <code>Room.databaseBuilder</code>, phần hỗ trợ
+				<code>suspend</code> cho DAO đều nằm trong đó, nên chúng phải đi vào file APK. Dòng thứ ba dùng
+				<code>ksp</code> vì <code>room-compiler</code> chỉ làm việc <em>lúc build</em>: nó đọc các annotation
+				<code>@Entity</code>/<code>@Dao</code>/<code>@Database</code> rồi sinh ra <code>RecipeDao_Impl</code>,
+				<code>RecipeDatabase_Impl</code>. Xong việc đó nó không còn tác dụng gì, nên không cần đóng vào APK.
+			</p>
+			<p>
+				<strong>Một chi tiết thật của project mà bạn có thể phát hiện nếu đọc kỹ:</strong> dòng
+				<code>ksp(libs.moshiCodeGen)</code> xuất hiện <em>hai lần</em> — <strong>dòng 79</strong> (cho Moshi ở Chương
+				8) và lặp lại ở <strong>dòng 86</strong>, ngay sau khối Room. Đây là dòng thừa; Gradle không báo lỗi vì khai
+				trùng cùng một dependency là vô hại, nhưng nó cho thấy một điều đáng nhớ khi bạn tự thêm dependency: nên kiểm
+				xem dòng mình định thêm đã có ở đâu chưa.
+			</p>
+			<p>
+				<strong>3. Plugin.</strong> <code>id("kotlin-parcelize")</code> ở <strong>dòng 5</strong>, trong khối
+				<code>plugins &#123; ... &#125;</code> (dòng 1–6), ngay sau ba dòng
+				<code>alias(libs.plugins.androidApplication)</code> · <code>alias(libs.plugins.kotlinAndroid)</code> ·
+				<code>alias(libs.plugins.devtoolsKsp)</code> (dòng 2–4). Khác biệt về cách viết: ba dòng trên dùng
+				<code>alias(libs.plugins....)</code> nên tra ngược được sang khối <code>[plugins]</code> của
+				<code>libs.versions.toml</code>, còn <code>kotlin-parcelize</code> viết trực tiếp bằng <code>id("...")</code>
+				và <em>không</em> ghi version — vì nó đi kèm sẵn plugin Kotlin, dùng luôn version Kotlin của project
+				(<code>kotlin = "1.9.10"</code>, dòng 3 của file TOML). Vì vậy bạn sẽ không tìm thấy chữ
+				<code>parcelize</code> nào trong <code>libs.versions.toml</code> — đừng mất thời gian tìm.
+			</p>
+		</details>
+	</div>
+</section>
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>

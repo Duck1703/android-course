@@ -1,43 +1,177 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { SECTIONS } from "../data/chapters";
+import { SECTIONS, ALL_CHAPTERS, chapterLabel } from "../data/chapters";
+import { COURSE_TOTALS, getStats } from "../data/lessonStats";
+
+// Nhom module = dung 3 Section co san trong chapters.ts, khong tao syllabus moi.
+const modules = SECTIONS.map((s, i) => {
+  const parts = s.title.split(": ");
+  return {
+    index: i + 1,
+    label: parts.length > 1 ? parts.slice(1).join(": ") : s.title,
+    original: s.title,
+    chapters: s.chapters,
+    chapterCount: new Set(s.chapters.map((c) => c.number)).size,
+  };
+});
+
+// So chuong lon (11) khac so trang (14, vi Chuong 10 da tach thanh 10.1 -> 10.4).
+// Hero dem theo chuong lon; the .card va tien do dem theo trang.
+const totalChapters = new Set(ALL_CHAPTERS.map((c) => c.number)).size;
+
+const hours = Math.round((COURSE_TOTALS.minutes / 60) * 10) / 10;
+const first = ALL_CHAPTERS[0]!;
 ---
 
 <BaseLayout title="Trang chủ">
-	<h1>Học Android bằng tiếng Việt</h1>
-	<p class="lead">
-		Website học <strong>Kotlin</strong>, <strong>Android</strong> và <strong>Jetpack Compose</strong> cho
-		người mới bắt đầu, dựa theo sách <em>Android Fundamentals by Tutorials</em> (Kodeco) và project mẫu đi kèm sách.
-		Mỗi bài học đều trỏ ngược được về đúng chapter và file code gốc.
-	</p>
+	<section class="hero">
+		<div class="hero-inner">
+			<span class="hero-eyebrow">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M12 3 4 7.5v9L12 21l8-4.5v-9z"></path>
+					<path d="M12 12 4 7.5M12 12l8-4.5M12 12v9"></path>
+				</svg>
+				Kotlin · Android · Jetpack Compose
+			</span>
 
-	<p class="progress-summary" id="progress-summary" hidden></p>
+			<h1>Android Development with Jetpack Compose</h1>
+			<p>
+				Khoá học tiếng Việt cho người mới bắt đầu: {totalChapters} chương đi từ khái niệm → cách hoạt
+				động → code thật trong một app Android hoàn chỉnh. Mỗi chương đều có quiz, bài tập, và mục
+				cảnh báo những chỗ tài liệu cũ đã lỗi thời.
+			</p>
 
-	{
-		SECTIONS.map((section) => (
-			<section class="section-block">
-				<h2>{section.title}</h2>
-				<div class="cards">
-					{section.chapters.map((ch) => (
-						<a class="card" href={`/chapters/${ch.slug}/`} data-slug={ch.slug}>
-							<span class="badge">Chapter {ch.number}</span>
-							<strong>{ch.title}</strong>
-							<span class="summary">{ch.summaryVi}</span>
-						</a>
-					))}
+			<ul class="hero-stats">
+				<li><span class="st-val">{totalChapters}</span><span class="st-lbl">chương</span></li>
+				<li><span class="st-val">{COURSE_TOTALS.sections}</span><span class="st-lbl">mục kiến thức</span></li>
+				<li><span class="st-val">{COURSE_TOTALS.codeBlocks}</span><span class="st-lbl">khối code</span></li>
+				<li><span class="st-val">{COURSE_TOTALS.quizQuestions}</span><span class="st-lbl">câu hỏi</span></li>
+				<li class="st-hi"><span class="st-val" id="hero-pct">0%</span><span class="st-lbl">đã hoàn thành</span></li>
+			</ul>
+
+			<div class="hero-actions">
+				<a class="btn-cta" id="hero-continue" href={`/chapters/${first.slug}/`}>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M5 12h13M13 6l6 6-6 6"></path>
+					</svg>
+					<span id="hero-continue-label">Bắt đầu học</span>
+				</a>
+				<a class="btn-ghost" href="#curriculum">Xem chương trình học</a>
+			</div>
+
+			<p class="hero-resume" id="hero-resume">
+				Tổng thời lượng đọc khoảng <strong>{hours} giờ</strong> · {COURSE_TOTALS.exercises} bài tập thực hành
+			</p>
+		</div>
+	</section>
+
+	<section class="dash-section">
+		<h2>Tiến độ của bạn <span class="sec-hint">lưu ngay trên máy bạn, không cần đăng nhập</span></h2>
+		<div class="progress-panel">
+			<div class="pcard">
+				<h3>Toàn khoá</h3>
+				<div class="big-bar">
+					<span class="bb-track" aria-hidden="true"><span class="bb-fill" id="bb-fill"></span></span>
+					<span class="bb-pct" id="bb-pct">0%</span>
 				</div>
-			</section>
-		))
-	}
 
-	<p class="note">
-		Trạng thái hiện tại: sườn website (sidebar + trang chủ) đã sẵn sàng. Nội dung bài học chi tiết cho từng
-		chapter đang được biên soạn dần — xem <code>docs/PROJECT_PLAN.md</code> để biết tiến độ.
+				<!-- id cu: script tien do dang ghi text vao day -->
+				<p id="progress-summary" hidden></p>
+
+				<ul class="mini-stats">
+					<li class="ms-done">
+						<span class="ms-val" id="ms-done">0</span><span class="ms-lbl">đã học</span>
+					</li>
+					<li>
+						<span class="ms-val" id="ms-left">{ALL_CHAPTERS.length}</span><span class="ms-lbl">còn lại</span>
+					</li>
+					<li>
+						<span class="ms-val">{ALL_CHAPTERS.length}</span><span class="ms-lbl">tổng số phần</span>
+					</li>
+				</ul>
+			</div>
+
+			<article class="resume-card" id="resume-card">
+				<span class="rc-kicker">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M5 12h13M13 6l6 6-6 6"></path>
+					</svg>
+					<span id="rc-kicker-label">Bắt đầu từ đây</span>
+				</span>
+				<h3 id="rc-title">Chương {chapterLabel(first)}: {first.title}</h3>
+				<p id="rc-summary">{first.summaryVi}</p>
+				<a class="btn-cta" id="rc-link" href={`/chapters/${first.slug}/`}>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M5 12h13M13 6l6 6-6 6"></path>
+					</svg>
+					<span id="rc-cta-label">Bắt đầu học</span>
+				</a>
+			</article>
+		</div>
+	</section>
+
+
+	<section class="dash-section" id="curriculum">
+		<h2>Chương trình học <span class="sec-hint">3 phần · {totalChapters} chương, học tuần tự từ trên xuống</span></h2>
+
+		{
+			modules.map((mod) => {
+				const totalMin = mod.chapters.reduce((n, c) => n + getStats(c.slug).minutes, 0);
+				return (
+					<div class="mod-group" data-mod={mod.chapters.map((c) => c.slug).join(",")}>
+						<div class="mod-group-head">
+							<span class="mod-group-num">{mod.index}</span>
+							<div class="mod-group-meta">
+								<h3>{mod.label}</h3>
+								<span class="mg-sub">
+									{mod.chapterCount} chương · khoảng {Math.round(totalMin / 60)} giờ ·{" "}
+									<span class="mg-done">0</span>/{mod.chapters.length} phần đã học
+								</span>
+							</div>
+							<span class="mod-group-bar" aria-hidden="true"><span></span></span>
+						</div>
+
+						<div class="card-grid">
+							{mod.chapters.map((ch) => {
+								const st = getStats(ch.slug);
+								return (
+									<a class="card" href={`/chapters/${ch.slug}/`} data-slug={ch.slug}>
+										<div class="card-top">
+											<span class="badge">{chapterLabel(ch)}</span>
+											<h3>{ch.title}</h3>
+										</div>
+										<p class="summary">{ch.summaryVi}</p>
+										<div class="card-meta">
+											<span class="m-sections">{st.sections} mục</span>
+											<span class="m-quiz">{st.quizQuestions} câu</span>
+											<span class="m-time">{st.minutes} phút</span>
+											<span class="card-state">
+												<span class="cs-todo">Chưa học</span>
+												<span class="cs-done">Đã học</span>
+											</span>
+										</div>
+									</a>
+								);
+							})}
+						</div>
+					</div>
+				);
+			})
+		}
+	</section>
+
+
+	<p class="dash-source">
+		<strong>Nguồn:</strong> khoá học được biên soạn dựa trên tài liệu <em>Android Fundamentals by Tutorials</em>
+		v1.0.0 (Kodeco) và project mẫu <code>aaf-materials/</code>. Nội dung tiếng Việt được viết lại hoàn toàn,
+		không copy nguyên văn; mỗi chương có mục <em>Nguồn tham khảo</em> ghi rõ file code tương ứng.
 	</p>
 </BaseLayout>
 
 <script>
-	// Task 9 — tóm tắt tiến độ đọc từ localStorage, đánh dấu card chapter đã học.
+	// Tien do doc tu localStorage (key khong doi: "hoc-android-tv:progress").
+	// Danh sach bai + tieu de + tom tat lay tu chinh cac the .card da render,
+	// nen khong can nhan doi du lieu khoa hoc o phia client.
 	import { getDoneSlugs } from "../lib/progress";
 
 	const doneSlugs = getDoneSlugs();
@@ -48,82 +182,77 @@ import { SECTIONS } from "../data/chapters";
 		if (card.dataset.slug && done.has(card.dataset.slug)) card.classList.add("done");
 	});
 
+	// --- Tom tat tien do (giu nguyen cau chu cu o #progress-summary) ---
+	// Dem theo the .card that su co tren trang, khong dem thang doneSlugs —
+	// tranh truong hop localStorage con slug cu khong con trong khoa hoc.
+	const total = cards.length;
+	const n = [...cards].filter((c) => c.classList.contains("done")).length;
+	const pct = total ? Math.round((n / total) * 100) : 0;
+
 	const summary = document.getElementById("progress-summary");
 	if (summary) {
-		summary.textContent = `Bạn đã đánh dấu đã học ${doneSlugs.length}/${cards.length} chapter.`;
+		summary.innerHTML = `Bạn đã đánh dấu đã học <strong>${n}/${total}</strong> phần.`;
 		summary.hidden = false;
 	}
+
+	const setText = (id: string, v: string) => {
+		const el = document.getElementById(id);
+		if (el) el.textContent = v;
+	};
+
+	setText("bb-pct", `${pct}%`);
+	setText("hero-pct", `${pct}%`);
+	setText("ms-done", String(n));
+	setText("ms-left", String(Math.max(0, total - n)));
+
+	const bb = document.getElementById("bb-fill");
+	if (bb) bb.style.width = `${pct}%`;
+
+	// --- Tien do tung module ---
+	document.querySelectorAll<HTMLElement>(".mod-group[data-mod]").forEach((g) => {
+		const slugs = (g.dataset.mod || "").split(",").filter(Boolean);
+		const d = slugs.filter((s) => done.has(s)).length;
+		const cnt = g.querySelector(".mg-done");
+		if (cnt) cnt.textContent = String(d);
+		const bar = g.querySelector<HTMLElement>(".mod-group-bar span");
+		if (bar) bar.style.width = slugs.length ? `${(d / slugs.length) * 100}%` : "0%";
+	});
+
+	// --- "Tiep tuc hoc": bai chua hoc dau tien theo thu tu khoa hoc ---
+	const ordered = [...cards];
+	const next = ordered.find((c) => !c.classList.contains("done"));
+	const allDone = !next && ordered.length > 0;
+	const target = next ?? ordered[ordered.length - 1];
+
+	if (target) {
+		const title = target.querySelector("h3")?.textContent?.trim() ?? "";
+		const num = target.querySelector(".badge")?.textContent?.trim() ?? "";
+		const desc = target.querySelector(".summary")?.textContent?.trim() ?? "";
+		const href = target.getAttribute("href") ?? "/";
+
+		const rcTitle = document.getElementById("rc-title");
+		if (rcTitle) rcTitle.textContent = `Chương ${num}: ${title}`;
+		setText("rc-summary", desc);
+
+		const rcLink = document.getElementById("rc-link");
+		rcLink?.setAttribute("href", href);
+		const heroLink = document.getElementById("hero-continue");
+		heroLink?.setAttribute("href", href);
+
+		const started = n > 0;
+		const label = allDone ? "Xem lại chương cuối" : started ? "Tiếp tục học" : "Bắt đầu học";
+		setText("rc-cta-label", label);
+		setText("hero-continue-label", label);
+		setText(
+			"rc-kicker-label",
+			allDone ? "Bạn đã hoàn thành khoá học" : started ? "Tiếp tục học" : "Bắt đầu từ đây"
+		);
+
+		if (started && !allDone) {
+			const resume = document.getElementById("hero-resume");
+			if (resume) resume.innerHTML = `Chương tiếp theo của bạn: <strong>Chương ${num} — ${title}</strong>`;
+		}
+	}
+
 </script>
 
-<style>
-	.lead {
-		color: #4a5568;
-		line-height: 1.6;
-		max-width: 640px;
-	}
-	.section-block {
-		margin-top: 2rem;
-	}
-	.section-block h2 {
-		font-size: 1rem;
-		color: #2d3748;
-		border-bottom: 1px solid #e2e8f0;
-		padding-bottom: 0.4rem;
-	}
-	.cards {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-		gap: 0.9rem;
-		margin-top: 0.9rem;
-	}
-	.card {
-		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
-		padding: 0.9rem 1rem;
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		background: #fff;
-		text-decoration: none;
-		color: inherit;
-		transition: border-color 0.15s, transform 0.15s;
-	}
-	.card:hover {
-		border-color: #2b6cb0;
-		transform: translateY(-2px);
-	}
-	.card.done {
-		border-color: #68d391;
-		background: #f0fff4;
-	}
-	.badge {
-		font-size: 0.72rem;
-		color: #2b6cb0;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-	}
-	.card.done .badge::after {
-		content: " · ✓ đã học";
-		color: #276749;
-	}
-	.card strong {
-		font-size: 0.95rem;
-	}
-	.summary {
-		font-size: 0.82rem;
-		color: #718096;
-		line-height: 1.4;
-	}
-	.note {
-		margin-top: 2.5rem;
-		font-size: 0.82rem;
-		color: #a0aec0;
-	}
-	.progress-summary {
-		font-size: 0.85rem;
-		color: #2b6cb0;
-		font-weight: 600;
-		margin-top: -0.4rem;
-	}
-</style>

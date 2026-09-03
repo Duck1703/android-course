@@ -1,0 +1,826 @@
+---
+// Chapter 5: Jetpack Compose — viết lại ở Task 35 (Phase 5 "Depth pass").
+// Nguyên tắc: bám sát content/book/ch05-jetpack-compose.md (941 dòng, 13 heading),
+// mọi code lấy từ aaf-materials/05-jetpack-compose/projects/{starter,final}/ kèm số dòng đã xác minh.
+// Giải thích tự viết tiếng Việt — không copy nguyên văn sách (xem CLAUDE.md mục Bản quyền).
+// [TASK48] Chuong 5.3 — Dựng UI tin nhắn, theme và font
+
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/05-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat";
+
+const uiStateCode = `class ConversationUiState(
+  val channelName: String,
+  initialMessages: List<MessageUiModel>,
+) {
+  private val _messages: MutableList<MessageUiModel> = initialMessages.toMutableStateList()
+
+  val messages: List<MessageUiModel> = _messages
+
+  fun addMessage(msg: String, photoUri: Uri?) {
+    // TODO : implement in Chapter 6 😀
+  }
+}
+
+@Immutable
+data class Message(
+  val _id: String = UUID.randomUUID().toString(),
+  val createdOn: Instant? = Clock.System.now(),
+  val roomId: String = "public", // "public" is the roomID for the default public chat room
+  val text: String = "test",
+  val userId: String = UUID.randomUUID().toString(),
+  val photoUri: Uri? = null,
+  val authorImage: Int = if (userId == "me") R.drawable.profile_photo_android_developer else R.drawable.someone_else
+)`;
+
+const messageUiModelCode = `data class MessageUiModel(
+  val message: Message,
+  val user: User,
+  val id: String = message._id
+) {
+  companion object {
+    operator fun invoke(message: Message, users: List<User>): MessageUiModel {
+      var messageSender: User? = null
+      for (user in users) {
+        if (user.id == message.userId) {
+          messageSender = user
+        }
+      }
+      messageSender?.let {
+        return MessageUiModel(user = messageSender, message = message)
+      }
+      val noUserFound = User()
+      return MessageUiModel(user = noUserFound, message = message)
+    }
+  }
+
+  constructor(message: Message, user: User) : this(
+    id = message._id,
+    message = message,
+    user = user
+  )
+}`;
+
+const messagesFinalCode = `@Composable
+fun Messages(
+  messages: List<MessageUiModel>,
+//  scrollState: LazyListState,
+  modifier: Modifier = Modifier
+) {
+  Box(modifier = modifier) {
+    LazyColumn(
+      // Add content padding so that the content can be scrolled (y-axis)
+      // below the status bar + app bar
+      contentPadding =
+      WindowInsets.statusBars.add(WindowInsets(top = 90.dp)).asPaddingValues(),
+      modifier = Modifier
+        .fillMaxSize()
+    ) {
+      itemsIndexed(
+        items = messages,
+        key = { _, message -> message.id }
+      ) { index, content ->
+        val prevAuthor = messages.getOrNull(index - 1)?.message?.userId
+        val nextAuthor = messages.getOrNull(index + 1)?.message?.userId
+        val userId = messages.getOrNull(index)?.message?.userId
+        val isFirstMessageByAuthor = prevAuthor != content.message.userId
+        val isLastMessageByAuthor = nextAuthor != content.message.userId
+        MessageUi(
+          onAuthorClick = { },
+          msg = content,
+          authorId = "me",
+          userId = userId ?: "",
+          isFirstMessageByAuthor = isFirstMessageByAuthor,
+          isLastMessageByAuthor = isLastMessageByAuthor,
+        )
+      }
+    }
+  }
+}`;
+
+const messageUiCode = `@Composable
+fun MessageUi(
+  onAuthorClick: (String) -> Unit,
+  msg: MessageUiModel,
+  authorId: String,
+  userId: String,
+  isFirstMessageByAuthor: Boolean,
+  isLastMessageByAuthor: Boolean,
+) {
+  val isUserMe = userId == "me" // hard coded for now, next chapter will be = authorId == userId
+  val borderColor = if (isUserMe) {
+    MaterialTheme.colorScheme.primary
+  } else {
+    MaterialTheme.colorScheme.tertiary
+  }
+
+  val authorImageId: Int =
+    if (isUserMe) R.drawable.profile_photo_android_developer else R.drawable.someone_else
+  val spaceBetweenAuthors = if (isLastMessageByAuthor) Modifier.padding(top = 8.dp) else Modifier
+  Row(modifier = spaceBetweenAuthors) {
+    if (isLastMessageByAuthor) {
+      // Avatar
+      Image(
+        modifier = Modifier
+          .clickable(onClick = { onAuthorClick(msg.message.userId) })
+          .padding(horizontal = 16.dp)
+          .size(42.dp)
+          .border(1.5.dp, borderColor, CircleShape)
+          .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
+          .clip(CircleShape)
+          .align(Alignment.Top),
+        painter = painterResource(id = authorImageId),
+        contentScale = ContentScale.Crop,
+        contentDescription = null
+      )
+    } else {
+      // Space under avatar
+      Spacer(modifier = Modifier.width(74.dp))
+    }
+    AuthorAndTextMessage(
+      msg = msg,
+      isUserMe = isUserMe,
+      isFirstMessageByAuthor = isFirstMessageByAuthor,
+      isLastMessageByAuthor = isLastMessageByAuthor,
+      authorClicked = onAuthorClick,
+      modifier = Modifier
+        .padding(end = 16.dp)
+        .weight(1f)
+    )
+  }
+}`;
+
+const authorAndTextCode = `@Composable
+fun AuthorAndTextMessage(
+  msg: MessageUiModel,
+  isUserMe: Boolean,
+  isFirstMessageByAuthor: Boolean,
+  isLastMessageByAuthor: Boolean,
+  authorClicked: (String) -> Unit,
+  modifier: Modifier = Modifier
+) {
+  Column(modifier = modifier) {
+    if (isLastMessageByAuthor) {
+      AuthorNameTimestamp(msg, isUserMe)
+    }
+    ChatItemBubble(
+      msg.message,
+      isUserMe,
+      authorClicked = authorClicked
+    )
+    if (isFirstMessageByAuthor) {
+      // Last bubble before next author
+      Spacer(modifier = Modifier.height(8.dp))
+    } else {
+      // Between bubbles
+      Spacer(modifier = Modifier.height(4.dp))
+    }
+  }
+}`;
+
+const authorNameTimestampCode = `@Composable
+private fun AuthorNameTimestamp(msg: MessageUiModel, isUserMe: Boolean = false) {
+  var userFullName: String = msg.user.fullName
+  if (isUserMe) {
+    userFullName = "me"
+  }
+
+  // Combine author and timestamp for author.
+  Row(modifier = Modifier.semantics(mergeDescendants = true) {}) {
+    Text(
+      text = userFullName,
+      style = MaterialTheme.typography.titleMedium,
+      modifier = Modifier
+        .alignBy(LastBaseline)
+        .paddingFrom(LastBaseline, after = 8.dp) // Space to 1st bubble
+    )
+    Spacer(modifier = Modifier.width(8.dp))
+    Text(
+      text = msg.message.createdOn.toString().isoToTimeAgo(),
+      style = MaterialTheme.typography.bodySmall,
+      modifier = Modifier.alignBy(LastBaseline),
+      color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+  }
+}`;
+
+const bubbleCode = `@Composable
+fun ChatItemBubble(
+  message: Message,
+  isUserMe: Boolean,
+  authorClicked: (String) -> Unit
+) {
+  val ChatBubbleShape = RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp)
+  val pressedState = remember { mutableStateOf(false) }
+  val backgroundBubbleColor = if (isUserMe) {
+    MaterialTheme.colorScheme.primary
+  } else {
+    MaterialTheme.colorScheme.surfaceVariant
+  }
+
+  Column {
+    Surface(
+      color = backgroundBubbleColor,
+      shape = ChatBubbleShape
+    ) {
+      if (message.text.isNotEmpty()) {
+        ClickableMessage(
+          message = message,
+          isUserMe = isUserMe,
+          authorClicked = authorClicked
+        )
+      }
+    }
+  }
+}`;
+
+const clickableMessageCode = `@Composable
+fun ClickableMessage(
+  message: Message,
+  isUserMe: Boolean,
+  authorClicked: (String) -> Unit
+) {
+  val uriHandler = LocalUriHandler.current
+
+  val styledMessage = messageFormatter(
+    text = message.text,
+    primary = isUserMe
+  )
+
+  ClickableText(
+    text = styledMessage,
+    style = MaterialTheme.typography.bodyLarge.copy(color = LocalContentColor.current),
+    modifier = Modifier.padding(16.dp),
+    onClick = {
+      styledMessage
+        .getStringAnnotations(start = it, end = it)
+        .firstOrNull()
+        ?.let { annotation ->
+          when (annotation.tag) {
+            SymbolAnnotationType.LINK.name -> uriHandler.openUri(annotation.item)
+            SymbolAnnotationType.PERSON.name -> authorClicked(annotation.item)
+            else -> Unit
+          }
+        }
+    }
+  )
+}`;
+
+const fakeDataCode = `private val sampleMessageTexts = listOf(
+  Message(
+    roomId = "Android Apprentice",
+    createdOn = Instant.parse("2023-11-16T05:48:01Z"),
+    text = "Hey what do you think of this new Android Apprentice book 📖 from https://Kodeco.com ?",
+    userId = "other"
+  ),
+  Message(
+    roomId = "Android Apprentice",
+    createdOn = Instant.parse("2023-11-17T05:48:01Z"),
+    text = "it's pretty 😍 awesome 💯😎. I learned how to make some cool apps including this chat app! 😄🤩🎉",
+    userId = "me"
+  ),
+  Message(
+    roomId = "Android Apprentice",
+    text = "Wow!",
+    userId = "other"
+  ),
+)
+
+private val meUser = User(id = "me", firstName = "Fuad", lastName = "Kamal")
+private val otherUser = User(id = "other", firstName = "Sally", lastName = "Walden")
+
+private val initialMessages = listOf(
+  MessageUiModel(message = sampleMessageTexts[0], user = otherUser, id = "0"),
+  MessageUiModel(message = sampleMessageTexts[1], user = meUser, id = "1"),
+  MessageUiModel(message = sampleMessageTexts[2], user = otherUser, id = "2")
+)
+
+val exampleUiState = ConversationUiState(
+  initialMessages = initialMessages,
+  channelName = "#Android Apprentice",
+)`;
+
+const typographyCode = `val provider = GoogleFont.Provider(
+  providerAuthority = "com.google.android.gms.fonts",
+  providerPackage = "com.google.android.gms",
+  certificates = R.array.com_google_android_gms_fonts_certs
+)
+
+val MontserratFont = GoogleFont(name = "Montserrat")
+
+val KarlaFont = GoogleFont(name = "Karla")
+
+val MontserratFontFamily = FontFamily(
+  Font(resId = R.font.montserrat_regular),
+  Font(resId = R.font.montserrat_light, weight = FontWeight.Light),
+  Font(resId = R.font.montserrat_medium, weight = FontWeight.Medium),
+  Font(resId = R.font.montserrat_semibold, weight = FontWeight.SemiBold),
+)`;
+
+const themeWrapCode = `setContent {
+  KodecochatTheme {
+     ConversationContent(
+       uiState = exampleUiState
+     )
+  }
+}`;
+
+const finalConversationContentCode = `@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConversationContent(uiState: ConversationUiState) {
+
+  val scrollState = rememberLazyListState()
+  val scope = rememberCoroutineScope()
+  val topBarState = rememberTopAppBarState()
+  val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topBarState)
+
+  Surface() {
+    Box(modifier = Modifier.fillMaxSize()) {
+      Column(
+        Modifier
+          .fillMaxSize()
+      ) {
+        Messages(
+          messages = uiState.messages,
+          modifier = Modifier.weight(1f)
+        )
+        UserInput(onMessageSent = {})
+      }
+      // Channel name bar floats above the messages
+      ChannelNameBar(channelName = "Android Apprentice")
+    }
+  }
+}`;
+---
+
+<section class="lesson">
+	<h2 id="message-ui">10. Dựng UI tin nhắn: model, state và 6 composable nhỏ</h2>
+	<p>Trước khi vẽ, phải định nghĩa <em>tin nhắn là gì</em>. Sách cho copy sẵn một số file để bạn tập trung vào phần chính:</p>
+	<table class="api">
+		<thead><tr><th>Copy từ project final</th><th>Vai trò</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><code>data/model/User.kt</code></td>
+				<td>Người dùng: id, tên, họ; có <code>fullName</code> dùng khi hiện tên trên tin nhắn.</td>
+			</tr>
+			<tr>
+				<td><code>data/model/MessageUiModel.kt</code></td>
+				<td>Gói <code>Message</code> + <code>User</code> lại thành thứ UI cần.</td>
+			</tr>
+			<tr>
+				<td><code>data/model/DateExtensions.kt</code></td>
+				<td>Chứa hàm mở rộng <code>isoToTimeAgo()</code> đổi mốc thời gian ISO sang kiểu "5 phút trước".</td>
+			</tr>
+			<tr>
+				<td><code>utilities/Extensions.kt</code></td>
+				<td>Các hàm tiện ích dùng chung.</td>
+			</tr>
+			<tr>
+				<td><code>conversation/MessageFormatter.kt</code></td>
+				<td>
+					Định dạng nội dung tin nhắn: nhận ra link, tên người được nhắc... rồi đánh dấu chúng thành các
+					<em>annotation</em> trong chuỗi. Mục dưới sẽ dùng đúng các annotation này.
+				</td>
+			</tr>
+			<tr>
+				<td><code>data/FakeData.kt</code></td>
+				<td>Dữ liệu giả để có gì mà xem, vì chưa thể thêm tin nhắn mới cho tới chapter 6.</td>
+			</tr>
+			<tr>
+				<td><code>res/drawable/*.png</code></td>
+				<td><code>profile_photo_android_developer.png</code> và <code>someone_else.png</code> — 2 ảnh avatar.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>Và thêm một dependency vào file Gradle cấp module, rồi sync:</p>
+	<Code code={'// Date Time Library - the latest way to handle dates in Kotlin\nimplementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")'} lang="kotlin" theme="github-dark" />
+
+	<h3>File bạn tự viết: <code>ConversationUiState.kt</code></h3>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/ConversationUiState.kt</code> (dòng 46–68)</p>
+	<Code code={uiStateCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc từng phần:</p>
+	<ul>
+		<li>
+			<code>ConversationUiState</code> giữ tên kênh và danh sách tin nhắn. Danh sách nội bộ
+			<code>_messages</code> được tạo bằng <code>initialMessages.toMutableStateList()</code> — biến list thường thành
+			list mà <strong>Compose theo dõi được</strong>: thêm/xoá phần tử là UI tự vẽ lại. Dấu gạch dưới đầu tên là quy ước
+			Kotlin cho "bản có thể sửa, dùng riêng bên trong"; bên ngoài chỉ thấy <code>messages</code> ở dạng
+			<code>List</code> chỉ-đọc. Đây là bản thu nhỏ của nguyên tắc dữ liệu một chiều ở mục 1.
+		</li>
+		<li>
+			<code>addMessage()</code> hiện <strong>rỗng</strong>, kèm đúng comment của tác giả: "TODO : implement in Chapter 6 😀".
+			Sách nói thẳng: bạn sẽ chưa thêm được tin nhắn mới cho tới khi học <code>ViewModel</code>.
+		</li>
+		<li>
+			<code>@Immutable data class Message</code> — sách yêu cầu tập trung vào <em>nửa sau</em> của file này. Nó có mọi
+			thuộc tính một tin nhắn có thể có, <strong>kèm giá trị mặc định</strong>. Một số thuộc tính như
+			<code>photoUri</code> là <em>nullable</em> (có thể trống) vì tin nhắn không nhất thiết có ảnh kèm.
+			<code>authorImage</code> tự chọn ảnh dựa trên <code>userId == "me"</code>.
+		</li>
+	</ul>
+	<p class="hint">
+		<code>@Immutable</code> là lời hứa với Compose: "các thuộc tính của tôi không đổi sau khi tạo". Nhờ lời hứa đó,
+		Compose được phép <em>bỏ qua</em> việc vẽ lại một tin nhắn khi biết nó không thể đã thay đổi — đây là tối ưu hiệu
+		năng, không phải trang trí. Nếu bạn gắn <code>@Immutable</code> rồi vẫn sửa dữ liệu bên trong thì UI sẽ hiện sai.
+	</p>
+
+	<h3><code>MessageUiModel</code> — vì sao không dùng thẳng <code>Message</code>?</h3>
+	<p class="src">Nguồn: <code>{FINAL}/data/model/MessageUiModel.kt</code> (dòng 43–69)</p>
+	<Code code={messageUiModelCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>Message</code> chỉ có <code>userId</code> — một chuỗi. Nhưng UI cần <em>tên đầy đủ</em> của người gửi để hiện
+		trên bong bóng chat. <code>MessageUiModel</code> là mô hình <strong>dành riêng cho tầng UI</strong>: nó ghép
+		<code>Message</code> với <code>User</code> tương ứng, cộng thêm một <code>id</code> riêng. Hàm
+		<code>invoke</code> trong <code>companion object</code> làm việc tra cứu: đưa vào một <code>Message</code> và danh
+		sách <code>User</code>, nó tìm user khớp <code>userId</code>; không tìm thấy thì trả về <code>User()</code> rỗng thay
+		vì làm app crash.
+	</p>
+	<p class="hint">
+		<strong>Quyết định thiết kế cần nhớ:</strong> model dữ liệu (<code>Message</code>) và model cho UI
+		(<code>MessageUiModel</code>) là <em>hai thứ khác nhau</em>. Nếu nhồi <code>fullName</code> vào thẳng
+		<code>Message</code>, thì mỗi lần đổi cách hiển thị bạn lại phải sửa model dữ liệu — và dữ liệu từ mạng (chapter 8)
+		vốn không có sẵn tên đầy đủ. Tách ra thì mỗi tầng đổi độc lập.
+	</p>
+
+	<h3><code>Messages()</code> phiên bản hoàn chỉnh</h3>
+	<p>
+		Đổi chữ ký <code>ConversationContent</code> để nhận tham số
+		(<code>fun ConversationContent(uiState: ConversationUiState)</code>), truyền
+		<code>messages = uiState.messages</code> vào <code>Messages</code>, và cho <code>Messages</code> nhận
+		<code>List&lt;MessageUiModel&gt;</code> thay vì <code>List&lt;String&gt;</code>:
+	</p>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 146–183)</p>
+	<Code code={messagesFinalCode} lang="kotlin" theme="github-dark" />
+	<p>Ba điểm cần hiểu trong đoạn này:</p>
+	<ul>
+		<li>
+			<code>itemsIndexed</code> thay cho <code>item { }</code> viết tay: nó lặp qua danh sách và cho bạn cả
+			<code>index</code> lẫn nội dung.
+		</li>
+		<li>
+			Tham số <code>key = &#123; _, message -&gt; message.id &#125;</code>: mỗi item có một khoá <strong>ổn định</strong>. Nhờ đó
+			khi danh sách thay đổi, Compose biết item nào là item nào thay vì vẽ lại mù quáng theo vị trí — quan trọng cho
+			cả hiệu năng lẫn việc giữ trạng thái cuộn.
+		</li>
+		<li>
+			<code>prevAuthor</code> / <code>nextAuthor</code> / <code>isFirstMessageByAuthor</code> /
+			<code>isLastMessageByAuthor</code>: đây là <strong>logic gộp nhóm tin nhắn</strong>. Sách nói rõ mục đích: ảnh đại
+			diện, ngày và tên người gửi <em>chỉ hiện một lần</em> nếu cùng một người gửi liên tiếp nhiều tin — đúng như các app
+			chat thật. <code>getOrNull()</code> được dùng để item đầu và item cuối không gây lỗi vượt biên.
+		</li>
+	</ul>
+	<p class="notice">
+		<strong>Ghi chú đối chiếu code thật:</strong> trong project <code>final</code>, dòng 149 có một tham số
+		<strong>bị comment sẵn</strong> — <code>// scrollState: LazyListState,</code>. Đó là dấu vết cho chapter sau, khi
+		danh sách cần được cuộn bằng code (ví dụ tự nhảy xuống tin mới nhất). Chapter này chưa dùng tới.
+	</p>
+
+	<h3>Cây 5 composable nhỏ dựng nên một tin nhắn</h3>
+	<p>
+		Sách thêm 5 composable nữa, và ngay sau đó nói một câu định hướng cho toàn bộ cách viết Compose:
+		<em>trông có vẻ nhiều code, nhưng thật ra chỉ là các composable định nghĩa từng phần của UI tin nhắn; nhờ chia nhỏ
+		thành nhiều composable, bạn xử lý được từng chi tiết nhỏ của UI một cách riêng biệt.</em>
+	</p>
+	<pre class="tree">MessageUi                 ← 1 dòng tin nhắn: avatar (hoặc chỗ trống) + phần nội dung
+└── AuthorAndTextMessage  ← cột: tên+giờ (nếu cần) → bong bóng → khoảng hở
+    ├── AuthorNameTimestamp   ← hàng: tên người gửi + "x phút trước"
+    └── ChatItemBubble        ← nền bong bóng, bo góc, màu theo người gửi
+        └── ClickableMessage  ← chữ trong bong bóng, bấm được link / tên người</pre>
+
+	<h4><code>MessageUi</code> — quyết định hiện avatar hay không</h4>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 185–235)</p>
+	<Code code={messageUiCode} lang="kotlin" theme="github-dark" />
+	<ul>
+		<li>
+			<code>isUserMe</code> hiện đang <strong>gán cứng</strong> bằng <code>userId == "me"</code>. Comment ngay trong
+			code thật của tác giả nói rõ đây là tạm thời: "hard coded for now, next chapter will be = authorId == userId".
+		</li>
+		<li><code>borderColor</code> đổi theo người gửi: <code>primary</code> cho mình, <code>tertiary</code> cho người khác.</li>
+		<li>
+			<code>spaceBetweenAuthors</code> là một ví dụ hay: <strong><code>Modifier</code> được lưu vào biến</strong> và chọn
+			theo điều kiện — nếu là tin cuối của một người thì thêm <code>padding(top = 8.dp)</code>, ngược lại dùng
+			<code>Modifier</code> rỗng. Modifier là giá trị bình thường, gán biến và truyền quanh được.
+		</li>
+		<li>
+			Nhánh <code>if (isLastMessageByAuthor)</code>: <strong>hiện avatar</strong>; nhánh <code>else</code>:
+			<code>Spacer(modifier = Modifier.width(74.dp))</code> — một khoảng trống rộng 74dp. Đây là chi tiết thiết kế đáng
+			học: thay vì hiện lại avatar cho từng tin nhắn liên tiếp, chỗ đó để trống <strong>đúng bằng</strong> chiều rộng
+			avatar để các bong bóng vẫn thẳng hàng.
+		</li>
+		<li>
+			<code>AuthorAndTextMessage</code> nhận <code>Modifier.padding(end = 16.dp).weight(1f)</code> — lại là
+			<code>weight</code> ở mục 8, lần này trong <code>Row</code>: "phần nội dung lấy hết chiều ngang còn lại sau khi
+			avatar đã lấy phần của nó".
+		</li>
+	</ul>
+
+	<h4><code>AuthorAndTextMessage</code> — sắp xếp theo chiều dọc</h4>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 237–263)</p>
+	<Code code={authorAndTextCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Chỉ hiện tên + giờ khi <code>isLastMessageByAuthor</code>. Cuối cùng là <code>Spacer</code> với 2 chiều cao khác
+		nhau, kèm đúng comment của tác giả: 8dp cho "bong bóng cuối trước khi sang người khác", 4dp cho "giữa các bong bóng"
+		của cùng một người. Chính chi tiết 8 vs 4 này tạo ra cảm giác các tin nhắn cùng người "dính thành cụm".
+	</p>
+
+	<h4><code>AuthorNameTimestamp</code> — canh chữ theo baseline</h4>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 265–289)</p>
+	<Code code={authorNameTimestampCode} lang="kotlin" theme="github-dark" />
+	<ul>
+		<li>
+			Hàm này là <code>private</code> — nó chỉ dùng trong file này. Một thói quen tốt: composable nội bộ thì đóng lại,
+			không phơi ra cho cả app.
+		</li>
+		<li>
+			Nếu là mình thì tên hiển thị được thay thành <code>"me"</code> thay vì tên đầy đủ.
+		</li>
+		<li>
+			<code>Modifier.semantics(mergeDescendants = true) {}</code>: gộp tên và giờ thành <strong>một khối duy nhất cho
+			trợ năng</strong> (accessibility). Trình đọc màn hình sẽ đọc liền "Sally Walden, 2 ngày trước" thay vì đọc rời
+			2 mẩu. Chi tiết nhỏ, nhưng là loại chi tiết phân biệt app làm cẩn thận với app làm cho xong.
+		</li>
+		<li>
+			<code>alignBy(LastBaseline)</code> và <code>paddingFrom(LastBaseline, after = 8.dp)</code>: canh theo
+			<em>đường chân chữ</em> chứ không theo cạnh hộp. Nhờ vậy tên (chữ to,
+			<code>titleMedium</code>) và mốc thời gian (chữ nhỏ, <code>bodySmall</code>) nhìn như nằm trên cùng một dòng kẻ,
+			dù cỡ chữ khác nhau.
+		</li>
+		<li>
+			<code>msg.message.createdOn.toString().isoToTimeAgo()</code> — hàm mở rộng từ
+			<code>data/model/DateExtensions.kt</code> (file bạn đã copy) đổi mốc thời gian ISO thành dạng "x trước".
+		</li>
+	</ul>
+
+	<h4><code>ChatItemBubble</code> — bong bóng chat</h4>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 292–320)</p>
+	<Code code={bubbleCode} lang="kotlin" theme="github-dark" />
+	<ul>
+		<li>
+			<code>RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp)</code> — <strong>ba góc bo 20dp, góc trên-trái chỉ 4dp</strong>.
+			Đó là mẹo tạo cảm giác bong bóng "chỉa" về phía người gửi, giống app chat thật.
+		</li>
+		<li>
+			Đây là lần thứ hai <code>Surface</code> xuất hiện, và lần này rõ vai trò của nó: nhận <code>color</code> và
+			<code>shape</code> rồi tự lo phần nền + bo góc cho <strong>đúng một con</strong> bên trong — chính là ràng buộc
+			"1 con" ở mục 5, dùng đúng chỗ.
+		</li>
+		<li>
+			Màu nền đổi theo người gửi: <code>primary</code> cho mình, <code>surfaceVariant</code> cho người khác. Cả hai lấy
+			từ <code>MaterialTheme.colorScheme</code>, nên khi bạn đổi theme ở mục 11 thì bong bóng cũng đổi màu theo — không
+			cần sửa lại dòng nào ở đây.
+		</li>
+		<li>
+			<code>if (message.text.isNotEmpty())</code> — tin rỗng thì không vẽ chữ, tránh bong bóng trống.
+		</li>
+	</ul>
+	<p class="notice">
+		<strong>Đối chiếu code thật:</strong> dòng 299 khai báo <code>val pressedState = remember &#123; mutableStateOf(false) &#125;</code>
+		nhưng <strong>không dòng nào dùng biến này</strong> — code chết còn sót lại từ một ý tưởng "đổi hình khi nhấn giữ" chưa
+		làm. Bạn có thể bỏ nó đi mà không ảnh hưởng gì. Nhắc ở đây để bạn không mất thời gian tìm xem nó tác dụng ở đâu.
+	</p>
+
+	<h4><code>ClickableMessage</code> — chữ bấm được</h4>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 322–352)</p>
+	<Code code={clickableMessageCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đây là composable thú vị nhất trong nhóm, vì nó không chỉ hiện chữ mà còn <strong>xử lý bấm vào <em>một phần</em> của
+		chữ</strong>:
+	</p>
+	<ol>
+		<li>
+			<code>messageFormatter(...)</code> (từ <code>MessageFormatter.kt</code> bạn đã copy) quét nội dung tin nhắn, tìm
+			link và tên người được nhắc, rồi trả về chuỗi <strong>đã gắn annotation</strong> ở các đoạn tương ứng. Tham số
+			<code>primary = isUserMe</code> để màu chữ khớp với màu bong bóng.
+		</li>
+		<li>
+			<code>ClickableText</code> gọi <code>onClick</code> kèm <strong>vị trí ký tự</strong> mà người dùng bấm (biến
+			<code>it</code>).
+		</li>
+		<li>
+			<code>getStringAnnotations(start = it, end = it)</code> hỏi: "tại vị trí này có annotation nào không?".
+			<code>firstOrNull()</code> → không có thì bỏ qua, im lặng.
+		</li>
+		<li>
+			Có thì <code>when (annotation.tag)</code> phân nhánh: <code>SymbolAnnotationType.LINK</code> → mở link bằng
+			<code>uriHandler.openUri(...)</code>; <code>SymbolAnnotationType.PERSON</code> → gọi
+			<code>authorClicked(...)</code>; còn lại → không làm gì.
+		</li>
+	</ol>
+	<p>
+		Đây chính là cơ chế đằng sau chi tiết mà sách yêu cầu bạn thử: <em>bấm vào hyperlink trong tin nhắn đầu tiên</em> —
+		link <code>https://Kodeco.com</code> trong dữ liệu giả — và trình duyệt mở ra. Không có annotation thì cả câu chỉ là
+		chữ chết.
+	</p>
+	<p class="hint">
+		<code>LocalUriHandler.current</code> là ví dụ về <strong><code>CompositionLocal</code></strong> — cách Compose cung
+		cấp "thứ có sẵn của môi trường" (bộ mở URL, context, màu chữ hiện tại...) cho composable ở bất kỳ độ sâu nào, không
+		cần truyền tham số qua từng tầng. Bạn đã gặp họ hàng của nó vài lần trong bài: <code>LocalContext.current</code> ở
+		mục 3 và <code>LocalContentColor.current</code> ngay trong đoạn code này.
+	</p>
+
+	<h3>Nối dây lần cuối: dữ liệu giả vào <code>MainActivity</code></h3>
+	<p class="src">Nguồn: <code>{FINAL}/data/FakeData.kt</code> (dòng 43–75)</p>
+	<Code code={fakeDataCode} lang="kotlin" theme="github-dark" />
+	<p>
+		File này giải thích khá nhiều thứ bạn thấy trên màn hình: 2 người dùng (<code>meUser</code> = Fuad Kamal,
+		<code>otherUser</code> = Sally Walden), 3 tin nhắn với <code>userId</code> lần lượt là
+		<code>"other"</code>, <code>"me"</code>, <code>"other"</code> — vừa đủ để bạn thấy cả 2 màu bong bóng và thấy logic
+		gộp nhóm hoạt động. Tin nhắn đầu chứa link <code>https://Kodeco.com</code> (thứ mà
+		<code>ClickableMessage</code> bắt được) và có emoji để bạn thấy chữ Unicode hiển thị đúng. Tin thứ ba
+		<strong>không có <code>createdOn</code></strong> — nó lấy giá trị mặc định <code>Clock.System.now()</code> từ
+		<code>Message</code>, nên luôn hiện là "vừa xong".
+	</p>
+	<p>Cuối cùng, trong <code>MainActivity.kt</code>, truyền dữ liệu giả này vào:</p>
+	<Code code={'setContent {\n  ConversationContent(\n    uiState = exampleUiState\n  )\n}'} lang="kotlin" theme="github-dark" />
+	<p>
+		Build và chạy. Sách reo lên đúng lúc: giờ nó <em>bắt đầu giống một app chat thật</em>.
+	</p>
+
+	<h2 id="theme-font">11. Theme và font tải về — đổi toàn bộ diện mạo app bằng vài dòng</h2>
+	<p>
+		Đến đây app đã chạy đúng nhưng vẫn mang màu mặc định của Material 3. Sách đóng lại chapter bằng một bước nhỏ nhưng
+		cho hiệu ứng lớn nhất: <strong>bọc UI trong một theme riêng</strong>.
+	</p>
+	<p>
+		Compose có <strong>downloadable fonts API</strong> — tải font từ Google Fonts (<code>fonts.google.com</code>)
+		<em>không đồng bộ</em> lúc app chạy, thay vì nhét file font vào APK. Sách chỉ giới thiệu và dẫn sang tài liệu chính
+		thức; phần thực hành là copy file từ project <code>final</code>.
+	</p>
+	<p>Thêm dependency vào file gradle cấp module:</p>
+	<Code code={'implementation("androidx.compose.ui:ui-text-google-fonts:1.5.4")'} lang="kotlin" theme="github-dark" />
+	<p>Rồi copy từ project <code>final</code> sang project của bạn:</p>
+	<ul>
+		<li><code>res → font</code> và toàn bộ file font trong đó.</li>
+		<li><code>com.kodeco.chat → theme</code>: <code>Color.kt</code>, <code>Themes.kt</code>, <code>Typography.kt</code>.</li>
+	</ul>
+
+	<h3>Bên trong <code>Typography.kt</code>: font được khai báo thế nào</h3>
+	<p class="src">Nguồn: <code>{FINAL}/theme/Typography.kt</code> (dòng 46–65)</p>
+	<Code code={typographyCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc từ trên xuống, đây là 3 tầng khác nhau, rất dễ nhầm:</p>
+	<ol>
+		<li>
+			<code>GoogleFont.Provider</code> — <strong>ai cung cấp font</strong>. Ở đây là Google Play Services
+			(<code>com.google.android.gms</code>). App không tự tải từ internet; nó nhờ Play Services lấy hộ, nên font đã
+			tải một lần được nhiều app dùng chung.
+		</li>
+		<li>
+			<code>GoogleFont(name = "Montserrat")</code> — <strong>tên font muốn lấy</strong>, đúng như tên trên
+			fonts.google.com.
+		</li>
+		<li>
+			<code>FontFamily(...)</code> — <strong>một "họ" font</strong>, gom các độ dày khác nhau (Light, Regular, Medium,
+			SemiBold) thành một nhóm. Nhờ vậy khi bạn viết
+			<code>fontWeight = FontWeight.Medium</code>, Compose biết lấy đúng file nào trong họ.
+		</li>
+	</ol>
+	<p class="notice">
+		<strong>Đối chiếu code thật:</strong> project <code>final</code> khai báo <em>hai</em> họ font —
+		<code>MontserratFontFamily</code> (dòng 56–61) cho tiêu đề và <code>KarlaFontFamily</code> (dòng 63–65) cho nội dung.
+		Ngoài ra, các <code>FontFamily</code> ở đây dựng từ <code>R.font.*</code> (file font đã copy vào
+		<code>res/font</code>), tức là font <strong>đóng gói sẵn</strong>. Dependency <code>ui-text-google-fonts</code> và
+		<code>GoogleFont.Provider</code> là để bạn <em>có thể</em> chuyển sang tải động — sách giới thiệu cả hai đường, và
+		project chọn đường an toàn hơn (không phụ thuộc mạng lúc mở app).
+	</p>
+
+	<h3>Bọc UI trong theme</h3>
+	<p>Trong <code>MainActivity.kt</code>, sửa lại <code>setContent</code>:</p>
+	<Code code={themeWrapCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Sách nói rất gọn: <em>tất cả việc bạn làm chỉ là bọc mọi thứ trong <code>KodecochatTheme{'{}'}</code></em>. Build và
+		chạy — app đổi hoàn toàn diện mạo, font và màu đều theo theme mới.
+	</p>
+	<p class="hint">
+		<strong>Vì sao chỉ bọc bên ngoài mà bên trong đổi theo?</strong> Vì <code>KodecochatTheme</code> đặt các giá trị
+		<code>MaterialTheme.colorScheme</code> và <code>MaterialTheme.typography</code> cho toàn bộ cây composable bên trong
+		nó (cùng cơ chế <code>CompositionLocal</code> đã gặp ở mục 10). Mọi chỗ trong bài này viết
+		<code>MaterialTheme.colorScheme.primary</code> hay <code>style = MaterialTheme.typography.titleMedium</code> — bong
+		bóng chat, tên người gửi, app bar — đều <strong>đọc lại từ theme</strong> thay vì ghi cứng màu. Đó chính là lý do đổi
+		một chỗ mà cả app đổi theo. Nếu lúc đầu bạn viết <code>Color.Blue</code> thì giờ phải đi sửa từng dòng.
+	</p>
+	<p class="src">
+		Nguồn: <code>{FINAL}/theme/Themes.kt</code> — <code>KodecochatTheme</code> ở dòng 107–109. Nó có tham số
+		<code>isDarkTheme</code>, chính là tham số mà <code>@Preview</code> ở mục 7 đã dùng để xem trước bản tối
+		(<code>KodecochatTheme(isDarkTheme = true)</code>).
+	</p>
+
+	<h2 id="userinput">12. Thay ô nhập tạm bằng <code>UserInput</code> thật</h2>
+	<p>
+		Một chi tiết cuối. Trong <code>Conversation.kt</code>: <strong>xoá lời gọi <code>SimpleUserInput</code></strong> trong
+		<code>ConversationContent</code>, <strong>xoá luôn định nghĩa</strong> của composable đó, rồi thay bằng:
+	</p>
+	<Code code={'UserInput(onMessageSent = {})'} lang="kotlin" theme="github-dark" />
+	<p><code>ConversationContent</code> sau khi thay xong trông như thế này:</p>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 94–119)</p>
+	<Code code={finalConversationContentCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Build và chạy. Sách gọi đây là "một giao diện nhập gọn gàng hơn", và khuyên bạn <strong>thử gõ vào ô nhập rồi đọc
+		source code xem nó được ghép lại thế nào</strong>. Lời khuyên đó đáng làm thật, vì
+		<code>UserInput</code> là composable phức tạp nhất chapter này.
+	</p>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> — <code>UserInput</code> ở dòng 126–128</p>
+	<table class="api">
+		<thead>
+			<tr><th>Composable trong <code>UserInput.kt</code></th><th>Vai trò</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>UserInput</code></td><td>Composable "cửa ngoài": ghép ô chữ + hàng nút chọn + panel bật lên.</td></tr>
+			<tr><td><code>UserInputText</code></td><td>Ô gõ chữ thật sự (thay cho <code>OutlinedTextField</code> tạm ở mục 4).</td></tr>
+			<tr><td><code>UserInputSelector</code></td><td>Hàng nút dưới ô chữ: emoji, ảnh, ghi âm...</td></tr>
+			<tr><td><code>InputSelectorButton</code></td><td>Một nút trong hàng đó, có trạng thái được-chọn.</td></tr>
+			<tr><td><code>EmojiSelector</code> / <code>EmojiTable</code></td><td>Bảng emoji bật lên khi bấm nút emoji.</td></tr>
+			<tr><td><code>PictureSelector</code> / <code>NotAvailablePopup</code></td><td>Chỗ dành cho chức năng chưa làm — bấm vào hiện thông báo "chưa có".</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Nhìn bảng này là thấy lại đúng bài học của mục 10: <strong>một tính năng lớn được cắt thành nhiều composable nhỏ</strong>,
+		mỗi cái một việc. Không có composable nào trong đó dài quá một màn hình.
+	</p>
+	<p class="notice">
+		<strong>Đối chiếu code thật:</strong> sách yêu cầu xoá <code>SimpleUserInput</code>, nhưng trong project
+		<code>final</code> nó <strong>vẫn còn</strong> ở dòng 121–144 (chỉ là không còn ai gọi). Tác giả giữ lại để bạn đối
+		chiếu hai phiên bản. Nếu bạn tự làm theo sách trong project <code>starter</code> thì xoá đi là đúng — trình biên dịch
+		sẽ không báo lỗi, vì code không được gọi vẫn hợp lệ.
+	</p>
+	<p>
+		Và vì mục 11 đã cài theme, app giờ có sẵn cả <strong>chế độ tối</strong> — không viết thêm dòng nào. Đổi hệ thống sang
+		dark mode là app đổi theo.
+	</p>
+	<p class="hint">
+		<code>onMessageSent = {'{}'}</code> — lambda rỗng, nghĩa là "gửi xong thì không làm gì". Đây là lần thứ ba trong bài
+		bạn gặp mẫu này (<code>onClick</code> ở mục 3, <code>authorClicked</code> ở mục 10). Việc <em>thật sự</em> thêm tin
+		nhắn vào danh sách nằm ở chapter 6 — cùng chỗ với <code>addMessage()</code> đang để trống trong
+		<code>ConversationUiState</code>.
+	</p>
+
+	<h2 id="version">Ghi chú phiên bản — chỗ nào trong sách đã cũ</h2>
+	<div class="callout diff">
+		<p>
+			Sách viết cho <strong>Kotlin 1.9.10 / AGP 8.2.0</strong>. Nội dung Compose trong chapter này (composable, layout
+			group, <code>Modifier</code>, <code>LazyColumn</code>, preview, theme) <strong>vẫn đúng nguyên</strong>. Chỉ phần
+			cấu hình build đã đổi:
+		</p>
+		<ul>
+			<li>
+				Từ <strong>Kotlin 2.0 trở đi</strong>, khối <code>composeOptions {'{'} kotlinCompilerExtensionVersion = "1.5.3" {'}'}</code>
+				(trong project mẫu ở <code>app/build.gradle.kts</code> dòng 76–78) <strong>không dùng nữa</strong>. Thay vào đó
+				là plugin <code>org.jetbrains.kotlin.plugin.compose</code>. Compose compiler giờ đi cùng phiên bản Kotlin, nên
+				không còn phải khai báo số phiên bản riêng — vốn là nguồn lỗi "Compose compiler không khớp Kotlin" rất phổ biến
+				trước đây.
+			</li>
+			<li>
+				<code>buildFeatures {'{'} compose = true {'}'}</code> thì <strong>giữ nguyên</strong>, vì đó là thiết lập của AGP
+				(Android Gradle Plugin), không phải của Kotlin.
+			</li>
+			<li>
+				<code>ui-text-google-fonts:1.5.4</code> ở mục 11 là phiên bản của thời điểm sách viết. Bạn có thể dùng bản mới
+				hơn; cách dùng API không đổi.
+			</li>
+		</ul>
+		<p>
+			Nếu bạn mở project mẫu bằng Android Studio mới và nó đề nghị nâng cấp Gradle/Kotlin, cứ để nó nâng — nhưng biết
+			trước là nó sẽ đòi thêm dòng plugin Compose ở trên.
+		</p>
+	</div>
+
+	<h2 id="key-points">Tóm lại — 6 điều sách chốt cho chapter này</h2>
+	<ol class="keypoints">
+		<li>
+			<strong>Nền tảng của Compose function và composable</strong>, và cách <em>lồng</em> composable để dựng layout phức
+			tạp từ những khối nhỏ. Bài này đi từ một <code>Text</code> đến cây 5 composable dựng một dòng tin nhắn — đó chính
+			là điều này trong thực tế.
+		</li>
+		<li>
+			<strong>Android Studio có nhiều tiện ích mạnh</strong> giúp đời lập trình dễ hơn: Ctrl-click để nhảy vào source
+			của component, quick fix cho <code>@OptIn</code>, tô sáng <code>// TODO</code>, split view của preview, Vector
+			Asset.
+		</li>
+		<li><strong>Sắp xếp UI bằng Layout Group</strong>: <code>Column</code>, <code>Row</code>, <code>Box</code>, <code>Surface</code>.</li>
+		<li><strong>Xem preview UI mà không cần build hay chạy app</strong>, và preview tự cập nhật khi bạn sửa code.</li>
+		<li><strong>Dùng <code>Modifier</code> để can thiệp cách UI được vẽ</strong> — nhớ rằng thứ tự nối chuỗi có ý nghĩa.</li>
+		<li><strong>Tự làm Theme riêng và dùng font tải về</strong>.</li>
+	</ol>
+	<div class="callout journey">
+		<strong>Chapter này để lại 3 việc dở dang — tất cả đều là chapter 6</strong>
+		<ul>
+			<li><code>addMessage()</code> trong <code>ConversationUiState</code> còn trống, nên gõ tin nhắn chưa hiện lên.</li>
+			<li><code>isUserMe</code> còn gán cứng <code>userId == "me"</code>, chưa so với người dùng thật.</li>
+			<li><code>scrollState</code> đã tạo nhưng chưa ai dùng (kể cả tham số bị comment ở dòng 149) — danh sách chưa tự cuộn.</li>
+		</ul>
+		<p>
+			Ba chỗ này không phải lỗi: chapter 5 cố ý chỉ làm <strong>phần nhìn</strong>. Chapter sau mới thêm state, sự kiện
+			và các design pattern để UI thật sự phản ứng.
+		</p>
+	</div>
+
+
+
+
+
+
+
+
+
+
+</section>
+

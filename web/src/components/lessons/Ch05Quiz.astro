@@ -42,6 +42,97 @@
 			</p>
 		</fieldset>
 
+		<fieldset data-answer="b">
+			<legend>4. Quy tắc nào <strong>không</strong> phải là quy tắc của composable function?</legend>
+			<label><input type="radio" name="q4" value="a" /> Phải có annotation <code>@Composable</code></label>
+			<label><input type="radio" name="q4" value="b" /> Phải trả về một đối tượng <code>View</code></label>
+			<label><input type="radio" name="q4" value="c" /> Chỉ được gọi từ trong một composable khác</label>
+			<p class="explain" hidden>
+				Composable <strong>không trả về gì</strong> (<code>Unit</code>) — nó <em>mô tả</em> UI chứ không tạo ra
+				object để bạn giữ lấy. Đó cũng là lý do bạn không thể gọi nó từ hàm Kotlin thường: cần một "chỗ chứa"
+				composition đang chạy. <code>setContent</code> là cánh cửa đầu tiên mở ra chỗ chứa đó.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>5. <code>Surface</code> khác 3 layout group còn lại ở điểm nào?</legend>
+			<label><input type="radio" name="q5" value="a" /> Nó xếp các con theo chiều ngang</label>
+			<label><input type="radio" name="q5" value="b" /> Nó chỉ dùng được trong <code>@Preview</code></label>
+			<label><input type="radio" name="q5" value="c" /> Nó chỉ nhận <strong>một</strong> composable con</label>
+			<p class="explain" hidden>
+				<code>Column</code>, <code>Row</code>, <code>Box</code> nhận bao nhiêu con cũng được.
+				<code>Surface</code> chỉ nhận <strong>1 con</strong> — nó là "mặt phẳng vật liệu" trong Material Design,
+				lo phần nền/màu/bo góc/đổ bóng cho đúng một khối. Muốn nhiều con thì bọc chúng trong một
+				<code>Column</code> hoặc <code>Box</code> rồi đặt vào <code>Surface</code>. Trong app chat, bong bóng tin
+				nhắn (<code>ChatItemBubble</code>) chính là ví dụ dùng đúng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>6. <code>Modifier.weight(1f)</code> trong một <code>Column</code> làm gì?</legend>
+			<label><input type="radio" name="q6" value="a" /> Cho composable đó chiếm hết phần chiều cao <em>còn lại</em> sau khi các con không có <code>weight</code> đã được đo</label>
+			<label><input type="radio" name="q6" value="b" /> Đặt chiều cao cố định bằng 1dp</label>
+			<label><input type="radio" name="q6" value="c" /> Tăng độ ưu tiên vẽ để composable nằm trên các composable khác</label>
+			<p class="explain" hidden>
+				Compose đo các con <strong>không có</strong> <code>weight</code> trước (ở đây là ô nhập liệu), phần trống
+				còn lại mới chia cho các con có <code>weight</code> theo tỷ lệ. Mô hình để nhớ: "chia phần bánh còn lại".
+				Đây chính là cách sửa bug danh sách tin nhắn đè lên ô nhập ở mục 8 của bài học. Việc nằm trên hay dưới
+				thì do <code>Box</code> quyết định (con khai báo sau nằm trên), không liên quan tới <code>weight</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>7. Thứ tự nối <code>Modifier</code> có quan trọng không?</legend>
+			<label><input type="radio" name="q7" value="a" /> Không — Compose tự sắp xếp lại cho tối ưu</label>
+			<label><input type="radio" name="q7" value="b" /> Có — mỗi modifier áp lên kết quả của modifier trước nó</label>
+			<label><input type="radio" name="q7" value="c" /> Chỉ quan trọng khi dùng chung với <code>@Preview</code></label>
+			<p class="explain" hidden>
+				Chuỗi modifier được áp <strong>lần lượt từ trái sang phải</strong>. Ví dụ thật trong avatar của app chat:
+				<code>.padding(...)</code> đặt <em>trước</em> <code>.size(42.dp)</code> nên ảnh vẫn đúng 42dp và padding
+				chỉ thêm khoảng trống bên ngoài; nếu đảo lại, kết quả khác. Tương tự, <code>.clickable</code> đặt trước
+				hay sau <code>.padding</code> quyết định vùng padding có bấm được hay không.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>8. Vì sao ô nhập chat được sửa từ <code>label</code> sang <code>placeholder</code>?</legend>
+			<label><input type="radio" name="q8" value="a" /> Vì <code>label</code> đã bị Compose loại bỏ</label>
+			<label><input type="radio" name="q8" value="b" /> Vì <code>placeholder</code> hiển thị chữ đậm hơn</label>
+			<label><input type="radio" name="q8" value="c" /> Vì chữ gợi ý cần <strong>tự mất khi người dùng bắt đầu gõ</strong>, thay vì phải xoá tay</label>
+			<p class="explain" hidden>
+				Ban đầu chữ mặc định được nhét làm <em>giá trị thật</em> của ô nhập, nên người dùng phải xoá nó trước khi
+				gõ — trải nghiệm tệ. <code>placeholder</code> là chữ mờ chỉ hiện khi ô <strong>trống</strong>, tự biến mất
+				khi có chữ. Còn <code>label</code> là nhãn của ô, luôn hiện và trượt lên viền khi ô được focus. Sách tìm ra
+				tham số này bằng cách Ctrl-click vào <code>OutlinedTextField</code> để đọc signature của nó — đó là kỹ năng
+				đáng học nhất trong mục 4.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>9. <code>title</code>, <code>actions</code>, <code>navigationIcon</code> của <code>TopAppBar</code> có kiểu dữ liệu là gì?</legend>
+			<label><input type="radio" name="q9" value="a" /> <code>String</code> và <code>Int</code> (id ảnh)</label>
+			<label><input type="radio" name="q9" value="b" /> Hàm composable — <code>@Composable () -&gt; Unit</code></label>
+			<label><input type="radio" name="q9" value="c" /> <code>Modifier</code></label>
+			<p class="explain" hidden>
+				Đây là <strong>slot API</strong>: component chỉ định <em>chỗ</em> (slot), còn <em>vẽ gì</em> vào chỗ đó thì
+				bạn quyết định bằng cách truyền vào một composable. Nhờ vậy app bar không bị giới hạn chỉ hiện chữ — bạn
+				đặt được icon, hàng nút, hay bất cứ UI nào. Bạn đã gặp mẫu này ngay từ <code>setContent</code>:
+				tham số <code>content</code> của nó cũng là một composable.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>10. Trong <code>ConversationUiState</code>, hàm <code>addMessage()</code> để trống là do đâu?</legend>
+			<label><input type="radio" name="q10" value="a" /> Cố ý — chapter 5 chỉ làm phần nhìn, phần state/sự kiện để chapter 6</label>
+			<label><input type="radio" name="q10" value="b" /> Lỗi của project mẫu, cần tự sửa mới build được</label>
+			<label><input type="radio" name="q10" value="c" /> Compose không cho phép sửa danh sách sau khi tạo</label>
+			<p class="explain" hidden>
+				Trong code thật của tác giả có sẵn comment <code>// TODO : implement in Chapter 6 😀</code>. Chapter này
+				chỉ dựng giao diện tĩnh với dữ liệu giả từ <code>FakeData.kt</code>. Cùng loại "việc dở dang có chủ ý":
+				<code>isUserMe</code> còn gán cứng, và <code>scrollState</code> tạo ra nhưng chưa ai dùng.
+			</p>
+		</fieldset>
+
 		<button type="submit">Kiểm tra đáp án</button>
 		<p id="quiz-score" hidden></p>
 	</form>
@@ -108,101 +199,3 @@
 		}
 	});
 </script>
-
-<style>
-	.quiz h2 {
-		margin-top: 2.2rem;
-		font-size: 1.15rem;
-		color: #1a202c;
-		border-bottom: 1px solid #e2e8f0;
-		padding-bottom: 0.35rem;
-	}
-	.intro {
-		color: #718096;
-		font-size: 0.9rem;
-	}
-	fieldset {
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 0.9rem 1.1rem;
-		margin-bottom: 1rem;
-		background: #fff;
-	}
-	fieldset.correct {
-		border-color: #68d391;
-		background: #f0fff4;
-	}
-	fieldset.incorrect {
-		border-color: #fc8181;
-		background: #fff5f5;
-	}
-	legend {
-		font-weight: 600;
-		font-size: 0.92rem;
-		padding: 0 0.3rem;
-	}
-	label {
-		display: block;
-		font-size: 0.9rem;
-		margin: 0.35rem 0;
-		color: #2d3748;
-	}
-	.explain {
-		margin-top: 0.6rem;
-		font-size: 0.85rem;
-		color: #4a5568;
-		border-top: 1px dashed #e2e8f0;
-		padding-top: 0.5rem;
-	}
-	button[type="submit"] {
-		background: #2b6cb0;
-		color: #fff;
-		border: none;
-		padding: 0.55rem 1.1rem;
-		border-radius: 8px;
-		font-size: 0.9rem;
-		cursor: pointer;
-	}
-	button[type="submit"]:hover {
-		background: #2c5282;
-	}
-	#quiz-score {
-		margin-top: 0.8rem;
-		font-weight: 600;
-		color: #2d3748;
-	}
-	.exercise {
-		background: #fff;
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 1rem 1.2rem;
-		font-size: 0.92rem;
-		line-height: 1.6;
-		color: #2d3748;
-	}
-	.exercise pre {
-		background: #1a202c;
-		color: #e2e8f0;
-		padding: 0.6rem 0.9rem;
-		border-radius: 6px;
-		overflow-x: auto;
-		font-size: 0.85rem;
-	}
-	.exercise code {
-		background: #edf2f7;
-		padding: 0.1rem 0.35rem;
-		border-radius: 4px;
-	}
-	.exercise pre code {
-		background: none;
-		padding: 0;
-	}
-	details {
-		margin-top: 0.8rem;
-		font-size: 0.88rem;
-	}
-	details summary {
-		cursor: pointer;
-		color: #2b6cb0;
-	}
-</style>

@@ -1,0 +1,782 @@
+---
+// Quiz + bài tập cho Chương 3.3 — Manifest, Intent, Permission và Service (phạm vi mục 14–19).
+// Tách từ quiz gộp Ch03Quiz.astro theo cùng ranh giới với 4 chương nhỏ của Chương 3.
+// Kế thừa 5 câu của quiz gộp thuộc phạm vi mục 14–19, viết lại lời dẫn để đứng độc lập
+//   (bỏ mọi cách nhắc tới tài liệu in) và rút từ 4 lựa chọn về 3:
+//   q13 (AndroidManifest.xml dùng làm gì) -> câu 3 · q15 (thuộc tính package đã biến mất) -> câu 5 ·
+//   q14 (xoá intent-filter MAIN + LAUNCHER) -> câu 6 · q16 (xin quyền Internet bằng thẻ nào) -> câu 9 ·
+//   q17 (khai quyền dangerous trong manifest đã đủ chưa) -> câu 10.
+//   Chỉ câu 10 giữ 4 lựa chọn, vì 3 đáp án sai là 3 mô hình sai khác nhau của người mới về permission.
+// ĐÃ SỬA 2 CHỖ SAI VỀ SỰ THẬT trong quiz gộp:
+//   (1) q14 cũ hỏi "xoá cả thẻ <intent-filter>" nhưng đáp án lại mô tả hiện tượng của việc chỉ xoá
+//       <category LAUNCHER> ("vẫn cài được nhưng mất icon"). Xoá cả thẻ thì Android Studio báo lỗi khi
+//       Run vì không tìm được Activity để mở. Câu 6 nay hỏi đúng trường hợp xoá riêng <category>, và
+//       phần explain tách rõ hai trường hợp.
+//   (2) q15 cũ ghi "0 / 22 manifest" — con số 22 sai. Đếm lại: đúng 19 file AndroidManifest.xml trong
+//       aaf-materials/**/projects/ (starter + final của Chương 3→11 = 18, cộng final của Chương 2 = 19;
+//       Chương 1 không có project Android). Câu 5 nay ghi 0/19.
+// Viết mới 6 câu: câu 1 (sáu thư mục mipmap-* — cơ chế "một tên, nhiều phiên bản", mục 14) ·
+//   câu 2 (res/ không có layout/ là dấu vết vật lý của app Compose, mục 14) ·
+//   câu 4 (thư mục ảo "manifests" của Project navigator, mục 15.1) ·
+//   câu 7 (vì sao MainActivity buộc phải exported="true", mục 16) ·
+//   câu 8 (Intent là lời nhắn giao cho hệ điều hành, không phải lời gọi hàm, mục 17) ·
+//   câu 11 (chạy việc ở nền hôm nay: WorkManager so với hai loại Service, mục 19).
+// Đã tự mở file thật đếm lại từng con số trước khi viết (2026-08-31):
+//   final/app/src/main/AndroidManifest.xml = 61 dòng — khai báo XML dòng 1 · license 2–33 · dòng trống 34 ·
+//     <manifest 35–36 · <application 38 với 9 thuộc tính ở dòng 39–47 (8 android: + 1 tools:) ·
+//     <activity 48 với 4 thuộc tính ở 49–52 · <intent-filter> 53–57 (action 54, category 56) ·
+//     </activity> 58 · </application> 59 · </manifest> 61
+//   starter/app/src/main/AndroidManifest.xml = 62 dòng (license 2–34), thân file y hệt final, lệch 1 dòng
+//   final/app/build.gradle.kts: android { 40 · namespace 41 · compileSdk 42 · defaultConfig { 44 ·
+//     applicationId 45 · minSdk 46 · targetSdk 47 · versionCode 48 · versionName 49
+//   res/ bản final và bản starter: 9 thư mục (drawable · mipmap-anydpi · mipmap-hdpi/mdpi/xhdpi/xxhdpi/
+//     xxxhdpi · values · xml) — KHÔNG có layout/; tìm thư mục tên layout trên toàn aaf-materials: 0
+//   res/mipmap-anydpi/: ic_launcher.xml + ic_launcher_round.xml; ic_launcher.xml là <adaptive-icon>
+//     dòng 35–39, trỏ @drawable/ic_launcher_background (36) và @drawable/ic_launcher_foreground (37, 38);
+//     5 thư mục mật độ còn lại mỗi thư mục 2 file .webp cùng tên
+//   res/values/: strings.xml 5 chuỗi (35–39) · colors.xml 7 màu (36–42) · themes.xml 1 style (37)
+//   19 manifest trong aaf-materials/**/projects/: grep 'package="' → 0 · grep '<service' → 0 ·
+//     grep 'uses-permission' → 8 file (starter+final của 08, 09, 10, 11), luôn là INTERNET và luôn ở
+//     dòng 5 trước <application> · grep '<activity' → đúng 1 kết quả ở mỗi file trong cả 19
+//   07-advanced-architecture/final/.../chat/MainActivity.kt: import DittoSyncPermissions dòng 54 ·
+//     checkPermissions() gọi ở dòng 80 · thân hàm 84–89; manifest Chương 7 có 0 uses-permission
+//   grep 'startActivity' trên mọi file .kt của aaf-materials → 0 kết quả
+// Đáp án rải đều: a 4 câu (2, 5, 8, 11) · b 3 câu (3, 6, 9) · c 3 câu (1, 4, 7) · d 1 câu (10).
+// Bài tập 2 là bài sắp thứ tự nên script gồm 2 phần: chấm MCQ + handler check-order (#launch-order).
+// Lượt kiểm định độc lập (2026-08-31) đã sửa trong file này:
+//   · số dòng license: file final dòng 1 là khai báo XML, license là dòng 2–33 (không phải 1–33);
+//     starter là 2–34. File Chương 8 dòng 1 cũng là khai báo XML nên nội dung thật từ dòng 2.
+//   · mipmap-anydpi giữ 2 file .xml dạng <adaptive-icon> (trước ghi "file vector" — sai bản chất,
+//     và mâu thuẫn với đáp án bài tập 1 câu 3 trong cùng file).
+//   · bài tập 3 câu 1 ý 4: nói thêm Chương 8 còn ÍT hơn Chương 3 một thuộc tính (android:label),
+//     cho khớp với đáp án câu 2 của cùng bài tập.
+//   · câu 10 explain: nói rõ manifest Chương 7 có 0 thẻ <uses-permission> (quyền Ditto đến từ manifest
+//     của thư viện, được trộn lúc build) — tránh việc người học mở manifest Chương 7 đi tìm dòng khai quyền.
+//   · bài tập 3 bước thực hành: đổi thành sửa trên BẢN COPY, vì aaf-materials/ là repo tham chiếu
+//     dùng chung, không được sửa.
+//   · cross-reference bổ sung số mục: "Chương 4.2, mục 9", "Chương 3.4, mục 20", "Chương 3.1, mục 4".
+//   · thêm <code> cho vài lựa chọn để hình dạng lựa chọn không tố đáp án (câu 2, 5, 6, 7, 8).
+// Ghi nhận (không sửa): 8/11 câu có đáp án đúng là lựa chọn NGẮN NHẤT — đúng theo kỹ thuật "distractor dài,
+//   đáp án ngắn" của chuẩn quiz, nhưng vẫn là một tín hiệu đoán được, và cao hơn hẳn Ch03_2Quiz.astro (7/15).
+//   Nếu về sau rà lại chất lượng quiz cả khoá thì đây là file nên nới dài vài đáp án đúng trước tiên.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		11 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau khi chấm — kể cả ở câu bạn
+		làm đúng, nên đọc hết: chỗ nói <em>vì sao các lựa chọn còn lại sai</em> mới là phần dạy thêm, và gần như mọi đáp án
+		sai ở đây đều là một niềm tin thật mà người mới mang theo khi đọc manifest lần đầu.
+	</p>
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>
+				1. App chỉ có <em>một</em> cái icon, nhưng thư mục <code>res/</code> lại có tới sáu thư mục
+				<code>mipmap-*</code>. Vì sao?
+			</legend>
+			<label>
+				<input type="radio" name="q1" value="a" /> Vì mỗi thư mục giữ một trạng thái khác nhau của icon (bình thường,
+				đang bấm, đang tải), và Android tự đổi sang file tương ứng khi người dùng chạm vào icon
+			</label>
+			<label>
+				<input type="radio" name="q1" value="b" /> Vì mỗi thư mục ứng với một phiên bản Android: máy cũ đọc thư mục
+				dành cho bản cũ, máy mới đọc thư mục dành cho bản mới, nên thiếu một thư mục là mất icon trên nhóm máy đó
+			</label>
+			<label>
+				<input type="radio" name="q1" value="c" /> Vì mỗi thư mục giữ một phiên bản icon cho một mật độ điểm ảnh; bạn
+				viết một tên, Android chọn hộ file
+			</label>
+			<p class="explain" hidden>
+				Đây là nguyên tắc <strong>"một tên, nhiều phiên bản"</strong> của hệ thống resource, và nó y hệt cơ chế đa ngôn
+				ngữ của <code>strings.xml</code> ở Chương 3.2, mục 9 — chỉ đổi tiêu chí chọn từ ngôn ngữ sang mật độ màn hình.
+				Mở project ra kiểm được từng file: năm thư mục <code>mipmap-hdpi</code>, <code>mipmap-mdpi</code>,
+				<code>mipmap-xhdpi</code>, <code>mipmap-xxhdpi</code>, <code>mipmap-xxxhdpi</code> mỗi thư mục giữ đúng hai file
+				ảnh <code>.webp</code> cùng tên, còn <code>mipmap-anydpi</code> giữ hai file <code>.xml</code> dùng được ở mọi mật độ.
+				Manifest chỉ viết <code>@mipmap/ic_launcher</code> một lần. Đáp án a mang mô hình của web hoặc của game sang: icon
+				app không có "trạng thái", và tên thư mục nói về <em>thiết bị</em> chứ không nói về hành vi người dùng. Đáp án b
+				lẫn hai loại hậu tố khác nhau — Android <em>có</em> hậu tố theo phiên bản (dạng <code>-v24</code>) nhưng
+				<code>hdpi</code> / <code>xxhdpi</code> không phải loại đó; và thiếu một thư mục mật độ thì icon vẫn hiện, Android
+				lấy bản gần nhất rồi phóng to hoặc thu nhỏ, chỉ hơi kém nét.
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>
+				2. Thư mục <code>res/</code> của project này có đúng chín thư mục con, và <strong>không có</strong>
+				<code>res/layout/</code>. Điều đó nói lên gì?
+			</legend>
+			<label>
+				<input type="radio" name="q2" value="a" /> Giao diện được khai bằng code Kotlin, nên không còn file XML nào để đặt
+				vào <code>res/layout/</code>
+			</label>
+			<label>
+				<input type="radio" name="q2" value="b" /> Các file layout đã được gom vào <code>res/values/</code> cùng với
+				<code>strings.xml</code> và <code>colors.xml</code>, vì mọi file XML của app đều phải nằm trong một thư mục duy nhất
+			</label>
+			<label>
+				<input type="radio" name="q2" value="c" /> Project mẫu bị thiếu file, nên trước khi build được bạn phải tự tạo lại
+				thư mục <code>layout</code> cùng một file layout cho màn hình chính
+			</label>
+			<p class="explain" hidden>
+				Đây là <em>dấu vết vật lý</em> của việc project làm giao diện 100% bằng Compose — kiểm được ngay: chín thư mục đó
+				là <code>drawable</code>, sáu thư mục <code>mipmap-*</code>, <code>values</code>, <code>xml</code>, và tìm một thư
+				mục tên <code>layout</code> trên toàn bộ project mẫu của cả khoá học cho <strong>0</strong> kết quả. Thay cho file
+				layout, giao diện nằm trong khối <code>setContent</code> ở Chương 3.1, mục 3. Đáp án b bịa một luật không tồn tại:
+				<code>res/values/</code> chỉ chứa loại XML "khai giá trị" (chuỗi, màu, style), và Android phân biệt các loại
+				resource <em>bằng tên thư mục</em> — gộp chúng lại là làm hỏng cơ chế đó. Đáp án c đảo ngược nhân quả: project build
+				và chạy được bình thường; app Compose <em>được phép</em> có <code>res/layout/</code> nhưng không <em>cần</em>, nên
+				thiếu nó không phải lỗi.
+			</p>
+		</fieldset>
+		<fieldset data-answer="b">
+			<legend>3. <code>AndroidManifest.xml</code> dùng để làm gì?</legend>
+			<label>
+				<input type="radio" name="q3" value="a" /> Liệt kê những thư viện bên ngoài mà app phụ thuộc, cùng số phiên bản của
+				từng thư viện, để hệ thống tải chúng về lúc cài app
+			</label>
+			<label>
+				<input type="radio" name="q3" value="b" /> Khai với hệ điều hành: app có thành phần nào, mở được từ ngoài không,
+				cần quyền gì, dùng icon và theme nào
+			</label>
+			<label>
+				<input type="radio" name="q3" value="c" /> Chứa mọi câu chữ hiển thị trong app, để dịch sang ngôn ngữ khác mà không
+				phải sửa dòng Kotlin nào
+			</label>
+			<p class="explain" hidden>
+				Mô hình tư duy đáng giữ: manifest là <strong>tờ khai hải quan</strong> của app. Code là hàng hoá; manifest là bản
+				khai "trong này có gì, tôi cần quyền gì, cửa nào mở được vào" — và hệ điều hành đọc tờ khai <em>trước khi</em> chạy
+				một dòng code nào của bạn. Đó là lý do tồn tại một lớp lỗi rất khó chịu: code Kotlin đúng tuyệt đối, biên dịch sạch,
+				mà app vẫn không mở được (câu 6) hoặc không có quyền (câu 9). Đáp án a là việc của file
+				<code>build.gradle.kts</code> — chủ đề của Chương 4.2, mục 9. Đáp án c là <code>strings.xml</code> ở Chương 3.2, mục 9. Thú
+				vị là chọn c cũng để lộ đúng một hiểu lầm ngược: manifest gần như <em>không chứa</em> giá trị thật nào, nó chỉ chứa
+				đường dẫn tới resource — tên app trong đó là <code>@string/app_name</code>, chính là một dòng bên trong
+				<code>strings.xml</code>.
+			</p>
+		</fieldset>
+		<fieldset data-answer="c">
+			<legend>
+				4. Trong Android Studio bạn thấy <em>app ▸ manifests ▸ AndroidManifest.xml</em>, nhưng mở File Explorer ra lại
+				không có thư mục nào tên "manifests". Vì sao?
+			</legend>
+			<label>
+				<input type="radio" name="q4" value="a" /> Vì thư mục đó bị đánh dấu ẩn để bạn không sửa tay vào file quan trọng;
+				bật chế độ hiện file ẩn của hệ điều hành lên là thấy
+			</label>
+			<label>
+				<input type="radio" name="q4" value="b" /> Vì thư mục đó chỉ được sinh ra trên ổ đĩa lúc build, nên chạy build một
+				lần rồi mở lại File Explorer là bạn sẽ thấy nó xuất hiện
+			</label>
+			<label>
+				<input type="radio" name="q4" value="c" /> Vì chế độ xem <em>Android</em> gom nhóm file theo ý nghĩa và sinh ra
+				những thư mục ảo không có trên ổ đĩa
+			</label>
+			<p class="explain" hidden>
+				Android Studio có hai chế độ xem cây project. Chế độ <em>Android</em> (mặc định) nhóm file theo <em>ý nghĩa</em>,
+				nên nó tạo ra "manifests" và "kotlin+java" — hai cái tên không tồn tại trên ổ đĩa — và gộp mọi thư mục
+				<code>values-*</code> lại thành một nhóm cho gọn. Chế độ <em>Project</em> hiển thị đúng cấu trúc ổ đĩa; đổi bằng
+				dropdown ở góc trên-trái cây project. File thật nằm ở gốc thư mục <code>main</code> bên trong <code>app/src</code>.
+				Hai đáp án còn lại đều mô tả cơ chế có thật của Android nhưng áp sai chỗ, nên đáng tách rõ. File ẩn (a) là chuyện
+				của hệ điều hành và không liên quan: đường dẫn thật <em>không hề ẩn</em>, chỉ là nó khác chỗ bạn thấy trong sidebar.
+				Thư mục sinh ra lúc build (b) cũng có thật — <code>app/build/</code> chứa đầy file do build tạo ra, gồm cả một
+				manifest đã trộn — nhưng "manifests" trong sidebar thì không bao giờ xuất hiện trên ổ đĩa, dù bạn build bao nhiêu
+				lần. Chi tiết này đáng nhớ vì nó là chỗ người mới mất thời gian nhiều nhất: copy đường dẫn từ sidebar dán vào lệnh
+				terminal và nhận về "no such file".
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>
+				5. Nhiều tài liệu Android nói thẻ <code>&lt;manifest&gt;</code> phải khai thuộc tính
+				<code>package="com.kodeco.chat"</code>, nhưng manifest của project này không có thuộc tính đó. Vì sao?
+			</legend>
+			<label>
+				<input type="radio" name="q5" value="a" /> Vì từ AGP 7.3 thông tin đó chuyển sang <code>namespace</code> trong
+				<code>build.gradle.kts</code>
+			</label>
+			<label>
+				<input type="radio" name="q5" value="b" /> Vì thuộc tính đó chỉ cần khai khi app có từ hai Activity trở lên, để hệ
+				thống phân biệt các màn hình cùng tên nằm ở <code>package</code> khác nhau
+			</label>
+			<label>
+				<input type="radio" name="q5" value="c" /> Vì đây là project mẫu dùng để học nên đã được rút gọn bớt cấu hình; app
+				thật muốn phát hành lên Play Store thì vẫn phải khai đủ thuộc tính <code>package</code> này
+			</label>
+			<p class="explain" hidden>
+				Không phải chuyện riêng của một file: tìm chuỗi <code>package="</code> trong <strong>toàn bộ 19 file</strong>
+				<code>AndroidManifest.xml</code> của bộ project mẫu cho <strong>0</strong> kết quả. Con số 19 gồm bản
+				<code>starter</code> và <code>final</code> của Chương 3 tới Chương 11 (18 file), cộng đúng một bản
+				<code>final</code> của Chương 2 — Chương 1 không có project Android nào. Thông tin đó nay khai bằng
+				<code>namespace = "com.kodeco.chat"</code> trong khối <code>android</code> của file build cấp module, ở dòng 41.
+				Tinh thần quy tắc cũ vẫn đúng nguyên (package vẫn được khai, Android vẫn dùng nó), chỉ <em>vị trí khai đã đổi</em> —
+				và cách mới còn <em>tách</em> một giá trị cũ thành hai thứ khác nghĩa: <code>namespace</code> quyết định lớp
+				<code>R</code> sinh ra ở package nào, <code>applicationId</code> (dòng 45) là danh tính app trên thiết bị và trên
+				Play Store. Đáp án b bịa một luật theo số lượng Activity: thuộc tính này chưa bao giờ phụ thuộc vào chuyện đó. Đáp án
+				c là cách nghĩ dễ gặp nhất khi mở code mẫu ra thấy thiếu thứ mình vừa đọc, và nó ngược hẳn sự thật — project mẫu ở
+				đây <em>mới hơn</em> phần chữ trong tài liệu, còn thêm <code>package</code> vào theo tài liệu cũ thì AGP bản mới báo
+				lỗi build thẳng. Đây là chỗ nhắc bạn: khi tài liệu và code thật lệch nhau, mở code ra kiểm.
+			</p>
+		</fieldset>
+		<fieldset data-answer="b">
+			<legend>
+				6. Trong <code>&lt;intent-filter&gt;</code> của <code>MainActivity</code>, bạn xoá riêng dòng
+				<code>&lt;category android:name="android.intent.category.LAUNCHER" /&gt;</code> rồi build lại. Hiện tượng là gì?
+			</legend>
+			<label>
+				<input type="radio" name="q6" value="a" /> Không ảnh hưởng gì tới việc mở app: dòng <code>&lt;action&gt;</code> với
+				giá trị <code>MAIN</code> còn đó đã đủ nói cho hệ thống biết đây là màn hình khởi động
+			</label>
+			<label>
+				<input type="radio" name="q6" value="b" /> App vẫn build và cài được, nhưng không còn icon trong danh sách app để
+				bấm mở <code>MainActivity</code>
+			</label>
+			<label>
+				<input type="radio" name="q6" value="c" /> App không build được, vì Android bắt buộc mọi
+				<code>&lt;intent-filter&gt;</code> phải có ít nhất một thẻ <code>&lt;category&gt;</code> đi kèm thẻ
+				<code>&lt;action&gt;</code>
+			</label>
+			<p class="explain" hidden>
+				Hai thẻ con trả lời hai câu hỏi khác nhau, và cần <em>cả hai</em>: <code>&lt;action&gt;</code> nói "Activity này xử
+				lý việc gì" (<code>MAIN</code> — đây là điểm bắt đầu của app), <code>&lt;category&gt;</code> nói "nó nên xuất hiện ở
+				đâu" (<code>LAUNCHER</code> — hiện icon trong danh sách app). Xoá category thì câu trả lời thứ hai mất, nên hệ thống
+				không có lý do nào để đặt icon của app lên màn hình chính — bạn không còn cách nào mở nó bằng tay. Đó là lý do đáp
+				án a sai: <code>MAIN</code> một mình chưa đủ. Đáng phân biệt với một trường hợp gần đó: xoá <em>cả</em> thẻ
+				<code>&lt;intent-filter&gt;</code> thì Android Studio báo lỗi ngay khi bạn bấm Run, vì nó không tìm được Activity nào
+				để mở — mức độ nghiêm trọng khác, và bạn biết ngay chứ không phải đi tìm. Đáp án c bịa một luật cú pháp không tồn
+				tại: XML vẫn hợp lệ và build vẫn xanh, đây đúng là kiểu lỗi ở tờ khai mà trình biên dịch không giúp được gì.
+			</p>
+		</fieldset>
+		<fieldset data-answer="c">
+			<legend>
+				7. <code>MainActivity</code> khai <code>android:exported="true"</code>. Vì sao ở đây giá trị buộc phải là "true"?
+			</legend>
+			<label>
+				<input type="radio" name="q7" value="a" /> Vì <code>exported</code> quyết định Activity có được đóng gói vào bản
+				build cuối cùng hay không, nên đặt "false" thì màn hình đó bị loại khỏi app đã cài
+			</label>
+			<label>
+				<input type="radio" name="q7" value="b" /> Vì đây là Activity duy nhất của app, và Android chỉ cho phép đặt
+				<code>"false"</code> cho Activity nào đã có một Activity khác trong app đứng ra mở nó
+			</label>
+			<label>
+				<input type="radio" name="q7" value="c" /> Vì cái mở <code>MainActivity</code> là launcher của hệ thống — một app
+				khác, không phải app của bạn
+			</label>
+			<p class="explain" hidden>
+				<code>exported</code> trả lời đúng một câu hỏi: <em>thành phần bên ngoài app có được phép khởi động cái này
+				không?</em> Ở đây câu trả lời buộc phải là "được", vì thứ khởi động <code>MainActivity</code> chính là launcher của
+				hệ thống — một app riêng. Đặt <code>exported="false"</code> cho Activity có filter kiểu LAUNCHER là tự khoá cửa nhà
+				mình. Từ Android 12 (API 31), mọi thành phần có <code>&lt;intent-filter&gt;</code> buộc phải khai
+				<code>exported</code> tường minh, không khai thì không build được — một thay đổi bảo mật có lý, vì trước đó mặc định
+				là "có filter thì tự động được export" nên rất nhiều app vô tình mở cửa cho app khác gọi vào màn hình nội bộ mà lập
+				trình viên không biết. Đáp án a lẫn <code>exported</code> với chuyện đóng gói: thuộc tính này không hề quyết định code
+				nào vào bản build, nó chỉ quyết định <em>ai được gọi</em>. Đáp án b nghe hợp lý nhưng đảo ngược ý nghĩa của thuộc
+				tính: <code>exported="false"</code> là giá trị hoàn toàn bình thường và <em>rất nên dùng</em> cho những màn hình chỉ
+				app bạn mở, số lượng Activity không liên quan gì; nhớ sai kiểu này dẫn tới việc để "true" cho mọi màn hình, đúng là
+				vấn đề bảo mật mà Android 12 muốn chặn.
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>
+				8. Chia sẻ một ảnh từ app của bạn sang một app nhắn tin của hãng khác. Việc đó làm được nhờ đâu?
+			</legend>
+			<label>
+				<input type="radio" name="q8" value="a" /> Bạn tạo một <code>Intent</code> mô tả việc cần làm rồi giao cho hệ điều
+				hành; hệ thống tìm app đã khai rằng nó nhận việc đó
+			</label>
+			<label>
+				<input type="radio" name="q8" value="b" /> Bạn thêm app đó vào danh sách phụ thuộc của project, <code>import</code>
+				class chia sẻ của nó rồi gọi hàm nhận ảnh mà nó cung cấp, đúng như gọi một hàm bình thường
+			</label>
+			<label>
+				<input type="radio" name="q8" value="c" /> Bạn ghi ảnh vào một vùng nhớ dùng chung mà mọi app trên máy đều đọc được,
+				rồi app kia tự quét vùng đó và phát hiện ảnh mới
+			</label>
+			<p class="explain" hidden>
+				Đây là điểm cốt lõi của Intent, và diễn đạt gọn nhất là: <strong>Intent là lời nhắn, không phải cuộc gọi.</strong>
+				Bạn không gọi hàm của app khác. Bạn tạo một object mô tả ý định ("tôi muốn chia sẻ một ảnh"), giao cho hệ điều hành,
+				và hệ điều hành đối chiếu nó với các <code>&lt;intent-filter&gt;</code> đã khai trong manifest của mọi app trên máy —
+				khớp nhiều app thì nó hiện bảng chọn. Đáp án b là chỗ người quen lập trình thường xuyên hiểu sai, và cái sai rất đáng
+				chỉ ra: nếu phải import class của app kia thì bạn sẽ cần biết trước <em>từng app</em> người dùng có thể cài, mà app
+				đó có thể còn chưa ra đời khi bạn viết code. Chính vì đi qua trung gian là hệ điều hành, bạn không cần biết gì về code
+				bên nhận. Đáp án c bịa ra một "vùng nhớ chung ai cũng đọc được" — đúng là điều Android cố tình <em>không</em> làm, vì
+				mỗi app bị cách ly khỏi app khác; nếu có vùng như vậy thì mọi ảnh riêng tư của bạn đều công khai. Cũng chính cơ chế
+				này giải thích chuyện mở app: launcher không biết class <code>MainActivity</code> của bạn, nó chỉ phát ra "mở app có
+				action MAIN + category LAUNCHER" và để hệ thống ghép với bộ lọc ở câu 6.
+			</p>
+		</fieldset>
+		<fieldset data-answer="b">
+			<legend>9. App của bạn cần gọi mạng. Thẻ nào trong manifest xin quyền Internet cho app?</legend>
+			<label><input type="radio" name="q9" value="a" /> <code>&lt;permission&gt;</code></label>
+			<label><input type="radio" name="q9" value="b" /> <code>&lt;uses-permission&gt;</code></label>
+			<label><input type="radio" name="q9" value="c" /> <code>&lt;request-permission&gt;</code></label>
+			<p class="explain" hidden>
+				Mẹo nhớ: đọc tên thẻ như một câu tiếng Anh — <em>uses</em> permission là "app này <em>dùng</em> quyền". Cái bẫy ở đây
+				là thẻ <code>&lt;permission&gt;</code> có thật và làm việc gần như ngược lại: nó <em>định nghĩa ra</em> một quyền mới
+				do chính app bạn tạo, để app khác muốn chạm vào thành phần của bạn thì phải xin — một nhu cầu rất hiếm. Điều làm cái
+				bẫy này khó chịu hơn hẳn lỗi thường: gõ
+				<code>&lt;permission android:name="android.permission.INTERNET" /&gt;</code> thì XML vẫn hợp lệ, app vẫn build xanh,
+				vẫn cài và mở được; chỉ tới lúc gọi mạng thật mới nổ ngoại lệ, và thông báo lỗi lúc đó nói về mạng chứ không nói về
+				manifest, nên bạn sẽ đi tìm lỗi ở tầng networking — sai chỗ hoàn toàn. Còn <code>&lt;request-permission&gt;</code>
+				đơn giản là không tồn tại; nó nghe hợp lý vì trùng với chữ "request" trong hàm xin quyền lúc chạy ở câu 10, nhưng cái
+				đó là code Kotlin, không phải thẻ XML. Ví dụ thật trong bộ project mẫu: manifest của Chương 8 có đúng một dòng
+				<code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code> ở dòng 5, tức trước cả thẻ
+				<code>&lt;application&gt;</code>.
+			</p>
+		</fieldset>
+		<fieldset data-answer="d">
+			<legend>
+				10. Bạn khai một quyền nhóm "nguy hiểm" (dangerous) như camera hoặc vị trí trong manifest. Như vậy đã đủ để dùng
+				quyền đó chưa?
+			</legend>
+			<label>
+				<input type="radio" name="q10" value="a" /> Đủ — khai trong manifest là được cấp, vì manifest được hệ thống đọc và
+				chấp nhận ngay lúc cài app
+			</label>
+			<label>
+				<input type="radio" name="q10" value="b" /> Đủ để code chạy, chỉ khác là người dùng có thể vào Cài đặt tắt quyền đó
+				đi nếu họ muốn
+			</label>
+			<label>
+				<input type="radio" name="q10" value="c" /> Không cần khai trong manifest: cứ gọi API camera hoặc API vị trí, hệ
+				thống thấy vậy sẽ tự hiện hộp thoại hỏi người dùng
+			</label>
+			<label>
+				<input type="radio" name="q10" value="d" /> Chưa đủ — còn phải hiện hộp thoại xin phép lúc app đang chạy, và người
+				dùng có thể từ chối
+			</label>
+			<p class="explain" hidden>
+				Công thức đáng nhớ: <strong>khai manifest là điều kiện cần, hộp thoại lúc chạy là điều kiện đủ.</strong> Manifest chỉ
+				tuyên bố "app tôi có thể sẽ dùng quyền này"; việc người dùng đồng ý hay không là chuyện khác, xảy ra lúc app đang
+				chạy, và code của bạn <em>bắt buộc</em> phải xử lý được trường hợp bị từ chối. Câu này giữ 4 lựa chọn vì ba đáp án sai
+				là ba mô hình sai khác nhau, mỗi cái dẫn tới một kiểu lỗi riêng nên đáng tách hết. Đáp án a đúng với quyền loại <em>normal</em> như
+				<code>INTERNET</code> (cấp tự động khi cài, không hộp thoại nào hiện ra) và cũng từng đúng với mọi quyền — trước
+				Android 6 (API 23, năm 2015) người dùng chấp nhận cả danh sách một lần lúc cài; đó là lý do rất nhiều tài liệu viết
+				trước 2015 chỉ nói tới việc thêm một dòng vào manifest rồi dừng. Đáp án b đúng nửa cuối mà sai nửa đầu: người dùng
+				<em>có</em> tắt được quyền trong Cài đặt, nhưng ngay từ đầu code đã không được cấp nếu chưa hỏi. Đáp án c thì ngược
+				hẳn: bỏ dòng khai trong manifest thì hộp thoại <em>không bao giờ</em> hiện, hệ thống từ chối thẳng và bạn không hiểu
+				vì sao. Trong bộ project mẫu có một ví dụ thật của loại quyền này: Chương 7 gọi <code>checkPermissions()</code> ở dòng
+				80 của <code>MainActivity.kt</code>, thân hàm ở dòng 84–89. Nhưng đừng mở manifest Chương 7 ra tìm dòng khai quyền —
+				file đó có <strong>0</strong> thẻ <code>&lt;uses-permission&gt;</code>, vì quyền được khai trong manifest của chính
+				thư viện Ditto rồi Android trộn vào manifest app lúc build.
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>
+				11. Muốn app chat tải tin nhắn mới khi người dùng không mở app. Hôm nay nên làm bằng gì?
+			</legend>
+			<label>
+				<input type="radio" name="q11" value="a" /> WorkManager — khai công việc kèm điều kiện, hệ thống tự chọn lúc chạy
+			</label>
+			<label>
+				<input type="radio" name="q11" value="b" /> Một background service chạy liên tục, vì đây đúng là việc người dùng
+				không trực tiếp nhận thấy nên không cần hiện gì lên cho họ biết
+			</label>
+			<label>
+				<input type="radio" name="q11" value="c" /> Một foreground service kèm notification không tắt được, vì đó là cách duy
+				nhất Android còn cho phép một app làm việc lúc không được mở
+			</label>
+			<p class="explain" hidden>
+				Từ Android 8 (2017), <strong>background service bị hạn chế rất nặng</strong>: hệ thống dừng service nền của app không
+				hiển thị sau một lúc, để tiết kiệm pin. Nên đáp án b mô tả đúng <em>định nghĩa</em> của background service mà sai về
+				thực tế hôm nay — viết như vậy thì việc tải tin nhắn sẽ bị cắt giữa đường và bạn không kiểm soát được lúc nào. Cách
+				làm hiện đại là WorkManager: bạn khai <em>công việc cần làm</em> kèm điều kiện, hệ thống tự chọn thời điểm phù hợp (có
+				Wi-Fi, đang sạc, máy rảnh), tự thử lại nếu thất bại, tự chạy tiếp sau khi máy khởi động lại. Đáp án c hiểu quá chặt
+				quy tắc "foreground service buộc phải hiện notification": quy tắc đó có thật và có lý — pin cùng dữ liệu di động là
+				tài nguyên của người dùng, nên app tiêu thụ chúng lâu thì phải để người dùng thấy và tắt được — nhưng foreground
+				service dành cho việc <em>đang diễn ra và người dùng biết</em> (phát nhạc, ghi lộ trình chạy bộ), không dành cho một
+				lần đồng bộ ngắn; và nó không phải cách duy nhất. Lưu ý cho việc tự đối chiếu: khái niệm Service vẫn cần biết để đọc
+				code cũ, nhưng tìm thẻ <code>&lt;service&gt;</code> trong cả 19 manifest của bộ project mẫu cho <strong>0</strong>
+				kết quả — app Kodeco Chat không bao giờ được thêm khả năng nhận tin ở nền, dù ví dụ minh hoạ nói về đúng nó.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+	<h2>Bài tập</h2>
+	<p class="intro">
+		Bài tập 1 và 3 cần mở file thật trong <code>aaf-materials/</code> — bằng Android Studio hoặc bất kỳ trình soạn thảo
+		nào. Bài tập 1 chỉ <em>đọc</em> manifest của project Chương 3
+		(<code>03-android-fundamentals/projects/final/</code>), không sửa gì. Bài tập 3 đặt manifest đó cạnh manifest của một
+		app khác hẳn — project Chương 8 (<code>08-networking/projects/final/</code>) — và riêng bước cuối có sửa một dòng để
+		xem hậu quả, nên bài đó hướng dẫn bạn copy project ra chỗ khác rồi sửa trên bản copy. Cả hai đều cố tình không thể
+		trả lời bằng cách nhớ lại: bạn phải đếm trên file. Bài tập 2 làm ngay trên trang, và nó nối phần manifest của chương
+		này với phần <code>onCreate()</code> của Chương 3.1, mục 4.
+	</p>
+
+	<div class="exercise">
+		<h3>Bài tập 1 — Đếm trên chính file <code>AndroidManifest.xml</code></h3>
+		<p>
+			Mở <code>final/app/src/main/AndroidManifest.xml</code> (tổng <strong>61 dòng</strong>: dòng 1 là khai báo XML, header
+			license chiếm dòng 2–33, nên nội dung thật bắt đầu từ dòng 35). Bật số dòng lên rồi trả lời:
+		</p>
+		<ol>
+			<li>
+				Thẻ <code>&lt;application&gt;</code> mở ở dòng 38 và có 9 thuộc tính ở dòng 39–47. Trong 9 thuộc tính đó, bao nhiêu
+				cái chứa <em>giá trị viết thẳng</em> và bao nhiêu cái chỉ <em>trỏ tới</em> một resource? Dấu hiệu nhận ra loại thứ
+				hai là gì?
+			</li>
+			<li>
+				Cả file có bao nhiêu <em>lần</em> trỏ tới resource, và bấy nhiêu lần đó ứng với bao nhiêu resource <em>khác
+				nhau</em>? Hai con số này không bằng nhau — chỉ ra chỗ lặp và giải thích vì sao lặp mà không phải dư thừa.
+			</li>
+			<li>
+				Lần theo <code>android:icon="@mipmap/ic_launcher"</code>: mở
+				<code>res/mipmap-anydpi/ic_launcher.xml</code> ra xem nó chứa gì. Bạn tìm thấy một điều đáng chú ý về hệ thống
+				resource — đó là gì?
+			</li>
+			<li>
+				So bản <code>starter</code> với bản <code>final</code>: file <code>starter</code> dài <strong>62 dòng</strong>, tức
+				nhiều hơn 1 dòng. Chương này đã thêm gì vào manifest?
+			</li>
+			<li>
+				<strong>Phần thực hành:</strong> tìm chuỗi <code>uses-permission</code> trong manifest này. Trước khi tìm, tự đoán
+				sẽ ra bao nhiêu kết quả và vì sao.
+			</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>Câu 1 — 3 giá trị viết thẳng, 6 trỏ tới resource.</strong> Viết thẳng:
+				<code>android:allowBackup="true"</code>, <code>android:supportsRtl="true"</code> và
+				<code>tools:targetApi="31"</code>. Sáu cái còn lại đều bắt đầu bằng dấu <code>@</code> —
+				<code>@xml/data_extraction_rules</code>, <code>@xml/backup_rules</code>, <code>@mipmap/ic_launcher</code>,
+				<code>@mipmap/ic_launcher_round</code>, <code>@string/app_name</code>, <code>@style/Theme.KodecoChat</code>. Dấu
+				hiệu chính là ký tự <code>@</code> cùng dạng <code>@loại/tên</code>: đó là cú pháp gọi resource trong XML, tương ứng
+				với <code>R.loại.tên</code> mà bạn đã dùng trong Kotlin ở Chương 3.2, mục 10. Cùng một hệ thống, hai cách viết tên
+				tuỳ bạn đang đứng ở đâu.
+			</p>
+			<p>
+				<strong>Câu 2 — 8 lần trỏ, nhưng chỉ 6 resource khác nhau.</strong> Ngoài 6 lần trong thẻ
+				<code>&lt;application&gt;</code>, thẻ <code>&lt;activity&gt;</code> trỏ thêm 2 lần ở dòng 51 và 52 —
+				<code>android:label="@string/app_name"</code> và <code>android:theme="@style/Theme.KodecoChat"</code>, đúng hai
+				resource đã xuất hiện ở cấp application. Không dư thừa, vì <em>hai cấp mang hai nghĩa khác nhau</em>: nhãn ở cấp
+				application là tên app (hiện dưới icon, hiện trong Settings), nhãn ở cấp activity là tên của <em>màn hình đó</em>
+				(từng hiện trên thanh tiêu đề, nay hiện trong danh sách app đang chạy). App một màn hình như ở đây thì hai giá trị
+				trùng nhau nên trông như lặp vô ích; app nhiều màn hình thì mỗi màn hình có nhãn riêng, và lúc đó khác biệt hiện ra
+				rõ. Cũng đáng chú ý: cả 61 dòng của file <strong>không chứa chữ "Kodeco Chat"</strong> nào — tên app nằm trong
+				<code>res/values/strings.xml</code>. Đó là lý do đổi tên app hiển thị không cần chạm vào manifest, và thêm một ngôn
+				ngữ cũng vậy.
+			</p>
+			<p>
+				<strong>Câu 3 — một resource trỏ tới resource khác.</strong> <code>ic_launcher.xml</code> không phải file ảnh mà là
+				một thẻ <code>&lt;adaptive-icon&gt;</code> (dòng 35–39), bên trong lại trỏ tiếp:
+				<code>&lt;background android:drawable="@drawable/ic_launcher_background" /&gt;</code> và hai dòng
+				<code>&lt;foreground&gt;</code> / <code>&lt;monochrome&gt;</code> cùng trỏ về
+				<code>@drawable/ic_launcher_foreground</code>. Điều đáng chú ý là chuỗi tham chiếu <em>nhiều tầng</em>: manifest trỏ
+				tới mipmap, mipmap trỏ tới drawable, và chỉ ở tầng cuối mới có hình thật. Đây cũng là lý do icon Android hiện đại
+				chia thành nền và hình phía trước — hệ điều hành cắt hai lớp đó theo hình dạng riêng của từng máy (tròn, vuông bo
+				góc, bo góc mềm kiểu squircle), nên cùng một icon nhìn đúng phong cách trên mọi máy. Cách kiểm nhanh mà không đọc XML: năm thư mục
+				<code>mipmap-*</code> theo mật độ chỉ chứa file <code>.webp</code>, còn <code>mipmap-anydpi</code> chứa file
+				<code>.xml</code> — khác đuôi file vì khác bản chất.
+			</p>
+			<p>
+				<strong>Câu 4 — chương này không thêm gì vào manifest cả.</strong> Đây là câu bẫy, và nó dạy một thói quen đọc diff
+				đáng có. Thân hai file <em>giống hệt nhau từng ký tự</em>; chênh 1 dòng nằm ở header license, chỗ một câu dài bị gói
+				thành hai dòng ở bản <code>starter</code> và một dòng ở bản <code>final</code>. Hệ quả: mọi số dòng của phần thân ở
+				bản <code>starter</code> đều lệch xuống 1 so với bản <code>final</code> — <code>&lt;manifest&gt;</code> ở dòng 36
+				thay vì 35, <code>&lt;activity&gt;</code> ở dòng 49 thay vì 48. Công cụ so sánh sẽ báo file này "đã đổi", và nếu tin
+				vào lời báo đó bạn sẽ đi tìm một thay đổi không tồn tại. Cả chương này chỉ <em>đọc</em> manifest, không viết vào nó.
+			</p>
+			<p>
+				<strong>Câu 5 — 0 kết quả, và đoán được trước khi tìm.</strong> App chat ở giai đoạn này chưa gọi mạng, chưa đọc
+				file, chưa dùng camera hay vị trí, nên không cần quyền nào. Suy rộng ra cả bộ project mẫu: Chương 2 tới Chương 7 đều
+				có 0 thẻ <code>&lt;uses-permission&gt;</code>; bốn Chương 8, 9, 10, 11 mỗi chương có đúng 1 thẻ, luôn là
+				<code>INTERNET</code>, và luôn có sẵn từ bản <code>starter</code>. Nghĩa là trong cả khoá học bạn sẽ không phải tự
+				tay gõ một thẻ permission nào — nhưng biết cơ chế vẫn cần, vì app thật đầu tiên bạn tự làm gần như chắc chắn sẽ cần.
+			</p>
+		</details>
+	</div>
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 2 — Sắp xếp: từ lúc bấm icon tới lúc màn hình chat hiện ra</h3>
+		<p>
+			Sáu bước dưới đây bị xáo trộn. Chúng mô tả chuyện xảy ra từ lúc bạn bấm icon Kodeco Chat trên màn hình chính tới lúc
+			giao diện chat hiện lên — nối phần tờ khai của chương này với phần <code>onCreate()</code> của Chương 3.1, mục 4. Với
+			mỗi bước, chọn số thứ tự đúng (1 đến 6) rồi bấm "Kiểm tra thứ tự":
+		</p>
+		<ul class="order-list" id="launch-order">
+			<li data-correct="4">
+				<select aria-label="Thứ tự cho bước: onCreate chạy và gọi super.onCreate trước tiên">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span>
+					Hệ thống gọi <code>onCreate()</code>, và dòng đầu tiên trong đó là
+					<code>super.onCreate(savedInstanceState)</code>
+				</span>
+			</li>
+			<li data-correct="1">
+				<select aria-label="Thứ tự cho bước: launcher phát ra Intent action MAIN category LAUNCHER">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span>
+					Bạn bấm icon — launcher phát ra một Intent nhằm mở "app có action <code>MAIN</code> và category
+					<code>LAUNCHER</code>"
+				</span>
+			</li>
+			<li data-correct="6">
+				<select aria-label="Thứ tự cho bước: chữ hiện lên, đọc từ strings.xml">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span>
+					Chữ hiện lên màn hình: nhãn ô nhập và chữ trên nút Send được đọc từ <code>res/values/strings.xml</code>
+				</span>
+			</li>
+			<li data-correct="3">
+				<select aria-label="Thứ tự cho bước: tạo instance MainActivity và cửa sổ dùng theme XML khai trong manifest">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span>
+					Android tạo mới một instance <code>MainActivity</code>; cửa sổ của nó dùng theme
+					<code>@style/Theme.KodecoChat</code> mà manifest khai
+				</span>
+			</li>
+			<li data-correct="5">
+				<select aria-label="Thứ tự cho bước: setContent dựng khối Compose làm nội dung gốc">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span>
+					<code>setContent &#123; &#125;</code> dựng khối Compose thành nội dung gốc của Activity, và
+					<code>Column</code> xếp dọc ba thành phần
+				</span>
+			</li>
+			<li data-correct="2">
+				<select aria-label="Thứ tự cho bước: hệ thống ghép Intent với intent-filter trong manifest">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span>
+					Hệ thống đối chiếu Intent đó với các <code>&lt;intent-filter&gt;</code> đã khai trong manifest của mọi app đã
+					cài, và <code>android:exported="true"</code> cho phép launcher mở <code>MainActivity</code>
+				</span>
+			</li>
+		</ul>
+		<button type="button" id="check-order">Kiểm tra thứ tự</button>
+		<p id="order-result" role="status" aria-live="polite" hidden></p>
+		<details>
+			<summary>Xem đáp án và điều đáng rút ra</summary>
+			<p>
+				Thứ tự đúng: (1) bấm icon, launcher phát Intent → (2) hệ thống ghép Intent với các
+				<code>&lt;intent-filter&gt;</code>, kiểm <code>exported</code> → (3) tạo instance <code>MainActivity</code>, cửa sổ
+				lấy theme XML từ manifest → (4) <code>onCreate()</code> chạy, <code>super.onCreate()</code> trước tiên → (5)
+				<code>setContent</code> dựng nội dung Compose → (6) chữ từ <code>strings.xml</code> hiện lên.
+			</p>
+			<p>
+				Điều đáng rút ra nằm ở <em>ranh giới giữa bước 2 và bước 4</em>: ba bước đầu hoàn toàn <strong>không có dòng code
+				Kotlin nào của bạn chạy</strong>. Hệ điều hành đọc tờ khai, ghép Intent, tạo cửa sổ, áp theme — tất cả dựa vào
+				manifest. Code của bạn chỉ vào cuộc từ bước 4. Đây là cách trả lời chính xác cho câu hỏi "vì sao
+				<code>MainActivity</code> chạy đầu tiên": <strong>không phải vì tên class có chữ "Main"</strong>, mà vì thẻ
+				<code>&lt;intent-filter&gt;</code> của nó khai đúng cặp <code>MAIN</code> + <code>LAUNCHER</code>. Đổi tên class
+				thành <code>ManHinhChinh</code> mà sửa <code>android:name</code> cho khớp thì app vẫn mở bình thường.
+			</p>
+			<p>
+				Từ đó suy ra chỗ hỏng nếu một bước bị phá, và mỗi chỗ hỏng có một triệu chứng riêng — biết trước thì đỡ mất thời
+				gian: sai ở bước 2 (thiếu <code>&lt;category LAUNCHER&gt;</code>) thì app cài được mà không có icon để bấm, chuỗi
+				này không bao giờ bắt đầu; sai ở bước 3 (<code>android:name</code> trỏ tới một class không tồn tại) thì app đổ ngay
+				khi mở kèm <code>ClassNotFoundException</code>; bỏ dòng <code>super.onCreate()</code> ở bước 4 thì app cũng đổ ngay,
+				vì hệ thống chưa kịp thiết lập những thứ nội bộ mà cửa sổ cần. Ba lỗi rất khác nhau, và chúng ở ba tầng khác nhau
+				của chuỗi trên.
+			</p>
+		</details>
+	</div>
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 3 — Đặt cạnh nhau hai tờ khai: Chương 3 và Chương 8</h3>
+		<p>
+			Bài này luyện một kỹ năng dùng được suốt đời làm nghề: đọc manifest của một app lạ để đoán ra app đó làm gì, trước
+			khi mở một dòng code Kotlin nào. Mở hai file cạnh nhau:
+		</p>
+		<ul>
+			<li>
+				<code>aaf-materials/03-android-fundamentals/projects/final/app/src/main/AndroidManifest.xml</code> — app Kodeco
+				Chat, 61 dòng, nội dung thật từ dòng 35.
+			</li>
+			<li>
+				<code>aaf-materials/08-networking/projects/final/app/src/main/AndroidManifest.xml</code> — app Recipe Finder,
+				<strong>28 dòng</strong>, không có header license nên nội dung thật bắt đầu ngay từ dòng 2.
+			</li>
+		</ul>
+		<ol>
+			<li>
+				Chỉ ra <strong>bốn khác biệt đáng chú ý</strong> giữa hai file — ba khác biệt về <em>nội dung khai báo</em> và một
+				khác biệt về <em>hình thức file</em>. Với mỗi khác biệt, nói rõ nó tiết lộ điều gì
+				về app Chương 8 — chỉ dựa vào manifest, chưa đọc code Kotlin.
+			</li>
+			<li>
+				Thẻ <code>&lt;activity&gt;</code> của Chương 8 (dòng 17–20) có <em>ít</em> thuộc tính hơn thẻ tương ứng của Chương 3
+				(dòng 48–52). Thiếu thuộc tính nào, và hậu quả thực tế của việc thiếu nó là gì?
+			</li>
+			<li>
+				Đếm số thẻ <code>&lt;activity&gt;</code> trong file Chương 8. Con số đó nói gì về cách app nhiều màn hình của Chương
+				8 chuyển màn hình?
+			</li>
+			<li>
+				<strong>Phần thực hành:</strong> <em>copy</em> project Chương 8 sang một thư mục khác trước đã — thư mục
+				<code>aaf-materials/</code> là bản tham chiếu dùng chung của cả khoá học và là một repo Git riêng, nên đừng sửa
+				trực tiếp trong đó. Trên bản copy, đổi <code>&lt;uses-permission&gt;</code> ở dòng 5 của manifest Chương 8 thành
+				<code>&lt;permission&gt;</code>, rồi build. Ghi lại chính xác Android Studio nói gì.
+			</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>Câu 1 — bốn khác biệt và điều mỗi khác biệt tiết lộ</strong> (ba khác biệt đầu nằm ở nội dung khai báo,
+					khác biệt thứ tư nằm ở hình thức file):
+			</p>
+			<ol>
+				<li>
+					<strong>Chương 8 có <code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code> ở dòng
+					5.</strong> Đây là dấu vết rõ nhất: app này <em>gọi mạng</em>. Chú ý vị trí — thẻ này nằm bên trong
+					<code>&lt;manifest&gt;</code> nhưng <em>ngoài</em> <code>&lt;application&gt;</code>, vì quyền là chuyện của cả app
+					chứ không của riêng một thành phần. Và nhớ lại loại quyền: <code>INTERNET</code> thuộc nhóm normal nên được cấp tự
+					động khi cài, không có hộp thoại nào hiện ra — đừng đi tìm chỗ xin phép Internet trong code, không có.
+				</li>
+				<li>
+					<strong>Chương 8 có <code>android:name=".RecipeApp"</code> ở dòng 12, Chương 3 không có.</strong> Thuộc tính
+					<code>android:name</code> trên thẻ <code>&lt;application&gt;</code> khai một class <code>Application</code> tuỳ
+					chỉnh — một object sống lâu hơn mọi Activity, được tạo <em>trước</em> mọi màn hình và thường dùng để khởi tạo
+					những thứ dùng chung cho cả app. Mở file
+					<code>app/src/main/java/com/kodeco/recipefinder/RecipeApp.kt</code> ra sẽ thấy đúng như vậy: một class kế thừa
+					<code>Application</code> (dòng 42), trong <code>onCreate()</code> của nó cài công cụ ghi log. Nói cách khác,
+					manifest đã tiết lộ cho bạn biết app này có một điểm khởi tạo cấp app, trước khi bạn mở bất kỳ file Kotlin nào.
+				</li>
+				<li>
+					<strong>Theme khác tên: <code>@style/Theme.RecipeFinder</code> so với
+					<code>@style/Theme.KodecoChat</code>.</strong> Khác biệt nhỏ nhưng đáng chú ý ở chỗ nó cho thấy tên trong
+					<code>@style/...</code> hoàn toàn do project tự đặt, không phải tên do Android quy định — và cả hai đều là một
+					dòng trong <code>res/values/themes.xml</code> của project tương ứng. Chương 3.4, mục 20 lần theo đúng sợi dây này.
+				</li>
+				<li>
+					<strong>Chương 8 chỉ 28 dòng, Chương 3 tới 61 dòng — nhưng nội dung thật thì ngược lại.</strong> Chênh lệch nằm
+					gần hết ở header license: file Chương 3 dành dòng 2–33 cho nó, file Chương 8 không có dòng nào. Bỏ header ra thì
+					phần khai báo của Chương 8 <em>nhiều hơn</em> Chương 3 hai thứ (thẻ quyền và thuộc tính
+					<code>android:name</code>) và <em>ít hơn</em> một thứ (<code>android:label</code> ở thẻ activity — câu 2 nói kỹ chỗ này).
+					Điều rút ra rất thực dụng, và nó lặp lại bài học ở bài tập 1: <em>số dòng không đo được
+					nội dung</em>. Luôn xem file bắt đầu có nghĩa ở dòng nào trước khi so sánh.
+				</li>
+			</ol>
+			<p>
+				<strong>Câu 2 — thiếu <code>android:label</code>.</strong> Thẻ <code>&lt;activity&gt;</code> của Chương 8 chỉ có
+				<code>android:name</code>, <code>android:exported</code> và <code>android:theme</code>. Không có
+				<code>android:label</code> thì Android <em>không báo lỗi gì</em>: nhãn của activity mặc định lấy theo nhãn ở cấp
+				<code>&lt;application&gt;</code>, tức <code>@string/app_name</code>. Nên hậu quả thực tế bằng không ở app một màn
+				hình, và đó chính là điều đáng nhận ra: dòng <code>android:label</code> ở thẻ activity của Chương 3
+				<strong>là dòng có thể bỏ mà không đổi gì</strong>, vì nó trỏ về đúng chuỗi mà cấp application đã trỏ tới. Hai file
+				đặt cạnh nhau cho thấy cả hai lựa chọn đều hợp lệ.
+			</p>
+			<p>
+				<strong>Câu 3 — đúng 1 thẻ <code>&lt;activity&gt;</code>, y như Chương 3.</strong> Mà app Chương 8 rõ ràng có nhiều
+				màn hình (danh sách món ăn, chi tiết món ăn). Kết luận: nó <em>không</em> chuyển màn hình bằng Activity, tức không
+				dùng Intent để đi giữa các màn hình. Kiểm được trong code: <code>MainActivity.kt</code> của Chương 8 import
+				<code>NavHost</code> ở dòng 51, gọi <code>rememberNavController()</code> ở dòng 78 và dựng <code>NavHost(...)</code>
+				ở dòng 84 — mỗi "màn hình" là một composable bên trong đúng một Activity. Đối chiếu cả 19 manifest của bộ project mẫu
+				thì <em>mọi</em> file đều có đúng 1 thẻ <code>&lt;activity&gt;</code>, và tìm chuỗi
+				<code>startActivity</code> trên toàn bộ file Kotlin cho <strong>0</strong> kết quả. Đây là kiến trúc
+				"single-activity", cách làm phổ biến nhất của Android hiện đại — nên Intent trong chương này là kiến thức nền để hiểu
+				hệ điều hành hoạt động ra sao, không phải công cụ bạn sẽ gõ ở các chương sau.
+			</p>
+			<p>
+				<strong>Câu 4 — điều chắc chắn: Gradle không báo lỗi.</strong> Đổi tên thẻ như vậy vẫn là XML hợp lệ và
+				<code>&lt;permission&gt;</code> vẫn là thẻ manifest có thật, nên bước build không có gì để phàn nàn; Android Studio
+				nhiều nhất là gạch vàng gợi ý. Điều <em>không</em> chắc chắn — và bạn nên tự ghi lại kết quả thật trên máy mình —
+				là bước cài đặt: khai <code>&lt;permission android:name="android.permission.INTERNET" /&gt;</code> nghĩa là
+				<em>tự định nghĩa lại</em> một quyền đã thuộc hệ thống, và tuỳ phiên bản Android, máy có thể từ chối cài với
+				<code>INSTALL_FAILED_DUPLICATE_PERMISSION</code>. Nếu app cài và mở được thì hậu quả xuất hiện muộn hơn nữa: lỗi
+				chỉ nổ lúc gọi mạng thật, và thông báo lúc đó nói về
+				mạng chứ không nói về manifest — nên phản xạ tự nhiên là đi tìm lỗi ở tầng networking, sai chỗ hoàn toàn. Đó là lý
+				do bài này đáng làm một lần bằng tay: cái bẫy <code>&lt;permission&gt;</code> so với
+				<code>&lt;uses-permission&gt;</code> không được ai báo cho bạn ở chỗ bạn gây ra nó. Nhớ theo
+				tên thẻ đọc như câu tiếng Anh: <em>uses</em> permission là "app này <em>dùng</em> quyền".
+			</p>
+		</details>
+	</div>
+</section>
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+
+	const checkOrderBtn = document.getElementById("check-order");
+	const orderResultEl = document.getElementById("order-result");
+
+	checkOrderBtn?.addEventListener("click", () => {
+		const items = document.querySelectorAll("#launch-order li");
+		let correctCount = 0;
+
+		items.forEach((li) => {
+			const correctValue = li.getAttribute("data-correct");
+			const select = li.querySelector("select");
+			const picked = select?.value;
+
+			li.classList.remove("correct", "incorrect");
+			if (picked && picked === correctValue) {
+				correctCount++;
+				li.classList.add("correct");
+			} else {
+				li.classList.add("incorrect");
+			}
+		});
+
+		if (orderResultEl) {
+			orderResultEl.textContent = `Kết quả: ${correctCount}/${items.length} bước đúng vị trí.`;
+			orderResultEl.removeAttribute("hidden");
+		}
+	});
+</script>

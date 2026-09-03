@@ -1,0 +1,498 @@
+---
+// Lesson Chapter 9: Data Store — viết lại hoàn toàn ở Task 43 (Phase 5 "Depth pass").
+// Nguồn chính (source of truth): content/book/ch09-data-store.md (399 dòng, 13 heading).
+// Project minh hoạ: aaf-materials/09-data-store/projects/{starter,final}/ (app "Recipe Finder").
+// Mọi số dòng trích dẫn trong bài đã mở file thật để kiểm bằng Read tool trước khi viết.
+// Giải thích tự viết tiếng Việt — không copy nguyên văn sách (xem CLAUDE.md mục Bản quyền).
+// [TASK48] Chuong 9.2 — Thêm thư viện và viết class Prefs
+
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/09-data-store/projects/final/app/src/main/java/com/kodeco/recipefinder";
+
+const STARTER = "aaf-materials/09-data-store/projects/starter/app/src/main/java/com/kodeco/recipefinder";
+
+const FINAL_ROOT = "aaf-materials/09-data-store/projects/final";
+
+const BOOK = "content/book/ch09-data-store.md";
+
+const dataStoreDelegateCode = `val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")`;
+
+const versionCatalogCode = `[versions]
+# ... các version có sẵn từ chapter trước ...
+prefsVersion = "1.0.0"
+
+[libraries]
+# ... các thư viện có sẵn từ chapter trước ...
+# Preferences
+prefs = {module = "androidx.datastore:datastore-preferences", version.ref = "prefsVersion" }`;
+
+const buildGradleCode = `  ksp(libs.moshiCodeGen)
+  implementation(libs.prefs)
+
+  implementation(libs.timber)`;
+
+const prefsSkeletonCode = `import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.first
+
+class Prefs(val context: Context) {
+  // TODO: Add dataStore
+  // TODO: Add saveString
+  // TODO: Add getString
+  // TODO: Add saveInt
+  // TODO: Add getInit
+  // TODO: Add hasKey
+}`;
+
+const saveStringBookCode = `// 1
+suspend fun saveString(key: String, value: String) {
+  // 2
+  val prefKey = stringPreferencesKey(key)
+  // 3
+  context.dataStore.edit { prefs ->
+      // 4
+      prefs[prefKey] = value
+  }
+}`;
+
+const prefsFullCode = `class Prefs(val context: Context) {
+  private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "recipes")
+
+  suspend fun saveString(key: String, value: String) {
+    val prefKey = stringPreferencesKey(key)
+    context.dataStore.edit { prefs ->
+      prefs[prefKey] = value
+    }
+  }
+
+  suspend fun getString(key: String): String? {
+    val prefKey = stringPreferencesKey(key)
+    return context.dataStore.data.first()[prefKey]
+  }
+
+  suspend fun saveInt(key: String, value: Int) {
+    val prefKey = intPreferencesKey(key)
+    context.dataStore.edit { prefs ->
+      prefs[prefKey] = value
+    }
+  }
+
+  suspend fun getInt(key: String): Int? {
+    val prefKey = intPreferencesKey(key)
+    return context.dataStore.data.first()[prefKey]
+  }
+
+  suspend fun hasKey(key: String): Boolean {
+    val prefKey = stringPreferencesKey(key)
+    return context.dataStore.data.first().contains(prefKey)
+  }
+}`;
+
+const topLevelDelegateCode = `// Cách project mẫu làm — delegate là MEMBER của class Prefs:
+class Prefs(val context: Context) {
+  private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "recipes")
+  // ...
+}
+
+// Cách tài liệu chính thức của DataStore hướng dẫn — delegate ở TOP-LEVEL của file:
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "recipes")
+
+class Prefs(val context: Context) {
+  // ...
+}`;
+
+const recipeAppStarterCode = `class RecipeApp : Application() {
+  // TODO: Add Prefs
+
+  override fun onCreate() {
+    super.onCreate()
+    // Install a Timber tree.
+    if (BuildConfig.DEBUG) {
+      plant(Timber.DebugTree())
+    }
+
+    // TODO: Add Prefs
+  }
+}`;
+
+const recipeAppFinalCode = `class RecipeApp : Application() {
+  lateinit var prefs: Prefs
+
+  override fun onCreate() {
+    super.onCreate()
+    // Install a Timber tree.
+    if (BuildConfig.DEBUG) {
+      plant(Timber.DebugTree())
+    }
+
+    prefs = Prefs(this)
+  }
+}`;
+
+const manifestCode = `<application
+  android:allowBackup="true"
+  android:dataExtractionRules="@xml/data_extraction_rules"
+  android:fullBackupContent="@xml/backup_rules"
+  android:icon="@mipmap/ic_launcher"
+  android:label="@string/app_name"
+  android:name=".RecipeApp"
+  android:roundIcon="@mipmap/ic_launcher_round"
+  android:supportsRtl="true"`;
+---
+
+<section class="lesson">
+	<h2 id="them-thu-vien">5. Thêm thư viện DataStore — hai file, hai lần Gradle sync</h2>
+	<p>
+		Sách bắt đầu phần thực hành bằng một câu đáng chú ý: nếu bạn đang theo app từ các chapter trước thì <strong>mở tiếp app đó
+		mà dùng</strong>; nếu không, mở <code>projects/starter</code> của chapter này. Nghĩa là project chapter 9 là
+		<em>phần tiếp</em> của chapter 8, không phải project mới.
+	</p>
+	<p><strong>Bước 1 — <code>gradle/libs.versions.toml</code>:</strong> thêm version, rồi thêm thư viện.</p>
+	<Code code={versionCatalogCode} lang="properties" theme="github-dark" />
+	<p class="src">
+		Nguồn: sách dòng 126 và 132–133. Đã kiểm trong <code>{FINAL_ROOT}/gradle/libs.versions.toml</code>:
+		<code>prefsVersion = "1.0.0"</code> ở <strong>dòng 22</strong>, dòng <code>prefs = ...</code> ở <strong>dòng 75</strong> —
+		khớp chính xác với sách.
+	</p>
+	<p class="hint">
+		Đây là <strong>Version Catalog</strong> mà chapter 4 đã dạy: số phiên bản tập trung ở <code>[versions]</code>, khai báo thư
+		viện ở <code>[libraries]</code> và trỏ về version bằng <code>version.ref</code>. Nhờ vậy nâng phiên bản chỉ sửa
+		<em>một</em> chỗ. Tên <code>prefs</code> bạn tự đặt — nó sẽ thành <code>libs.prefs</code> ở bước sau.
+	</p>
+	<p><strong>Bước 2 — <code>app/build.gradle.kts</code>:</strong> sách nói thêm <em>sau thư viện timber</em>.</p>
+	<Code code={buildGradleCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Nguồn: <code>{FINAL_ROOT}/app/build.gradle.kts</code> — <code>implementation(libs.prefs)</code> ở
+		<strong>dòng 80</strong>, <code>implementation(libs.timber)</code> ở <strong>dòng 82</strong>.
+	</p>
+	<p class="notice">
+		<strong>Lệch nhỏ giữa sách và code (điểm lệch #1):</strong> sách viết "thêm <em>sau</em> thư viện timber", nhưng trong
+		<code>final</code> dòng <code>libs.prefs</code> nằm ở dòng 80 — tức <strong>trước</strong> <code>libs.timber</code> (dòng 82).
+		Không ảnh hưởng gì: <strong>thứ tự khai dependency trong Gradle không quan trọng</strong>. Ghi lại chỉ để bạn không hoang
+		mang khi đối chiếu và thấy khác vị trí. Nếu bạn thấy mình hay lo những khác biệt kiểu này, đây là một ví dụ tốt để phân biệt
+		"khác vị trí" (vô hại) với "khác nội dung" (cần xem kỹ).
+	</p>
+	<p>
+		Sách nhắc <strong>Gradle sync hai lần</strong> — một lần sau khi sửa <code>libs.versions.toml</code>, một lần sau khi sửa
+		<code>build.gradle.kts</code>. Lý do: lần sync đầu là để Android Studio <em>biết</em> có một entry tên
+		<code>prefs</code> trong catalog; chưa sync thì khi bạn gõ <code>libs.prefs</code> ở bước 2, IDE sẽ gạch đỏ vì chưa biết cái
+		tên đó tồn tại.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 123–142)</p>
+	<div class="callout">
+		<strong>Thư viện này thực chất là gì</strong>
+		<p>
+			<code>androidx.datastore:datastore-preferences</code> — để ý phần cuối: <strong>preferences</strong>. DataStore có
+			<em>hai</em> phiên bản:
+		</p>
+		<ul>
+			<li>
+				<strong>Preferences DataStore</strong> (dùng ở đây): lưu key-value, không cần định nghĩa schema. Gần nhất với
+				<code>SharedPreferences</code>, dễ chuyển sang.
+			</li>
+			<li>
+				<strong>Proto DataStore</strong>: lưu object có kiểu rõ ràng, bạn định nghĩa cấu trúc bằng Protocol Buffers. An toàn
+				kiểu hơn nhưng phải học thêm một công cụ.
+			</li>
+		</ul>
+		<p>
+			Sách không nhắc Proto DataStore. Nói ra ở đây vì nó giải thích cái tên thư viện — và vì nó là câu trả lời cho câu hỏi tự
+			nhiên "nếu DataStore hiện đại vậy sao vẫn không lưu được data class?": bản Preferences thì không, bản Proto thì được.
+			Kiến thức ngoài sách, không cần cho chapter này.
+		</p>
+	</div>
+	<h2 id="prefs-class">6. Viết class <code>Prefs</code> — một "cửa ra vào" duy nhất cho DataStore</h2>
+	<p>
+		Sách cho bạn tạo file mới <code>data/Prefs.kt</code> và bắt đầu bằng một bộ khung gồm 8 import và 6 dòng
+		<code>// TODO</code>. Cách dạy này rất đáng để ý: thay vì đưa file hoàn chỉnh, sách để bạn <em>điền từng TODO một</em>.
+	</p>
+	<Code code={prefsSkeletonCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 151–167)</p>
+	<p class="hint">
+		Để ý dòng <code>// TODO: Add getInit</code> — sách viết sai chính tả, đúng ra là <code>getInt</code>. Hàm bạn viết ra tên là
+		<code>getInt</code>. Không ảnh hưởng gì vì đó chỉ là comment, nhưng ghi lại để bạn không tưởng mình đọc sai.
+	</p>
+	<p>
+		Trước khi điền, hãy hiểu <strong>vì sao có class này</strong>. Sách không giải thích, nhưng đây là một quyết định thiết kế
+		quan trọng:
+	</p>
+	<div class="callout">
+		<strong>Class <code>Prefs</code> là một lớp bọc (wrapper) — và nó giải quyết 3 vấn đề</strong>
+		<ol>
+			<li>
+				<strong>Che chi tiết DataStore khỏi phần còn lại của app.</strong> Không có nó, mỗi chỗ muốn lưu một giá trị đều phải
+				biết <code>stringPreferencesKey</code>, <code>edit</code>, <code>data.first()</code>. Có nó, chúng chỉ cần gọi
+				<code>prefs.saveString("key", "value")</code>.
+			</li>
+			<li>
+				<strong>Giữ đúng một điểm khai báo <code>dataStore</code>.</strong> Nối với cảnh báo "chỉ một instance" ở mục 4.2.
+			</li>
+			<li>
+				<strong>Đổi được nền tảng lưu trữ sau này mà không sửa cả app.</strong> Muốn chuyển sang Proto DataStore hay
+				encrypted storage, bạn chỉ sửa trong <code>Prefs.kt</code>; 5 chữ ký hàm giữ nguyên.
+			</li>
+		</ol>
+		<p>
+			Đây là ý tưởng bạn sẽ gặp lại ở Chương 10.3 dưới cái tên <strong>Repository</strong> — và không phải tình cờ:
+			trong project chapter 9 đã có sẵn các dòng <code>// TODO: Add Repository</code> nằm chờ (ví dụ
+			<code>MainActivity.kt</code> dòng 28 và 47 của <code>final</code>). Sách đang dựng dần cùng một mô hình.
+		</p>
+	</div>
+
+	<h3>6.1 — TODO 1: <code>dataStore</code></h3>
+	<Code code={dataStoreDelegateCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Sách nói dòng cần viết "giống ví dụ, chỉ khác là bạn đặt tên file là <code>recipes</code>". Dòng thật trong project:
+	</p>
+	<pre class="tree">private val Context.dataStore: DataStore&lt;Preferences&gt; by preferencesDataStore(name = "recipes")</pre>
+	<p class="src">
+		Nguồn: sách dòng 173; code thật <code>{FINAL}/data/Prefs.kt</code> <strong>dòng 13</strong> — khớp từng chữ.
+	</p>
+	<p>
+		Tên <code>"recipes"</code> sẽ thành một file thật trên máy, ở
+		<code>/data/data/com.kodeco.recipefinder/files/datastore/recipes.preferences_pb</code>. Bạn không cần thao tác với file đó,
+		nhưng biết nó tồn tại giúp hiểu vì sao "xoá app là mất dữ liệu": xoá app là xoá cả thư mục đó.
+	</p>
+
+	<h3>6.2 — TODO 2: <code>saveString</code>, đọc theo 4 số của sách</h3>
+	<Code code={saveStringBookCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 179–194)</p>
+	<ol class="chain">
+		<li>Nhận vào key và giá trị cần lưu.</li>
+		<li>Tạo một string preference key — bọc chuỗi thô thành key có kiểu, đúng như mục 4.2.</li>
+		<li>Bắt đầu edit. <code>context.dataStore.edit &#123; ... &#125;</code> mở một khối chỉnh sửa.</li>
+		<li>Gán giá trị cho key đã cho.</li>
+	</ol>
+	<div class="callout note">
+		<strong>Ba điều về <code>edit &#123; ... &#125;</code> mà sách không nói nhưng bạn nên biết</strong>
+		<ul>
+			<li>
+				<code>edit</code> là <strong>hàm <code>suspend</code></strong>. Đó là lý do <code>saveString</code> buộc phải là
+				<code>suspend fun</code> — bạn không thể gọi hàm suspend từ hàm thường.
+			</li>
+			<li>
+				Nó <strong>atomic</strong> (nguyên khối): đọc dữ liệu hiện có, cho bạn sửa, rồi ghi <em>toàn bộ</em> xuống một lần.
+				Không có trạng thái nửa vời như <code>SharedPreferences</code> khi <code>apply()</code> chưa kịp xong.
+			</li>
+			<li>
+				Bạn <strong>không cần</strong> gọi thêm <code>apply()</code> hay <code>commit()</code>. Khối
+				<code>edit</code> kết thúc là dữ liệu đã ghi xong — và vì hàm là <code>suspend</code>, khi nó trả về bạn <em>biết
+				chắc</em> việc ghi đã hoàn tất. Đây đúng là ưu điểm của <code>commit()</code> mà <strong>không</strong> phải trả giá
+				chặn luồng chính.
+			</li>
+		</ul>
+	</div>
+
+	<h3>6.3 — Ba TODO còn lại và file hoàn chỉnh</h3>
+	<p>
+		<code>getString</code> "bắt đầu giống nhau nhưng dùng <code>data.first()</code> để lấy mục ra với key làm chỉ số" (sách dòng
+		205). <code>saveInt</code> / <code>getInt</code> "làm y hệt nhưng cho <code>Int</code>" (dòng 222).
+		<code>hasKey</code> "chỉ kiểm tra xem mục đó có tồn tại" (dòng 231). Đây là toàn bộ file thật, 43 dòng:
+	</p>
+	<Code code={prefsFullCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Nguồn: <code>{FINAL}/data/Prefs.kt</code> (dòng 12–43, đã lược phần <code>package</code> + 8 dòng import). Toàn bộ khớp với
+		code sách hướng dẫn.
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Hàm</th><th>Việc nó làm</th><th>Được dùng ở đâu trong app</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>saveString</code></td>
+				<td>Lưu một chuỗi</td>
+				<td><code>RecipeViewModel.kt</code> dòng 88 — lưu danh sách từ khoá đã nối bằng dấu phẩy</td>
+			</tr>
+			<tr>
+				<td><code>getString</code></td>
+				<td>Đọc một chuỗi, trả <code>null</code> nếu chưa có</td>
+				<td><code>RecipeViewModel.kt</code> dòng 59 — đọc lại danh sách trong <code>init</code></td>
+			</tr>
+			<tr>
+				<td><code>saveInt</code></td>
+				<td>Lưu một số nguyên</td>
+				<td><code>ui/MainScreen.kt</code> dòng 48 và 58 — lưu tab đang chọn (0 hoặc 1)</td>
+			</tr>
+			<tr>
+				<td><code>getInt</code></td>
+				<td>Đọc một số nguyên</td>
+				<td><code>ui/MainScreen.kt</code> dòng 33 — đọc tab lúc mở app</td>
+			</tr>
+			<tr>
+				<td><code>hasKey</code></td>
+				<td>Kiểm tra key có tồn tại</td>
+				<td><strong>Không nơi nào</strong> — đã grep toàn bộ <code>final</code>: chỉ có định nghĩa ở dòng 39, không có chỗ gọi</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="src">Nguồn: đã grep <code>hasKey</code>, <code>prefs.getInt</code>, <code>prefs.saveInt</code>,
+		<code>prefs.getString</code>, <code>prefs.saveString</code> trong toàn bộ <code>{FINAL_ROOT}/app/src/main/</code></p>
+	<div class="callout diff">
+		<strong>Điểm lệch #2 — <code>hasKey</code> là code chết trong project</strong>
+		<p>
+			Sách cho bạn viết <code>hasKey</code> và giải thích nó, nhưng <strong>không chapter nào dùng tới</strong>. Nó tồn tại vì
+			nó là bản tương ứng của <code>contains()</code> trong <code>SharedPreferences</code> ở mục 3.1 — viết cho đủ bộ.
+		</p>
+		<p>
+			<strong>Nên làm gì:</strong> cứ viết theo sách. Nhưng biết rằng trong code thật, hàm này thường
+			<em>không cần thiết</em>: <code>getString()</code> đã trả về <code>String?</code>, nên bạn chỉ cần kiểm tra
+			<code>null</code> là biết key có tồn tại hay không — và chỉ đọc file <strong>một</strong> lần thay vì hai. Gọi
+			<code>hasKey()</code> rồi <code>getString()</code> là đọc file hai lần cho cùng một câu hỏi.
+		</p>
+		<p>
+			Chú ý thêm một chi tiết nhỏ: <code>hasKey</code> luôn tạo key bằng <code>stringPreferencesKey</code>, nên nó
+			<strong>không</strong> tìm được key kiểu <code>Int</code>. Gọi <code>hasKey(CURRENT_INDEX_KEY)</code> sẽ luôn trả
+			<code>false</code> dù giá trị đã được lưu — vì <code>stringPreferencesKey("X")</code> và
+			<code>intPreferencesKey("X")</code> là hai key khác nhau với DataStore. Đây là hệ quả trực tiếp của "kiểu nằm trong key"
+			ở mục 4.2, và là lý do nữa để không dùng hàm này.
+		</p>
+	</div>
+	<h2 id="delegate-vi-tri">7. Chỗ đặt <code>dataStore</code>: điểm lệch đáng chú ý nhất chapter</h2>
+	<p>
+		Quay lại cảnh báo "Important" ở mục 4.2: <em>không tạo nhiều hơn một instance DataStore trỏ vào cùng một file</em>. Bây giờ
+		hãy để ý <strong>vị trí</strong> của delegate trong project mẫu — nó là <code>private val</code> nằm
+		<em>bên trong</em> class <code>Prefs</code>.
+	</p>
+	<Code code={topLevelDelegateCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Cách trên: <code>{FINAL}/data/Prefs.kt</code> dòng 12–13 (code thật). Cách dưới: cách tài liệu chính thức của DataStore
+		hướng dẫn (developer.android.com/topic/libraries/architecture/datastore — chính link sách đưa ở dòng 397).
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th></th><th>Delegate là member của class (project làm)</th><th>Delegate ở top-level (tài liệu khuyên)</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Phạm vi "một lần" được đảm bảo trong</td>
+				<td>Mỗi <strong>instance <code>Prefs</code></strong></td>
+				<td>Toàn bộ <strong>file / process</strong></td>
+			</tr>
+			<tr>
+				<td>Tạo 2 <code>Prefs</code> thì</td>
+				<td><strong>2 instance DataStore</strong> cùng trỏ vào file <code>recipes</code> → đúng tình huống cảnh báo cấm</td>
+				<td>Vẫn <strong>1 instance</strong> duy nhất được chia sẻ</td>
+			</tr>
+			<tr>
+				<td>An toàn khi</td>
+				<td>Bạn <em>tự đảm bảo</em> chỉ có một <code>Prefs</code> trong cả app</td>
+				<td>Luôn luôn</td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="callout diff">
+		<strong>Vậy project mẫu có sai không? Câu trả lời là "không sai, nhưng mong manh"</strong>
+		<p>
+			Project <em>thoát</em> được vấn đề vì nó tạo <code>Prefs</code> <strong>đúng một lần</strong>, trong
+			<code>RecipeApp.onCreate()</code> (mục 8), rồi phát đi khắp app bằng CompositionLocal. Chỉ có một
+			<code>Prefs</code> nên cũng chỉ có một DataStore. Cấu trúc này <em>hoạt động</em>.
+		</p>
+		<p>
+			Nhưng nó phụ thuộc vào việc <strong>không ai bao giờ gõ <code>Prefs(context)</code> lần thứ hai</strong>. Và ngay trong
+			chính chapter này, sách bảo bạn làm đúng điều đó ở <em>hai</em> chỗ:
+		</p>
+		<ul>
+			<li>
+				<code>MainActivity</code>: sách bảo thêm <code>val prefs = remember &#123; Prefs(context) &#125;</code> (dòng 255) —
+				xem mục 8, dòng này <strong>không</strong> có trong <code>final</code>.
+			</li>
+			<li>
+				Code <code>@Preview</code>: sách bảo "dùng context đang có để tạo một <code>Prefs</code> mới" (dòng 329) — xem mục 12,
+				<code>final</code> cũng <strong>không</strong> làm vậy.
+			</li>
+		</ul>
+		<p>
+			<strong>Nên theo cái nào:</strong> viết theo project <code>final</code> để code của bạn khớp với sách khi đối chiếu. Nhưng
+			nếu bạn tự dựng app của mình, hãy đặt delegate ở <strong>top-level</strong> — nó biến "chỉ một instance" từ
+			<em>quy ước bạn phải nhớ</em> thành <em>điều trình biên dịch tự bảo đảm</em>, và bạn không còn phải cẩn thận khi tạo
+			<code>Prefs</code>.
+		</p>
+	</div>
+	<p class="hint">
+		<strong>Điều gì thực sự xảy ra nếu có 2 instance:</strong> mỗi instance giữ cache riêng và tự ghi file. Hai instance ghi
+		gần nhau thì instance này có thể ghi đè thay đổi của instance kia, hoặc bạn đọc ra giá trị cũ vì cache chưa đồng bộ. Đây là
+		loại lỗi xuất hiện <em>không đều</em> — chạy 10 lần đúng 9 lần — nên rất khó lần ra. Đó là lý do tài liệu dùng chữ
+		"Important".
+	</p>
+	<h2 id="application-instance">8. Tạo instance duy nhất trong <code>Application</code></h2>
+	<p>
+		Sách cho bạn mở <code>RecipeApp.kt</code> và điền hai TODO. Đây là file <code>Application</code> của app — class được hệ
+		thống tạo <strong>một lần</strong>, <em>trước</em> mọi Activity, và sống suốt vòng đời process.
+	</p>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">starter — 2 chỗ TODO</div>
+			<Code code={recipeAppStarterCode} lang="kotlin" theme="github-dark" />
+			<p class="src">
+				<code>{STARTER}/RecipeApp.kt</code> — TODO ở dòng <strong>9</strong> và <strong>18</strong>
+			</p>
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">final — đã điền</div>
+			<Code code={recipeAppFinalCode} lang="kotlin" theme="github-dark" />
+			<p class="src">
+				<code>{FINAL}/RecipeApp.kt</code> — <code>lateinit var prefs</code> dòng <strong>10</strong>,
+				<code>prefs = Prefs(this)</code> dòng <strong>19</strong>
+			</p>
+		</div>
+	</div>
+	<p class="src">Nguồn hướng dẫn: <code>{BOOK}</code> (dòng 233–243)</p>
+	<p>Hai dòng ngắn nhưng mỗi dòng có một quyết định:</p>
+	<ul>
+		<li>
+			<strong><code>lateinit var prefs: Prefs</code></strong> — <code>lateinit</code> nghĩa là "tôi hứa sẽ gán giá trị trước khi
+			dùng, nên đừng bắt tôi khai giá trị ngay". Cần vì <code>Prefs</code> đòi một <code>Context</code>, mà
+			<code>Application</code> chỉ trở thành <code>Context</code> hợp lệ <em>sau khi</em> <code>onCreate()</code> chạy —
+			không thể gán ở dòng khai báo.
+		</li>
+		<li>
+			<strong><code>prefs = Prefs(this)</code></strong> — <code>this</code> ở đây là chính <code>Application</code>. Đây là
+			<code>Context</code> "sống lâu nhất" của app, nên không có nguy cơ giữ tham chiếu tới một Activity đã bị huỷ
+			(memory leak — rò rỉ bộ nhớ). Truyền <code>Activity</code> vào một object sống lâu là một trong những lỗi rò rỉ kinh
+			điển nhất của Android; ở đây sách chọn đúng.
+		</li>
+	</ul>
+	<p class="hint">
+		<strong>Vì sao <code>RecipeApp</code> được hệ thống gọi mà bạn không gọi:</strong> vì nó được khai trong manifest —
+		<code>android:name=".RecipeApp"</code> ở <code>AndroidManifest.xml</code> <strong>dòng 12</strong>. Đây lại là ý
+		"mọi component là entry point, hệ thống gọi bạn" của chapter 1, xuất hiện trong một tình huống rất thực.
+	</p>
+	<Code code={manifestCode} lang="xml" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL_ROOT}/app/src/main/AndroidManifest.xml</code> — <code>android:name=".RecipeApp"</code> dòng
+		<strong>12</strong>. Dòng này <em>đã có sẵn</em> trong <code>starter</code>, bạn không phải thêm; nó được đặt từ chapter
+		trước, lúc <code>RecipeApp</code> mới chỉ dùng để khởi tạo Timber (thư viện ghi log).
+	</p>
+	<div class="callout">
+		<strong>Vì sao <code>Application</code> là chỗ đúng cho <code>Prefs</code></strong>
+		<p>Ba lý do, xếp theo mức quan trọng:</p>
+		<ol>
+			<li>
+				<strong>Đảm bảo đúng một instance</strong> — nối trực tiếp với mục 7. Hệ thống tạo <code>Application</code> một lần,
+				nên <code>Prefs</code> cũng chỉ được tạo một lần.
+			</li>
+			<li>
+				<strong>Sẵn sàng trước mọi UI.</strong> <code>Application.onCreate()</code> chạy trước
+				<code>MainActivity.onCreate()</code>, nên khi Composable đầu tiên cần <code>prefs</code> thì nó đã có.
+			</li>
+			<li>
+				<strong>Không chết theo cấu hình.</strong> Xoay máy làm Activity bị huỷ và tạo lại, nhưng
+				<code>Application</code> thì không — <code>prefs</code> vẫn nguyên.
+			</li>
+		</ol>
+		<p>
+			<strong>Điểm cần biết để sau này không đi sai:</strong> đặt dependency vào <code>Application</code> là cách
+			<em>đơn giản nhất</em>, phù hợp app học. App lớn dùng dependency injection (Hilt / Koin) để làm cùng việc này mà không
+			cần nhồi mọi thứ vào <code>Application</code>. Sách không nhắc — và với 1 dependency thì cách của sách hoàn toàn hợp lý.
+		</p>
+	</div>
+
+</section>
+

@@ -1,0 +1,167 @@
+---
+// Quiz 4.1 — Gradle là gì và các file cấu hình.
+// Kiểm tra đúng nội dung bài 4.1: Gradle vs AGP, top-level vs module-level, plugins + apply false,
+// gradle-wrapper.properties, gradle.properties, Kotlin DSL vs Groovy, include. KHÔNG hỏi android{}/dependencies/APK.
+// Chấm bằng vanilla JS phía client. 4 phương án mỗi câu; vị trí + độ dài đáp án đúng được phân tán.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh — 4.1</h2>
+	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>1. <strong>Gradle</strong> và <strong>Android Gradle Plugin (AGP)</strong> khác nhau thế nào?</legend>
+			<label><input type="radio" name="q1" value="a" /> Là hai tên gọi của cùng một thứ — AGP chỉ là cách gọi Gradle trong tài liệu dành riêng cho Android</label>
+			<label><input type="radio" name="q1" value="b" /> Gradle chỉ dùng cho Android, còn AGP là bản tổng quát dùng được cho mọi loại project trên JVM</label>
+			<label><input type="radio" name="q1" value="c" /> Gradle là build system tổng quát, không biết gì về Android; AGP chạy bên trên và dạy nó việc riêng của Android</label>
+			<label><input type="radio" name="q1" value="d" /> AGP là bản Gradle rút gọn cho điện thoại, thay thế hoàn toàn Gradle trong mọi project Android</label>
+			<p class="explain" hidden>
+				Gradle là máy build vạn năng (dùng cho cả Java, server Kotlin, thư viện…); AGP là lớp biết-Android chạy bên
+				trên. (a)/(d) sai vì chúng là hai thứ tách rời, không thay thế nhau. (b) đảo ngược vai trò: chính Gradle mới
+				là cái tổng quát, AGP mới là phần riêng cho Android.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>2. Vì sao một project Android có tới <strong>hai</strong> số version riêng cho Gradle và AGP?</legend>
+			<label><input type="radio" name="q2" value="a" /> Vì chúng là hai phần mềm tách rời, phải tương thích với nhau</label>
+			<label><input type="radio" name="q2" value="b" /> Vì một số dành cho bản debug, số còn lại dành cho bản release khi bạn phát hành app</label>
+			<label><input type="radio" name="q2" value="c" /> Vì một số dùng khi build trên Windows, số còn lại dùng khi build trên macOS hoặc Linux</label>
+			<label><input type="radio" name="q2" value="d" /> Vì Android Studio đọc một số, còn khi build bằng dòng lệnh <code>gradlew</code> thì đọc số kia</label>
+			<p class="explain" hidden>
+				Gradle và AGP do hai nhóm phát hành theo nhịp riêng, nên mỗi cái có version riêng và một bản Gradle chỉ hợp
+				với một khoảng bản AGP. Số Gradle nằm ở <code>gradle-wrapper.properties</code>, số AGP ở
+				<code>build.gradle.kts</code> gốc. (b)/(c)/(d) đều bịa ra lý do không có thật.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>3. Trong <code>build.gradle.kts</code> ở gốc project, <code>apply false</code> nghĩa là gì?</legend>
+			<label><input type="radio" name="q3" value="a" /> Tắt plugin đi — sau dòng này plugin sẽ không dùng được ở bất kỳ module nào trong project</label>
+			<label><input type="radio" name="q3" value="b" /> Plugin chỉ được áp dụng khi bạn build bản <code>release</code>, còn bản <code>debug</code> thì bỏ qua nó</label>
+			<label><input type="radio" name="q3" value="c" /> Plugin sẽ tự áp dụng cho mọi module trong project, nên các module không cần khai lại lần nữa</label>
+			<label><input type="radio" name="q3" value="d" /> Khai sẵn để module dùng được, nhưng đừng áp dụng ở cấp gốc</label>
+			<p class="explain" hidden>
+				Cấp gốc không chứa code Android nên áp dụng plugin ở đó chỉ tốn công vô ích. Lợi ích thật là single source
+				of truth: version chỉ nằm một chỗ. (a) sai vì plugin vẫn dùng được ở module. (b) sai vì không liên quan build
+				type. (c) ngược hẳn — module phải tự khai lại ID mới dùng được.
+			</p>
+		</fieldset>
+		<fieldset data-answer="b">
+			<legend>4. Trong hai file <code>build.gradle.kts</code>, file nào bạn <strong>mở và sửa nhiều nhất</strong> khi làm Android, và nó chứa gì?</legend>
+			<label><input type="radio" name="q4" value="a" /> File top-level ở gốc — nó chứa toàn bộ cấu hình Android thật</label>
+			<label><input type="radio" name="q4" value="b" /> File module-level (<code>app/build.gradle.kts</code>) — nó chứa cấu hình Android thật của module</label>
+			<label><input type="radio" name="q4" value="c" /> File top-level ở gốc — vì mỗi project chỉ có một file này</label>
+			<label><input type="radio" name="q4" value="d" /> <code>settings.gradle.kts</code> — nó gom mọi cấu hình build vào một nơi</label>
+			<p class="explain" hidden>
+				File top-level rất ngắn, chỉ khai plugin cho cả project và rất ít khi sửa. Toàn bộ cấu hình thật (SDK,
+				dependency, build type) nằm ở file module-level — đó là file bạn chạm vào thường xuyên. (a)/(c) gán nhầm nội
+				dung cho file top-level. (d) sai vai trò: <code>settings.gradle.kts</code> khai module + repository, không
+				chứa cấu hình Android.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>5. Trong <code>app/build.gradle.kts</code>, khối <code>plugins</code> gọi lại các plugin nhưng <strong>không ghi version</strong>. Vì sao vẫn chạy được?</legend>
+			<label><input type="radio" name="q5" value="a" /> Vì module luôn dùng version mới nhất tự động</label>
+			<label><input type="radio" name="q5" value="b" /> Vì version được khai trong <code>settings.gradle.kts</code></label>
+			<label><input type="radio" name="q5" value="c" /> Vì version đã khai ở file top-level (kèm <code>apply false</code>), module chỉ cần gọi lại ID</label>
+			<label><input type="radio" name="q5" value="d" /> Vì Compose BOM cung cấp version cho mọi plugin</label>
+			<p class="explain" hidden>
+				File top-level là nơi giữ version (single source of truth); <code>apply false</code> làm plugin "có sẵn để
+				dùng"; module chỉ gọi tên. (a) là hành vi Gradle không có — thiếu version thì lỗi, không tự đoán. (b) sai
+				nơi. (d) nhầm — BOM cấp version cho thư viện Compose, không phải cho plugin.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>6. Bạn gặp lỗi <em>"Minimum supported Gradle version is 8.2"</em>. File nào cần sửa?</legend>
+			<label><input type="radio" name="q6" value="a" /> <code>gradle/wrapper/gradle-wrapper.properties</code> — nơi khai phiên bản Gradle</label>
+			<label><input type="radio" name="q6" value="b" /> <code>build.gradle.kts</code> ở gốc — vì đó là nơi khai version của Android Gradle Plugin cho cả project</label>
+			<label><input type="radio" name="q6" value="c" /> <code>app/build.gradle.kts</code> — sửa <code>compileSdk</code> trong khối <code>android</code> cho khớp bản Gradle</label>
+			<label><input type="radio" name="q6" value="d" /> <code>gradle.properties</code> — thêm dòng <code>gradle.version=8.2</code> để cố định phiên bản Gradle của project</label>
+			<p class="explain" hidden>
+				Phiên bản Gradle nằm ở dòng <code>distributionUrl</code> của <code>gradle-wrapper.properties</code>. (b) là
+				nơi khai AGP, một số khác. (c) chứa cấu hình Android, không phải version Gradle. (d) bịa ra một thuộc tính
+				không tồn tại.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>7. Bạn tìm tài liệu Gradle và thấy nhiều bài dùng file <code>build.gradle</code> (không có <code>.kts</code>). Điều đó nghĩa là gì?</legend>
+			<label><input type="radio" name="q7" value="a" /> Bài đó viết sai tên file — Gradle chỉ đọc file có đuôi <code>.kts</code>, thiếu đuôi thì build không chạy</label>
+			<label><input type="radio" name="q7" value="b" /> Đó là file build cho project đa nền tảng, còn project Android thuần thì luôn dùng <code>.kts</code></label>
+			<label><input type="radio" name="q7" value="c" /> Đó là file cấu hình riêng cho bản release, dùng song song với <code>build.gradle.kts</code> của bản debug</label>
+			<label><input type="radio" name="q7" value="d" /> Đó là cú pháp Groovy — cách cũ; <code>.kts</code> là Kotlin DSL, cách khuyến nghị nay</label>
+			<p class="explain" hidden>
+				<code>build.gradle</code> dùng ngôn ngữ Groovy — cách gốc, vẫn chạy, còn gặp nhiều. <code>.kts</code> là
+				Kotlin DSL, mặc định khi tạo project mới, có IDE gợi ý tốt hơn. (a)/(b)/(c) đều bịa; Groovy không sai, chỉ là
+				cách cũ diễn đạt cùng ý.
+			</p>
+		</fieldset>
+		<fieldset data-answer="b">
+			<legend>8. Bạn tự thêm module <code>network</code>: thư mục có đủ file, code không lỗi, nhưng Gradle build như thể module đó không tồn tại. Nguyên nhân khả năng cao nhất?</legend>
+			<label><input type="radio" name="q8" value="a" /> Module mới phải được khai trong khối <code>plugins</code> của file top-level trước khi Gradle nhìn thấy nó</label>
+			<label><input type="radio" name="q8" value="b" /> Thiếu <code>include(":network")</code> trong <code>settings.gradle.kts</code></label>
+			<label><input type="radio" name="q8" value="c" /> Thiếu dòng <code>android.useAndroidX=true</code> trong <code>gradle.properties</code> của module mới đó</label>
+			<label><input type="radio" name="q8" value="d" /> Module mới bắt buộc phải có tên bắt đầu bằng <code>app</code> mới được Gradle nhận ra khi build</label>
+			<p class="explain" hidden>
+				Mọi module phải được khai bằng <code>include(...)</code> trong <code>settings.gradle.kts</code>; thiếu dòng đó
+				thì Gradle không biết module tồn tại — không báo lỗi, chỉ im lặng bỏ qua. (a) sai vai trò: khối
+				<code>plugins</code> khai plugin, không khai module. (c) không liên quan (và mỗi project chỉ có một
+				<code>gradle.properties</code> ở gốc). (d) là quy tắc không tồn tại.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>9. Build của bạn hành xử khác đồng nghiệp dù hai người dùng <em>cùng</em> project và cùng commit. Chỗ đầu tiên nên nghi là gì?</legend>
+			<label><input type="radio" name="q9" value="a" /> <code>settings.gradle.kts</code>, vì thứ tự repository trong đó có thể khác nhau ở mỗi lần clone project về máy</label>
+			<label><input type="radio" name="q9" value="b" /> <code>gradle-wrapper.properties</code>, vì Wrapper tải bản Gradle khác nhau tuỳ hệ điều hành của từng người</label>
+			<label><input type="radio" name="q9" value="c" /> File <code>gradle.properties</code> trong thư mục Gradle của máy, vì nó ghi đè file cùng tên của project</label>
+			<label><input type="radio" name="q9" value="d" /> Khối <code>plugins</code> ở file top-level, vì mỗi máy tự chọn version plugin phù hợp với JDK đang cài</label>
+			<p class="explain" hidden>
+				<code>gradle.properties</code> của project và của máy (<code>~/.gradle/</code>) là hai file khác nhau, và bản
+				của máy thắng — nên hai người có thể build ra hành vi khác nhau. Cũng vì thế đừng đặt mật khẩu vào
+				<code>gradle.properties</code> của project: nó được commit. (a)/(b)/(d) mô tả những hành vi không có thật —
+				Wrapper cố tình làm điều ngược lại: bảo đảm mọi máy dùng đúng một bản Gradle.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" hidden></p>
+	</form>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>
+

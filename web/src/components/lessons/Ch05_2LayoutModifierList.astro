@@ -1,0 +1,512 @@
+---
+// Chapter 5: Jetpack Compose — viết lại ở Task 35 (Phase 5 "Depth pass").
+// Nguyên tắc: bám sát content/book/ch05-jetpack-compose.md (941 dòng, 13 heading),
+// mọi code lấy từ aaf-materials/05-jetpack-compose/projects/{starter,final}/ kèm số dòng đã xác minh.
+// Giải thích tự viết tiếng Việt — không copy nguyên văn sách (xem CLAUDE.md mục Bản quyền).
+// [TASK48] Chuong 5.2 — Layout Group, Modifier, Preview và danh sách lazy
+
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/05-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat";
+
+const layoutSkeletonCode = `Surface {
+  Box {
+    Column {
+      Messages()
+      SimpleUserInput()
+    }
+  // Channel name bar floats above the messages
+  ChannelNameBar(channelName = "Android Apprentice")
+  }
+}`;
+
+const todoStubsCode = `@Composable
+fun Messages() {
+  TODO("Not yet implemented")
+}
+
+@Composable
+fun SimpleUserInput() {
+  TODO("Not yet implemented")
+}
+
+@Composable
+fun ChannelNameBar(channelName: String) {
+
+}`;
+
+const channelNameBarBookCode = `KodecochatAppBar(
+  title = {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+      // Channel name
+      Text(
+        text = channelName,
+        style = MaterialTheme.typography.titleMedium
+      )
+    }
+  },
+  actions = {
+    // Info icon
+    Icon(
+      imageVector = Icons.Outlined.Info,
+      tint = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier
+        .clickable(onClick = { })
+        .padding(horizontal = 12.dp, vertical = 16.dp)
+        .height(24.dp),
+      contentDescription = stringResource(id = R.string.info)
+    )
+  }
+)`;
+
+const appBarCode = `@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun KodecochatAppBar(
+  modifier: Modifier = Modifier,
+  scrollBehavior: TopAppBarScrollBehavior? = null,
+  onNavIconPressed: () -> Unit = { },
+  title: @Composable () -> Unit,
+  actions: @Composable RowScope.() -> Unit = {}
+) {
+  // 1
+  CenterAlignedTopAppBar(
+    modifier = modifier,
+    // 2
+    actions = actions,
+    title = title,
+    scrollBehavior = scrollBehavior,
+    // 3
+    navigationIcon = {
+      KodecoChatIcon(
+        contentDescription = stringResource(id = R.string.navigation_drawer_open),
+        modifier = Modifier
+            .size(64.dp)
+            .clickable(onClick = onNavIconPressed)
+            .padding(16.dp)
+      )
+    }
+  )
+}`;
+
+const previewCode = `@OptIn(ExperimentalMaterial3Api::class)
+@Preview
+@Composable
+fun KodecochatAppBarPreview() {
+  KodecochatTheme {
+    KodecochatAppBar(title = { Text("Preview!") })
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview
+@Composable
+fun KodecohatAppBarPreviewDark() {
+  KodecochatTheme(isDarkTheme = true) {
+    KodecochatAppBar(title = { Text("Preview!") })
+  }
+}`;
+
+const simpleUserInputCode = `@Composable
+fun SimpleUserInput() {
+  val context = LocalContext.current
+  var chatInputText by remember { mutableStateOf("") }
+  var chatOutputText by remember { mutableStateOf(context.getString(R.string.chat_display_default)) }
+  Text(text = chatOutputText)
+
+  Row {
+    OutlinedTextField(
+      value = chatInputText,
+      placeholder = { Text(text = stringResource(id = R.string.chat_entry_default)) },
+      onValueChange = {
+        chatInputText = it
+      },
+    )
+
+    Button(onClick = {
+      chatOutputText = chatInputText
+      chatInputText = ""
+    }) {
+      Text(text = stringResource(id = R.string.send_button))
+    }
+  }
+}`;
+
+const boxDebugCode = `Box(
+  modifier = Modifier
+    .fillMaxSize()
+    .background(color = Color.DarkGray)
+) {...`;
+
+const weightFixCode = `Surface {
+  Box(modifier = Modifier.fillMaxSize()) {
+    Column(
+      Modifier
+        .fillMaxSize()
+     ) {
+       Messages(
+          modifier = Modifier.weight(1f),
+        )
+        SimpleUserInput()
+      }
+      // Channel name bar floats above the messages
+      ChannelNameBar(channelName = "Android Apprentice")
+    }
+  }`;
+
+const messagesStubCode = `@Composable
+fun Messages(modifier: Modifier = Modifier){
+  Box(modifier = modifier) {
+    // TODO: implement this part in the next section!
+  }
+}`;
+
+const lazyColumnFirstCode = `@Composable
+fun Messages(
+  messages: List<String>,
+//  scrollState: LazyListState,
+  modifier: Modifier = Modifier
+) {
+  Box(modifier = modifier) {
+    LazyColumn(
+      // Add content padding so that the content can be scrolled (y-axis)
+      // below the status bar + app bar
+      contentPadding =
+      WindowInsets.statusBars.add(WindowInsets(top = 90.dp)).asPaddingValues(),
+      modifier = Modifier
+        .fillMaxSize()
+    ) {
+      item {
+        Text(text = "First message")
+      }
+      item {
+        Text(text = "Second message")
+      }
+      item {
+        Text(text = "Third message")
+      }
+    }
+  }
+}`;
+---
+
+<section class="lesson">
+	<h2 id="layout-group">5. Layout Groups: Column, Row, Box, Surface</h2>
+	<p>
+		Layout Group là cách Compose sắp xếp các thành phần UI trên màn hình. Sách nêu 2 con đường: bạn có thể tự định nghĩa
+		layout bằng class <code>Layout()</code> của Compose (mức nâng cao — tự tính toán vị trí), hoặc dùng các loại layout
+		có sẵn (điều bạn làm 99% thời gian). Và giống như composable lồng composable, <strong>layout group cũng lồng được
+		vào nhau</strong> để tạo layout phức tạp.
+	</p>
+	<table class="api">
+		<thead><tr><th>Layout</th><th>Sách nói gì</th></tr></thead>
+		<tbody>
+			<tr><td><code>Column</code></td><td>Xếp các thành phần con theo chiều <strong>dọc</strong>. (Đã dùng ở mục 3.)</td></tr>
+			<tr><td><code>Row</code></td><td>Xếp theo chiều <strong>ngang</strong>.</td></tr>
+			<tr>
+				<td><code>Box</code></td>
+				<td>
+					Đặt các con <strong>tương đối với các cạnh của cha</strong>. Nó cũng cho phép <strong>xếp lớp / chồng
+					đè</strong> (stack, overlap) các con lên nhau.
+				</td>
+			</tr>
+			<tr>
+				<td><code>Surface</code></td>
+				<td>
+					Layout đặc biệt, thường là layout <strong>cấp cao nhất (root)</strong> của một chuỗi composable lồng nhau.
+					<strong>Chỉ được có đúng 1 con tại một thời điểm</strong>, nhưng bù lại nó cung cấp rất nhiều xử lý về
+					kiểu dáng cho con của nó. Sách gọi <code>Surface</code> là <em>"phép ẩn dụ trung tâm" của Material
+					Design</em> — bộ thư viện thiết kế chuẩn của Google, dùng để trải nghiệm người dùng nhất quán trên mọi
+					thiết bị Android.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="hint">
+		<strong>Ràng buộc "1 con" của <code>Surface</code> là điều rất dễ vấp.</strong> Nếu bạn đặt 2 thành phần trực tiếp
+		trong <code>Surface</code>, code sẽ không như bạn nghĩ. Cách xử lý chuẩn — và cũng là cách app Kodeco Chat làm —
+		là cho <code>Surface</code> đúng 1 con là <code>Box</code> hoặc <code>Column</code>, rồi mọi thứ khác nằm trong đó.
+		Hãy để ý điều này trong đoạn code ngay dưới đây.
+	</div>
+
+	<h3>Bộ khung layout của màn hình chat</h3>
+	<p>Sách yêu cầu thay toàn bộ thân <code>ConversationContent()</code> bằng bộ khung này:</p>
+	<Code code={layoutSkeletonCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc từ ngoài vào trong để hiểu <em>vì sao</em> lại cấu trúc như vậy:
+		<code>Surface</code> (nền Material, 1 con duy nhất) → <code>Box</code> (để chồng lớp được) → trong
+		<code>Box</code> có <strong>2 thứ</strong>: một <code>Column</code> xếp dọc (danh sách tin nhắn ở trên, ô nhập ở
+		dưới) và <code>ChannelNameBar</code>. Vì cả hai đều là con của <code>Box</code>, và trong <code>Box</code> con khai
+		báo <em>sau</em> vẽ đè lên con khai báo trước, nên thanh tên kênh <strong>nổi đè lên</strong> phần trên của danh
+		sách tin nhắn thay vì chiếm riêng một hàng — đúng như comment trong code gốc: "Channel name bar floats above the
+		messages".
+	</p>
+	<p>
+		Nhưng bây giờ code <strong>không compile được</strong>: <code>Messages</code>, <code>SimpleUserInput</code>,
+		<code>ChannelNameBar</code> đều chưa tồn tại. Android Studio bôi đỏ chúng. Đây là chủ đích của sách — nó dùng luôn
+		lỗi này để dạy một thứ khác.
+	</p>
+
+	<h3 id="compile-issues">Xử lý lỗi compile: <code>TODO()</code> và cái bẫy dễ thương của nó</h3>
+	<p>
+		Bấm vào composable đang đỏ (ví dụ <code>Messages</code>), Android Studio hiện thông báo lỗi kèm giải pháp — hoặc
+		bấm vào biểu tượng bóng đèn đỏ bên lề trái để thấy cùng danh sách đó. Chọn <em>"Create @Composable function…"</em>
+		cho từng composable chưa có. Android Studio sinh ra các hàm rỗng ở cuối file:
+	</p>
+	<Code code={todoStubsCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>TODO()</code> là một inline function đặc biệt của Kotlin: nếu bạn cố chạy app, nó <strong>gây lỗi</strong> —
+		nghĩa là nó <em>buộc</em> bạn phải cài đặt hàm trước khi build được. Đây là tính năng, không phải bất tiện.
+	</p>
+	<p class="notice">
+		<strong>Chi tiết tinh tế mà sách chỉ ra riêng:</strong> <code>ChannelNameBar</code> <strong>không có</strong>
+		<code>TODO()</code>, trong khi 2 hàm kia có. Vì sao? Vì bạn đã <em>cài đặt nó một phần</em> rồi — bạn đã khai báo
+		tham số <code>channelName: String</code> khi gọi nó. Android Studio suy ra được chữ ký hàm nên coi như đã có phần
+		khởi đầu, không cần nhắc bằng <code>TODO()</code> nữa.
+	</p>
+	<p>
+		Sách cũng dạy một mẹo thực dụng: thay <code>TODO("Not yet implemented")</code> bằng comment thường
+		<code>// TODO - Implement</code>. Như vậy app <strong>vẫn build và chạy được</strong> dù chưa xong, còn Android
+		Studio đánh dấu comment TODO bằng vạch <strong>xanh</strong> ở lề phải (khác đỏ = lỗi, vàng = cảnh báo) để bạn không
+		quên.
+	</p>
+
+	<h2 id="appbar">6. App bar: composable nhận composable làm tham số</h2>
+	<p>
+		Sách cho bạn copy 2 file <code>KodecochatAppBar.kt</code> và <code>KodecochatIcon.kt</code> từ project final vào
+		package <code>components</code> mới, kèm 2 vector asset <code>kodeco_logo.xml</code> /
+		<code>kodeco_logo_back.xml</code> trong <code>res/drawable</code> và các chuỗi trong <code>Strings.xml</code>.
+	</p>
+	<p class="hint">
+		<strong>Vector asset là gì:</strong> ảnh mô tả bằng các hình học (đường, cung, màu) thay vì bằng lưới điểm ảnh.
+		Android <em>vẽ lại nó lúc chạy</em>, nên phóng to bao nhiêu cũng không bị rỗ (pixelation) — đúng điều bạn cần cho
+		logo và icon phải hiển thị trên nhiều mật độ màn hình khác nhau.
+	</p>
+	<p>Rồi thay thân <code>ChannelNameBar()</code>:</p>
+	<Code code={channelNameBarBookCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Nếu <code>KodecochatAppBar</code> bị gạch đỏ, đưa chuột lên và bấm <em>"Opt in…"</em> — Android Studio tự thêm
+		<code>@OptIn(ExperimentalMaterial3Api::class)</code> phía trên hàm, đúng như annotation bạn đã gặp ở mục 4. Đây là
+		lần thứ hai <code>@OptIn</code> xuất hiện trong chapter, và lần này bạn <em>tự tay</em> thêm nó.
+	</p>
+
+	<h3>Đọc source <code>KodecochatAppBar</code></h3>
+	<p class="src">Nguồn: <code>{FINAL}/components/KodecochatAppBar.kt</code> (dòng 55–79)</p>
+	<Code code={appBarCode} lang="kotlin" theme="github-dark" />
+	<p>Sách đánh số 3 chỗ, và cả 3 đều hướng về cùng một bài học:</p>
+	<ol>
+		<li>
+			<code>KodecochatAppBar</code> thực chất chỉ là <strong>một lớp bọc quanh <code>CenterAlignedTopAppBar</code></strong>
+			có sẵn của Material — thành phần chuẩn để hiện thông tin và hành động ở đầu màn hình. Chuỗi
+			<code>channelName</code> bạn truyền vào <code>ChannelNameBar</code> cuối cùng đi tới thuộc tính
+			<code>title</code>. Nhưng chú ý: trong <code>Conversation.kt</code>, giá trị truyền cho <code>title</code>
+			<strong>không phải một String</strong> — nó là <em>cả một composable function</em> (một <code>Column</code> căn
+			giữa ngang, bên trong là <code>Text</code>). Sách dùng đúng đây làm minh chứng cho việc Compose cho phép lồng
+			composable vào nhau để tạo layout và tính năng phức tạp hơn.
+		</li>
+		<li>
+			Tham số <code>actions</code>: thường là danh sách các <code>IconButton</code> — các nút gọn của Material giúp
+			người dùng thực hiện <em>hành động phụ</em>. Ở đây bạn truyền vào nút thông tin (chữ "i" trong vòng tròn); ý
+			tưởng là sau này bấm vào sẽ hiện thông tin về kênh chat. Chi tiết sách nhắc riêng:
+			<strong><code>actions</code> được render trong một <code>Row</code></strong> — nên nhiều icon sẽ tự nằm ngang
+			cạnh nhau.
+		</li>
+		<li>
+			Tham số <code>navigationIcon</code>: dùng để mở menu bên (side menu) trong các chapter sau. Icon ở đây là logo
+			Kodeco dạng vector asset, và <strong>nó cũng được dựng như một composable</strong>. Sách nhắc lại lần nữa: bạn
+			lại đang truyền một composable function thật vào một tham số.
+		</li>
+	</ol>
+	<div class="hint">
+		<strong>Đây là pattern quan trọng nhất của mục này (thuật ngữ: <em>slot API</em>).</strong> <code>title</code>,
+		<code>actions</code>, <code>navigationIcon</code> đều có kiểu <code>@Composable () -&gt; Unit</code> — tức là "một
+		chỗ trống, bạn nhét UI gì vào cũng được". Nhờ vậy <code>CenterAlignedTopAppBar</code> không cần biết trước bạn muốn
+		hiện chữ, ảnh hay cả một <code>Column</code>. Đúng cùng cơ chế với tham số <code>content</code> của
+		<code>setContent</code> ở mục 2 và với <code>placeholder</code>/<code>label</code> của
+		<code>OutlinedTextField</code> ở mục 4 (cả hai đều là <code>@Composable (() -&gt; Unit)?</code>). Nhận ra pattern
+		này một lần là bạn đọc được chữ ký của gần như mọi component Material.
+	</div>
+	<div class="callout diff">
+		<strong>Khác biệt sách vs project final (đã kiểm chứng).</strong> Trong sách, <code>Text</code> của
+		<code>ChannelNameBar</code> có thêm <code>style = MaterialTheme.typography.titleMedium</code>. Trong project
+		<code>final</code> thật (<code>{FINAL}/conversation/Conversation.kt</code>, dòng 361–363) dòng
+		<code>style</code> đó <strong>không có</strong>. Hệ quả: tên kênh trong app final dùng typography mặc định của
+		<code>CenterAlignedTopAppBar</code> thay vì <code>titleMedium</code>. Không phải lỗi của bạn nếu thấy khác — làm
+		theo sách là đúng; đây là chỗ project final lệch so với hướng dẫn.
+	</div>
+
+	<h2 id="preview">7. @Preview — thấy UI mà không cần chạy app</h2>
+	<p>
+		Mở <code>KodecochatAppBar.kt</code>, bấm biểu tượng <em>split view</em> (ngay dưới nút run/debug) để Android Studio
+		chia màn hình thành code + design. Bạn sẽ thấy bản xem trước của <code>KodecochatAppBar</code>
+		<strong>đồng thời ở cả light mode và dark mode</strong>. Điều then chốt sách nhấn: bản xem trước đó
+		<em>không tự có</em> — <strong>chính bạn viết code để sinh ra nó</strong>:
+	</p>
+	<p class="src">Nguồn: <code>{FINAL}/components/KodecochatAppBar.kt</code> (dòng 81–97)</p>
+	<Code code={previewCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Cách làm: viết một composable rồi thêm <code>@Preview</code> phía trên, <em>ngoài</em> <code>@Composable</code>.
+		Quy ước đặt tên (không bắt buộc, chỉ để dễ đọc) là thêm chữ "Preview" ở cuối tên hàm. Bạn tự cấp các tham số mà
+		composable cần, và Android Studio render UI trong khung design.
+	</p>
+	<p>
+		Hai <code>@Preview</code> trong file này là lý do bạn thấy cả 2 chế độ sáng/tối cùng lúc: hàm thứ hai gọi
+		<code>KodecochatTheme(isDarkTheme = true)</code>. Đây cũng là cách xem một composable trên nhiều thiết bị và nhiều
+		điều kiện khác nhau — mỗi cấu hình là một <code>@Preview</code>.
+	</p>
+	<div class="hint">
+		<strong>Vì sao composable dùng cho <code>@Preview</code> không nên có tham số bắt buộc:</strong> Android Studio là
+		phía <em>gọi</em> hàm này để vẽ, và nó không có dữ liệu thật để truyền vào. Vì vậy <code>KodecochatAppBarPreview</code>
+		không nhận tham số nào, mà tự gọi <code>KodecochatAppBar</code> với dữ liệu cứng
+		(<code>title = &#123; Text("Preview!") &#125;</code>).
+	</div>
+
+	<h3>Thử nghiệm live preview: 16dp → 3dp</h3>
+	<p>
+		Sách yêu cầu bạn làm một thử nghiệm nhỏ và nó chứng minh điểm mạnh nhất của Preview: quay lại
+		<code>KodecochatAppBar()</code>, đổi <code>.padding()</code> của <code>KodecoChatIcon</code> từ
+		<strong>16.dp thành 3.dp</strong>. <em>Ngay khi bạn gõ xong</em>, logo Kodeco bên trái to lên rõ rệt. Đổi lại 16.dp
+		thì nó co lại. <strong>Bạn không cần build, không cần chạy app.</strong>
+	</p>
+	<p class="hint">
+		Tại sao giảm padding lại làm logo <em>to ra</em>? Vì <code>Modifier.size(64.dp)</code> đặt tổng kích thước là 64dp,
+		còn <code>padding</code> ăn vào phần bên trong. Padding 16dp mỗi bên → phần vẽ icon chỉ còn khoảng 32dp. Padding 3dp
+		→ còn khoảng 58dp. Cùng một khung, phần lõi khác nhau. Đây cũng là bản xem trước sống động của bài học
+		"thứ tự Modifier quan trọng" ở mục 8 ngay dưới.
+	</p>
+
+	<h2 id="modifier">8. Modifier — thứ tự, fillMaxSize và weight</h2>
+	<p>
+		Định nghĩa của sách gọn và nên nhớ nguyên: <strong>Modifier cho một UI element biết cách <em>lay out</em> (dàn
+		trang), <em>display</em> (hiển thị) hoặc <em>behave</em> (hành xử) trong layout cha của nó.</strong> Cách nói khác
+		cũng do sách đưa ra: Modifier <em>trang trí</em> hoặc <em>thêm hành vi</em> cho UI element.
+	</p>
+	<p>
+		Trong <code>KodecochatAppBar.kt</code> bạn thấy <code>modifier</code> xuất hiện lặp lại. Sách chỉ ra một tập quán
+		rất phổ biến trong Compose: <code>modifier</code> thường là một tham số của composable, rồi được
+		<strong>truyền tiếp xuống</strong> composable con bên trong. Nghĩa là đôi khi bạn thêm một tham số vào composable
+		<em>không phải</em> để dùng ngay tại đó, mà để chuyển nó xuống sâu hơn trong cây lồng nhau.
+	</p>
+	<p class="notice">
+		<strong>Nhưng sách cảnh báo ngay:</strong> đây <em>không luôn</em> là cách làm tốt — <strong>đặc biệt khi bạn đang
+		cố truyền <em>dữ liệu</em> xuống UI</strong>. Truyền <code>Modifier</code> xuống thì được; truyền dữ liệu bằng cách
+		xâu chuỗi tham số qua nhiều tầng thì sẽ thành vấn đề. Chapter 6 giải quyết đúng chuyện này bằng
+		<code>ViewModel</code> và luồng dữ liệu một chiều.
+	</p>
+
+	<h3>Bug thật: app bar đè lên ô nhập liệu</h3>
+	<p>
+		Sách dẫn bạn vào bug một cách có chủ ý. Trước tiên, chuyển đoạn nhập liệu bạn viết ở mục 3 vào composable riêng
+		<code>SimpleUserInput()</code> (lần này bọc trong <code>Row</code> để ô nhập và nút nằm ngang):
+	</p>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 121–144)</p>
+	<Code code={simpleUserInputCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Build và chạy: <strong>app bar phía trên đè lên ô text và nút</strong>. Sách sửa bug này bằng Modifier, theo 3 bước
+		— và làm rõ từng bước sửa được cái gì:
+	</p>
+	<ol>
+		<li>
+			<strong>Thêm <code>Modifier.fillMaxSize()</code> cho <code>Box</code>.</strong> Chạy lại, thay đổi rất khó thấy.
+			Nên sách dạy một mẹo debug: tô màu tạm cho <code>Box</code> để nhìn rõ vùng nó chiếm:
+			<Code code={boxDebugCode} lang="kotlin" theme="github-dark" />
+			Giờ thì rõ — <code>Box</code> đã căng hết màn hình. Nhưng phần nhập liệu <strong>vẫn bị che</strong>.
+		</li>
+		<li>
+			<strong>Cho <code>Messages</code> nhận <code>Modifier.weight(1f)</code></strong> và cho
+			<code>Column</code> <code>fillMaxSize()</code>:
+			<Code code={weightFixCode} lang="kotlin" theme="github-dark" />
+		</li>
+		<li>
+			<strong>Cập nhật <code>Messages()</code></strong> để nó nhận và dùng modifier được truyền vào — phần nội dung
+			để chỗ trống, mục 9 mới làm:
+			<Code code={messagesStubCode} lang="kotlin" theme="github-dark" />
+		</li>
+	</ol>
+	<p>Build và chạy — layout đã đúng.</p>
+
+	<h3><code>weight</code> hoạt động thế nào (phần giải thích quan trọng nhất của mục này)</h3>
+	<p>
+		Sách giải thích cơ chế đo đạc, và đây là đoạn nên đọc chậm: khi Compose dàn trang các con của một composable, nó
+		<strong>đo (measure) từng con</strong>, rồi phân bổ và định kích thước cho chúng
+		<strong>theo đúng thứ tự các con được liệt kê</strong>. Kết quả đo phụ thuộc vào <em>nội dung bên trong</em> con đó
+		và vào <em>các modifier</em> của nó.
+	</p>
+	<p>
+		Modifier <code>weight</code> nhận một số thực và định chiều cao của element <strong>tương quan với weight của các
+		con khác</strong> trong <code>Column</code> cha. Cụ thể: cha đo các con <em>không có weight</em> trước, lấy phần
+		không gian dọc <strong>còn lại</strong>, rồi chia phần còn lại đó theo weight. Trong trường hợp này, mọi thứ khác
+		trong <code>Column</code> đều không có weight, nên <code>Box</code> của <code>Messages</code>
+		<strong>nhận gần như toàn bộ không gian còn lại</strong> — và <code>SimpleUserInput</code> được đo theo nội dung
+		thật của nó, giữ được chỗ ở dưới đáy thay vì bị đẩy ra ngoài màn hình.
+	</p>
+	<div class="hint">
+		<strong>Mental model cho <code>weight</code>:</strong> hãy nghĩ nó như "chia phần bánh còn lại". Người
+		<em>không</em> nhận weight được lấy đúng miếng vừa đủ theo nhu cầu của mình trước; ai có weight thì chia nhau phần
+		còn lại theo tỉ lệ. Vì vậy <code>weight(1f)</code> cho một con duy nhất nghĩa là "lấy hết những gì còn dư" — đây là
+		mẫu cực kỳ hay dùng: danh sách chiếm hết phần giữa, thanh trên và thanh dưới giữ nguyên kích thước.
+	</div>
+
+	<h3>Thứ tự nối Modifier quyết định kết quả</h3>
+	<p>
+		Modifier được nối chuỗi bằng dấu chấm, và <strong>mỗi modifier áp lên kết quả của modifier ngay trước nó</strong>.
+		Ví dụ rõ nhất trong app là chuỗi modifier của avatar (sẽ gặp lại đầy đủ ở mục 10):
+	</p>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 208–215, trong <code>MessageUi</code>)</p>
+	<ol class="chain">
+		<li><code>.clickable(...)</code> — vùng bấm được đăng ký <strong>trước</strong> khi thêm padding, nên phần padding cũng bấm được</li>
+		<li><code>.padding(horizontal = 16.dp)</code> — chèn khoảng đệm hai bên</li>
+		<li><code>.size(42.dp)</code> — ép kích thước phần còn lại thành 42dp</li>
+		<li><code>.border(1.5.dp, borderColor, CircleShape)</code> — viền trong, màu theo người gửi</li>
+		<li><code>.border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)</code> — viền ngoài màu nền, tạo khoảng hở giữa 2 viền</li>
+		<li><code>.clip(CircleShape)</code> — cắt ảnh thành hình tròn</li>
+		<li><code>.align(Alignment.Top)</code> — căn lên đỉnh của <code>Row</code> cha</li>
+	</ol>
+	<p>
+		Đổi chỗ <code>padding</code> và <code>size</code> cho nhau là ra kết quả khác: <code>padding</code> rồi
+		<code>size</code> nghĩa là "42dp <em>sau khi</em> đã trừ đệm", còn <code>size</code> rồi <code>padding</code> nghĩa
+		là "42dp <em>rồi mới</em> thêm đệm ra ngoài". Đây là nguồn gây nhầm lẫn số một khi mới học Compose — và cũng chính
+		là hiện tượng bạn quan sát được trong thử nghiệm 16dp → 3dp ở mục 7.
+	</p>
+
+	<h2 id="lazycolumn">9. Lists: lazy loading và LazyColumn</h2>
+	<p>
+		Sách mở mục này bằng một câu hỏi thay vì một định nghĩa: <em>chuyện gì xảy ra khi bạn phải hiển thị nhiều thành phần
+		hơn số vừa màn hình?</em> Trả lời: các thành phần <strong>vẫn được compose hết</strong>, nhưng màn hình có hạn nên
+		bạn không thấy hết. Và có cả tình huống bạn muốn <em>thêm động</em> thành phần mới mà vẫn xem được tất cả — đúng
+		như một app chat.
+	</p>
+	<p>
+		Giải pháp là cho nội dung <strong>cuộn được</strong>, dọc hoặc ngang. Compose làm việc này bằng các container
+		<em>scrollable và lazily composed</em>. Và đây là khái niệm cần nắm: <strong>lazy loading</strong> — chỉ nạp dữ liệu
+		<em>khi thật sự cần</em>. Hai thành phần chính cho danh sách lazy trong Compose là <code>LazyColumn</code> (dọc) và
+		<code>LazyRow</code> (ngang).
+	</p>
+	<div class="hint">
+		<strong>Vì sao lazy quan trọng đến vậy:</strong> <code>Column</code> thường dựng <em>toàn bộ</em> con của nó, kể cả
+		999 tin nhắn đang nằm ngoài màn hình. <code>LazyColumn</code> chỉ dựng những item đang hiển thị (cộng một ít dự
+		phòng), và tái sử dụng khi bạn cuộn. Nếu bạn từng nghe tới <code>RecyclerView</code> ở View system cũ thì
+		<code>LazyColumn</code> đảm nhiệm đúng vai trò đó — nhưng chỉ mất vài dòng thay vì cần adapter + view holder.
+	</div>
+	<p>Sách cho bạn dựng bản đầu tiên với 3 tin nhắn cứng, để thấy cơ chế trước khi có dữ liệu thật:</p>
+	<Code code={lazyColumnFirstCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Chú ý <code>contentPadding</code>: <code>WindowInsets.statusBars.add(WindowInsets(top = 90.dp)).asPaddingValues()</code>.
+		Comment trong code gốc nói rõ mục đích: thêm khoảng đệm <em>nội dung</em> để nội dung có thể cuộn
+		<strong>xuống bên dưới status bar và app bar</strong>.
+	</p>
+	<p class="hint">
+		Phân biệt hai thứ dễ lẫn: <code>Modifier.padding()</code> đệm <em>bên ngoài</em> — vùng đó không cuộn qua được.
+		<code>contentPadding</code> của <code>LazyColumn</code> đệm <em>bên trong vùng cuộn</em> — item đầu bắt đầu thấp
+		xuống, nhưng khi cuộn lên nội dung vẫn chạy qua vùng đó. Nhờ vậy tin nhắn trượt <em>dưới</em> app bar mờ thay vì bị
+		cắt cụt. <code>WindowInsets.statusBars</code> là chiều cao thật của status bar trên thiết bị (mỗi máy mỗi khác),
+		cộng thêm 90dp cho app bar.
+	</p>
+	<p>
+		Build và chạy: 3 tin nhắn hiện lên. Nhưng sách tự phê ngay: cứng nhắc như vậy chỉ là nền móng. Muốn thành app chat
+		thật thì cần <strong>tin nhắn gõ vào được thêm vào danh sách</strong>, cần biết <strong>ai gửi</strong> và
+		<strong>gửi lúc nào</strong>, và cần <strong>phân biệt tin của mình với tin người khác</strong> bằng kiểu hiển thị.
+		Đó là toàn bộ nội dung mục 10.
+	</p>
+
+</section>
+

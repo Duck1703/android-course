@@ -1,0 +1,487 @@
+---
+// Quiz + bài tập cho Chương 1.4 — Gradle và bản đồ khoá học (mục 8, 9, 10, 11, 12).
+// Tách từ Ch01Quiz.astro theo ranh giới của 4 chương nhỏ.
+// Câu 1, 5, 8, 9, 10 viết lại từ câu 3, 15, 16, 17, 18 của quiz gộp cũ (bỏ giọng bám giáo trình,
+//   sửa tham chiếu chéo sang tên chương nhỏ). Câu 2, 3, 4, 6, 7 viết mới cho mục 8.1–8.4 và 9.
+// Mọi số dòng / số phiên bản / tên file đều đã mở file thật trong aaf-materials/ để kiểm.
+// Quiz chấm bằng vanilla JavaScript phía client, không thêm framework.
+const FINAL = "aaf-materials/02-getting-started-with-android-studio/projects/final";
+
+// Sáu dòng cho Bài tập 2 — trích nguyên văn từ {FINAL}/app/build.gradle.kts, khối dependencies
+// (dòng 52–69). Sáu dòng này KHÔNG liền nhau trong file thật: lần lượt là dòng 54, 57, 61, 62, 64, 67.
+const depsQuizCode = `implementation("androidx.core:core-ktx:1.12.0")
+implementation(platform("androidx.compose:compose-bom:2023.10.00"))
+implementation("androidx.compose.material3:material3")
+testImplementation("junit:junit:4.13.2")
+androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+debugImplementation("androidx.compose.ui:ui-tooling")`;
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		10 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm
+		đúng, nên đọc hết, vì phần giải thích nói thêm vì sao hai đáp án còn lại nghe hợp lý mà vẫn sai.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. Gradle làm nhiệm vụ gì trong một project Android?</legend>
+			<label><input type="radio" name="q1" value="a" /> Là một ngôn ngữ lập trình dùng thay Kotlin ở phần cấu hình của app</label>
+			<label>
+				<input type="radio" name="q1" value="b" /> Là công cụ tự động hoá build: tải thư viện, gọi trình biên dịch Kotlin,
+				biến resource thành dạng máy đọc được, gộp manifest, đóng gói và ký tên số thành một file cài được
+			</label>
+			<label><input type="radio" name="q1" value="c" /> Là nơi lưu ảnh, âm thanh và màu sắc của app</label>
+			<p class="explain" hidden>
+				Mô hình dễ nhớ: bạn có hàng chục file <code>.kt</code>, một thư mục <code>res/</code>, một manifest và một danh
+				sách thư viện cần tải — điện thoại thì chỉ cài được <em>một file</em>. Gradle là người quản đốc thu hẹp khoảng
+				cách đó: bạn <strong>khai báo</strong> muốn gì trong file build, nó lo từng bước. Đáp án a lẫn Gradle với ngôn ngữ
+				viết file build — file build của project này viết bằng Kotlin, còn Gradle là <em>công cụ</em> đọc file đó. Đáp án c
+				là việc của thư mục <code>res/</code> (Chương 1.3, mục 7), không phải của Gradle. Toàn bộ chi tiết cấu hình Gradle
+				được dành riêng cho <strong>Chương 4</strong>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				2. Dòng <code>id("com.android.application")</code> trong khối <code>plugins &#123; ... &#125;</code> là gì, và chữ
+				"plugin" ở đây nghĩa gì?
+			</legend>
+			<label>
+				<input type="radio" name="q2" value="a" /> Là một thư viện Android được đóng gói vào file app, để app gọi được các
+				API của hệ thống lúc chạy
+			</label>
+			<label>
+				<input type="radio" name="q2" value="b" /> Là plugin do chính nhóm phát triển Gradle viết, nhiệm vụ là làm Gradle
+				build nhanh hơn trên project Android
+			</label>
+			<label>
+				<input type="radio" name="q2" value="c" /> Chính là <strong>Android Gradle plugin</strong> — gói mở rộng do Google
+				làm, dạy Gradle những thứ riêng của Android; Gradle thuần không biết <code>compileSdk</code> hay
+				<code>minSdk</code> là gì
+			</label>
+			<p class="explain" hidden>
+				Gradle là công cụ build <em>đa dụng</em>: dùng được cho Java trên máy chủ, cho thư viện, cho gần như mọi thứ — nó
+				không biết Android là gì. "Plugin" là gói mở rộng dạy Gradle một lĩnh vực mới, nên "Android Gradle plugin" đúng
+				nghĩa là <em>phần Android</em> của Gradle, và nó do <strong>Google</strong> làm, không phải nhóm Gradle — đó là chỗ
+				đáp án b sai (nó cũng không phải công cụ tăng tốc build). Đáp án a lẫn hai loại thứ hoàn toàn khác nhau: plugin
+				làm việc <em>lúc build</em> rồi xong, không đi vào file app. Bằng chứng cụ thể trong project: plugin được khai bản ở
+				<code>build.gradle.kts</code> gốc (dòng 3, bản <code>8.2.0</code>) kèm <code>apply false</code>, và được áp dụng
+				thật ở <code>app/build.gradle.kts</code> dòng 2 — vì việc build app diễn ra ở module <code>app/</code>, không ở gốc.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. Bạn muốn thêm một thư viện mới cho app (ví dụ thư viện gọi mạng). Phải sửa file build nào?</legend>
+			<label>
+				<input type="radio" name="q3" value="a" /> <code>app/build.gradle.kts</code> — thêm một dòng vào khối
+				<code>dependencies</code> ở cuối file
+			</label>
+			<label>
+				<input type="radio" name="q3" value="b" /> <code>settings.gradle.kts</code>, vì đó là nơi khai các repository để tải
+				thư viện về
+			</label>
+			<label>
+				<input type="radio" name="q3" value="c" /> <code>build.gradle.kts</code> ở gốc project, vì nó là file dùng chung cho
+				cả project
+			</label>
+			<p class="explain" hidden>
+				Bốn file build, mỗi file một việc: <code>app/build.gradle.kts</code> giữ cấu hình của module app <em>và danh sách
+				thư viện</em> (khối <code>dependencies</code>, dòng 52–69 trong project) — đây là file bạn sửa thường xuyên nhất;
+				<code>build.gradle.kts</code> ở gốc chỉ khai <em>bản</em> của plugin dùng chung, bạn mở nó khi nâng Android Gradle
+				plugin hoặc Kotlin; <code>settings.gradle.kts</code> khai project gồm module nào và tải thư viện <em>từ đâu</em>;
+				<code>gradle/wrapper/gradle-wrapper.properties</code> khoá bản Gradle. Đáp án b hấp dẫn vì nó thật sự liên quan tới
+				thư viện — nhưng nó chỉ nói <em>chỗ tải</em> (<code>google()</code>, <code>mavenCentral()</code>), không nói
+				<em>thư viện nào</em>. Đáp án c lẫn "dùng chung cho cả project" với "chỗ khai thư viện của app".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				4. Project ghi <code>compileSdk = 34</code>, <code>targetSdk = 34</code>, <code>minSdk = 30</code>. Phát biểu nào
+				đúng?
+			</legend>
+			<label>
+				<input type="radio" name="q4" value="a" /> Ba dòng đó nói cùng một con số cho ba mục đích khác nhau; đặt lệch nhau
+				sẽ báo lỗi build
+			</label>
+			<label>
+				<input type="radio" name="q4" value="b" /> <code>minSdk = 30</code> nghĩa là app chỉ được kiểm tới bản Android đó,
+				máy mới hơn sẽ chạy app ở chế độ tương thích
+			</label>
+			<label>
+				<input type="radio" name="q4" value="c" /> <code>compileSdk</code> là bản dùng để <em>biên dịch</em> (bạn gọi được
+				API tới mức nào), <code>targetSdk</code> là bản bạn <em>đã kiểm và nhắm tới</em>, <code>minSdk</code> là bản
+				<em>thấp nhất</em> máy cài được — nên <code>minSdk = 30</code> khiến app không cài được lên máy Android 10 trở về
+				trước
+			</label>
+			<p class="explain" hidden>
+				Ba con số này là chỗ dễ lẫn nhất khi mới đọc file build, và chúng trả lời ba câu khác nhau. Đáp án b tả đúng vai trò
+				của <code>targetSdk</code> chứ không phải <code>minSdk</code>: hệ thống dựa vào <code>targetSdk</code> để quyết định
+				bật hành vi mới hay giữ hành vi cũ cho app. Đáp án a sai ở cả hai nửa: chúng là ba thứ độc lập, và ở đây
+				<code>minSdk</code> vốn đã khác hai con số kia mà project vẫn build bình thường. Đã kiểm mọi file build của khoá
+				học: <code>minSdk = 30</code> ở tất cả — với project học thì đó là lựa chọn hợp lý (ít phải xử lý khác biệt giữa các
+				bản Android cũ), nhưng app thương mại thường hạ <code>minSdk</code> thấp hơn để với được nhiều máy hơn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>5. Làm sao nhìn một file build là biết nó viết bằng Kotlin hay Groovy, và vì sao điều đó đáng quan tâm?</legend>
+			<label>
+				<input type="radio" name="q5" value="a" /> Xem phần mở rộng tên file (<code>build.gradle.kts</code> = Kotlin,
+				<code>build.gradle</code> = Groovy) và xem có dấu <code>=</code> khi gán (<code>compileSdk = 34</code> là Kotlin,
+				<code>compileSdk 34</code> là Groovy); đáng quan tâm vì rất nhiều đoạn cấu hình trên mạng viết bằng Groovy, dán vào
+				file <code>.kts</code> là lỗi cú pháp ngay
+			</label>
+			<label><input type="radio" name="q5" value="b" /> Xem cuối mỗi dòng có dấu chấm phẩy hay không</label>
+			<label><input type="radio" name="q5" value="c" /> Không phân biệt được bằng mắt, phải chạy build rồi đọc thông báo lỗi</label>
+			<p class="explain" hidden>
+				<code>.kts</code> là "Kotlin script". Đã kiểm toàn bộ project của khoá học: <strong>không có file
+				<code>build.gradle</code> kiểu Groovy nào</strong> — tất cả đều <code>.kts</code>. Đáp án b không dùng được vì cả
+				Kotlin lẫn Groovy đều không cần dấu chấm phẩy. Đáp án c là cách chậm nhất và gây hoang mang nhất: build <em>sẽ</em>
+				đứt, nhưng thông báo lỗi không bao giờ nói "bạn dán sai ngôn ngữ", nên người mới thường đi sửa những thứ không liên
+				quan. Một dấu hiệu nữa để nhận diện: Kotlin viết
+				<code>implementation("androidx.core:core-ktx:1.12.0")</code> có ngoặc đơn và nháy kép, Groovy viết
+				<code>implementation 'androidx.core:core-ktx:1.12.0'</code> không ngoặc và nháy đơn. Ba lợi thế khiến Kotlin được
+				chọn cho file build: được IDE hỗ trợ (gợi ý code, tự hoàn thành tên, bấm vào một hàm để xem nó là gì), được kiểm
+				lúc biên dịch (gõ sai tên là biết ngay, không phải chờ build xong), và dễ đọc hơn — đồng thời file build dùng cùng
+				một ngôn ngữ với code app nên bạn không phải học ngôn ngữ thứ hai.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				6. Trong khối <code>dependencies</code>, ba từ khoá <code>implementation</code>,
+				<code>testImplementation</code>, <code>debugImplementation</code> khác nhau ở chỗ nào?
+			</legend>
+			<label>
+				<input type="radio" name="q6" value="a" /> Chúng nói thứ tự tải: <code>implementation</code> tải trước, hai loại kia
+				tải sau khi build xong
+			</label>
+			<label>
+				<input type="radio" name="q6" value="b" /> Chúng nói thư viện đó <em>có mặt lúc nào</em>:
+				<code>implementation</code> = có trong app thật; <code>testImplementation</code> = chỉ khi chạy test;
+				<code>debugImplementation</code> = chỉ trong bản debug, không đi vào bản phát hành
+			</label>
+			<label>
+				<input type="radio" name="q6" value="c" /> Chúng nói thư viện được tải về từ repository nào —
+				<code>google()</code> hay <code>mavenCentral()</code>
+			</label>
+			<p class="explain" hidden>
+				Mỗi dòng trong khối <code>dependencies</code> là một thư viện Gradle sẽ tải về giúp bạn, và chữ đầu dòng quyết định
+				<em>phạm vi</em> của nó. Ví dụ có thật trong project: <code>debugImplementation("androidx.compose.ui:ui-tooling")</code>
+				(dòng 67) là công cụ dev để xem trước giao diện — người dùng cuối không cần, nên nó không đi vào bản phát hành, giúp
+				file app nhẹ hơn. <code>testImplementation("junit:junit:4.13.2")</code> (dòng 62) chỉ có mặt khi bạn chạy test. Đáp án c
+				nhắc đúng hai repository có thật, nhưng chỗ khai <em>tải từ đâu</em> là <code>settings.gradle.kts</code> (dòng 3–4 và
+				11–12), không phải ba từ khoá này. Đáp án a bịa ra một thứ tự không tồn tại. Bổ sung nhỏ: project còn dùng từ khoá thứ
+				tư, <code>androidTestImplementation</code> (dòng 63–66), dành cho test phải chạy trên điện thoại hoặc máy ảo.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				7. Dòng <code>implementation(platform("androidx.compose:compose-bom:2023.10.00"))</code> giải quyết vấn đề gì?
+			</legend>
+			<label>
+				<input type="radio" name="q7" value="a" /> Nó là một thư viện gộp sẵn toàn bộ Compose vào một gói, nên chỉ cần một
+				dòng đó là có đủ mọi thành phần Compose
+			</label>
+			<label><input type="radio" name="q7" value="b" /> Nó khoá bản Gradle mà project dùng để build</label>
+			<label>
+				<input type="radio" name="q7" value="c" /> Nó là một <em>BOM</em> (bill of materials — bảng kê vật liệu): khai một bộ
+				phiên bản Compose đã được kiểm là khớp nhau, nên các dòng <code>androidx.compose.*</code> bên dưới không cần ghi số
+				phiên bản nữa
+			</label>
+			<p class="explain" hidden>
+				Compose gồm nhiều thư viện nhỏ (<code>ui</code>, <code>ui-graphics</code>, <code>material3</code>, ...) và chúng phải
+				đồng bộ với nhau; tự ghi tay số phiên bản cho từng dòng là cách nhanh nhất để lắp lẫn các bản không tương thích. BOM
+				gánh việc đó: bạn đổi <em>một</em> số ở dòng BOM là nâng cả bộ. Xem file thật: dòng 57 khai BOM, rồi dòng 58–61
+				(<code>ui</code>, <code>ui-graphics</code>, <code>ui-tooling-preview</code>, <code>material3</code>) đều
+				<strong>không có</strong> số phiên bản. Đáp án a nghe rất hợp lý vì nó cũng giải thích được chuyện "không ghi version" —
+				nhưng BOM không chứa dòng code nào cả, nó chỉ là bảng kê số; nếu nó thật là gói gộp thì dòng 58–61 sẽ hoàn toàn dư
+				thừa. Đáp án b là việc của <code>gradle/wrapper/gradle-wrapper.properties</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				8. Nguyên tắc nói bản release <em>lý tưởng</em> là được obfuscate (làm rối code). File build của project lại ghi
+				<code>isMinifyEnabled = false</code>. Cách hiểu đúng là gì?
+			</legend>
+			<label>
+				<input type="radio" name="q8" value="a" /> Đây là khác biệt giữa <em>lời khuyên cho app phát hành</em> và
+				<em>cấu hình của một project học</em>: bật minify làm build lâu hơn và nếu cấu hình thiếu thì app crash ở những chỗ khó
+				lần ra — không đáng cho việc học; còn với app thật thì nên đặt <code>true</code>
+			</label>
+			<label>
+				<input type="radio" name="q8" value="b" /> <code>isMinifyEnabled</code> không liên quan gì tới obfuscate — nó chỉ nén
+				ảnh và âm thanh trong <code>res/</code> cho file app nhẹ hơn
+			</label>
+			<label>
+				<input type="radio" name="q8" value="c" /> Đó là một dòng sai còn sót lại, phải sửa thành <code>true</code> trước khi
+				build, nếu không project không build được
+			</label>
+			<p class="explain" hidden>
+				Chữ "lý tưởng" rất chính xác: nó nói điều <em>nên</em> làm, còn project để <code>false</code> vì đang ở bối cảnh khác.
+				Cả hai đều hợp lý — miễn là bạn biết mình đang ở bối cảnh nào. Khi đặt <code>true</code>, công tắc này làm <em>hai</em>
+				việc: <strong>minify</strong> (xoá code không dùng → file nhẹ hơn) và <strong>obfuscate</strong> (đổi tên class/hàm
+				thành <code>a</code>, <code>b</code>, <code>c</code> → người khác khó dịch ngược code của bạn) — nên đáp án b sai ở chỗ
+				gán cho nó việc của công cụ nén ảnh. Đáp án c sai vì <code>false</code> là một giá trị hoàn toàn hợp lệ, project build
+				bình thường. Đi kèm nó là <code>proguardFiles(...)</code>, danh sách <em>ngoại lệ</em> — "những thứ này thì đừng xoá,
+				đừng đổi tên" — cần có vì một số code được gọi qua reflection mà công cụ không nhìn thấy, xoá đi là app crash lúc chạy.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				9. Cuối chuỗi build, bạn nhận được "một file để cài và phân phối app". Thực tế có mấy dạng file, dùng cho việc gì?
+			</legend>
+			<label>
+				<input type="radio" name="q9" value="a" /> Một dạng duy nhất là <code>.apk</code>, dùng cho cả việc cài tay lẫn nộp lên
+				Google Play
+			</label>
+			<label>
+				<input type="radio" name="q9" value="b" /> Hai dạng: <code>.apk</code> để cài trực tiếp lên máy hoặc chia file cho
+				người khác, và <code>.aab</code> (Android App Bundle) — định dạng Google Play yêu cầu từ tháng 8/2021
+			</label>
+			<label>
+				<input type="radio" name="q9" value="c" /> Hai dạng, nhưng ngược lại: <code>.aab</code> để cài trực tiếp lên máy, còn
+				<code>.apk</code> chỉ dùng khi nộp lên store
+			</label>
+			<p class="explain" hidden>
+				Nói "một file" thì không sai — nhưng nếu bạn thật sự đem app lên Google Play, thứ bạn nộp là <code>.aab</code>, không
+				phải <code>.apk</code>. Điểm khác nhau đáng nhớ: <code>.aab</code> <em>không</em> cài trực tiếp lên máy được (đáp án c
+				đảo ngược đúng chỗ này); nó là gói chứa mọi biến thể của app, rồi Google Play tự cắt ra <code>.apk</code> vừa với từng
+				thiết bị người dùng — nhờ vậy bản tải về nhẹ hơn. Đáp án a từng đúng, nhưng chỉ tới trước tháng 8/2021. Đây là chi tiết
+				bổ sung ngoài phạm vi Chương 1, ghi lại để bạn không bất ngờ khi đọc tài liệu về phát hành app.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				10. Bốn con số của project (Android Gradle plugin <code>8.2.0</code>, Kotlin <code>1.9.10</code>, Gradle
+				<code>8.2</code>, <code>compileSdk = 34</code>) nói lên điều gì, và bạn nên làm gì với chúng?
+			</legend>
+			<label>
+				<input type="radio" name="q10" value="a" /> Project đã quá cũ nên kiến thức trong đó không còn dùng được, nên tìm tài
+				liệu mới hơn
+			</label>
+			<label>
+				<input type="radio" name="q10" value="b" /> Kotlin <code>1.9.10</code> đã kèm sẵn Compose compiler, nên khối
+				<code>composeOptions</code> trong project là dòng thừa và nên xoá đi cho gọn
+			</label>
+			<label>
+				<input type="radio" name="q10" value="c" /> Project được cấu hình cho khoảng <strong>cuối năm 2023</strong>; những gì
+				đã đổi kể từ đó chủ yếu là số phiên bản và tên gọi, còn kiến thức nền vẫn đúng nguyên — và <em>không</em> nên tự nâng
+				các con số này chỉ vì thấy chúng cũ
+			</label>
+			<p class="explain" hidden>
+				Mốc thời gian nằm ngay trong file: API 34 = <strong>Android 14</strong>, và dòng đầu
+				<code>gradle-wrapper.properties</code> ghi dấu thời gian <code>Thu Oct 12 ... 2023</code>. Biết chính xác project đứng ở
+				đâu trên trục thời gian là cách duy nhất để phân biệt "code này cũ" với "mình làm sai" — nên đáp án a phản ứng quá mức:
+				bốn app component, security sandbox, manifest, resource, Intent, vai trò của Gradle đều không đổi. Đáp án b là cái bẫy
+				đáng để ý nhất vì nó gần đúng: Compose compiler <em>có</em> đi kèm Kotlin, nhưng chỉ <strong>từ Kotlin 2.0</strong> và
+				được bật bằng plugin <code>org.jetbrains.kotlin.plugin.compose</code>. Project này ghim <code>1.9.10</code> — bản
+				<em>trước</em> 2.0 — nên khối <code>composeOptions</code> với
+				<code>kotlinCompilerExtensionVersion = "1.5.3"</code> vẫn cần, xoá đi là build đứt. Tương tự với
+				<code>compileSdk</code>: nâng nó chỉ cần khi bạn muốn gọi API mới hơn, và mỗi lần nâng thường kéo theo phải nâng cả
+				Android Gradle plugin — sửa vì "thấy nó cũ" là cách nhanh nhất để tự tạo ra một chuỗi lỗi build không liên quan gì đến
+				bài đang học.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+
+	<h2>Bài tập</h2>
+	<p class="intro">
+		Cả hai bài đều làm việc trên file build thật của project <code>{FINAL}/</code> — chỉ đọc, đừng sửa gì. Bài tập 1 rèn kỹ
+		năng mở một project lạ và tự tìm ra nó đang đứng ở đâu; bài tập 2 rèn đọc khối <code>dependencies</code>, phần bạn sẽ sửa
+		nhiều nhất về sau.
+	</p>
+
+	<div class="exercise">
+		<h3>Bài tập 1 — Mở 4 file build và tự trả lời 8 câu</h3>
+		<p>
+			Không cần chạy Gradle, không cần Android Studio — mở bằng trình soạn thảo nào cũng được. Bốn file cần mở, tất cả nằm
+			trong <code>{FINAL}/</code>:
+		</p>
+		<ol>
+			<li><code>build.gradle.kts</code> (ở gốc project, chỉ 5 dòng)</li>
+			<li><code>app/build.gradle.kts</code></li>
+			<li><code>settings.gradle.kts</code></li>
+			<li><code>gradle/wrapper/gradle-wrapper.properties</code></li>
+		</ol>
+		<p>Rồi tự điền tám giá trị sau, kèm <strong>tên file và số dòng</strong> bạn tìm thấy nó:</p>
+		<ol>
+			<li>Phiên bản Android Gradle plugin</li>
+			<li>Phiên bản Kotlin</li>
+			<li>Phiên bản Gradle mà project khoá lại</li>
+			<li><code>compileSdk</code></li>
+			<li><code>minSdk</code></li>
+			<li><code>targetSdk</code></li>
+			<li><code>applicationId</code></li>
+			<li><code>namespace</code></li>
+		</ol>
+		<p>
+			Câu hỏi thưởng, khó hơn: <code>applicationId</code> và <code>namespace</code> trong project này có giá trị
+			<em>giống nhau</em>. Vậy vì sao lại cần đến hai dòng?
+		</p>
+		<details>
+			<summary>Đáp án kèm số dòng thật</summary>
+			<p>
+				<strong>1. Android Gradle plugin <code>8.2.0</code></strong> — <code>build.gradle.kts</code> ở gốc,
+				<strong>dòng 3</strong>: <code>id("com.android.application") version "8.2.0" apply false</code>. Ngay dưới nó,
+				<strong>2. Kotlin <code>1.9.10</code></strong> ở <strong>dòng 4</strong>. Cả file chỉ có 5 dòng, đúng như bảng bốn
+				file build đã nói: file gốc chỉ làm một việc là khai <em>bản</em> của plugin dùng chung.
+			</p>
+			<p>
+				<strong>3. Gradle <code>8.2</code></strong> — <code>gradle/wrapper/gradle-wrapper.properties</code>,
+				<strong>dòng 4</strong>:
+				<code>distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip</code>. Số phiên bản nằm ngay
+				trong tên file zip. Ghé mắt lên <strong>dòng 1</strong> để thấy dấu thời gian
+				<code>#Thu Oct 12 21:21:56 EDT 2023</code> — đó là bằng chứng project được tạo vào tháng 10/2023.
+			</p>
+			<p>
+				<strong>4–8 đều ở <code>app/build.gradle.kts</code>:</strong> <code>namespace = "com.kodeco.chat"</code>
+				<strong>dòng 7</strong> · <code>compileSdk = 34</code> <strong>dòng 8</strong> ·
+				<code>applicationId = "com.kodeco.chat"</code> <strong>dòng 11</strong> · <code>minSdk = 30</code>
+				<strong>dòng 12</strong> · <code>targetSdk = 34</code> <strong>dòng 13</strong>. Để ý vị trí:
+				<code>namespace</code> và <code>compileSdk</code> nằm trực tiếp trong khối <code>android</code>, còn ba con số kia
+				nằm sâu hơn một tầng, trong khối <code>defaultConfig</code> — vì chúng là cấu hình <em>của bản app</em>, có thể bị
+				ghi đè cho từng biến thể build.
+			</p>
+			<p>
+				<strong>Câu thưởng.</strong> Hai dòng đó trả lời hai câu khác nhau, chỉ tình cờ cùng giá trị.
+				<code>applicationId</code> là <strong>danh tính của app trên máy và trên store</strong>: hệ điều hành dùng nó để phân
+				biệt app này với app khác, và đổi nó đi thì máy coi như bạn vừa cài một app hoàn toàn mới. <code>namespace</code> là
+				<strong>package của code</strong> — chỗ Gradle đặt class <code>R</code> sinh ra để bạn gọi resource. Android Studio
+				điền cùng giá trị cho cả hai khi tạo project mới, nên rất dễ tưởng chúng là một; nhưng bạn hoàn toàn có thể để code
+				ở một package và phát hành app dưới một id khác, và điều đó xảy ra thật khi một công ty phát hành nhiều bản của cùng
+				một app.
+			</p>
+			<p>
+				<strong>Điều đáng rút ra sau khi làm xong:</strong> bạn vừa lặp lại đúng việc mà mọi lập trình viên Android làm khi
+				mở một project lạ — bốn file, mỗi file một việc, khoảng năm phút là biết project đứng ở đâu trên trục thời gian và
+				chạy được trên những máy nào.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 2 — Phân loại 6 dòng dependency</h3>
+		<p>
+			Sáu dòng dưới đây được trích từ khối <code>dependencies</code> của <code>{FINAL}/app/build.gradle.kts</code> (khối đó
+			nằm ở dòng 52–69). Chúng <strong>không liền nhau</strong> trong file thật — cứ mở file ra đối chiếu sau khi làm.
+		</p>
+		<pre class="quiz-code"><code>{depsQuizCode}</code></pre>
+		<p>Với từng dòng, tự trả lời hai câu:</p>
+		<ol>
+			<li>
+				Thư viện đó có mặt <strong>lúc nào</strong>? Chọn một: <em>đi vào bản app thật</em> · <em>chỉ khi chạy test</em> ·
+				<em>chỉ trong bản debug</em>.
+			</li>
+			<li>
+				Dòng nào <strong>không ghi số phiên bản</strong>? (có nhiều hơn một) Và vì sao chúng không cần ghi?
+			</li>
+		</ol>
+		<details>
+			<summary>Đáp án kèm số dòng thật trong file</summary>
+			<p>
+				<strong>Đi vào bản app thật</strong> (từ khoá <code>implementation</code>):
+			</p>
+			<ul>
+				<li>
+					<strong>dòng 54</strong> — <code>androidx.core:core-ktx:1.12.0</code>: bộ tiện ích Kotlin cho các API cơ bản của
+					Android, app cần lúc chạy.
+				</li>
+				<li>
+					<strong>dòng 57</strong> — <code>compose-bom:2023.10.00</code>: đây là trường hợp đặc biệt, xem phần dưới.
+				</li>
+				<li>
+					<strong>dòng 61</strong> — <code>androidx.compose.material3:material3</code>: bộ component giao diện Material
+					Design 3, chính là thứ vẽ ra màn hình người dùng thấy.
+				</li>
+			</ul>
+			<p><strong>Chỉ khi chạy test:</strong></p>
+			<ul>
+				<li>
+					<strong>dòng 62</strong> — <code>testImplementation("junit:junit:4.13.2")</code>: test chạy trên máy tính của bạn,
+					không cần điện thoại.
+				</li>
+				<li>
+					<strong>dòng 64</strong> — <code>androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")</code>:
+					đây là từ khoá <em>thứ tư</em> mà đề bài không nhắc tới, và nó là chỗ để bạn tự phát hiện. Cũng là test, nhưng là
+					loại phải chạy <strong>trên điện thoại hoặc máy ảo</strong> vì nó thao tác thật vào giao diện.
+				</li>
+			</ul>
+			<p><strong>Chỉ trong bản debug:</strong></p>
+			<ul>
+				<li>
+					<strong>dòng 67</strong> — <code>debugImplementation("androidx.compose.ui:ui-tooling")</code>: công cụ xem trước
+					giao diện ngay trong Android Studio. Người dùng cuối không cần, nên nó bị loại khỏi bản phát hành và file app nhẹ
+					hơn.
+				</li>
+			</ul>
+			<p>
+				<strong>Câu 2 — có <em>hai</em> dòng không ghi số phiên bản: dòng 61</strong>
+				(<code>androidx.compose.material3:material3</code>) <strong>và dòng 67</strong>
+				(<code>androidx.compose.ui:ui-tooling</code>). Nếu bạn chỉ tìm ra một dòng, rất có thể bạn đã dừng ở nhóm
+				<code>implementation</code> — nhưng quy tắc này không phụ thuộc từ khoá nào. Lý do nằm ở dòng 57:
+				<code>platform("androidx.compose:compose-bom:2023.10.00")</code> khai một <em>bộ</em> phiên bản Compose đã được kiểm
+				là khớp nhau, nên mọi dòng <code>androidx.compose.*</code> sau nó lấy phiên bản từ bảng kê đó. Mở file thật bạn sẽ
+				thấy còn ba dòng nữa cùng kiểu (<strong>dòng 58–60</strong>: <code>ui</code>, <code>ui-graphics</code>,
+				<code>ui-tooling-preview</code>), cả <strong>dòng 66</strong> (<code>ui-test-junit4</code>) và
+				<strong>dòng 68</strong> (<code>ui-test-manifest</code>) — tổng cộng bảy dòng Compose không ghi phiên bản. Lợi ích
+				thực tế: muốn nâng Compose, bạn đổi <em>một</em> con số ở dòng 57 thay vì sửa bảy dòng và cầu cho chúng tương thích
+				với nhau. Chú ý ngược lại: <code>core-ktx</code> (dòng 54), <code>junit</code> (dòng 62) và
+				<code>espresso-core</code> (dòng 64) <em>không</em> thuộc Compose nên vẫn phải tự ghi phiên bản.
+			</p>
+			<p>
+				<strong>Một chi tiết dễ bỏ qua trong file thật:</strong> dòng BOM xuất hiện <em>hai lần</em> — dòng 57 với
+				<code>implementation</code> và <strong>dòng 65</strong> với <code>androidTestImplementation</code>. Không phải khai
+				trùng do nhầm: mỗi phạm vi có danh sách thư viện riêng, nên phần test trên máy ảo cũng phải được cho biết bảng kê
+				phiên bản Compose, nếu không <code>ui-test-junit4</code> ở dòng 66 sẽ không biết lấy phiên bản nào.
+			</p>
+			<p>
+				<strong>Rút ra:</strong> đọc một dòng dependency là đọc ba mẩu thông tin — <em>từ khoá</em> (có mặt lúc nào),
+				<em>tên thư viện</em> (là gì), và <em>có hay không có số phiên bản</em> (tự khai hay theo BOM). Chương 4 sẽ đi sâu vào
+				toàn bộ chuyện này, gồm cả cách gom mọi số phiên bản vào một chỗ duy nhất.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>

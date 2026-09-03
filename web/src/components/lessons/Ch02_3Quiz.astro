@@ -1,0 +1,442 @@
+---
+// Quiz + bài tập cho Chương 2.3 — Chạy app, cập nhật công cụ, và những gì đã lỗi thời (mục 8–11).
+// Tách từ quiz gộp Ch02Quiz.astro theo cùng ranh giới với 3 chương nhỏ của Chương 2.
+// Kế thừa và viết lại từ quiz gộp: câu cũ 9 (Live Edit khác @Preview) -> câu 3, câu cũ 10 (SDK Platforms vs
+//   SDK Tools) -> câu 6, câu cũ 11 (project ghim 2023 vẫn học được bằng Studio mới) -> câu 8.
+//   Sáu câu còn lại viết mới cho phạm vi mục 8–11: thứ tự việc sau khi bấm Run App (câu 1), vì sao chữ đổi mà
+//   app không bị cài lại (câu 2), điều kiện + giới hạn của Live Edit (câu 4), hai đường cập nhật độc lập
+//   (câu 5), con số nào quyết định máy nào cài được app (câu 7), thứ gì đã lỗi thời và thứ gì không (câu 9).
+//   Đã viết lại lời dẫn của ba câu kế thừa để bỏ giọng bám nguồn gốc và sửa tham chiếu chéo sang đúng tên
+//   chương nhỏ + số mục.
+// Mọi chi tiết đã tự mở file kiểm lại trên aaf-materials/02-getting-started-with-android-studio/projects/final:
+//   - MainActivity.kt 46 dòng: Greeting("Fuad") ở dòng 25 (trong onCreate) và dòng 44 (trong GreetingPreview);
+//     hàm Greeting dòng 33 với Text(text = "Hello $name!") dòng 35; @Preview ở dòng 40.
+//   - app/build.gradle.kts: compileSdk = 34 (dòng 8), minSdk = 30 (dòng 12), targetSdk = 34 (dòng 13),
+//     buildFeatures compose = true (dòng 39–41), composeOptions kotlinCompilerExtensionVersion = "1.5.3"
+//     (dòng 42–44), compose-bom 2023.10.00 (dòng 57).
+//   - build.gradle.kts gốc: AGP 8.2.0 và Kotlin 1.9.10 (dòng 3–4).
+//   - res/values/strings.xml: chỉ có đúng một string app_name = "Kodeco Chat" -> dùng cho distractor câu 2.
+// Quiz chấm bằng vanilla JS phía client; file này không có bài sắp thứ tự nên script chỉ chấm phần MCQ.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		9 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau khi chấm — kể cả ở câu bạn
+		làm đúng, nên đọc hết: phần nói vì sao hai đáp án còn lại sai chính là nơi chứa những nhầm lẫn hay khiến người mới
+		mất cả buổi tối đi tìm một lỗi không tồn tại.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. Bấm <strong>Run App</strong> một lần thì máy làm những việc nào, theo đúng thứ tự?</legend>
+			<label>
+				<input type="radio" name="q1" value="a" /> Cài APK có sẵn từ lần trước lên thiết bị → mở app ngay → rồi Gradle
+				mới build ở chế độ nền để lần chạy sau nhanh hơn
+			</label>
+			<label>
+				<input type="radio" name="q1" value="b" /> Gradle chuẩn bị và tải thư viện → biên dịch Kotlin sang DEX → đóng gói
+				thành APK → ký bằng debug key → cài qua <code>adb</code> rồi mở Activity điểm vào
+			</label>
+			<label>
+				<input type="radio" name="q1" value="c" /> Biên dịch Kotlin sang bytecode → đẩy thẳng các file
+				<code>.class</code> sang thiết bị → hệ điều hành tìm hàm <code>main()</code> trong project rồi gọi nó
+			</label>
+			<p class="explain" hidden>
+				Năm bước, và biết thứ tự này là thứ giúp bạn <strong>đọc được thông báo lỗi</strong>: lỗi build luôn ghi rõ nó đứt
+				ở bước nào. Đáp án a đảo ngược quan hệ thời gian — phải build xong mới có APK để cài, và ở lần chạy đầu tiên thì
+				chưa có APK nào tồn tại; đó cũng là lý do lần đầu lâu hơn hẳn các lần sau. Đáp án c sai ở hai chỗ đáng nhớ: máy ảo
+				Android không thực thi <code>.class</code> mà thực thi định dạng <strong>DEX</strong>, nên có thêm một bước chuyển
+				đổi; và Android <em>không</em> đi tìm <code>main()</code> — điểm vào được khai bằng thẻ
+				<code>&lt;intent-filter&gt;</code> trong Manifest (Chương 2.2, mục 7.2), nên hệ điều hành đọc Manifest để biết mở
+				màn hình nào. Bước "ký bằng debug key" cũng đáng nhớ: Android từ chối cài app không có chữ ký, và Android Studio đã
+				ký sẵn giúp bạn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				2. App đang chạy trên thiết bị, bạn đổi <code>Greeting("Android")</code> thành tên mình và chữ trên máy đổi theo
+				<em>ngay lúc gõ</em>. Vì sao không cần cài lại app?
+			</legend>
+			<label>
+				<input type="radio" name="q2" value="a" /> Vì chuỗi đó nằm trong <code>strings.xml</code>, và resource được đọc lại
+				từ đĩa mỗi lần vẽ màn hình nên không thuộc phần phải biên dịch
+			</label>
+			<label>
+				<input type="radio" name="q2" value="b" /> Vì Android Studio đã ngầm cài sẵn nhiều bản app, mỗi bản ứng với một
+				trạng thái code, rồi chỉ chuyển qua bản khớp với code hiện tại
+			</label>
+			<label>
+				<input type="radio" name="q2" value="c" /> Vì <strong>Live Edit</strong> nạp phần thân hàm composable vừa đổi vào
+				thẳng app đang chạy, nên app không bị cài lại và vẫn ở nguyên màn hình cũ
+			</label>
+			<p class="explain" hidden>
+				Live Edit đẩy thay đổi <em>vào tiến trình app đang chạy</em>, và điểm quan trọng đi kèm là nó <strong>giữ nguyên
+				trạng thái</strong>: bạn đang ở màn hình nào thì vẫn ở đó. Đáp án a nghe rất hợp lý và là suy luận sai phổ biến —
+				nhưng chuỗi tên bạn vừa sửa nằm trong <em>code Kotlin</em> ở <code>MainActivity.kt</code> dòng 25, không nằm trong
+				<code>strings.xml</code>; file đó của project Chương 2 chỉ có đúng một string là <code>app_name</code>. Đáp án b
+				sai về cơ chế: chỉ có một bản app duy nhất trên thiết bị. Nếu bạn <em>không</em> thấy chữ đổi, hai đường xử lý là
+				bấm Run App lần nữa (luôn đúng), hoặc kiểm hai ô <em>Live Edit</em> và <em>Push Edits Automatically</em> trong
+				Settings — ở các bản Android Studio gần đây chúng đã bật sẵn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>3. <strong>Live Edit</strong> khác <code>@Preview</code> ở điểm nào?</legend>
+			<label><input type="radio" name="q3" value="a" /> Không khác — hai tên gọi của cùng một tính năng</label>
+			<label>
+				<input type="radio" name="q3" value="b" /> <code>@Preview</code> cần thiết bị thật hoặc máy ảo đang bật, Live Edit
+				thì không cần gì
+			</label>
+			<label>
+				<input type="radio" name="q3" value="c" /> <code>@Preview</code> vẽ composable <em>ngay trong IDE</em>; Live Edit đẩy
+				thay đổi code vào <em>app đang chạy thật</em> trên thiết bị
+			</label>
+			<p class="explain" hidden>
+				Hai tính năng ở hai chỗ khác nhau: một cái vẽ trong cửa sổ Android Studio, một cái sửa app đang sống trên thiết bị.
+				Đáp án b <strong>đảo ngược</strong> đúng điều cần nhớ: <code>@Preview</code> là thứ <em>không</em> cần thiết bị —
+				đó chính là giá trị lớn nhất của nó — còn Live Edit thì buộc phải có app đang chạy để mà đẩy code vào. Đáp án a hấp
+				dẫn vì cả hai đều cho cảm giác "sửa là thấy ngay", nhưng chúng còn khác ở một điểm nữa: Live Edit <em>giữ nguyên
+				trạng thái</em> app, trong khi <code>@Preview</code> không có app nào đang chạy để mà giữ. Trong project Chương 2,
+				<code>@Preview</code> chính là hàm <code>GreetingPreview</code> ở dòng 40–46 của <code>MainActivity.kt</code>. Đây
+				cũng là lý do một hiện tượng hay gây bối rối: sửa chuỗi trong <code>onCreate</code> (dòng 25) thì app đổi nhưng ô
+				preview vẫn hiện tên cũ, vì hàm preview truyền tham số riêng của nó ở dòng 44.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>4. Live Edit cần điều kiện gì, và loại thay đổi nào nó <strong>không</strong> xử lý được?</legend>
+			<label>
+				<input type="radio" name="q4" value="a" /> Cần app đang chạy trên thiết bị; không xử lý được việc đổi chữ ký hàm,
+				thêm class hay hàm mới, và sửa file Gradle
+			</label>
+			<label>
+				<input type="radio" name="q4" value="b" /> Cần bật chế độ Debug khi chạy app; không xử lý được thay đổi bên trong
+				thân hàm composable, chỉ nạp lại được resource như chuỗi và màu
+			</label>
+			<label>
+				<input type="radio" name="q4" value="c" /> Không cần điều kiện gì; nó nạp lại được mọi thay đổi trong module
+				<code>app</code>, chỉ trừ code nằm trong thư viện bên ngoài
+			</label>
+			<p class="explain" hidden>
+				Vùng Live Edit làm tốt là <strong>thân một hàm composable</strong> — đúng loại thay đổi bạn làm nhiều nhất khi
+				chỉnh giao diện. Ba loại nằm ngoài vùng đó thì phải build lại, và <em>không có thông báo lỗi nào</em> nói cho bạn
+				biết: thêm một tham số vào <code>Greeting</code> là đổi chữ ký, tạo hàm hay class mới, và sửa file Gradle. Đáp án b
+				đảo ngược đúng vùng làm tốt của nó, và cũng sai về điều kiện: Live Edit không đòi chế độ Debug, chỉ đòi có app đang
+				chạy. Đáp án c là nguồn của phản xạ sai phổ biến nhất — khi chữ không đổi theo, nhiều người vào Settings tick lại
+				hai ô cấu hình, nhưng nếu hai ô đó đã bật sẵn thì nguyên nhân thật nằm ở <em>loại thay đổi</em>, không phải cấu
+				hình. Đường xử lý luôn đúng: bấm Run App để build lại.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				5. Bạn vừa dùng <em>Check for Updates</em> và cập nhật Android Studio lên bản mới nhất. Máy bạn giờ có bản Android
+				SDK mới nhất chưa?
+			</legend>
+			<label>
+				<input type="radio" name="q5" value="a" /> Có — bản cài Android Studio luôn kèm theo bộ SDK mới nhất tại thời điểm
+				phát hành, nên cập nhật IDE là cập nhật luôn SDK
+			</label>
+			<label>
+				<input type="radio" name="q5" value="b" /> Chưa — đây là <strong>hai đường cập nhật độc lập</strong>: IDE qua
+				<em>Check for Updates</em>, còn các bản Android SDK qua cửa sổ Android SDK trong Settings
+			</label>
+			<label>
+				<input type="radio" name="q5" value="c" /> Chưa, và cũng không cần: <code>compileSdk</code> trong file Gradle sẽ tự
+				tải bản SDK tương ứng về khi Gradle build lần đầu
+			</label>
+			<p class="explain" hidden>
+				Trộn lẫn hai đường này là nhầm lẫn phổ biến nhất của mục 9. <strong>IDE</strong> là phần mềm bạn ngồi gõ code trong
+				đó; <strong>các bản Android SDK</strong> là bộ API mà Gradle dùng để biên dịch. Cập nhật cái này không tự cập nhật
+				cái kia, và bạn cài thêm/xoá SDK ở <em>Settings</em> ▸ ô tìm kiếm "Android SDK" ▸ <em>Appearance &amp; Behavior ▸
+				System Settings ▸ Android SDK</em>. Đáp án c hấp dẫn vì nghe giống cách Gradle tự tải thư viện trong khối
+				<code>dependencies</code> — nhưng bản SDK platform thì không tự tải: thiếu nó thì build đứt với thông báo có chữ
+				<em>failed to find target</em>, và bạn phải tự tick để tải (Android Studio thường hiện kèm một link
+				<em>Install missing platform</em>). Đáp án a sai theo chiều còn lại: một bản cài Studio mới không kéo theo mọi bản
+				SDK, và bạn cũng có thể cần bản SDK <em>cũ hơn</em> để test app trên máy đời cũ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				6. Trong cửa sổ Android SDK, khác biệt giữa tab <strong>SDK Platforms</strong> và <strong>SDK Tools</strong> là gì?
+			</legend>
+			<label>
+				<input type="radio" name="q6" value="a" /> Platforms = các <em>phiên bản Android</em> (API 30, 33, 34…); Tools = các
+				<em>công cụ build</em> — build-tools, platform-tools, emulator, NDK
+			</label>
+			<label>
+				<input type="radio" name="q6" value="b" /> Platforms = bản dành cho điện thoại và tablet; Tools = bản dành cho Wear
+				OS, Android TV và Automotive
+			</label>
+			<label>
+				<input type="radio" name="q6" value="c" /> Platforms = những bản SDK app của bạn đang khai trong Gradle; Tools =
+				những bản còn lại mà máy bạn đã tải nhưng chưa dùng tới
+			</label>
+			<p class="explain" hidden>
+				Cách nhớ gọn: <em>Platforms</em> = "Android bản nào" — thứ app <strong>chạy trên</strong>. <em>Tools</em> = "dụng cụ
+				để build" — thứ <strong>tạo ra</strong> app, trong đó có <code>adb</code> nằm ở platform-tools, chính chương trình
+				đẩy APK sang thiết bị ở bước 5 của mục 8. Hệ quả khác nhau rõ rệt: thiếu một Platform thì bạn không build được cho
+				bản Android đó nhưng vẫn build được cho bản khác; thiếu Tools thì không build được gì cả. Đáp án b lẫn với việc chọn
+				<em>loại thiết bị</em> khi tạo máy ảo, không phải nội dung hai tab này. Đáp án c mô tả một cách chia không tồn tại —
+				hai tab chia theo <em>loại thứ được tải về</em>, chứ không theo "đang dùng hay chưa dùng"; cả hai tab đều cài cùng
+				cách: tick → <em>Apply</em> → <em>OK</em>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				7. Project Chương 2 khai <code>compileSdk = 34</code>, <code>targetSdk = 34</code> và <code>minSdk = 30</code>. Con
+				số nào quyết định <strong>máy nào cài được app</strong>?
+			</legend>
+			<label>
+				<input type="radio" name="q7" value="a" /> <code>compileSdk = 34</code> — app được biên dịch bằng bộ API của Android
+				14, nên máy phải chạy Android 14 trở lên mới cài được
+			</label>
+			<label>
+				<input type="radio" name="q7" value="b" /> <code>targetSdk = 34</code> — đây là bản Android app "nhắm tới", máy chạy
+				bản thấp hơn sẽ bị hệ thống từ chối cài
+			</label>
+			<label>
+				<input type="radio" name="q7" value="c" /> <code>minSdk = 30</code> — ngưỡng thấp nhất: máy chạy Android dưới 11
+				không cài được, còn máy cao hơn thì cài được
+			</label>
+			<p class="explain" hidden>
+				Chỉ <code>minSdk</code> nói về <em>khả năng cài</em>. Hai con số kia mô tả việc khác: <code>compileSdk</code> là
+				<strong>yêu cầu dành cho máy bạn</strong> — nó nói "hãy biên dịch app này bằng bộ API của Android 14", nên nếu tab
+				<em>SDK Platforms</em> chưa có Platform 34 thì build đứt ngay; nhưng nó không hề giới hạn thiết bị nào chạy app.
+				<code>targetSdk</code> nói app đã được kiểm thử và hành xử theo quy tắc của bản Android nào, và nó cũng không chặn
+				máy đời cũ. Đó là lý do một app <code>minSdk = 30</code> nhưng <code>compileSdk = 34</code> vẫn cài được lên điện
+				thoại Android 11 bình thường. Đây cũng là điểm lệch đáng biết của Chương 2: phần hướng dẫn tạo project yêu cầu
+				<em>Minimum SDK = API 28</em>, còn code mẫu ship <code>minSdk = 30</code> ở dòng 12 — cả hai đều chạy được toàn bộ
+				code trong khoá học. Chương 4.2, mục 7 sẽ mổ kỹ ba con số này.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				8. Vì sao một project ghim ở cuối 2023 (AGP <code>8.2.0</code>, Kotlin <code>1.9.10</code>, giả định bản Android cao
+				nhất là API 34) vẫn học được bằng Android Studio bản 2026?
+			</legend>
+			<label>
+				<input type="radio" name="q8" value="a" /> Vì Android Studio có chế độ tương thích ngược: khi mở project cũ, nó chạy
+				như đúng bản Studio thời đó
+			</label>
+			<label>
+				<input type="radio" name="q8" value="b" /> Vì Google đã <strong>tách rời</strong> phiên bản Android Studio khỏi phiên
+				bản Android — một Studio duy nhất build được app cho mọi bản SDK, kể cả bản ra sau
+			</label>
+			<label>
+				<input type="radio" name="q8" value="c" /> Vì các API mà project dùng đã bị đóng băng, nên Android không thay đổi
+				chúng nữa kể từ API 34
+			</label>
+			<p class="explain" hidden>
+				Đây là sự thật kỹ thuật giải toả lo lắng lớn nhất khi học bằng công cụ mới hơn project mẫu: phiên bản IDE và phiên
+				bản hệ điều hành Android là hai trục độc lập. Bạn chỉ cần <em>khai</em> đúng bản SDK trong
+				<code>build.gradle.kts</code>, và Studio mới không làm code cũ hết chạy. Đáp án a mô tả một chế độ không tồn tại —
+				Studio mới mở project cũ bằng chính giao diện và công cụ mới của nó, thậm chí còn <em>đề nghị</em> bạn nâng AGP; nâng
+				hay không là tuỳ, không bắt buộc để học. Đáp án c sai về bản chất: Android vẫn ra bản mới sau API 34, và điều đó
+				không phá project cũ vì <code>compileSdk</code> ghim app vào đúng bộ API nó khai. Điều thực sự đã đổi so với cuối
+				2023 chỉ là tên gọi, số hiệu và đường đi trong menu — chín điểm được liệt kê ở mục 10 — không khái niệm nào bị sai.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>9. Trong project mẫu Chương 2, thứ nào <strong>đã lỗi thời</strong> với cách làm hôm nay?</legend>
+			<label>
+				<input type="radio" name="q9" value="a" /> Khối <code>composeOptions</code> với
+				<code>kotlinCompilerExtensionVersion</code> — từ Kotlin 2.0, Compose compiler đi kèm chính Kotlin và bật bằng plugin
+			</label>
+			<label>
+				<input type="radio" name="q9" value="b" /> Các composable <code>Surface</code> và <code>Text</code> — bản Compose mới
+				đã đổi tên chúng, nên phải sửa code Kotlin trước khi build
+			</label>
+			<label>
+				<input type="radio" name="q9" value="c" /> Con số <code>minSdk = 30</code> — Android Studio bản mới không nhận
+				<code>minSdk</code> thấp hơn <code>compileSdk</code>, phải nâng lên 34
+			</label>
+			<p class="explain" hidden>
+				Project mẫu khai <code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code> ở dòng 42–44 của
+				<code>app/build.gradle.kts</code>, và nhiều hướng dẫn viết trước 2024 còn bắt bạn tự tra bảng "Kotlin bản nào đi với
+				Compose compiler bản nào". Từ Kotlin 2.0, Compose compiler được phát hành cùng chính Kotlin và bật bằng plugin
+				<code>org.jetbrains.kotlin.plugin.compose</code> — không còn số version riêng nào để tra. Hệ quả: project mẫu vẫn
+				build bình thường, nhưng project <em>mới</em> bạn tạo hôm nay sẽ không có khối đó, và <strong>đừng thêm nó
+				vào</strong>. Đáp án b sai ở chỗ đáng yên tâm nhất: mọi composable dùng trong khoá học —
+				<code>Surface</code>, <code>Text</code>, <code>Column</code>, <code>LazyColumn</code> — đều còn nguyên tên trong các
+				bản <code>compose-bom</code> mới; BOM lên bản mới là <em>thêm</em> composable, không phải đổi tên cái cũ. Đáp án c
+				bịa ra một luật không tồn tại: <code>minSdk</code> thấp hơn <code>compileSdk</code> là chuyện bình thường và cần
+				thiết — đó chính là cách một app biên dịch bằng API mới mà vẫn cài được lên máy đời cũ.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+
+	<h2>Bài tập</h2>
+	<p class="intro">
+		Hai bài dưới đây không kiểm tra việc bạn nhớ chữ, mà kiểm tra hai kỹ năng thật của mục 8–10: phân biệt ba công cụ dễ
+		lẫn khi làm giao diện, và giữ được bình tĩnh khi mở một project cũ hơn bộ công cụ của mình. Tự trả lời trước rồi mới mở
+		đáp án — phần đáp án có thêm vài chi tiết không nằm trong phần lý thuyết.
+	</p>
+
+	<div class="exercise">
+		<h3>Bài tập 1 — Năm phát biểu về Live Edit, <code>@Preview</code> và Run App: đúng hay sai?</h3>
+		<p>
+			Với mỗi phát biểu, tự trả lời <strong>hai</strong> phần: (1) đúng hay sai, (2) <em>lý do</em> — và nếu sai thì câu
+			đúng phải là gì. Phần lý do quan trọng hơn phần đúng/sai, vì đây là chỗ ba công cụ hay bị trộn lẫn.
+		</p>
+		<ol>
+			<li>Muốn dùng <code>@Preview</code> thì phải có máy ảo đang bật hoặc điện thoại thật đang cắm cáp.</li>
+			<li>Live Edit đang bật thì bạn không bao giờ cần bấm Run App lần thứ hai nữa.</li>
+			<li>Sửa <code>Greeting("Fuad")</code> trong <code>onCreate</code> thì ô <code>@Preview</code> trong IDE cũng đổi theo.</li>
+			<li>Sau khi app đã chạy, nút Run App đổi từ tam giác Play sang mũi tên vòng vì đã xảy ra lỗi.</li>
+			<li>Lần build đầu tiên đứng im vài phút là dấu hiệu Android Studio bị treo, nên hủy rồi bấm lại.</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>1. Sai.</strong> <code>@Preview</code> vẽ composable <em>ngay trong IDE</em> và không cần thiết bị nào — đó
+				chính là giá trị lớn nhất của nó, và là lý do bạn xem được giao diện ngay cả khi chưa dựng máy ảo. Thứ cần thiết bị
+				là <strong>Live Edit</strong> và <em>Apply Changes</em>, vì cả hai đều phải có một app đang chạy để mà đẩy code vào.
+			</p>
+			<p>
+				<strong>2. Sai.</strong> Live Edit chỉ nạp lại được <em>thân</em> một hàm composable. Ba loại thay đổi vẫn buộc phải
+				build lại: đổi chữ ký hàm (thêm hay bớt tham số — ví dụ thêm một tham số vào <code>Greeting</code>), thêm class hoặc
+				hàm mới, và sửa file Gradle. Chi tiết khó chịu nhất: <em>không có thông báo lỗi nào</em> nói cho bạn biết mình vừa
+				bước ra khỏi vùng Live Edit xử lý được — màn hình chỉ đơn giản không đổi.
+			</p>
+			<p>
+				<strong>3. Sai.</strong> Trong <code>MainActivity.kt</code> có <em>hai</em> chỗ chứa cùng chuỗi đó: dòng 25 bên trong
+				<code>onCreate</code> — quyết định chữ hiện lên khi chạy app thật — và dòng 44 bên trong <code>GreetingPreview</code>
+				— chỉ ảnh hưởng ô preview. Hai chỗ hoàn toàn độc lập vì hàm preview tự truyền tham số riêng của nó. Sửa dòng 25 thì
+				app đổi mà preview vẫn hiện tên cũ; muốn cả hai đồng bộ thì sửa cả hai. Đây là một trong những hiện tượng khiến người
+				mới tưởng Live Edit hỏng.
+			</p>
+			<p>
+				<strong>4. Sai.</strong> Không có lỗi nào cả — nút đổi hình vì <em>app đang chạy rồi</em>, nên Run App chuyển nghĩa
+				từ "cài mới và mở" sang "build lại và khởi động lại app đang chạy". Bên cạnh nó bạn cũng sẽ thấy nút <em>Apply
+				Changes</em>. Chọn cái nào là tuỳ: mũi tên vòng luôn cho trạng thái sạch, còn Apply Changes nhanh hơn nhưng giữ lại
+				trạng thái cũ nên đôi khi che mất một lỗi khởi tạo.
+			</p>
+			<p>
+				<strong>5. Sai.</strong> Lần đầu lâu là <strong>bình thường</strong>: Gradle phải tải toàn bộ thư viện về máy, với
+				project Chương 2 thì gồm cả bộ Compose thông qua <code>compose-bom</code>. Các lần sau nhanh hơn nhiều vì thư viện đã
+				nằm trong cache trên ổ đĩa và Gradle chỉ dịch lại phần code vừa sửa. Hủy giữa đường không giúp gì; nếu thật sự có
+				vấn đề mạng, Gradle vẫn giữ phần đã tải xong nên lần sau nó đi tiếp chứ không bắt đầu lại từ đầu.
+			</p>
+			<p>
+				<strong>Rút ra:</strong> cả năm phát biểu đều sai, và chúng sai theo <em>hai kiểu</em> khác nhau. Ba phát biểu đầu
+				sai vì <strong>trộn lẫn ba công cụ</strong> — cách gỡ là luôn hỏi "cái này chạy ở đâu?": <code>@Preview</code> chạy
+				trong IDE, Live Edit và Apply Changes chạy trong app trên thiết bị. Hai phát biểu cuối sai vì
+				<strong>đọc hành vi bình thường thành lỗi</strong> — nút đổi hình và lần build đầu chậm đều là thiết kế có chủ ý.
+				Nhận ra được ranh giới "cái này bình thường / cái này mới là lỗi" quan trọng hơn nhớ tên tính năng, và bài tập 2 đẩy
+				đúng kỹ năng đó đi xa thêm một bước.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 2 — Mở project cuối 2023 bằng Android Studio mới nhất: cái nào bình thường, cái nào phải sửa?</h3>
+		<p>
+			Bạn tải bộ project mẫu của khoá học về, mở
+			<code>02-getting-started-with-android-studio/projects/final/</code> bằng Android Studio bản mới nhất, và gặp ba hiện
+			tượng dưới đây. Với mỗi hiện tượng, tự trả lời <strong>ba</strong> phần: (1) đây là chuyện bình thường hay là thứ
+			phải sửa? (2) nếu phải sửa thì sửa thế nào? (3) nếu bình thường thì <em>vì sao</em> nó bình thường?
+		</p>
+		<ol>
+			<li>
+				Studio hiện một thông báo đề nghị nâng <em>Android Gradle Plugin</em> từ <code>8.2.0</code> lên bản mới hơn, kèm nút
+				bấm để nâng tự động.
+			</li>
+			<li>
+				Lần bấm Run App đầu tiên thất bại, thông báo ở đáy cửa sổ có chữ <em>failed to find target</em> kèm số 34.
+			</li>
+			<li>
+				Bạn mở <code>app/build.gradle.kts</code> và thấy <code>minSdk = 30</code>, trong khi phần hướng dẫn tạo project của
+				Chương 2.1 nói rõ chọn <em>Minimum SDK = API 28</em>.
+			</li>
+		</ol>
+		<p>
+			Sau đó trả lời câu cuối, câu quan trọng nhất của bài: trong ba hiện tượng trên, có thứ gì bạn
+			<strong>tuyệt đối không nên "sửa"</strong> không, và vì sao?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>1. Bình thường — và nâng hay không là tuỳ bạn.</strong> AGP <code>8.2.0</code> ở dòng 3 của
+				<code>build.gradle.kts</code> gốc, cùng Kotlin <code>1.9.10</code> ở dòng 4 và Gradle <code>8.2</code> trong
+				<code>gradle-wrapper.properties</code>, là ba dấu vết ghim project vào cuối 2023. Studio mới thấy chênh lệch nên đề
+				nghị nâng; đó là lời <em>gợi ý</em>, không phải lỗi. Không bắt buộc nâng để học. Chỉ nâng khi Studio của bạn quá mới
+				đến mức không mở nổi AGP 8.2 — và nếu nâng thì làm theo đúng đề nghị của nó, code Kotlin không phải sửa dòng nào.
+			</p>
+			<p>
+				<strong>2. Phải sửa — nhưng sửa ở máy bạn, không sửa project.</strong> Đây đúng nguyên nhân thứ hai trong ba nguyên
+				nhân build đầu tiên thất bại: <em>thiếu bản SDK mà project khai</em>. Project khai <code>compileSdk = 34</code> ở
+				dòng 8, còn máy bạn chưa tải Platform 34. Cách sửa: mở <em>Settings</em> ▸ "Android SDK" ▸ tab
+				<strong>SDK Platforms</strong>, tick bản API 34 → <em>Apply</em> → <em>OK</em>; hoặc bấm luôn đường link
+				<em>Install missing platform</em> mà Studio thường hiện kèm. Lưu ý cái bẫy: rất dễ nghĩ "Studio mình mới nhất mà, sao
+				lại thiếu SDK" — nhưng đó chính là hai đường cập nhật độc lập ở mục 9, IDE mới không kéo theo mọi bản SDK.
+			</p>
+			<p>
+				<strong>3. Bình thường — không phải lỗi của bạn, cũng không phải lỗi gõ sai.</strong> Con số <code>minSdk = 30</code>
+				ở dòng 12 xuất hiện ở <strong>cả 10 project</strong> có file build trong bộ project mẫu, nên đây là chủ ý chứ không
+				phải một lần gõ nhầm. Hệ quả thực tế gần như bằng không: cả API 28 và API 30 đều chạy được toàn bộ code trong khoá
+				học. Nếu bạn tự tạo project theo hướng dẫn rồi mở project mẫu ra so, bạn sẽ thấy hai con số khác nhau và tưởng mình
+				làm sai. Bạn không làm sai — giữ nguyên con số nào cũng được và đi tiếp.
+			</p>
+			<p>
+				<strong>Câu cuối: thứ tuyệt đối không nên "sửa" là khối <code>composeOptions</code> ở dòng 42–44</strong> — và nói
+				rộng hơn, đừng đi sửa cấu hình của project mẫu để nó "trông giống project mới bạn tự tạo". Project mẫu khai
+				<code>kotlinCompilerExtensionVersion = "1.5.3"</code> vì nó ghim ở Kotlin <code>1.9.10</code>, và với bản Kotlin đó
+				thì khối này <em>đúng và cần thiết</em>. Xoá nó đi để giống project mới hôm nay là cách chắc chắn nhất để làm project
+				mẫu không build được nữa. Chiều ngược lại cũng đúng: khi tạo project mới bằng Studio 2026 và không thấy khối
+				<code>composeOptions</code> nào, đừng thêm nó vào — từ Kotlin 2.0 Compose compiler đi kèm chính Kotlin và bật bằng
+				plugin <code>org.jetbrains.kotlin.plugin.compose</code>.
+			</p>
+			<p>
+				<strong>Rút ra một cách phân loại dùng được cho mọi project cũ bạn mở về sau:</strong> hỏi "hiện tượng này nói về
+				<em>máy tôi</em> hay về <em>project</em>?". Thiếu Platform 34 là chuyện của máy bạn → sửa ở cửa sổ Android SDK.
+				Chênh lệch phiên bản công cụ và chênh lệch <code>minSdk</code> là chuyện của project, và cả hai đều
+				<em>không cản việc học</em> → để nguyên. Nguyên tắc chung: <strong>chỉ sửa thứ đang thật sự chặn bạn</strong>, đừng
+				sửa thứ chỉ khác với những gì bạn quen thấy. Cùng lý do đó cho phép một project cuối 2023 dạy được bằng bộ công cụ
+				2026: Google đã tách phiên bản Android Studio khỏi phiên bản Android, nên chín điểm đã đổi ở mục 10 đều chỉ là tên
+				gọi, số hiệu và đường đi trong menu.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+</script>

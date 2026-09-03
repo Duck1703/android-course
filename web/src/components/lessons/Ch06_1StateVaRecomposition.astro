@@ -1,0 +1,507 @@
+---
+// Chapter 6: Advanced Jetpack Compose — viết lại HOÀN TOÀN ở Task 41 (Phase 5 "Depth pass").
+// Nguyên tắc: bám sát content/book/ch06-advanced-jetpack-compose.md (511 dòng, 4 heading "##"),
+// mọi code lấy từ aaf-materials/06-advanced-jetpack-compose/projects/{starter,final}/.
+// Mọi số dòng trích dẫn trong bài đã mở file thật để kiểm — không có số dòng nào được suy đoán.
+// Giải thích tự viết tiếng Việt — không copy nguyên văn sách (xem CLAUDE.md mục Bản quyền).
+// Code thật được dùng theo Quyết định #7 trong docs/PROJECT_PLAN.md.
+// [TASK48] Chuong 6.1 — State, recomposition, remember và state hoisting
+
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/06-advanced-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat";
+
+const STARTER = "aaf-materials/06-advanced-jetpack-compose/projects/starter/app/src/main/java/com/kodeco/chat";
+
+const BOOK = "content/book/ch06-advanced-jetpack-compose.md";
+
+const starterAddMessageCode = `class ConversationUiState(
+  val channelName: String,
+  initialMessages: List<MessageUiModel>,
+) {
+  private val _messages: MutableList<MessageUiModel> = initialMessages.toMutableStateList()
+
+  val messages: List<MessageUiModel> = _messages
+
+  fun addMessage(msg: String, photoUri: Uri?) {
+    // TODO : implement in Chapter 6 😀
+  }
+}`;
+
+const starterMainActivityCode = `class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {
+      KodecochatTheme {
+        ConversationContent(
+          uiState = exampleUiState
+        )
+      }
+    }
+  }
+}`;
+
+const bookUserInputTextCode = `@ExperimentalFoundationApi
+@Composable
+private fun UserInputText(
+  keyboardType: KeyboardType = KeyboardType.Text,
+  onTextChanged: (TextFieldValue) -> Unit,
+  textFieldValue: TextFieldValue,
+  photoUri: Uri?,
+  keyboardShown: Boolean,
+  onTextFieldFocused: (Boolean) -> Unit,
+  focusState: Boolean,
+  onMessageSent: KeyboardActionScope.() -> Unit
+) {
+  // ...
+  BasicTextField(
+    value = textFieldValue,
+    onValueChange = { onTextChanged(it) }
+  )
+  // ...`;
+
+const basicTextFieldRealCode = `BasicTextField(
+  value = textFieldValue,
+  onValueChange = { onTextChanged(it) },
+  modifier = Modifier
+      .fillMaxWidth()
+      .padding(start = 32.dp)
+      .align(Alignment.CenterStart)
+      .onFocusChanged { state ->
+          if (lastFocusState != state.isFocused) {
+              onTextFieldFocused(state.isFocused)
+          }
+          lastFocusState = state.isFocused
+      },
+  keyboardOptions = KeyboardOptions(
+    keyboardType = keyboardType,
+    autoCorrect = true,
+    imeAction = ImeAction.Send
+  ),
+  keyboardActions = KeyboardActions(
+    onSend = onMessageSent
+  ),
+  maxLines = 1,
+  cursorBrush = SolidColor(LocalContentColor.current),
+  textStyle = LocalTextStyle.current.copy(color = LocalContentColor.current)
+)`;
+
+const rememberStateCode = `var chatInputText by remember { mutableStateOf("") }`;
+
+const userInputStatefulCode = `@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun UserInput(
+  onMessageSent: (String) -> Unit,
+  modifier: Modifier = Modifier,
+  resetScroll: () -> Unit = {},
+) {
+  var currentInputSelector by rememberSaveable { mutableStateOf(InputSelector.NONE) }
+  val dismissKeyboard = { currentInputSelector = InputSelector.NONE }
+
+  // Intercept back navigation if there's a InputSelector visible
+  if (currentInputSelector != InputSelector.NONE) {
+    // TODO
+//        BackPressHandler(onBackPressed = dismissKeyboard)
+  }
+
+  var textState by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+    mutableStateOf(TextFieldValue())
+  }
+
+  var photoUri: Uri? by remember { mutableStateOf(null) }
+
+  // Used to decide if the keyboard should be shown
+  var textFieldFocusState by remember { mutableStateOf(false) }`;
+
+const hoistedCallCode = `UserInputText(
+  textFieldValue = textState,
+  onTextChanged = { textState = it },
+  // Only show the keyboard if there's no input selector and text field has focus
+  keyboardShown = currentInputSelector == InputSelector.NONE && textFieldFocusState,
+  // Close extended selector if text field receives focus
+  onTextFieldFocused = { focused ->
+    if (focused) {
+      currentInputSelector = InputSelector.NONE
+      resetScroll()
+    }
+    textFieldFocusState = focused
+  },
+  focusState = textFieldFocusState,
+  onMessageSent = {
+    handleKeyboardInputText()
+  },
+  photoUri = photoUri
+)`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Bạn sẽ học được gì trong bài này</strong>
+		<ul>
+			<li><strong>State</strong> (trạng thái) là gì theo định nghĩa của sách, và vì sao Compose <em>buộc</em> phải
+				recompose mới đổi được giao diện.</li>
+			<li>Phân biệt composable <strong>stateful</strong> (tự giữ state) và <strong>stateless</strong> (không giữ gì) —
+				kèm cái giá phải trả của mỗi loại.</li>
+			<li><strong>State hoisting</strong>: cặp tham số <code>value</code> + <code>onValueChange</code>, và <code>T</code>
+				trong app này thực chất là kiểu gì.</li>
+			<li><strong>Unidirectional data flow</strong> (dữ liệu chảy một chiều) — vấn đề nó sinh ra để giải quyết, không chỉ
+				là định nghĩa.</li>
+			<li><strong>ViewModel</strong>: vì sao xoay màn hình làm mất dữ liệu, và <code>viewModelScope</code> chặn loại
+				memory leak nào.</li>
+			<li><strong>Flow</strong>, <strong>StateFlow</strong>, <code>collectAsStateWithLifecycle()</code>, và kiến trúc
+				<strong>MVI</strong> (Model-View-Intent).</li>
+			<li>Sửa <code>authorId</code> đang bị hardcode <code>"me"</code>, và thêm nút <strong>Jump to bottom</strong> với
+				<code>reverseLayout</code> + <code>derivedStateOf</code>.</li>
+			<li>Những chỗ <strong>sách và project mẫu không khớp nhau</strong> — bài này chỉ rõ từng chỗ thay vì âm thầm sửa cho
+				khớp.</li>
+		</ul>
+	</div>
+
+	<div class="callout">
+		<strong>Chapter này làm gì trong app Kodeco Chat.</strong> Chapter 5 đã dựng xong <em>toàn bộ giao diện</em> màn hình
+		chat: danh sách tin nhắn có avatar, bong bóng chat, app bar, ô nhập liệu. Nhưng dữ liệu đến từ file
+		<code>FakeData.kt</code> và <strong>không gửi được tin nhắn nào</strong>. Sách mô tả tình trạng đó bằng một ẩn dụ rất
+		sát: bạn vừa làm ra <em>cái bánh trưng tủ kính — trông ngon nhưng hoàn toàn là bánh giả</em>. Chapter 6 là lúc cái
+		bánh trở thành bánh thật: gõ tin nhắn → bấm gửi → tin nhắn xuất hiện đúng phía "tôi", và có nút nhảy nhanh xuống tin
+		nhắn mới nhất. Vẫn <strong>chưa có mạng</strong> (chapter 8), <strong>chưa lưu được gì giữa hai lần mở app</strong>
+		(chapter 9), và <strong>ảnh đính kèm chọn được nhưng chưa gửi được</strong> — chỗ này sách tự thừa nhận.
+	</div>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 11)</p>
+
+	<div class="callout journey">
+		<strong>Hành trình starter → final của chapter này</strong>
+		<p>
+			Project <code>starter</code> chính là <em>kết quả cuối của chapter 5</em>. Ba dấu vết chứng minh điều đó nằm sẵn
+			trong code: <code>ConversationUiState.addMessage()</code> chỉ có một dòng comment
+			<code>// TODO : implement in Chapter 6 😀</code>; <code>MainActivity</code> dùng <code>exampleUiState</code> — một
+			object dữ liệu giả; và trong <code>Conversation.kt</code>, gần hết phần liên quan tới scroll/jump-to-bottom đang
+			bị comment lại.
+		</p>
+		<p>Trong <code>final</code>, bạn sẽ thấy:</p>
+		<ul>
+			<li><strong>File bạn tự viết:</strong> <code>viewmodel/MainViewModel.kt</code> (file mới hoàn toàn của chapter).</li>
+			<li><strong>File bạn sửa:</strong> <code>MainActivity.kt</code>, <code>conversation/ConversationUiState.kt</code>,
+				<code>conversation/Conversation.kt</code>, <code>data/FakeData.kt</code>,
+				<code>res/values/strings.xml</code>, <code>gradle/libs.versions.toml</code>, <code>app/build.gradle.kts</code>.</li>
+			<li><strong>File sách bảo copy nguyên từ final:</strong> <code>conversation/JumpToBottom.kt</code>.</li>
+			<li><strong>File chỉ có trong final mà sách không hề hướng dẫn tạo:</strong>
+				<code>data/model/ChatRoom.kt</code> và <code>data/Constants.kt</code>. Thiếu hai file này thì code trong sách
+				<em>không compile được</em>. Bài này có một mục riêng để lấp chỗ đó.</li>
+		</ul>
+		<p>
+			Chapter 6 <strong>không có phần challenge</strong> — thư mục <code>projects/challenge</code> chỉ chứa một file
+			<code>.keep</code> rỗng. Nên cuối bài có mục "Tự kiểm tra" do bài học tự thiết kế, không phải bài tập của sách.
+		</p>
+	</div>
+
+	<h2 id="diem-khoi-dau">1. Điểm khởi đầu: chỗ trống mà cả chapter này sẽ lấp</h2>
+	<p>
+		Trước khi học lý thuyết, hãy xem <em>chính xác</em> chỗ nào trong code đang trống. Đây là cách hiệu quả nhất để về sau
+		bạn biết mỗi khái niệm mới phục vụ việc gì, thay vì học state và ViewModel như hai bài lý thuyết rời rạc.
+	</p>
+	<p>
+		Chỗ trống thứ nhất nằm trong <code>ConversationUiState</code> — class mà chapter 5 tạo ra để giữ dữ liệu cho màn hình
+		chat:
+	</p>
+	<Code code={starterAddMessageCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{STARTER}/conversation/ConversationUiState.kt</code> (dòng 46–57)</p>
+	<p>
+		Hàm <code>addMessage()</code> <em>đã được UI gọi</em> — nhưng thân hàm rỗng. Bạn bấm nút gửi, sự kiện chạy đúng tới
+		đây, rồi dừng lại tại một dòng comment. Chính tác giả để lại lời hẹn <code>implement in Chapter 6</code>. Đến cuối
+		bài, dòng comment đó sẽ được thay bằng một lời gọi xuống ViewModel.
+	</p>
+	<p>Chỗ trống thứ hai nằm ở <code>MainActivity</code>:</p>
+	<Code code={starterMainActivityCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{STARTER}/MainActivity.kt</code> (dòng 44–55)</p>
+	<p>
+		<code>exampleUiState</code> là một <code>ConversationUiState</code> được tạo sẵn trong <code>FakeData.kt</code> với 3
+		tin nhắn giả. Nó là hằng số — không ai đổi được nó, nên UI vĩnh viễn hiện đúng 3 tin nhắn đó. Đến cuối bài,
+		<code>MainActivity</code> sẽ lấy dữ liệu từ ViewModel thay vì từ file dữ liệu giả.
+	</p>
+	<p class="hint">
+		<strong>Cách đọc bài này cho hiệu quả:</strong> chapter 6 trong sách có cấu trúc hơi lạ — phần lý thuyết
+		(State, State Hoisting, Unidirectional Data Flow) chiếm khoảng 1/6 chapter, phần còn lại là một khối thực hành dài
+		liên tục dưới đúng một heading <code>## ViewModel</code>. Bài học này giữ đúng thứ tự đó, nhưng chia khối thực hành
+		thành các mục nhỏ theo từng vòng sửa code, để bạn biết mình đang ở đâu.
+	</p>
+
+	<h2 id="state-la-gi">2. State là gì trong Compose</h2>
+	<p>
+		Sách định nghĩa rất gọn: <strong>State là bất kỳ <em>giá trị</em> nào <em>có thể thay đổi theo thời gian</em></strong>.
+		Phạm vi của định nghĩa này rộng hơn nhiều so với "biến trong màn hình": nó bao gồm cả một dòng trong database, một
+		property của class, một giá trị lấy từ mạng về.
+	</p>
+	<p>Sách nêu 3 ví dụ state ngay trong app Kodeco Chat, và cả 3 đều là hành động người dùng làm được:</p>
+	<ul>
+		<li>Thêm một tin nhắn mới vào đoạn chat.</li>
+		<li>Xoá một tin nhắn.</li>
+		<li>Đính kèm một ảnh vào tin nhắn.</li>
+	</ul>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 15–21)</p>
+	<p>
+		Điểm sách nhấn mạnh không phải bản thân định nghĩa, mà là <strong>nghĩa vụ đi kèm</strong>: khi state đổi, UI
+		<em>bắt buộc</em> phải phản ánh đúng state mới. Nếu danh sách tin nhắn trong bộ nhớ đã có 4 phần tử mà màn hình vẫn
+		hiện 3, app của bạn đang sai — dù không có exception nào được ném ra. Loại lỗi này gọi là <em>out of sync</em>
+		(lệch pha giữa dữ liệu và giao diện), và nó là loại lỗi Compose được thiết kế để làm cho khó xảy ra.
+	</p>
+	<div class="hint">
+		<strong>Bổ sung — mental model để phân biệt "state" và "dữ liệu thường":</strong> hãy hỏi <em>"giá trị này có thể
+		khác đi trong khi màn hình vẫn đang hiển thị hay không?"</em> Nếu có, nó là state và UI phải theo dõi nó. Nếu không
+		(ví dụ tên app, màu theme cố định), nó chỉ là dữ liệu tĩnh. Trong màn hình chat: danh sách tin nhắn là state; nội
+		dung đang gõ trong ô nhập là state; vị trí cuộn của danh sách là state; ảnh avatar mặc định thì không.
+	</div>
+
+	<h2 id="recomposition">3. Recomposition — cách duy nhất Compose cập nhật UI</h2>
+	<p>
+		Đây là câu quan trọng nhất của cả mục: <strong>Compose là declarative (khai báo), nên cách duy nhất để cập nhật giao
+		diện là gọi lại chính composable đó với argument mới.</strong> Các argument đó chính là biểu diễn của UI state. Mỗi
+		lần state đổi và composable được gọi lại, ta gọi đó là một lần <strong>recomposition</strong> (vẽ lại thành phần).
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 23, 46)</p>
+	<div class="hint">
+		<strong>Mental model — so với cách làm cũ.</strong> Ở View system (XML) cũ: UI là một cây object, bạn giữ tham chiếu
+		tới object rồi <em>ra lệnh</em> cho nó đổi (<code>textView.setText("abc")</code>). Ở Compose: không có object nào để
+		bạn giữ. Bạn <em>mô tả</em> "với state này thì giao diện trông thế nào", và khi state đổi, Compose gọi lại hàm mô tả
+		đó. Cùng một state luôn cho ra cùng một giao diện. Đây là lý do bạn không tìm thấy hàm kiểu
+		<code>updateMessageList()</code> ở bất kỳ đâu trong app này.
+	</div>
+	<p>
+		Sách dùng một mẹo dạy học rất hay ở đây: thay vì đưa ví dụ mới, nó chỉ ra rằng <strong>bạn đã tạo recomposition từ
+		chapter 5 mà không biết</strong>. Bằng chứng là composable <code>UserInputText</code> — ô để người dùng gõ tin nhắn:
+	</p>
+	<Code code={bookUserInputTextCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 25–44) — đây là bản sách in ra, đã lược bớt bằng <code>// ...</code></p>
+	<p>
+		Cơ chế: khi bạn gõ một ký tự, <code>BasicTextField</code> không tự sửa nội dung của chính nó. Nó gọi
+		<code>onValueChange</code> để <em>báo</em> "người dùng vừa muốn giá trị mới là cái này". Nơi giữ state nhận tin, cập
+		nhật giá trị, và <code>UserInputText</code> được gọi lại với <code>textFieldValue</code> mới. Nghĩa là
+		<strong>mỗi ký tự bạn gõ là một lần recomposition</strong> — sách nói đúng như vậy.
+	</p>
+	<p>Đây là đoạn code thật trong project, đầy đủ chứ không lược:</p>
+	<Code code={basicTextFieldRealCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> (dòng 427–451)</p>
+	<p>Ba điểm đáng để ý trong bản đầy đủ mà bản sách in lược đi:</p>
+	<ul>
+		<li><code>onValueChange = &#123; onTextChanged(it) &#125;</code> — <code>BasicTextField</code> không gán giá trị mới cho
+			bất cứ biến nào ở đây; nó chỉ chuyển tiếp sự kiện lên trên. Cả file này không có chỗ nào tự đổi
+			<code>textFieldValue</code>.</li>
+		<li><code>keyboardActions = KeyboardActions(onSend = onMessageSent)</code> — đây là lý do bấm biểu tượng máy bay giấy
+			trên bàn phím cũng gửi được tin nhắn, không chỉ nút Send trong app.</li>
+		<li><code>maxLines = 1</code> — ô nhập chỉ một dòng. Một quyết định UI nhỏ, nhưng giải thích được vì sao tin nhắn dài
+			vẫn không làm ô nhập cao lên.</li>
+	</ul>
+	<p class="notice">
+		<strong>Bổ sung ngoài sách — một cảnh báo phiên bản ngay tại đoạn code này.</strong> Tham số
+		<code>autoCorrect</code> trong <code>KeyboardOptions</code> (dòng 442) đã bị đánh dấu deprecated ở các bản Compose
+		Foundation mới hơn và được đổi tên thành <code>autoCorrectEnabled</code>. Code vẫn build, chỉ bị gạch ngang trong
+		IDE. Nói trước để bạn không nghĩ mình copy sai.
+	</p>
+
+	<h2 id="stateful-remember">4. <code>remember</code> + <code>mutableStateOf</code>: composable stateful</h2>
+	<p>Sách nhắc lại một dòng code bạn đã dùng ở chapter 5:</p>
+	<Code code={rememberStateCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 51)</p>
+	<p>
+		Một dòng nhưng có ba việc đang xảy ra cùng lúc, và tách chúng ra là chìa khoá để hiểu toàn bộ phần còn lại:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Thành phần</th><th>Nhiệm vụ</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>mutableStateOf("")</code></td>
+				<td>
+					Tạo ra một <em>hộp đựng giá trị mà Compose theo dõi được</em>. Đổi giá trị trong hộp này thì Compose biết và
+					kích hoạt recomposition. Một biến Kotlin thường (<code>var x = ""</code>) thì Compose không biết gì cả.
+				</td>
+			</tr>
+			<tr>
+				<td><code>remember &#123; ... &#125;</code></td>
+				<td>
+					Giữ cái hộp đó <em>qua các lần recomposition</em>. Không có <code>remember</code>, mỗi lần vẽ lại là hộp mới
+					với giá trị rỗng — bạn gõ chữ rồi chữ tự biến mất ngay.
+				</td>
+			</tr>
+			<tr>
+				<td><code>by</code></td>
+				<td>
+					Cú pháp Kotlin để đọc/ghi thẳng vào <code>.value</code> của hộp. Nhờ nó bạn viết
+					<code>chatInputText = "abc"</code> chứ không phải <code>chatInputText.value = "abc"</code>.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Sách gọi composable dùng <code>remember</code> để giữ state bên trong là composable <strong>stateful</strong> — nó có
+		state riêng. Và sách nói ngay cái giá: tiện cho những composable đơn giản muốn tự quản state của mình,
+		<strong>nhưng ít tái sử dụng được hơn và khó test hơn</strong>.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 48–54)</p>
+	<p>
+		Trong project thật, composable stateful lớn nhất của màn hình chat là <code>UserInput()</code> — nó giữ tới bốn state
+		một lúc:
+	</p>
+	<Code code={userInputStatefulCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> (dòng 132–155)</p>
+	<p>Đọc từng state để thấy vì sao chúng phải nằm ở đây chứ không ở nơi khác:</p>
+	<ul>
+		<li><code>currentInputSelector</code> — đang mở bảng emoji, bảng chọn ảnh, hay không mở gì. Đây là chuyện nội bộ của
+			khu vực nhập liệu; màn hình chat bên ngoài không cần biết.</li>
+		<li><code>textState</code> — nội dung đang gõ. Kiểu <code>TextFieldValue</code> chứ không phải <code>String</code>, vì
+			nó còn chứa <em>vị trí con trỏ</em> và <em>vùng đang chọn</em>.</li>
+		<li><code>photoUri</code> — ảnh người dùng vừa chọn. Ghi nhớ biến này, cuối bài sẽ có một mục nói về chuyện nó bị bỏ
+			rơi.</li>
+		<li><code>textFieldFocusState</code> — ô nhập có đang được focus không, dùng để quyết định hiện bàn phím.</li>
+	</ul>
+	<p class="hint">
+		<strong>Bổ sung — <code>remember</code> khác <code>rememberSaveable</code> ở đâu?</strong> Sách chỉ nói
+		<code>remember</code>, nhưng code thật dùng cả hai và khác biệt rất đáng biết. <code>remember</code> giữ giá trị qua
+		<em>recomposition</em> nhưng mất khi Activity bị tạo lại (xoay màn hình).
+		<code>rememberSaveable</code> lưu thêm vào <code>Bundle</code> của hệ thống nên <em>sống sót qua cả configuration
+		change</em>. Tác giả chọn <code>rememberSaveable</code> cho <code>textState</code> (mất chữ đang gõ khi xoay máy thì
+		người dùng rất khó chịu) nhưng chỉ <code>remember</code> cho <code>photoUri</code> — nghĩa là xoay máy sẽ mất ảnh
+		vừa chọn. Đây là một lựa chọn không đồng nhất trong chính project mẫu, đáng để bạn nhìn thấy. Vế
+		<code>stateSaver = TextFieldValue.Saver</code> có mặt vì <code>TextFieldValue</code> không tự biết cách tự lưu vào
+		Bundle, phải đưa cho nó một "người phiên dịch".
+	</p>
+	<p class="notice">
+		<strong>Chỗ này trong code thật có một TODO đang làm hỏng tính năng.</strong> Ở dòng 142–146, khối
+		<code>if (currentInputSelector != InputSelector.NONE) &#123; ... &#125;</code> có nội dung là một chữ
+		<code>// TODO</code> và một dòng <code>BackPressHandler</code> đã bị comment. Hệ quả thực tế: khi bảng emoji đang mở,
+		bấm nút Back <em>không</em> đóng bảng emoji lại như đáng ra phải vậy. Và vì đó là chỗ gọi duy nhất, cả file
+		<code>conversation/BackHandler.kt</code> (dòng 53–77 định nghĩa <code>BackPressHandler</code>, dòng 89–90 định nghĩa
+		<code>LocalBackPressedDispatcher</code>) trở thành <strong>code chết</strong> — được viết ra nhưng không ai dùng.
+		Sách không nhắc gì về chuyện này.
+	</p>
+
+	<h2 id="state-hoisting">5. State Hoisting — đẩy state lên cho caller</h2>
+	<p>
+		Sách mở mục này bằng định nghĩa ngược lại: <strong>composable <em>stateless</em> là composable không giữ bất kỳ state
+		nào</strong>. Và cách dễ nhất để đạt được điều đó là <strong>state hoisting</strong> (đẩy state lên trên).
+	</p>
+	<p>
+		Định nghĩa chính xác của pattern này theo sách: <strong>chuyển state lên <em>caller</em> của composable, bằng cách
+		thay state nội bộ bằng <em>một tham số</em> và <em>các event</em>.</strong>
+	</p>
+	<p>Với composable, việc đó thường có nghĩa là thêm đúng hai tham số:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Tham số</th><th>Vai trò theo sách</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>value: T</code></td>
+				<td>Giá trị hiện tại để <em>hiển thị</em>. Composable chỉ đọc, không sửa.</td>
+			</tr>
+			<tr>
+				<td><code>onValueChange: (T) -&gt; Unit</code></td>
+				<td>
+					Một <em>event</em> yêu cầu đổi giá trị, trong đó <code>(T)</code> là việc cung cấp giá trị mới. Composable
+					<em>xin</em> đổi, không <em>tự</em> đổi.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 56–76)</p>
+	<p>
+		Sách giải thích rõ <code>T</code>: đó là một <em>generic type</em> (kiểu tổng quát) phụ thuộc vào dữ liệu và UI bạn
+		đang hiển thị. Và sách chỉ luôn vào code của chính app: trong <code>UserInputText</code>, <strong><code>T</code> là
+		<code>TextFieldValue</code></strong>. Đối chiếu với chữ ký hàm thật sẽ thấy pattern hiện ra rất rõ:
+	</p>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> (dòng 381–392) — chữ ký của <code>UserInputText</code></p>
+	<ul>
+		<li><code>textFieldValue: TextFieldValue</code> → đúng vai <code>value: T</code>.</li>
+		<li><code>onTextChanged: (TextFieldValue) -&gt; Unit</code> → đúng vai <code>onValueChange: (T) -&gt; Unit</code>.</li>
+		<li><code>focusState: Boolean</code> + <code>onTextFieldFocused: (Boolean) -&gt; Unit</code> → <em>một cặp hoisted thứ
+			hai</em>, lần này <code>T</code> là <code>Boolean</code>. Sách không chỉ ra cặp này, nhưng nó chứng minh pattern có
+			thể lặp lại nhiều lần trong cùng một composable.</li>
+		<li><code>onMessageSent: KeyboardActionScope.() -&gt; Unit</code> → một event thuần, không có giá trị đi kèm.</li>
+	</ul>
+	<p>Còn đây là phía <em>caller</em> — nơi thật sự giữ state và nối dây:</p>
+	<Code code={hoistedCallCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> (dòng 170–188)</p>
+	<p>
+		Chỉ cần đọc dòng <code>onTextChanged = &#123; textState = it &#125;</code> là thấy toàn bộ ý tưởng: việc <em>gán</em>
+		giá trị mới xảy ra ở <code>UserInput()</code>, không xảy ra trong <code>UserInputText()</code>.
+		<code>UserInputText</code> chỉ biết "có ai đó cần được báo khi người dùng gõ" — nó không biết ai, không biết state
+		được lưu ở đâu, không biết có được lưu hay không.
+	</p>
+	<p>
+		Sách chốt lợi ích: composable stateless <strong>dễ test hơn, ít bug hơn, và tái sử dụng được nhiều hơn</strong>. Ba
+		lợi ích này không phải khẩu hiệu, chúng có lý do cụ thể:
+	</p>
+	<ol class="chain">
+		<li>
+			<strong>Dễ test:</strong> muốn test <code>UserInputText</code> ở trạng thái "đã có chữ, đang focus", bạn chỉ cần gọi
+			nó với <code>textFieldValue = TextFieldValue("hello")</code> và <code>focusState = true</code>. Không cần dựng
+			ViewModel, không cần bàn phím thật, không cần mô phỏng thao tác gõ.
+		</li>
+		<li>
+			<strong>Ít bug:</strong> composable không thể tự đổi state, nên không thể có hai chỗ cùng đổi một giá trị theo hai
+			cách khác nhau. Loại bug "giá trị bị ghi đè bởi chỗ tôi không ngờ tới" bị loại bỏ về mặt cấu trúc.
+		</li>
+		<li>
+			<strong>Tái dùng được:</strong> vì nó không giả định state đến từ đâu, bạn dùng lại nó ở màn hình khác — với state
+			từ ViewModel khác — mà không phải sửa một dòng nào bên trong.
+		</li>
+	</ol>
+	<div class="hint">
+		<strong>Bổ sung — "hoist lên tới đâu là đủ?"</strong> Sách không trả lời câu này nhưng bạn sẽ gặp nó ngay khi tự viết
+		code. Quy tắc thực dụng: đẩy state lên <em>tổ tiên chung thấp nhất</em> của tất cả composable cần đọc hoặc đổi nó.
+		Trong app này: <code>textState</code> chỉ liên quan tới khu vực nhập liệu nên nằm ở <code>UserInput()</code> là đủ —
+		đẩy nó lên tới <code>MainActivity</code> là thừa. Ngược lại, <em>danh sách tin nhắn</em> thì cả
+		<code>Messages()</code> (để hiển thị) và luồng gửi tin (để thêm phần tử) đều cần, và nó phải sống sót qua xoay màn
+		hình — nên nó phải được đẩy lên xa hơn nữa: ra khỏi UI, vào ViewModel. Đó chính là chủ đề của phần còn lại chapter.
+	</div>
+	<p class="hint">
+		<strong>Bổ sung — bảng phân loại composable trong màn hình chat này,</strong> để bạn tự luyện mắt nhìn:
+		<code>Messages()</code>, <code>MessageUi()</code>, <code>JumpToBottom()</code>, <code>ChannelNameBar()</code> là
+		<strong>stateless</strong> — mọi thứ chúng cần đều đến từ tham số. <code>UserInput()</code> (dòng 134) và
+		<code>ConversationContent()</code> (dòng 102 trong <code>Conversation.kt</code>) là <strong>stateful</strong> — chúng
+		gọi <code>remember...</code> để tạo và giữ state. Mẫu chung: composable ở <em>lá</em> thì stateless, composable
+		<em>khung</em> ở gần gốc thì stateful.
+	</p>
+
+	<h2 id="unidirectional-data-flow">6. Unidirectional Data Flow — dữ liệu chảy một chiều</h2>
+	<p>
+		Sách mở đầu bằng <em>vấn đề</em> chứ không bằng định nghĩa, và đó là cách mở đúng: <strong>một điểm dở của lập trình
+		Android trước Compose là UI có thể bị cập nhật từ rất nhiều nơi khác nhau.</strong> Hệ quả sách nêu: khó quản lý, mọi
+		thứ dễ rơi vào trạng thái <em>out of sync</em>, và sinh ra những lỗi rất khó debug.
+	</p>
+	<div class="hint">
+		<strong>Bổ sung — hình dung cụ thể cái "vấn đề" đó.</strong> Trong app XML cũ, một <code>TextView</code> hiển thị số
+		tin nhắn chưa đọc có thể bị sửa từ: Activity khi mới mở màn hình, một callback khi mạng trả về, một
+		<code>BroadcastReceiver</code> khi có push notification, và một listener khi người dùng bấm "đánh dấu đã đọc". Bốn
+		nơi, bốn thời điểm không đoán trước được. Khi con số hiển thị sai, bạn phải đọc cả bốn để tìm ra ai ghi sau cùng — và
+		nếu lỗi chỉ xảy ra khi hai sự kiện đến gần nhau thì bạn còn không tái tạo được nó. Đó là loại bug mà UDF loại bỏ
+		bằng cấu trúc, không bằng sự cẩn thận.
+	</div>
+	<p>Định nghĩa của sách gồm hai nửa, và nửa nào cũng cần đọc kỹ:</p>
+	<ul>
+		<li>
+			<strong>Sự kiện đổi state chỉ đến từ <em>một</em> nguồn</strong> — thường là tương tác của người dùng.
+		</li>
+		<li>
+			<strong>Cập nhật UI chỉ đến từ <em>state manager</em></strong> — không có ai khác được phép chạm vào UI.
+		</li>
+	</ul>
+	<p>
+		Sách nói thẳng nền tảng tư tưởng của Compose: nó được xây trên ý tưởng <strong>decoupling</strong> (tách rời) phần
+		<em>hiển thị state</em> khỏi phần <em>lưu và đổi state</em>. Và khái niệm then chốt còn lại: <strong>UI
+		<em>observe</em> (quan sát) state</strong>. Mỗi khi có state mới, UI recompose để hiển thị nó.
+	</p>
+	<p>
+		Cuối cùng sách chỉ ra công cụ Android cho sẵn để làm hai việc này: <strong>ViewModel</strong> làm state manager, và
+		<strong>Flow</strong> để quan sát dữ liệu theo một chiều.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 78–87)</p>
+	<p class="notice">
+		<strong>Sách gọi ViewModel và Flow là "Android Architecture Components".</strong> Đây là tên gọi đúng vào thời điểm
+		sách viết. Hiện tại Google đã gộp nhóm này vào <strong>Jetpack</strong> và tài liệu chính thức nói về
+		<em>"Guide to app architecture"</em> với ba tầng UI Layer / Domain Layer / Data Layer. Kỹ thuật không đổi, chỉ là bạn
+		sẽ không tìm thấy cụm "Android Architecture Components" trên developer.android.com nữa — nên tra theo tên mới.
+	</p>
+
+</section>
+

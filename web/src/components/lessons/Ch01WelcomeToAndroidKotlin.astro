@@ -1,10 +1,21 @@
 ---
-// Task 11 — Lesson Chapter 1: tổng quan cách một Android app được tổ chức.
-// Chapter này không có project Android thật; ví dụ XML bên dưới là trích đoạn minh hoạ trong EPUB.
-// Nội dung tiếng Việt được diễn giải từ content/book/ch01-welcome-to-android-kotlin.md.
+// Lesson Chapter 1: Welcome to Android & Kotlin.
+// Task 42 (Phase 5 — depth pass): viết lại hoàn toàn theo chuẩn độ sâu dựng ở Task 35 (Ch05) và Task 36 (Ch02).
+// Nguồn chính: content/book/ch01-welcome-to-android-kotlin.md (137 dòng / 2.227 từ / 8 heading).
+// Nguồn đối chiếu: chapter 1 KHÔNG có project (4 file .keep rỗng 0 byte), nên code minh hoạ lấy từ
+//   aaf-materials/02-getting-started-with-android-studio/projects/final/ và
+//   aaf-materials/08-networking/projects/final/app/src/main/AndroidManifest.xml (ví dụ permission duy nhất trong cả sách).
+// Mọi số dòng trích dẫn trong bài đã mở file thật để kiểm.
 import { Code } from "astro:components";
 
-const manifestCode = `<?xml version="1.0" encoding="utf-8"?>
+const BOOK = "content/book/ch01-welcome-to-android-kotlin.md";
+const CH01 = "aaf-materials/01-welcome-to-android-and-kotlin/projects";
+const FINAL = "aaf-materials/02-getting-started-with-android-studio/projects/final";
+const SRC = "aaf-materials/02-getting-started-with-android-studio/projects/final/app/src/main/java/com/kodeco/chat";
+const RES = "aaf-materials/02-getting-started-with-android-studio/projects/final/app/src/main/res";
+const CH08 = "aaf-materials/08-networking/projects/final/app/src/main";
+
+const bookManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 <manifest ... >
   <!-- // 1 -->
   <application ... >
@@ -14,7 +25,8 @@ const manifestCode = `<?xml version="1.0" encoding="utf-8"?>
       android:exported="true"
       android:label="@string/app_name"
       android:theme="@style/SplashTheme">
-      <!-- // 3 -->
+      <!-- // 3  -->
+      <!-- Specifies the kind of Intents the Activity can respond to -->
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
@@ -23,147 +35,1529 @@ const manifestCode = `<?xml version="1.0" encoding="utf-8"?>
     ...
   </application>
 </manifest>`;
+
+const realManifestCode = `<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
+
+  <application
+    android:allowBackup="true"
+    android:dataExtractionRules="@xml/data_extraction_rules"
+    android:fullBackupContent="@xml/backup_rules"
+    android:icon="@mipmap/ic_launcher"
+    android:label="@string/app_name"
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:supportsRtl="true"
+    android:theme="@style/Theme.KodecoChat"
+    tools:targetApi="31">
+    <activity
+      android:name=".MainActivity"
+      android:exported="true"
+      android:label="@string/app_name"
+      android:theme="@style/Theme.KodecoChat">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+  </application>
+
+</manifest>`;
+
+const mainActivityCode = `class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {
+      KodecoChatTheme {
+        // A surface container using the 'background' color from the theme
+        Surface(
+          modifier = Modifier.fillMaxSize(),
+          color = MaterialTheme.colorScheme.background
+        ) {
+          Greeting("Fuad")
+        }
+      }
+    }
+  }
+}`;
+
+const greetingCode = `@Composable
+fun Greeting(name: String, modifier: Modifier = Modifier) {
+  Text(
+    text = "Hello $name!",
+    modifier = modifier
+  )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GreetingPreview() {
+  KodecoChatTheme {
+    Greeting("Fuad")
+  }
+}`;
+
+const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
+
+  <uses-permission android:name="android.permission.INTERNET" />
+  <application
+    android:allowBackup="true"
+    ...
+    android:name=".RecipeApp"
+    android:theme="@style/Theme.RecipeFinder"
+    tools:targetApi="31">`;
+
+const stringsCode = `<resources>
+  <string name="app_name">Kodeco Chat</string>
+</resources>`;
+
+const iconCode = `<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+  <background android:drawable="@drawable/ic_launcher_background" />
+  <foreground android:drawable="@drawable/ic_launcher_foreground" />
+  <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>`;
+
+const colorsXmlCode = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <color name="purple_200">#FFBB86FC</color>
+  <color name="purple_500">#FF6200EE</color>
+  <color name="purple_700">#FF3700B3</color>
+  <color name="teal_200">#FF03DAC5</color>
+  <color name="teal_700">#FF018786</color>
+  <color name="black">#FF000000</color>
+  <color name="white">#FFFFFFFF</color>
+</resources>`;
+
+const colorKtCode = `val Purple80 = Color(0xFFD0BCFF)
+val PurpleGrey80 = Color(0xFFCCC2DC)
+val Pink80 = Color(0xFFEFB8C8)
+
+val Purple40 = Color(0xFF6650a4)
+val PurpleGrey40 = Color(0xFF625b71)
+val Pink40 = Color(0xFF7D5260)`;
+
+const themesXmlCode = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+  <style name="Theme.KodecoChat" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>`;
+
+const dataExtractionCode = `<data-extraction-rules>
+  <cloud-backup>
+    <!-- TODO: Use <include> and <exclude> to control what is backed up.
+    <include .../>
+    <exclude .../>
+    -->
+  </cloud-backup>
+  ...
+</data-extraction-rules>`;
+
+const rootGradleCode = `// Top-level build file where you can add configuration options
+// common to all sub-projects/modules.
+plugins {
+  id("com.android.application") version "8.2.0" apply false
+  id("org.jetbrains.kotlin.android") version "1.9.10" apply false
+}`;
+
+const appPluginsCode = `plugins {
+  id("com.android.application")
+  id("org.jetbrains.kotlin.android")
+}
+
+android {
+  namespace = "com.kodeco.chat"
+  compileSdk = 34
+
+  defaultConfig {
+    applicationId = "com.kodeco.chat"
+    minSdk = 30
+    targetSdk = 34
+    versionCode = 1
+    versionName = "1.0"
+    ...
+  }
+  ...
+}`;
+
+const releaseCode = `buildTypes {
+  release {
+    isMinifyEnabled = false
+    proguardFiles(
+      getDefaultProguardFile("proguard-android-optimize.txt"),
+      "proguard-rules.pro"
+    )
+  }
+}`;
+
+const composeOptionsCode = `buildFeatures {
+  compose = true
+}
+composeOptions {
+  kotlinCompilerExtensionVersion = "1.5.3"
+}`;
+
+const settingsCode = `rootProject.name = "Kodeco Chat"
+include(":app")`;
+
+const wrapperCode = `#Thu Oct 12 21:21:56 EDT 2023
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 ---
 
 <section class="lesson">
-	<div class="callout">
-		<strong>Phạm vi chapter:</strong> Đây là bài tổng quan để bạn nhìn thấy các mảnh chính của một Android app.
-		Thư mục tài liệu đi kèm chỉ có file <code>.keep</code>, không có project <code>starter</code> hay
-		<code>final</code> để chạy. Vì vậy bài này dùng đúng một trích đoạn XML Manifest từ EPUB, không tạo code Kotlin
-		giả.
+	<div class="callout goals">
+		<strong>Bạn sẽ học được gì trong bài này</strong>
+		<ul>
+			<li>Vì sao framework Android <em>bắt buộc</em> phải khổng lồ — và vì sao bạn không cần biết hết nó mới viết được app.</li>
+			<li>Bốn lựa chọn công nghệ để làm app Android, và lý do cuốn sách chọn <strong>Kotlin</strong>.</li>
+			<li><strong>Security sandbox</strong>: mỗi app sống trong một vùng cô lập — đây là gốc rễ của mọi chuyện về quyền (permission) sau này.</li>
+			<li>Bốn <strong>app component</strong> (Activity, Service, Content Provider, Broadcast Receiver), mỗi cái làm gì và <em>thực tế sách dùng cái nào</em>.</li>
+			<li><strong>Intent</strong> và <strong>Content Resolver</strong>: cách các component gọi nhau, kể cả gọi sang app khác.</li>
+			<li>Đọc được file <code>AndroidManifest.xml</code> — và đối chiếu đoạn trong sách với manifest thật của project đi kèm.</li>
+			<li><strong>App resources</strong> là gì, và lần theo một chuỗi tham chiếu resource 3 tầng trong code thật.</li>
+			<li><strong>Gradle</strong> làm gì trong bức tranh tổng thể, và 4 con số trong build file định vị project vào năm nào.</li>
+		</ul>
 	</div>
 
-	<h2 id="android-kotlin">1. Android và vai trò của Kotlin</h2>
+	<div class="callout">
+		<strong>Chapter này làm gì trong cả cuốn sách:</strong> đây là chapter <em>mở màn</em> — nó không xây app nào, không có
+		bước nào để làm theo. Nhiệm vụ duy nhất của nó là <strong>vẽ bản đồ</strong>: một Android app gồm những mảnh gì, các
+		mảnh nói chuyện với nhau ra sao, và cái gì ghép chúng thành một file cài được.
+		<br /><br />
+		Nó <strong>chưa</strong> làm gì cả: chưa cài Android Studio (Chương 2), chưa viết một dòng Kotlin nào, chưa dựng giao
+		diện (Chương 5). Nhưng gần như mọi khái niệm bạn gặp ở đây sẽ quay lại — Activity ở Chương 3, Gradle ở Chương 4,
+		Compose ở Chương 5, permission ở Chương 8, lưu dữ liệu ở Chương 9–11. Vì vậy bài này đáng đọc chậm.
+	</div>
+
+	<div class="callout journey">
+		<strong>Chapter này không có project — và bài học xử lý chuyện đó thế nào</strong>
+		<p>
+			Các chapter khác của sách đều có project <code>starter</code> (điểm bắt đầu) và <code>final</code> (đáp án). Chapter 1
+			thì <strong>không</strong>. Đã mở thư mục thật để kiểm: cả 4 file trong thư mục chapter 1 đều là file
+			<code>.keep</code> <strong>rỗng 0 byte</strong> — tức chỉ tồn tại để Git giữ lại thư mục trống, không có một dòng code
+			nào.
+		</p>
+		<pre class="tree">01-welcome-to-android-and-kotlin/
+├── assets/.keep                 ← 0 byte
+└── projects/
+    ├── starter/.keep            ← 0 byte
+    ├── final/.keep              ← 0 byte
+    └── challenge/.keep          ← 0 byte</pre>
+		<p class="src">Nguồn: <code>{CH01}/</code> — đã đo dung lượng từng file</p>
+		<p>Nên bài này làm hai việc thay thế, và nói rõ mỗi lần làm:</p>
+		<ul>
+			<li>
+				Với phần lý thuyết: bám sát 8 mục của sách, <strong>giải thích lại</strong> bằng tiếng Việt và thêm mô hình tư duy
+				(mental model) cho từng khái niệm.
+			</li>
+			<li>
+				Với phần code: mượn project <strong>Kodeco Chat</strong> của <strong>chapter 2</strong> làm ví dụ minh hoạ. Đây là
+				<em>tham chiếu tới trước</em> (forward reference) — bài luôn ghi rõ code đến từ chapter khác, không giả vờ chapter 1
+				có project.
+			</li>
+		</ul>
+		<p>
+			Đổi lại, việc mở code thật cho phép làm một thứ sách không làm: mỗi câu lý thuyết trừu tượng đều được chỉ tận vị trí
+			nó xuất hiện trong file. Và ở vài chỗ, code thật <strong>không khớp</strong> với lời sách — những chỗ đó được ghi thành
+			nội dung dạy, không âm thầm sửa cho khớp.
+		</p>
+	</div>
+
+	<h2 id="android-khong-lo">1. Vì sao Android trông khổng lồ — và vì sao bạn không cần biết hết</h2>
 	<p>
-		Android app có thể được viết bằng ngôn ngữ được nền tảng hỗ trợ trực tiếp như <strong>Java</strong> hoặc
-		<strong>Kotlin</strong>. Một hướng khác là dùng framework đa nền tảng như React Native hoặc Flutter để chia sẻ
-		một phần code giữa Android và iOS. Mỗi hướng có ưu và nhược điểm riêng; cuốn sách chọn Kotlin để đi theo cách
-		phát triển Android native (trực tiếp trên nền tảng Android).
+		Sách không mở đầu bằng định nghĩa kỹ thuật. Nó mở đầu bằng một mốc thời gian: <strong>năm 2023 là tròn 50 năm</strong> kể
+		từ cuộc gọi điện thoại di động đầu tiên. Từ đó tới nay, điện thoại đã đi rất xa khỏi cái vai trò ban đầu — những cục máy
+		hình viên gạch chỉ để gọi điện.
 	</p>
 	<p>
-		Ở chapter này bạn chỉ cần nhớ Kotlin là ngôn ngữ sẽ được dùng trong các bài sau. Cú pháp biến, hàm hay class
-		chưa được dạy ở đây. Sách cũng nêu một lý do quan trọng cho lựa chọn này: Kotlin là ngôn ngữ
-		<strong>được Google khuyến nghị chính thức cho Android từ năm 2019</strong> — nên tài liệu, thư viện và ví dụ
-		mới hầu như đều viết bằng Kotlin.
+		Rồi sách đưa hai con số để bạn cảm nhận quy mô: khoảng <strong>90% dân số thế giới</strong> có smartphone, và mỗi chiếc
+		đều mang trong nó một bộ app mà chủ máy tự chọn cài — hoặc đã có sẵn từ lúc mua. Muốn cài app, người dùng thường vào
+		<strong>app store</strong>; những cửa hàng như Google Play cho truy cập <strong>hàng triệu app</strong>, từ game đơn giản
+		tới app học tập, app quản lý cá nhân, app ngân hàng. Sách mô tả tình trạng đó bằng một câu rất đời thường: thế giới ngập
+		app đến mức người ta nói "cái gì cũng có app cho việc đó".
 	</p>
-	<p class="src">
-		Nguồn nội dung: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 19–27)
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 11–15)</p>
+
+	<h3>Từ quan sát đó, sách suy ra một kết luận về kỹ thuật</h3>
+	<p>
+		Đây là chỗ đoạn mở đầu chuyển từ "câu chuyện" sang "lý do kỹ thuật", và nó là ý quan trọng nhất của cả phần mở chapter.
+		Lập luận của sách đi như sau:
+	</p>
+	<ol class="chain">
+		<li>
+			App phải làm được <em>rất nhiều loại việc khác nhau</em>, và phải dùng được mọi tính năng hữu ích của một chiếc
+			smartphone — sách kể tên: <strong>geolocation</strong> (định vị), <strong>audio</strong>, <strong>video</strong>,
+			hoặc đơn giản là <strong>truy cập internet</strong>.
+		</li>
+		<li>
+			Vậy thì một framework phát triển di động phải <strong>lớn cỡ nào</strong> mới đỡ được hết những thứ đó? Sách tự trả
+			lời: <em>nó buộc phải khổng lồ</em>.
+		</li>
+		<li>
+			Và sách cảnh báo trước ("spoiler alert"): <strong>Android còn lớn hơn mức đó nữa</strong>, vì nó chứa thêm rất nhiều
+			phần thuộc loại <em>"developer quality of life"</em> — những tiện ích giúp lập trình viên đỡ khổ.
+		</li>
+		<li>
+			Hệ quả: framework lớn tới mức <strong>ngay cả người đã làm Android nhiều năm cũng có lúc thấy ngợp</strong>.
+		</li>
+	</ol>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 17)</p>
+	<p class="hint">
+		<strong>Bổ sung — "framework" nghĩa là gì:</strong> framework (khung nền) là bộ code có sẵn do nhà cung cấp nền tảng viết,
+		bạn gọi vào để dùng chứ không phải viết lại. Ví dụ: bạn không tự viết code vẽ chữ lên màn hình hay tự viết code đọc GPS —
+		Android đã có sẵn, bạn chỉ gọi. Cái giá của việc "có sẵn mọi thứ" chính là kích thước: có sẵn càng nhiều thì càng nhiều
+		thứ để học.
 	</p>
 
-	<h2 id="components">2. Security sandbox và 4 app component</h2>
+	<h3>Câu trấn an — và vì sao nó là một lời khuyên chiến lược, không phải lời động viên suông</h3>
 	<p>
-		Mỗi app chạy trong một <strong>security sandbox (vùng cô lập bảo mật)</strong>. Hiểu đơn giản: app không tự ý
-		đọc dữ liệu của app khác hoặc dùng phần nhạy cảm của thiết bị; quyền truy cập phải được hệ thống cho phép.
+		Ngay câu đầu của mục <em>How Apps Work</em>, sách quay lại xoa dịu chính cái nó vừa làm bạn lo: <strong>đừng để những gì
+		vừa đọc làm bạn sợ</strong>. Rồi đưa ra lý do cụ thể — một trong những điểm tốt của Android là
+		<strong>bạn không cần biết hết framework mới viết được app đúng cách và dễ bảo trì</strong>.
 	</p>
-	<p>Bên trong vùng đó, Android nhận biết bốn loại <strong>component (thành phần)</strong> chính:</p>
-	<ul class="component-list">
-		<li><strong>Activity:</strong> nơi thường cung cấp màn hình để người dùng tương tác.</li>
-		<li><strong>Service:</strong> thực hiện công việc nền và không cung cấp giao diện trực tiếp.</li>
-		<li><strong>Content Provider:</strong> quản lý dữ liệu và có thể cho app khác truy cập khi được phép.</li>
-		<li><strong>Broadcast Receiver:</strong> nhận sự kiện được hệ thống hoặc app khác phát đi.</li>
+	<p>
+		Thay vào đó, sách khuyên <strong>học tới đâu cần tới đó</strong> ("learn it as you need it"), và nói rõ hai lợi ích: cách
+		đó <em>tốn ít thời gian hơn nhiều</em>, và — nguyên văn ý sách — <em>tốt hơn cho sức khoẻ của bạn</em>.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 21)</p>
+	<div class="callout">
+		<strong>Mô hình tư duy cho cả cuốn sách</strong>
+		<p>
+			Câu trên nhìn như một lời động viên, nhưng thực ra nó quyết định <em>cách bạn nên đọc 11 chapter còn lại</em>. Android
+			có hàng nghìn class. Nếu bạn cố học theo kiểu "đọc hết tài liệu rồi mới làm", bạn sẽ không bao giờ tới được lúc làm.
+		</p>
+		<p>Cách đọc mà lời khuyên này ngụ ý:</p>
+		<ul>
+			<li>
+				Gặp một class/API lạ trong sách → hiểu <strong>nó giải quyết vấn đề gì</strong> và <strong>tại sao xuất hiện ở đây</strong>,
+				không cần học hết mọi tham số của nó.
+			</li>
+			<li>
+				Thấy một mục nói "bạn sẽ học ở chapter sau" → tin nó và đi tiếp. Sách cố ý xếp thứ tự; nhảy trước thường tốn thời
+				gian hơn.
+			</li>
+			<li>
+				Cảm giác ngợp là <strong>bình thường và được sách công nhận</strong> — tác giả viết thẳng rằng dev nhiều năm cũng
+				ngợp. Nó không phải dấu hiệu bạn không phù hợp với nghề này.
+			</li>
+		</ul>
+	</div>
+
+	<h2 id="chon-kotlin">2. Chọn công nghệ: Kotlin, Java, hay Flutter / React Native?</h2>
+	<p>
+		Trước khi nói về cấu tạo app, sách trả lời một câu hỏi thực tế: <em>viết app Android bằng cái gì?</em> Câu trả lời của
+		sách là có <strong>nhiều đường</strong>, chia thành hai nhóm rõ rệt.
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Hướng</th><th>Là gì</th><th>Sách nói gì</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Ngôn ngữ native</strong></td>
+				<td><strong>Java</strong> hoặc <strong>Kotlin</strong> — ngôn ngữ được nền tảng Android hỗ trợ trực tiếp.</td>
+				<td>
+					Sách nêu một chi tiết rất đáng nhớ: <strong>bản thân framework Android là hỗn hợp của cả hai</strong> ngôn ngữ.
+					Nghĩa là bạn sẽ gặp cả code Java lẫn Kotlin bên trong nền tảng.
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Framework bên ngoài</strong></td>
+				<td><strong>React Native</strong>, <strong>Flutter</strong>.</td>
+				<td>
+					Lợi thế sách nêu: một số phần của việc phát triển app <em>đã được làm sẵn cho bạn</em>, và bạn phát triển cho
+					<strong>Android và iOS cùng lúc</strong>. Nhưng sách nói rõ: <em>thường có trade-off</em> (đánh đổi) — cụ thể là
+					<strong>hiệu năng app giảm</strong> hoặc <strong>không có sẵn một số API</strong>.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 23)</p>
+	<p class="hint">
+		<strong>Bổ sung — "native" và "API" nghĩa là gì:</strong> <em>native</em> (bản địa) nghĩa là chạy trực tiếp trên nền tảng,
+		không qua tầng trung gian nào. <em>API</em> (Application Programming Interface) là "cửa" mà hệ thống mở ra cho code của
+		bạn gọi vào — ví dụ "cửa" để đọc vị trí GPS, "cửa" để chụp ảnh. Câu "thiếu API availability" của sách nghĩa là: khi Android
+		ra một tính năng mới, framework bên ngoài phải chờ được cập nhật mới dùng được tính năng đó; code native thì dùng được ngay.
+	</p>
+
+	<h3>Vì sao sách chọn Kotlin — 5 lý do, không phải một</h3>
+	<p>
+		Sách chốt lựa chọn ngay: cuốn sách này dùng <strong>Kotlin</strong>. Nhưng nó không chốt suông, mà liệt kê hẳn một chuỗi
+		lý do. Tách ra thành từng ý để thấy đủ:
+	</p>
+	<ol class="chain">
+		<li>
+			<strong>Google khuyến nghị chính thức từ năm 2019.</strong> Đây là lý do có sức nặng thực tế nhất: tài liệu chính thức,
+			thư viện mới, ví dụ mẫu của Google từ đó tới nay đều ưu tiên Kotlin.
+		</li>
+		<li>
+			<strong>Là ngôn ngữ hiện đại và mạnh</strong>, hấp thu nhiều tính năng từ <em>cả hai</em> trường phái:
+			<strong>object-oriented</strong> (lập trình hướng đối tượng) và <strong>functional</strong> (lập trình hàm).
+		</li>
+		<li>
+			<strong>Vui khi dùng, và "vừa khít với Android như một chiếc găng tay"</strong> — đây là nguyên ý so sánh của tác giả.
+		</li>
+		<li>
+			<strong>Được hỗ trợ native</strong>, và sách nối luôn thành một chuỗi nhân quả: hỗ trợ native →
+			<em>ít vấn đề tương thích hơn</em> → <strong>hỗ trợ API tốt hơn và hiệu năng tốt hơn</strong>.
+		</li>
+		<li>
+			<strong>Tính năng multiplatform đã phát triển đủ mạnh</strong> để cạnh tranh với các giải pháp hybrid (lai) cho Android
+			và iOS. Nghĩa là: cái lợi thế "làm 2 nền tảng cùng lúc" của Flutter/React Native không còn là độc quyền của họ.
+		</li>
+	</ol>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 25)</p>
+	<div class="callout">
+		<strong>Điểm đáng chú ý về cấu trúc lập luận</strong>
+		<p>
+			Lý do số 4 và số 5 đáng để ý vì chúng <em>đánh trực tiếp vào hai trade-off</em> mà sách vừa nêu ở đoạn trên. Sách nói
+			framework bên ngoài đánh đổi hiệu năng và API — thì lý do 4 nói native không có hai vấn đề đó. Sách nói framework bên
+			ngoài được lợi ở chỗ làm 2 nền tảng cùng lúc — thì lý do 5 nói Kotlin Multiplatform giờ cũng làm được.
+		</p>
+		<p>
+			Nói cách khác: đây không phải danh sách ưu điểm ngẫu nhiên, mà là một lập luận có bố cục. Nhận ra bố cục đó giúp bạn
+			nhớ nó lâu hơn là học vẹt 5 gạch đầu dòng.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Chapter 1 không dạy cú pháp Kotlin.</strong> Cả chapter không có một dòng code Kotlin nào — chỉ có đúng một đoạn
+		XML (mục 5). Kotlin ở đây xuất hiện thuần với vai trò <em>một quyết định công nghệ</em>. Bạn chưa cần biết
+		<code>val</code>, <code>fun</code> hay <code>class</code> là gì để đọc hết bài này.
+	</p>
+	<div class="callout diff">
+		<strong>Một ghi chú trong tài liệu dự án cần sửa</strong>
+		<p>
+			File <code>docs/SOURCE_MAP.md</code> của dự án này từng ghi rằng chapter 1 không có project vì "chapter đó học Kotlin
+			thuần trên Kotlin Playground". Đã kiểm lại toàn bộ 137 dòng của chapter: <strong>không đúng</strong>. Chapter 1 không
+			dạy Kotlin thuần và không hề nhắc Kotlin Playground (tìm chữ "playground" trong file cho ra 0 kết quả).
+		</p>
+		<p>
+			Lý do thật đơn giản hơn: đây là <strong>chapter tổng quan bằng văn bản</strong>, không có phần thực hành nào nên không
+			cần project. Ghi lại ở đây để bạn — nếu có đọc tài liệu nội bộ của dự án — không bị dẫn sai.
+		</p>
+	</div>
+
+	<h2 id="security-sandbox">3. Security sandbox: chuyện gì xảy ra trong app, ở lại trong app</h2>
+	<p>
+		Sách đặt một câu chuyển ý rất đúng chỗ: <em>trước khi bắt đầu xây app, hiểu đại ý cách app Android hoạt động sẽ hữu ích,
+		để sau này bạn nối được các mảnh lại với nhau khi tự viết app của mình.</em> Và điều đầu tiên nó chọn để nói không phải
+		giao diện, không phải code — mà là <strong>bảo mật</strong>.
+	</p>
+	<p>
+		Nguyên tắc: <strong>mỗi app sống trong security sandbox riêng của nó</strong>. Sách diễn đạt bằng một câu rất dễ nhớ —
+		<em>"chuyện gì xảy ra trong app thì ở lại trong app"</em>. Nguyên tắc này có hai chiều, và cả hai đều quan trọng:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Chiều</th><th>Nội dung</th><th>Ai quyết định</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Từ ngoài nhìn vào</strong></td>
+				<td>
+					<strong>Không app nào khác biết được chuyện gì đang diễn ra bên trong app của bạn.</strong>
+				</td>
+				<td>
+					<strong>Chính app của bạn</strong> — trừ khi app tự cho phép, người ngoài không thấy gì.
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Từ trong nhìn ra</strong></td>
+				<td>
+					App của bạn <strong>không truy cập được</strong> những phần cụ thể của hệ thống: app khác, file cụ thể, hay thông
+					tin thiết bị.
+				</td>
+				<td>
+					<strong>Hệ thống Android</strong> — trừ khi hệ thống cho phép, app của bạn bị chặn.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 27–29)</p>
+	<p class="hint">
+		<strong>Bổ sung — "sandbox" nghĩa là gì:</strong> dịch sát là "hố cát" — chỗ chơi có thành bao quanh, cát không tràn ra
+		ngoài. Trong bảo mật máy tính, sandbox nghĩa là một vùng chạy bị cô lập: chương trình bên trong làm gì cũng không ảnh
+		hưởng tới bên ngoài vùng đó. Android tạo một sandbox cho <em>từng app</em>.
+	</p>
+
+	<h3>Mô hình tư duy: mỗi app là một căn hộ trong toà nhà</h3>
+	<p>
+		Cách dễ nhất để giữ khái niệm này: hình dung điện thoại là một <strong>toà nhà chung cư</strong>, mỗi app là một
+		<strong>căn hộ riêng có khoá</strong>.
+	</p>
+	<ul>
+		<li>
+			Bạn ở trong căn hộ của mình, làm gì cũng được. Người ở căn hộ bên cạnh <strong>không nhìn thấy</strong> — trừ khi bạn
+			mở cửa mời họ vào. Đó là chiều thứ nhất.
+		</li>
+		<li>
+			Nhưng bạn cũng <strong>không tự tiện</strong> vào căn hộ khác, không tự tiện vào phòng máy hay phòng điện của toà nhà.
+			Muốn vào thì phải xin <strong>ban quản lý</strong> — và ban quản lý ở đây là hệ điều hành Android. Đó là chiều thứ hai.
+		</li>
 	</ul>
 	<p>
-		Để yêu cầu Android mở hoặc kết nối với component, app thường dùng <strong>Intent (thông điệp yêu cầu hành
-		động)</strong>. Riêng Content Provider được truy cập thông qua <strong>Content Resolver (cầu nối tới dữ
-		liệu)</strong>.
-	</p>
-	<p class="src">
-		Nguồn nội dung: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 29–49)
+		Mô hình này giải thích luôn một chuyện bạn gặp hằng ngày mà có thể chưa nối được: <strong>vì sao app cứ phải xin quyền</strong>.
+		Khi một app hỏi "cho phép truy cập máy ảnh?", nó chính đang xin ban quản lý mở một cánh cửa cụ thể ra khỏi sandbox của nó.
 	</p>
 
-	<h2 id="manifest">3. Manifest — “nhãn thông tin” của app</h2>
+	<h3>Vì sao mục này được đặt ngay đầu chapter</h3>
 	<p>
-		Android cần biết app có những component nào và component nào được phép làm gì. Thông tin đó được khai báo
-		trong <code>AndroidManifest.xml</code>. Trích đoạn dưới đây mô tả một <code>MainActivity</code> có thể được mở
-		từ biểu tượng app.
+		Sách không nói ra, nhưng vị trí của security sandbox trong chapter là một quyết định trình bày đáng chú ý: nó đứng
+		<strong>trước</strong> cả phần giới thiệu component. Lý do là sandbox là <em>tiền đề</em> để hai mục sau có nghĩa:
 	</p>
-	<p class="src">
-		Nguồn code: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 55–76). Dấu
-		<code>...</code> cho biết đây là trích đoạn minh hoạ, không phải file hoàn chỉnh để build. Sách còn có thêm 1
-		dòng comment ngay trên <code>&lt;intent-filter&gt;</code> (dòng 67:
-		<em>“Specifies the kind of Intents the Activity can respond to”</em> — mô tả loại Intent mà Activity này phản hồi
-		được); ở đây đã bỏ dòng đó vì ý của nó được giải thích bằng tiếng Việt ở mục 3 bên dưới.
-	</p>
-	<Code code={manifestCode} lang="xml" theme="github-dark" />
-	<ol>
-		<li><code>&lt;application&gt;</code> là phần tử cha chứa các component của app.</li>
-		<li><code>&lt;activity android:name=".MainActivity"&gt;</code> khai báo Activity tên <code>MainActivity</code>.</li>
+	<ol class="chain">
 		<li>
-			Cặp <code>MAIN</code> và <code>LAUNCHER</code> trong <code>&lt;intent-filter&gt;</code> cho Android biết đây là
-			Activity khởi động khi người dùng bấm biểu tượng app.
+			Vì app bị cô lập, hệ thống <strong>phải biết trước</strong> app có những thành phần nào và muốn làm gì. Đó là lý do tồn
+			tại của file <strong>Manifest</strong> (mục 5) — bản khai báo mà app đưa cho hệ thống đọc.
+		</li>
+		<li>
+			Vì app không tự cầm tay gọi app khác được, mọi giao tiếp phải <strong>đi qua hệ thống</strong>. Đó là lý do tồn tại của
+			<strong>Intent</strong> (mục 4b) — bạn gửi yêu cầu cho hệ thống, hệ thống mới mở component giúp bạn.
 		</li>
 	</ol>
 	<p>
-		Manifest còn là nơi khai báo quyền người dùng và tính năng phần cứng mà app cần. Vì vậy bạn có thể hình dung
-		nó giống một “nhãn thông tin” giúp hệ thống biết app gồm những gì trước khi chạy.
-	</p>
-	<p class="src">
-		Nguồn giải thích: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 78–86)
+		Nói cách khác: nếu bạn hiểu sandbox, bạn sẽ không thấy Manifest và Intent là hai thứ rườm rà vô nghĩa. Chúng là hệ quả
+		trực tiếp của việc mọi app đều bị khoá trong hộp riêng.
 	</p>
 
-	<h2 id="resources">4. Resources — phần không phải code</h2>
+	<h3>Câu này biến thành code ở đâu trong sách</h3>
 	<p>
-		Một app không chỉ có code. Ảnh, âm thanh, animation, màu và chuỗi văn bản đều là
-		<strong>resource (tài nguyên)</strong>. Android có thể chọn resource phù hợp theo ngôn ngữ, kích thước màn hình
-		hoặc độ phân giải của thiết bị. Nhờ đó cùng một app có thể thích nghi với nhiều thiết bị mà không cần nhét mọi
-		trường hợp vào code.
+		Sách nói ở dòng 86 rằng manifest cũng dùng để khai báo quyền. Nhưng trong <strong>toàn bộ 11 chapter</strong> project của
+		sách, chỉ có <strong>đúng một</strong> chỗ thực sự xin quyền hệ thống — và nó ở chapter 8:
 	</p>
-	<p class="src">
-		Nguồn nội dung: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 88–94)
+	<Code code={permissionCode} lang="xml" theme="github-dark" />
+	<p class="src">Nguồn: <code>{CH08}/AndroidManifest.xml</code> (dòng 1–16; dòng <strong>5</strong> là dòng xin quyền)</p>
+	<p>
+		Dòng <code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code> chính là app nói với hệ thống:
+		<em>"tôi cần một cánh cửa ra internet"</em>. Chapter 8 là chapter gọi mạng để lấy dữ liệu công thức nấu ăn, nên nó là
+		chapter đầu tiên cần bước ra khỏi sandbox thật sự.
+	</p>
+	<p class="hint">
+		<strong>Điểm đáng chú ý:</strong> để ý là app <em>khai báo</em> quyền internet trong manifest, chứ không hiện hộp thoại
+		hỏi bạn. Android chia quyền thành nhiều mức; internet thuộc loại chỉ cần khai báo là được cấp, còn máy ảnh hay vị trí thì
+		phải hỏi người dùng lúc chạy. Chapter 1 chưa phân biệt hai loại này — nhưng biết trước thì bạn không bị bối rối khi thấy
+		"khai quyền" mà không thấy hộp thoại nào.
 	</p>
 
-	<h2 id="gradle">5. Gradle ghép mọi thứ thành app</h2>
+	<h2 id="bon-component">4. Bốn app component — và sự thật là project của sách chỉ dùng một loại</h2>
 	<p>
-		Khi code đã sẵn sàng, resource đã được chuẩn bị và component đã được khai báo, project cần một
-		<strong>build system (hệ thống tạo bản chạy)</strong>. Sách dùng Gradle cùng Android Gradle Plugin để biên dịch
-		code, xử lý resource và tạo phiên bản app có thể cài đặt hoặc phát hành.
+		Sách mở mục này bằng một câu định nghĩa gọn: <strong>để xây app Android, lập trình viên dùng "component" (thành phần)</strong>,
+		và có <strong>bốn</strong> loại. Bốn loại này không phải bốn cách làm cùng một việc — mỗi loại giải quyết một kiểu nhu cầu
+		khác nhau.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 33)</p>
+
+	<h3>4.1 — Activity: loại bạn sẽ dùng nhiều nhất</h3>
+	<p>
+		Sách xếp Activity lên đầu và nói thẳng: <em>đây có lẽ là loại bạn dùng nhiều nhất</em>. Nhưng phần đáng giá nhất của đoạn
+		này là chỗ sách kể <strong>sự thay đổi lịch sử</strong> của Activity — chi tiết mà nhiều tài liệu bỏ qua:
+	</p>
+	<ol class="chain">
+		<li>
+			<strong>Thời đầu của Android:</strong> bạn có thể coi <strong>một Activity = một màn hình</strong> của app, để người
+			dùng tương tác với nó. Đơn giản, dễ hình dung.
+		</li>
+		<li>
+			<strong>Ngày nay:</strong> bạn có thể <strong>chứa nhiều màn hình trong cùng một Activity</strong>.
+		</li>
+		<li>
+			<strong>Và sách nhấn thêm một bậc nữa:</strong> đó <em>chính là</em> kiến trúc <strong>được ưu tiên hiện nay</strong> —
+			không chỉ là "làm được", mà là "nên làm".
+		</li>
+		<li>
+			<strong>Lý do:</strong> việc <strong>tạo ra và duy trì một Activity có thể tốn nhiều tài nguyên</strong>
+			(resource-heavy). Ít Activity thì nhẹ hơn.
+		</li>
+	</ol>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 35)</p>
+	<div class="callout">
+		<strong>Vì sao chi tiết lịch sử này quan trọng đến vậy</strong>
+		<p>
+			Nó giải thích một điều bạn sẽ thấy suốt cả sách và có thể thấy lạ: <strong>cả 11 project của sách chỉ có đúng một
+			Activity</strong>, tên <code>MainActivity</code>. App chat ở chapter 5–7 có nhiều màn hình (danh sách hội thoại, khung
+			chat…) nhưng vẫn chỉ một Activity duy nhất.
+		</p>
+		<p>
+			Nếu bạn từng đọc tài liệu Android cũ (hoặc code Android từ khoảng 2015), bạn sẽ gặp kiểu "mỗi màn hình một Activity, khai
+			báo cả chục Activity trong manifest". Cách đó <em>không sai về mặt chạy được</em>, nhưng đã lỗi mốt. Câu ở dòng 35 chính
+			là lời giải thích chính thức từ sách cho việc kiến trúc đã đổi.
+		</p>
+		<p>
+			Còn "nhiều màn hình trong một Activity" thì được thực hiện thế nào? Bằng <strong>navigation</strong> — chuyển màn hình
+			bên trong Compose, nội dung của <strong>chapter 7</strong>.
+		</p>
+	</div>
+	<p>Đây là Activity duy nhất của app Kodeco Chat, dạng đơn giản nhất mà bạn sẽ gặp:</p>
+	<Code code={mainActivityCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{SRC}/MainActivity.kt</code> (dòng 15–30)</p>
+	<p>Chưa cần hiểu từng dòng — chapter 2 và 5 sẽ mổ kỹ. Bây giờ chỉ cần thấy ba điều:</p>
+	<ul>
+		<li>
+			<code>class MainActivity : ComponentActivity()</code> — đây là <em>một</em> Activity, được khai bằng cách kế thừa
+			(dấu <code>:</code>) từ một class Activity của Android.
+		</li>
+		<li>
+			<code>onCreate</code> là hàm <strong>hệ thống Android gọi</strong> khi component này được tạo ra — bạn không tự gọi nó.
+			Đây là biểu hiện cụ thể của câu "component là entry point" ở mục 4c.
+		</li>
+		<li>
+			<code>setContent &#123; ... &#125;</code> là chỗ giao diện bắt đầu. Mọi thứ trong cặp ngoặc đó là Jetpack Compose — thứ
+			sách nhắc ở dòng 112 và dạy ở chapter 5.
+		</li>
+	</ul>
+
+	<h3>4.2 — Service: giữ app làm việc khi bạn không nhìn</h3>
+	<p>
+		Sách định nghĩa: <strong>Service giúp app tiếp tục làm việc ở chế độ nền (background)</strong>. Và nó dùng đúng ví dụ mà
+		ai cũng từng gặp: <em>bạn có app nào vẫn phát nhạc sau khi bạn chuyển nó vào nền không? Thì rất có thể đang có một Service
+		chạy.</em>
 	</p>
 	<p>
-		Bạn chưa cần nhớ cú pháp Gradle ở chapter này. Chỉ cần hình dung luồng tổng quát:
-		<strong>code + resources + Manifest → Gradle build → file app</strong>. Chapter 4 sẽ đi sâu hơn vào phần build.
+		Kèm theo là một hệ quả logic mà sách nói rõ: <strong>vì mục đích của Service là làm việc, nó không cung cấp bất kỳ tương
+		tác nào với người dùng</strong>. Service không có giao diện.
 	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 36)</p>
+	<p class="hint">
+		<strong>Mô hình để nhớ:</strong> Activity là <em>mặt tiền</em> — chỗ khách vào, có bàn ghế, có người phục vụ. Service là
+		<em>nhà bếp phía sau</em> — vẫn nấu, vẫn hoạt động, nhưng khách không bước vào và không thấy gì. Cùng một app có thể có cả
+		hai: bạn tắt màn hình app nhạc (đóng mặt tiền) nhưng nhạc vẫn chạy (bếp vẫn làm).
+	</p>
+
+	<h3>4.3 — Content Provider: quản lý dữ liệu và chia sẻ được cho app khác</h3>
+	<p>Sách gộp hai vai trò vào định nghĩa của Content Provider, và thứ tự của chúng có ý nghĩa:</p>
+	<ol class="chain">
+		<li><strong>Quản lý và lưu bền (persist) dữ liệu</strong> — đây là vai trò cơ bản.</li>
+		<li>
+			<strong>Lợi thế riêng:</strong> cho phép app <strong>chia sẻ dữ liệu đó với app khác</strong>. Và sách nói rõ mức độ:
+			<em>nếu content provider cho phép, các app khác thậm chí có thể sửa dữ liệu</em>.
+		</li>
+	</ol>
+	<p>
+		Rồi sách đưa một <strong>caveat</strong> (lời cảnh báo) rất thẳng, và đây là chỗ nhiều người mới làm sai:
+		<strong>nói chung bạn chỉ tạo content provider khi bạn <em>muốn chia sẻ</em> dữ liệu</strong>. Nếu mục đích của bạn chỉ là
+		<em>lưu</em> dữ liệu, thì có những cách khác phù hợp hơn với nhu cầu — và sách hẹn sẽ dạy các cách đó.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 37)</p>
+	<div class="callout journey">
+		<strong>Lời hẹn đó được trả ở đâu</strong>
+		<p>Đã đối chiếu với các chapter sau — "những cách khác" mà sách nói tới là:</p>
+		<ul>
+			<li><strong>Chương 9</strong> — <code>DataStore</code>: lưu các thiết lập nhỏ, dạng khoá–giá trị.</li>
+			<li><strong>Chương 10</strong> — <code>Room</code>: cơ sở dữ liệu trên máy, cho dữ liệu có cấu trúc và nhiều bản ghi.</li>
+			<li><strong>Chương 11</strong> — Advanced Storage: lưu dữ liệu có bảo mật.</li>
+		</ul>
+		<p>
+			Nghĩa là caveat ở dòng 37 không phải một câu nói cho có: nó là <em>bản đồ đường</em> tới 3 chương cuối. Và nó cũng giải
+			thích vì sao bạn sẽ <strong>không</strong> gặp Content Provider ở đâu trong sách này — xem bảng bên dưới.
+		</p>
+	</div>
+
+	<h3>4.4 — Broadcast Receiver: nghe thông báo từ hệ thống</h3>
+	<p>
+		Sách nói đúng như tên gọi: <strong>Broadcast Receiver cho app nhận những sự kiện cụ thể mà hệ thống phát đi</strong>
+		(broadcast = phát rộng). Và người gửi những sự kiện đó có thể là <strong>chính app của bạn hoặc app khác</strong>.
+	</p>
+	<p>
+		Điểm tinh tế mà sách bổ sung: vì bản chất là <em>bộ xử lý sự kiện</em> (event handler), loại component này
+		<strong>thường chỉ chuyển việc</strong> — nó nhận sự kiện rồi giao (delegate) phần việc thực sự cho một loại component khác
+		làm.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 38)</p>
+	<p class="hint">
+		<strong>Mô hình để nhớ:</strong> Broadcast Receiver giống <em>người nhận điện thoại ở quầy lễ tân</em>. Nhiệm vụ của họ
+		không phải tự giải quyết vấn đề, mà là nghe được tin ("máy sắp hết pin", "vừa có mạng lại", "máy vừa khởi động xong") rồi
+		chuyển tin đó cho bộ phận có trách nhiệm. Đó chính là ý "usually just delegate" của sách.
+	</p>
+
+	<h3>4.5 — Đối chiếu với thực tế: sách dạy 4, project dùng 1</h3>
+	<p>
+		Đây là chỗ bài học đi xa hơn sách được, vì đã mở được toàn bộ project đi kèm. Kết quả tìm kiếm trên
+		<strong>tất cả file <code>AndroidManifest.xml</code> của cả 11 chapter</strong>:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Component</th><th>Khai báo trong manifest</th><th>Xuất hiện trong 11 project của sách?</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Activity</strong></td>
+				<td><code>&lt;activity&gt;</code></td>
+				<td><strong>Có — ở mọi project</strong>, luôn đúng một cái tên <code>MainActivity</code>.</td>
+			</tr>
+			<tr>
+				<td><strong>Service</strong></td>
+				<td><code>&lt;service&gt;</code></td>
+				<td><strong>Không có ở đâu cả</strong> (0 kết quả).</td>
+			</tr>
+			<tr>
+				<td><strong>Content Provider</strong></td>
+				<td><code>&lt;provider&gt;</code></td>
+				<td><strong>Không có ở đâu cả</strong> (0 kết quả) — bị thay hoàn toàn bởi DataStore và Room ở Chương 9–11.</td>
+			</tr>
+			<tr>
+				<td><strong>Broadcast Receiver</strong></td>
+				<td><code>&lt;receiver&gt;</code></td>
+				<td><strong>Không có ở đâu cả</strong> (0 kết quả).</td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="callout diff">
+		<strong>Sách trình bày 4 component ngang nhau, nhưng bạn sẽ chỉ thực hành 1</strong>
+		<p>
+			Ở dòng 33–38 và lại một lần nữa trong Key Points (dòng 125), sách liệt kê bốn component như bốn thứ ngang hàng. Điều đó
+			đúng về mặt <em>kiến thức nền tảng Android</em>. Nhưng về mặt <em>bạn sẽ gõ code cái nào</em>, thực tế lệch hẳn: cả sách
+			chỉ dùng Activity.
+		</p>
+		<p><strong>Vì vậy hãy đặt kỳ vọng đúng ngay từ đầu:</strong></p>
+		<ul>
+			<li>
+				<strong>Activity</strong> — học để <em>dùng</em>. Bạn sẽ gặp nó ở mọi chapter, và chapter 3 dạy vòng đời (lifecycle)
+				của nó.
+			</li>
+			<li>
+				<strong>Service, Content Provider, Broadcast Receiver</strong> — học để <em>nhận diện</em>. Đủ để bạn hiểu khi đọc
+				code người khác hoặc đọc tài liệu, chứ sách này không có bài thực hành nào cho chúng.
+			</li>
+		</ul>
+		<p>
+			Điều thú vị: riêng với Content Provider, việc nó không xuất hiện lại <strong>khớp đúng với caveat của chính tác giả</strong>
+			ở dòng 37 — app trong sách chỉ cần <em>lưu</em> dữ liệu, không cần <em>chia sẻ</em>, nên đúng ra là phải dùng
+			DataStore/Room. Đây không phải sách bỏ sót, mà là sách nhất quán với lời khuyên nó vừa đưa.
+		</p>
+	</div>
+
+	<h2 id="entry-point-intent">5. Entry point, Intent và Content Resolver: các component gọi nhau thế nào</h2>
+	<p>
+		Sau khi liệt kê bốn component, sách đưa ra một câu tổng kết dễ đọc trôi qua nhưng thực ra là câu quan trọng nhất của cả
+		chapter: <strong>tất cả component đều là <em>entry point</em> (điểm vào) của app</strong>.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 40)</p>
+	<p>
+		Sách giải thích ngay ý nghĩa của nó: điều đó nghĩa là hệ thống Android <strong>có khả năng khởi chạy app của bạn</strong>,
+		hoặc chí ít là <strong>tạo một process cho nó</strong>, để thi hành bất cứ component nào nó đang muốn chạy. Và sách nói rõ
+		chuyện này xảy ra trong <strong>hai tình huống</strong>:
+	</p>
+	<ol class="chain">
+		<li>
+			<strong>Khi người dùng cố mở app của bạn.</strong> Ở đây hệ thống khởi chạy <strong>Activity mà bạn đã đặt làm Activity
+			bắt đầu</strong>.
+		</li>
+		<li>
+			<strong>Khi một app khác cần một việc hoặc một hành động mà app bạn làm được.</strong> Trong trường hợp này, hệ thống
+			khởi chạy <strong>đúng component cần thiết</strong>.
+		</li>
+	</ol>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 42–43)</p>
+	<div class="callout note">
+		<strong>Vì sao "app không có một điểm khởi đầu duy nhất" là ý lạ nhất với người mới</strong>
+		<p>
+			Nếu bạn từng học lập trình bằng Python, C hay Java thuần, bạn đã quen với một mô hình: chương trình có <strong>một</strong>
+			hàm <code>main()</code>, chạy từ trên xuống dưới, hết thì thoát. Bạn kiểm soát toàn bộ dòng chảy.
+		</p>
+		<p>Android <strong>không</strong> như vậy. Câu "mọi component đều là entry point" nghĩa là:</p>
+		<ul>
+			<li>App bạn có thể bắt đầu chạy ở <em>nhiều chỗ khác nhau</em>, tuỳ hệ thống cần gì.</li>
+			<li>
+				Bạn <strong>không</strong> gọi hàm khởi đầu — <strong>hệ thống gọi bạn</strong>. Bạn chỉ <em>viết sẵn</em> các
+				component và <em>khai báo</em> chúng, rồi chờ được gọi.
+			</li>
+			<li>
+				App bạn có thể đang chạy trong khi <em>không có màn hình nào</em> hiện lên cả (ví dụ hệ thống chỉ gọi một Broadcast
+				Receiver của bạn).
+			</li>
+		</ul>
+		<p>
+			Đây gọi là <strong>inversion of control</strong> (đảo ngược quyền điều khiển) — bạn viết code để <em>được gọi</em>, không
+			phải để <em>gọi</em>. Chi tiết cụ thể nhất của ý này là hàm <code>onCreate()</code> ở mục 4.1: bạn viết nó nhưng không bao
+			giờ tự gọi nó. Chapter 3 sẽ đi hết một vòng đời (lifecycle) đầy đủ của chuyện này.
+		</p>
+	</div>
+
+	<h3>5.1 — Hai cơ chế liên lạc, chia theo loại component</h3>
+	<p>
+		Để khởi chạy một component hoặc để các component nói chuyện với nhau, sách nói bạn dùng một trong hai thứ — và việc dùng
+		cái nào <strong>không phải do bạn chọn</strong>, mà do loại component quyết định:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Cơ chế</th><th>Dùng cho</th><th>Sách nói gì</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Intent</strong></td>
+				<td>Activity, Service, Broadcast Receiver</td>
+				<td>"Giống một <em>tin nhắn</em> app gửi cho hệ thống", chứa mọi thông tin hệ thống cần để biết phải mở component nào.</td>
+			</tr>
+			<tr>
+				<td><strong>Content Resolver</strong></td>
+				<td>Content Provider</td>
+				<td>Sách nói nó <em>hạn chế hơn nhiều</em>: "chỉ" làm <strong>người trung gian</strong> giữa một Content Provider và
+					component muốn nói chuyện với nó.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 45–49)</p>
+	<p>
+		Chú ý cách sách mô tả Intent: nó <strong>không</strong> nói "Intent mở Activity". Nó nói Intent là tin nhắn <em>gửi cho hệ
+		thống</em>, và hệ thống mới là bên đi mở component. Sự phân biệt này chính là hệ quả trực tiếp của security sandbox ở mục 3
+		— app không tự tay chạm vào app khác, mọi thứ đi qua hệ thống.
+	</p>
+	<p>Sách nêu hai công dụng của Intent, xếp từ gần tới xa:</p>
+	<ul>
+		<li>
+			<strong>Trong nội bộ app:</strong> khi một app Android có nhiều Activity, nó dùng Intent để một Activity khởi chạy
+			Activity tiếp theo.
+		</li>
+		<li>
+			<strong>Sang app khác:</strong> đây là chỗ sách gọi là "điều hay" (the cool thing) — Intent còn khởi chạy được component
+			<em>của app khác</em>. Ví dụ sách đưa: khi bạn bấm nút <strong>"share"</strong> trong một app và một bottom sheet gợi ý
+			các app hiện lên.
+		</li>
+	</ul>
+	<p class="hint">
+		<strong>Mô hình để nhớ:</strong> Intent giống <em>tờ phiếu yêu cầu bạn đưa cho lễ tân</em>, không phải chìa khoá bạn tự tra
+		vào ổ. Bạn ghi lên phiếu "tôi cần chia sẻ tấm ảnh này", đưa cho hệ thống; hệ thống xem ai nhận được loại việc đó rồi gọi
+		giúp. Bạn không biết — và không cần biết — app nào sẽ nhận. Đó là lý do bottom sheet chia sẻ hiện ra <em>một danh sách</em>
+		chứ không phải một app cố định.
+	</p>
+	<div class="callout diff">
+		<strong>Hai chữ "Intent" hoàn toàn khác nhau — nhớ trước để đỡ nhầm về sau</strong>
+		<p>
+			Chữ <em>Intent</em> sẽ xuất hiện lại ở <strong>chapter 6</strong> trong kiến trúc <strong>MVI</strong>
+			(Model-View-Intent). Hai thứ này <strong>không liên quan gì đến nhau</strong>, chỉ trùng tên:
+		</p>
+		<ul>
+			<li>
+				<code>android.content.Intent</code> — của chapter 1 này: một <em>đối tượng</em> của Android để mở component.
+			</li>
+			<li>
+				<strong>"Intent" trong MVI</strong> — của chapter 6: nghĩa tiếng Anh thông thường, "<em>ý định của người dùng</em>",
+				kiểu "người dùng muốn gửi tin nhắn này". Trong code nó chỉ là một lời gọi hàm bình thường.
+			</li>
+		</ul>
+		<p>Đây là một trong những chỗ gây nhầm nhiều nhất khi tự học. Ghi lại từ bây giờ thì tới chapter 6 bạn sẽ không bị lẫn.</p>
+	</div>
+	<h2 id="manifest">6. App Manifest: bản khai báo mà hệ thống đọc trước khi chạy app</h2>
+	<p>
+		Sách mở mục này bằng một câu nhân–quả rất gọn: <strong>hệ thống Android cần biết về mọi component mà app có. Nếu không, nó
+		sẽ không biết phải khởi chạy component nào.</strong> Và việc "cho hệ thống biết" đó được làm qua <strong>file
+		Manifest</strong>.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 53)</p>
+	<p>
+		Để ý logic ở đây nối trực tiếp với mục 5: vì component là entry point và <em>hệ thống</em> là bên đi gọi chúng, thì hệ thống
+		phải biết trước có những gì để gọi. Manifest chính là danh sách đó. Trong manifest, bạn khai <strong>mọi component app
+		có</strong>, kèm <strong>tất cả khả năng (capability) của chúng</strong>.
+	</p>
+
+	<h3>6.1 — Đoạn manifest sách in ra</h3>
+	<p>Sách đưa ví dụ: đây là cách bạn khai báo Activity mà hệ thống sẽ khởi chạy khi mở app.</p>
+	<Code code={bookManifestCode} lang="xml" theme="github-dark" />
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 55–76) — nguyên văn đoạn code sách in</p>
+	<p>Rồi sách chỉ ba chỗ đã đánh số trong đoạn trên:</p>
+	<ol class="chain">
+		<li>
+			Phần tử <code>&lt;application&gt;</code> — <strong>phần tử cha</strong> (parent) cho tất cả các phần tử component.
+		</li>
+		<li>
+			Phần tử <code>&lt;activity&gt;</code> — nó <em>thực sự khai báo sự tồn tại</em> của một Activity tên
+			<code>MainActivity</code>.
+		</li>
+		<li>
+			Phần tử <code>&lt;intent-filter&gt;</code> — nó nói với hệ thống rằng <strong>đây là Activity phải khởi chạy đầu
+			tiên</strong> nếu người dùng cố mở app <em>và</em> chưa có process nào của app đang chạy.
+		</li>
+	</ol>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 78–82)</p>
+	<p class="hint">
+		<strong>Đọc XML lần đầu:</strong> dấu <code>&lt;tên ... &gt;</code> mở một phần tử, <code>&lt;/tên&gt;</code> đóng nó, và
+		phần tử lồng trong phần tử tạo thành cây. Những chữ dạng <code>android:name</code> là <em>thuộc tính</em> (attribute) — giá
+		trị gán cho phần tử đó. Dấu <code>...</code> trong đoạn sách in là <strong>chỗ sách lược bớt cho gọn</strong>, không phải cú
+		pháp XML; file thật không có dấu đó.
+	</p>
+
+	<h3>6.2 — Đối chiếu: manifest thật của project trông thế nào</h3>
+	<p>
+		Đây là chỗ mở được code thật có giá trị. Dưới đây là <strong>toàn bộ</strong> file manifest của app Kodeco Chat (chapter 2)
+		— đủ 28 dòng, không lược:
+	</p>
+	<Code code={realManifestCode} lang="xml" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/app/src/main/AndroidManifest.xml</code> (dòng 1–28, toàn bộ file)</p>
+	<p>So hai đoạn, bạn thấy ngay <strong>bộ xương giống hệt nhau</strong>:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Thành phần</th><th>Trong sách</th><th>Trong file thật</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>&lt;manifest&gt;</code> gốc</td>
+				<td><code>&lt;manifest ... &gt;</code></td>
+				<td>Dòng 2–3, có thêm 2 khai báo <em>namespace</em>: <code>xmlns:android</code> và <code>xmlns:tools</code></td>
+			</tr>
+			<tr>
+				<td><code>&lt;application&gt;</code></td>
+				<td><code>&lt;application ... &gt;</code></td>
+				<td>Dòng 5–14, có 8 thuộc tính thật thay cho dấu <code>...</code></td>
+			</tr>
+			<tr>
+				<td><code>&lt;activity&gt;</code></td>
+				<td><code>android:name=".MainActivity"</code></td>
+				<td>Dòng 15–19 — <strong>đúng tên <code>.MainActivity</code></strong>, cùng <code>exported</code> và <code>label</code></td>
+			</tr>
+			<tr>
+				<td><code>&lt;intent-filter&gt;</code></td>
+				<td><code>action.MAIN</code> + <code>category.LAUNCHER</code></td>
+				<td>Dòng 20–24 — <strong>y hệt</strong></td>
+			</tr>
+			<tr>
+				<td>Số component khai báo</td>
+				<td>1 Activity (còn lại là <code>...</code>)</td>
+				<td><strong>Đúng 1</strong> — không có <code>...</code> nào bị ẩn, đây là tất cả</td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="callout diff">
+		<strong>Một chỗ sách và code khác nhau: <code>android:theme</code></strong>
+		<p>
+			Đoạn sách in dùng <code>android:theme="@style/SplashTheme"</code>, còn manifest thật của chapter 2 dùng
+			<code>android:theme="@style/Theme.KodecoChat"</code>.
+		</p>
+		<p>
+			Đã tra khắp cả 11 chapter: <code>SplashTheme</code> <strong>có thật</strong>, nhưng nằm ở
+			<code>res/values/styles.xml</code> của <strong>chapter 5, 6 và 7</strong> (theme cho splash screen — màn hình chờ lúc mở
+			app), <em>không</em> ở chapter 2. Và ngay cả ở những chapter đó, manifest cũng vẫn dùng
+			<code>Theme.KodecoChat</code> cho <code>&lt;activity&gt;</code>.
+		</p>
+		<p>
+			Vì sao khác: đoạn trong sách là <strong>ví dụ minh hoạ cú pháp</strong>, không phải trích từ project nào. Tác giả lấy một
+			tên theme nghe hợp cảnh để cho thấy "chỗ này khai theme". Không phải lỗi của sách, cũng không phải bạn làm sai — nhưng
+			nếu bạn copy nguyên đoạn của sách vào project chapter 2 thì build sẽ báo lỗi <em>không tìm thấy resource
+			<code>SplashTheme</code></em>. Cứ dùng đúng cái manifest thật.
+		</p>
+	</div>
+
+	<h3>6.3 — Hai điều nữa sách nói về manifest</h3>
+	<p>
+		<strong>Thứ nhất — quên khai báo thì sao?</strong> Sách nói mỗi lần thêm component mới, bạn phải khai nó ở đây. Rồi thêm một
+		câu trấn an rất thật: nếu bạn quên thì <em>đừng lo</em> — <strong>một cú crash ngay lập tức</strong> khi bạn cố khởi chạy
+		component đó trong app sẽ cho bạn biết là có gì sai.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 84)</p>
+	<p class="notice">
+		<strong>Đọc lại câu đó cho kỹ:</strong> lỗi này <strong>không</strong> bị phát hiện lúc build. Code vẫn biên dịch thành công,
+		app vẫn cài được — nó chỉ nổ <em>lúc chạy</em>, đúng thời điểm bạn cố mở component chưa khai báo. Đó là lý do vì sao câu này
+		đáng nhớ: nếu app bạn crash khi mở một màn hình mới, việc đầu tiên nên kiểm là manifest.
+	</p>
+	<p>
+		<strong>Thứ hai — manifest còn dùng cho gì nữa.</strong> Sách nói bạn dùng nó để khai báo cả <strong>quyền (permission) mà
+		app cần</strong> và <strong>tính năng phần cứng (hardware feature) mà app đòi hỏi</strong>. Rồi sách kết mục bằng một hình ảnh
+		so sánh rất dễ nhớ:
+	</p>
+	<div class="callout">
+		<strong>Ví von của sách:</strong> nếu app của bạn là một <em>gói bánh</em>, thì manifest là <strong>nhãn "thành phần" in ở
+		mặt sau</strong>. Chính qua manifest mà hệ thống Android biết phải mong đợi những gì từ app của bạn.
+		<p class="src" style="margin-bottom: 0;">Nguồn: <code>{BOOK}</code> (dòng 86)</p>
+	</div>
+	<p>
+		Ví von đó chính xác hơn vẻ ngoài của nó: nhãn thành phần được đọc <strong>trước khi</strong> bạn mở gói bánh. Manifest cũng
+		vậy — hệ thống đọc nó <em>lúc cài app</em>, trước khi một dòng code nào của bạn được chạy. Đó là lý do bạn không thể "khai
+		báo quyền lúc đang chạy": danh sách đã chốt từ lúc cài.
+	</p>
+	<p>Còn đây là khai báo quyền thật — ví dụ duy nhất trong cả 11 project của sách:</p>
+	<pre class="tree">&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</pre>
+	<p class="src">Nguồn: <code>{CH08}/AndroidManifest.xml</code> (dòng 5) — đã xem đủ ngữ cảnh ở mục 3</p>
+	<p>
+		Đúng như đã nói ở mục 3: app cần lên mạng để tải dữ liệu công thức nấu ăn, mà sandbox không cho ra ngoài, nên phải
+		<em>xin</em> — bằng đúng một dòng đặt <strong>ngang cấp với <code>&lt;application&gt;</code></strong> (dòng 5 so với dòng 6),
+		không phải bên trong nó. Đó là điểm cú pháp dễ sai nhất khi bạn tự thêm quyền lần đầu: đặt lọt vào trong
+		<code>&lt;application&gt;</code> thì quyền không có tác dụng.
+	</p>
+	<h2 id="resources">7. App Resources: mọi thứ không phải code</h2>
+	<p>
+		Sách mở mục này bằng một câu định nghĩa theo lối liệt kê: ngoài code thông thường, app còn cần những loại tài nguyên khác —
+		<strong>ảnh, âm thanh, animation, màu sắc…</strong> tất cả đều thuộc chiếc dù mang tên <strong>app resources</strong>.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 90)</p>
+	<p>Rồi sách đưa ba điều cụ thể về chúng, và mỗi điều đều kiểm được trong code thật:</p>
+	<ol class="chain">
+		<li>
+			<strong>Thứ gì không có định dạng riêng thì bạn định nghĩa bằng XML</strong>, y như file manifest. Ảnh và âm thanh <em>có</em>
+			định dạng riêng (<code>.webp</code>, <code>.mp3</code>…) nên chúng chỉ là file bỏ vào; còn màu, chuỗi chữ, theme thì không
+			có định dạng nào nên phải viết bằng XML.
+		</li>
+		<li>
+			Bạn <strong>truy cập được resource qua code</strong> (programmatically) — tức trong Kotlin gọi ra được.
+		</li>
+		<li>
+			<strong>Resource truy cập được resource khác.</strong> Câu ngắn nhất và dễ trôi qua nhất, nhưng nó chính là cái làm nên
+			mục 7.2 bên dưới.
+		</li>
+	</ol>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 92)</p>
+
+	<h3>7.1 — Vì sao resource "thực sự quan trọng": thích ứng thiết bị và ngôn ngữ</h3>
+	<p>
+		Sách dùng đúng chữ <em>really important</em> cho mục này, và lý do nó đưa ra là: resource cho phép app Android
+		<strong>thích ứng với nhiều thiết bị và nhiều ngôn ngữ</strong>. Hai ví dụ sách nêu:
+	</p>
+	<ul>
+		<li>
+			<strong>Ngôn ngữ:</strong> bạn dùng resource để định nghĩa các chuỗi chữ app hiển thị, và làm điều đó
+			<strong>ở nhiều ngôn ngữ khác nhau</strong>, để app <em>tự động</em> dùng đúng chuỗi tương ứng.
+		</li>
+		<li>
+			<strong>Kích thước màn hình:</strong> qua việc dùng các file resource khác nhau, bạn có thể làm màn hình app
+			<strong>bày bố cục hoàn toàn khác nhau</strong> tuỳ theo thiết bị có bao nhiêu "đất" hiển thị (screen real estate).
+		</li>
+	</ul>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 94)</p>
+	<div class="callout">
+		<strong>Cơ chế đằng sau: hậu tố trên tên thư mục</strong>
+		<p>
+			Sách nói kết quả ("app tự động dùng đúng cái") mà chưa nói <em>cách</em> Android biết phải chọn cái nào. Cơ chế rất đơn
+			giản: bạn thêm <strong>hậu tố (qualifier) vào tên thư mục</strong>, và hệ thống tự khớp lúc chạy.
+		</p>
+		<pre class="tree">res/values/strings.xml       ← mặc định (thường là tiếng Anh)
+res/values-vi/strings.xml    ← tiếng Việt
+res/values-ja/strings.xml    ← tiếng Nhật
+res/mipmap-hdpi/             ← icon cho màn hình mật độ trung
+res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
+		<p>
+			Trong code bạn vẫn viết <strong>một</strong> tên duy nhất — <code>@string/app_name</code>. Máy đặt tiếng Việt thì hệ thống
+			lấy từ <code>values-vi/</code>; không có bản tiếng Việt thì tự rơi về <code>values/</code>. Bạn không viết một dòng
+			<code>if</code> nào cho chuyện này.
+		</p>
+		<p>
+			Đây là kiến thức bổ sung ngoài sách (chapter 1 chưa đi vào cú pháp), nhưng nó là mảnh còn thiếu để câu "app tự động dùng
+			đúng cái" trở nên có nghĩa thay vì nghe như phép thuật.
+		</p>
+	</div>
+	<p>Đây là toàn bộ thư mục <code>res/</code> thật của project Kodeco Chat — 19 file, không nhiều như bạn tưởng:</p>
+	<pre class="tree">app/src/main/res/
+├── drawable/
+│   ├── ic_launcher_background.xml      ← hình nền của icon (XML, vẽ bằng vector)
+│   └── ic_launcher_foreground.xml      ← hình tiền cảnh của icon
+├── mipmap-anydpi/
+│   ├── ic_launcher.xml                 ← icon "thích ứng", ghép 2 file trên
+│   └── ic_launcher_round.xml
+├── mipmap-hdpi/ … mipmap-xxxhdpi/      ← 5 mức mật độ × 2 file .webp = 10 file ảnh
+├── values/
+│   ├── colors.xml                      ← 7 màu, khai bằng XML
+│   ├── strings.xml                     ← chuỗi chữ
+│   └── themes.xml                      ← theme kiểu XML (hệ cũ)
+└── xml/
+    ├── backup_rules.xml
+    └── data_extraction_rules.xml        ← quy tắc sao lưu dữ liệu</pre>
+	<p class="src">Nguồn: <code>{RES}/</code> — đã liệt kê từng file</p>
+	<p>Ba loại XML tiêu biểu, mỗi loại một câu:</p>
+	<Code code={stringsCode} lang="xml" theme="github-dark" />
+	<p class="src">Nguồn: <code>{RES}/values/strings.xml</code> (toàn bộ file)</p>
+	<p>
+		Đây chính là <code>@string/app_name</code> mà manifest ở mục 6.2 trỏ tới (dòng 10 và 18 của manifest). Muốn app có tên tiếng
+		Việt, bạn không sửa manifest — bạn thêm <code>values-vi/strings.xml</code>.
+	</p>
+	<Code code={themesXmlCode} lang="xml" theme="github-dark" />
+	<p class="src">Nguồn: <code>{RES}/values/themes.xml</code> (toàn bộ file)</p>
+	<p>
+		Và đây là <code>@style/Theme.KodecoChat</code> mà manifest trỏ tới. Để ý nó <strong>rỗng</strong> — chỉ khai một style kế thừa
+		<code>android:Theme.Material.Light.NoActionBar</code>, không tuỳ biến gì. Lý do: app này dùng Jetpack Compose, nên giao diện
+		thật được tạo màu ở Kotlin chứ không ở XML. Theme XML này chỉ còn giữ đúng một việc: <code>NoActionBar</code> — bỏ thanh
+		tiêu đề mặc định của hệ thống để Compose tự vẽ toàn bộ màn hình.
+	</p>
+	<h3>7.2 — Lần theo một chuỗi tham chiếu 3 tầng trong code thật</h3>
+	<p>
+		Câu "resource truy cập được resource khác" ở dòng 92 nghe rất mờ. Nhưng nó có một ví dụ hoàn hảo ngay trong project, và lần
+		theo nó là cách tốt nhất để hiểu resource hoạt động ra sao. Bắt đầu từ manifest:
+	</p>
+	<ol class="chain">
+		<li>
+			<strong>Manifest</strong> (dòng 9) viết <code>android:icon="@mipmap/ic_launcher"</code> — "icon của app là resource tên
+			<code>ic_launcher</code> trong nhóm <code>mipmap</code>".
+		</li>
+		<li>
+			<strong>File <code>mipmap-anydpi/ic_launcher.xml</code></strong> — đây là một
+			<strong>adaptive icon</strong> (icon thích ứng). Nó <em>không chứa ảnh</em>; nó chỉ trỏ tới hai resource khác.
+		</li>
+		<li>
+			<strong>Hai file <code>drawable/ic_launcher_background.xml</code> và
+			<code>ic_launcher_foreground.xml</code></strong> — mới là chỗ có hình thật, vẽ bằng vector.
+		</li>
+	</ol>
+	<p>Nội dung của tầng 2 chỉ có 5 dòng, và nó thể hiện đúng ý "resource trỏ tới resource":</p>
+	<Code code={iconCode} lang="xml" theme="github-dark" />
+	<p class="src">Nguồn: <code>{RES}/mipmap-anydpi/ic_launcher.xml</code> (toàn bộ file)</p>
+	<p>
+		Vậy chuỗi đầy đủ là: <strong>manifest → <code>@mipmap/ic_launcher</code> → <code>@drawable/ic_launcher_background</code> +
+		<code>@drawable/ic_launcher_foreground</code> → hình vector</strong>. Ba tầng, mỗi tầng chỉ biết tầng kế tiếp.
+	</p>
+	<p class="hint">
+		<strong>Vì sao chia tầng như vậy?</strong> Để launcher (màn hình chính của điện thoại) tự cắt icon theo hình nó muốn — tròn,
+		vuông tròn góc, hình giọt nước — mà không làm méo phần hình chính. Nó lấy lớp nền, lấy lớp tiền cảnh, rồi <em>tự</em> cắt và
+		xếp lớp. Thẻ <code>&lt;monochrome&gt;</code> ở dòng 5 là lớp một-màu, dùng cho chế độ icon đơn sắc theo màu hệ thống (themed
+		icon) từ Android 13.
+	</p>
+	<p class="notice">
+		<strong>Để ý thư mục <code>mipmap-anydpi</code>:</strong> hậu tố <code>anydpi</code> nghĩa là "dùng cho mọi mật độ màn hình".
+		File XML vẽ vector nên phóng to nhỏ tuỳ ý không mờ — cần đúng một bản. Còn 10 file <code>.webp</code> ở
+		<code>mipmap-hdpi</code> đến <code>mipmap-xxxhdpi</code> là <em>ảnh bitmap</em>, mỗi mật độ một bản riêng, dùng cho máy Android
+		cũ chưa hỗ trợ adaptive icon. Cùng một tên <code>ic_launcher</code>, hệ thống chọn bản phù hợp — đúng cơ chế hậu tố ở mục 7.1.
+	</p>
+
+	<h3>7.3 — Một chỗ code thật cho thấy sách đang ở giai đoạn chuyển giao</h3>
+	<p>
+		Project chapter 2 có <strong>hai</strong> nơi định nghĩa màu, và so hai nơi này giải thích được nhiều thứ về Android hiện tại.
+	</p>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">Cách cũ — XML</div>
+			<p><code>res/values/colors.xml</code></p>
+			<Code code={colorsXmlCode} lang="xml" theme="github-dark" />
+			<p>7 màu, khai bằng XML, đặt tên theo hệ Material 2 (<code>purple_500</code>, <code>teal_200</code>…).</p>
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">Cách mới — Kotlin</div>
+			<p><code>ui/theme/Color.kt</code></p>
+			<Code code={colorKtCode} lang="kotlin" theme="github-dark" />
+			<p>6 màu, khai bằng Kotlin thuần, đặt tên theo hệ Material 3 (<code>Purple80</code>, <code>Purple40</code>…).</p>
+		</div>
+	</div>
 	<p class="src">
-		Nguồn nội dung: <code>content/book/ch01-welcome-to-android-kotlin.md</code> (dòng 96–104)
+		Nguồn: <code>{RES}/values/colors.xml</code> (toàn bộ) và
+		<code>{SRC}/ui/theme/Color.kt</code> (dòng 5–10)
+	</p>
+	<div class="callout diff">
+		<strong>Điều đáng chú ý: một trong hai nơi đó là code chết</strong>
+		<p>
+			Đã tìm khắp <code>app/src</code> của project: <strong>không một chỗ nào</strong> dùng 7 màu trong
+			<code>colors.xml</code> — không <code>R.color.purple_500</code>, không <code>@color/teal_200</code>, không gì cả. Ngược
+			lại, 6 màu trong <code>Color.kt</code> được dùng thật ở <code>Theme.kt</code> (dòng 19–26) để dựng
+			<code>colorScheme</code>.
+		</p>
+		<p>
+			<code>colors.xml</code> tồn tại vì Android Studio <strong>tự sinh</strong> nó khi tạo project mới — nó là di sản từ thời
+			giao diện làm bằng XML. Với một app Compose thuần, file đó có thể xoá mà không ảnh hưởng gì.
+		</p>
+		<p>
+			<strong>Vì sao đáng biết:</strong> nó cho bạn một mô hình đúng về Android hiện tại — <em>hai hệ đang cùng tồn tại</em>. Bạn
+			sẽ liên tục gặp cả hai khi đọc tài liệu và tìm câu trả lời trên mạng: một nửa internet nói về XML layout, một nửa nói về
+			Compose. Sách này (và project của nó) đứng ở phía Compose, nhưng vẫn mang theo vài file XML mà công cụ sinh ra. Thấy file
+			XML lạ trong project mà không ai dùng thì đừng bối rối — hãy kiểm xem nó có được tham chiếu ở đâu không.
+		</p>
+	</div>
+	<p>
+		Còn một ví dụ nữa cùng loại: <code>res/xml/data_extraction_rules.xml</code>, được manifest trỏ tới ở dòng 7. Mở ra thì
+		bên trong là gì?
+	</p>
+	<Code code={dataExtractionCode} lang="xml" theme="github-dark" />
+	<p class="src">Nguồn: <code>{RES}/xml/data_extraction_rules.xml</code> (dòng 6–19, đã lược phần comment đầu file)</p>
+	<p>
+		Toàn bộ nội dung có nghĩa của nó là… <strong>một dòng TODO trong comment</strong>. File này quy định dữ liệu nào của app được
+		sao lưu lên cloud, nhưng ở đây nó rỗng — tức dùng mặc định. Nó cũng do Android Studio sinh sẵn. Ghi nhận điều này để bạn có
+		phản xạ đúng khi mở một project Android lần đầu: <strong>không phải file nào có mặt cũng có tác dụng</strong>.
+	</p>
+	<h3>7.4 — Và một chỗ chính project làm ngược lại điều sách vừa dạy</h3>
+	<p>
+		Sách vừa nói ở dòng 94 rằng bạn nên đưa chuỗi chữ vào resource để app tự đổi ngôn ngữ. Bây giờ mở code hiển thị chữ thật của
+		project:
+	</p>
+	<Code code={greetingCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{SRC}/MainActivity.kt</code> (dòng 32–46)</p>
+	<p>
+		Chuỗi <code>"Hello $name!"</code> được <strong>viết cứng (hardcode) ngay trong code</strong>, không qua resource nào. Nếu làm
+		đúng theo tinh thần mục 7, nó phải là một mục trong <code>strings.xml</code> rồi gọi ra bằng
+		<code>stringResource(R.string.hello)</code>.
+	</p>
+	<p class="hint">
+		<strong>Đây không phải lỗi, mà là một lựa chọn dạy học — nhưng nên biết là mình đang thấy gì.</strong> Đoạn code này do Android
+		Studio sinh ra cho project mới, và cả sách giữ nguyên nó vì mục đích chỉ là "có chữ gì hiện lên màn hình". Trong app thật, mọi
+		chuỗi người dùng đọc được đều nên nằm ở <code>strings.xml</code> — nếu không thì lúc muốn dịch app sang tiếng Việt, bạn phải đi
+		sửa từng dòng code. Còn <code>@string/app_name</code> ở manifest thì <em>đã</em> làm đúng cách. Cùng một project, hai cách làm
+		— thêm một biểu hiện của chuyện "hai hệ cùng tồn tại" ở mục 7.3.
+	</p>
+
+	<h2 id="gradle">8. Putting it All Together: Gradle biến code thành app cài được</h2>
+	<p>
+		Sách đặt tên mục này là "Ghép tất cả lại", và mở bằng một điều kiện: khi bạn đã có <strong>code sẵn sàng, resource đã nạp và
+		component đã khai báo</strong>, thì bạn sẽ muốn <strong>biên dịch (compile)</strong> code. Và để làm việc đó, Android
+		<em>thường</em> dùng hệ thống build <strong>Gradle</strong>.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 98)</p>
+	<p>
+		Câu tiếp theo là một trong những câu thật thà nhất của cả chapter, và đáng dịch sát: Gradle là công cụ tự động hoá build
+		<strong>"đôi khi đáng sợ ngang với mức nó mạnh"</strong> (as scary as it is powerful). Tác giả không giấu chuyện đây là phần
+		nhiều người mới thấy khó.
+	</p>
+	<div class="callout goals">
+		<strong>Mô hình để nhớ Gradle là gì</strong>
+		<p>
+			Bạn có: hàng chục file <code>.kt</code>, một thư mục <code>res/</code>, một file manifest, và một danh sách thư viện cần tải
+			về. Bạn cần: <strong>một file duy nhất</strong> mà điện thoại cài được.
+		</p>
+		<p>
+			Gradle là <em>người quản đốc</em> làm việc đó: tải thư viện, gọi trình biên dịch Kotlin, biến resource thành dạng máy đọc
+			được, gộp manifest, đóng gói, ký tên số (sign). Bạn không gọi từng bước đó — bạn <strong>khai báo</strong> muốn gì trong file
+			build, Gradle lo phần còn lại.
+		</p>
+		<p>
+			Vì sao nó "đáng sợ": nó có ngôn ngữ khai báo riêng, thông báo lỗi dài, và khi sai thì lỗi không nằm ở code bạn viết. Đó là
+			lý do sách dành cả <strong>chapter 4</strong> riêng cho nó.
+		</p>
+	</div>
+
+	<h3>8.1 — Android Gradle plugin: cách dễ nhất để build app Android</h3>
+	<p>
+		Sách nói rõ: cách <strong>dễ nhất</strong> để build một app Android bằng Gradle là dùng <strong>Android Gradle plugin</strong>
+		— nó thêm vào Gradle một loạt tính năng <em>riêng cho Android</em>. Và trên nền đó, bạn vẫn có thể tự viết script Gradle riêng
+		cho những hành động cụ thể mà bạn cần.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 100)</p>
+	<p>Câu đó nghe trừu tượng, nhưng nó là <em>đúng hai dòng</em> trong file build ở gốc project:</p>
+	<Code code={rootGradleCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/build.gradle.kts</code> (dòng 1–5, toàn bộ file)</p>
+	<ul>
+		<li>
+			<code>com.android.application</code> — <strong>chính là</strong> Android Gradle plugin mà sách vừa nói. Bản
+			<code>8.2.0</code>.
+		</li>
+		<li>
+			<code>org.jetbrains.kotlin.android</code> — plugin cho Gradle biết cách biên dịch Kotlin. Bản <code>1.9.10</code>.
+		</li>
+		<li>
+			<code>apply false</code> — "khai bản ở đây, nhưng đừng áp dụng cho project gốc". Vì việc build app thật diễn ra ở
+			<em>module</em> <code>app/</code>, không ở gốc.
+		</li>
+	</ul>
+	<p>Và trong module <code>app/</code>, hai plugin đó được áp dụng thật (lần này không có <code>apply false</code>):</p>
+	<Code code={appPluginsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/app/build.gradle.kts</code> (dòng 1–21, đã lược phần giữa)</p>
+	<p>
+		Khối <code>android &#123; ... &#125;</code> đó <strong>là</strong> "các tính năng riêng cho Android" mà plugin thêm vào — Gradle
+		thuần không hiểu <code>compileSdk</code> hay <code>minSdk</code> là gì. Chapter 4 sẽ giải thích từng dòng; ở đây chỉ cần thấy
+		câu ở dòng 100 của sách có hình hài cụ thể.
+	</p>
+	<h3>8.2 — Groovy hay Kotlin: một quyết định của sách, kèm 3 lý do</h3>
+	<p>
+		Sách nói bạn viết script Gradle bằng <strong>Groovy</strong> hoặc — <em>từ gần đây</em> — bằng <strong>Kotlin</strong>. Và nó
+		chốt luôn lựa chọn: xuyên suốt cuốn sách, bạn sẽ tương tác với Gradle bằng Kotlin. Lý do sách đưa: y như với code Android,
+		Google giờ khuyến nghị Kotlin là cách nên dùng để viết script Gradle.
+	</p>
+	<p>Rồi sách liệt kê <strong>ba lợi thế "cực kỳ quan trọng"</strong> của Kotlin so với Groovy:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Lợi thế</th><th>Nghĩa thực tế với người mới</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>IDE support</strong> (hỗ trợ từ IDE)</td>
+				<td>Android Studio gợi ý code, tự hoàn thành tên, và bấm được vào một hàm để xem nó là gì. Với Groovy thì file build gần
+					như một file text thường.</td>
+			</tr>
+			<tr>
+				<td><strong>Compile-time checking</strong> (kiểm tra lúc biên dịch)</td>
+				<td>Gõ sai tên thì bạn biết <em>ngay</em>, gạch chân đỏ, chứ không phải chạy build 40 giây rồi mới thấy lỗi.</td>
+			</tr>
+			<tr>
+				<td><strong>Better readability</strong> (dễ đọc hơn)</td>
+				<td>Cú pháp rõ ràng hơn, và quan trọng với người học: file build dùng <em>cùng một ngôn ngữ</em> với code app — bạn không
+					phải học ngôn ngữ thứ hai.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 102)</p>
+	<p class="hint">
+		<strong>Cách nhận ra bạn đang xem loại nào:</strong> nhìn <em>phần mở rộng của tên file</em>.
+		<code>build.gradle.kts</code> = Kotlin (<code>.kts</code> là "Kotlin script"); <code>build.gradle</code> không có
+		<code>.kts</code> = Groovy. Toàn bộ 11 project của sách đều dùng <code>.kts</code>. Điều này rất hữu dụng khi bạn tìm câu trả
+		lời trên mạng: nhiều câu trả lời cũ viết cho Groovy, dán vào file <code>.kts</code> sẽ lỗi cú pháp. Thấy dấu <code>=</code>
+		trong khai báo (như <code>compileSdk = 34</code>) thì đó là Kotlin; Groovy viết <code>compileSdk 34</code>, không có dấu bằng.
+	</p>
+
+	<h3>8.3 — Bản release: bước cuối để phát hành</h3>
+	<p>
+		Sách kết mục bằng bước xa nhất: khi bạn sẵn sàng phát hành app, bạn dùng Gradle để build một <strong>bản release</strong>.
+		Trong bản release, <strong>toàn bộ code được biên dịch (và lý tưởng là được làm rối — obfuscate)</strong> thành một file mà bạn
+		dùng để cài và phân phối app — <strong>tự bạn làm hoặc qua một app store</strong>.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 104)</p>
+	<p>Câu "lý tưởng là được obfuscate" có mặt trong file build thật, ở dạng một công tắc:</p>
+	<Code code={releaseCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/app/build.gradle.kts</code> (dòng 23–31)</p>
+	<div class="callout note">
+		<strong>Đọc kỹ dòng đầu: <code>isMinifyEnabled = false</code></strong>
+		<p>
+			Sách nói bản release <em>lý tưởng</em> là được obfuscate. Project của sách đặt công tắc đó thành <strong>false</strong> — tức
+			<strong>tắt</strong>. Đây là khác biệt giữa lời khuyên và cấu hình thực tế, nên nói rõ chứ không lướt qua:
+		</p>
+		<ul>
+			<li>
+				<strong>Vì sao project để <code>false</code>:</strong> đây là project <em>học</em>, không phát hành. Bật minify làm build
+				lâu hơn và nếu cấu hình thiếu thì app crash ở những chỗ khó lần ra — không đáng cho việc học.
+			</li>
+			<li>
+				<strong>Với app thật:</strong> nên là <code>true</code>. Nó làm hai việc: <em>minify</em> (xoá code không dùng → file nhẹ
+				hơn) và <em>obfuscate</em> (đổi tên class/hàm thành <code>a</code>, <code>b</code>, <code>c</code> → người khác khó dịch
+				ngược code của bạn).
+			</li>
+			<li>
+				<code>proguardFiles(...)</code> là danh sách <em>ngoại lệ</em>: "những thứ này thì đừng xoá, đừng đổi tên". Cần vì có code
+				được gọi qua reflection mà công cụ không nhìn thấy.
+			</li>
+		</ul>
+		<p>
+			Sách dùng chữ "ideally" chính xác ở đây: nó nói điều <em>nên</em> làm, còn project để <code>false</code> vì bối cảnh khác. Cả
+			hai đều hợp lý — miễn là bạn biết mình đang ở bối cảnh nào.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Về "một file" mà sách nói:</strong> file đó thực tế có hai dạng — <code>.apk</code> (cài trực tiếp lên máy được) và
+		<code>.aab</code> (Android App Bundle, định dạng Google Play yêu cầu từ tháng 8/2021). Sách viết chung là "một file" nên không
+		sai, nhưng nếu bạn thật sự đem app lên Google Play thì bạn sẽ nộp <code>.aab</code>, không phải <code>.apk</code>. Chi tiết này
+		ngoài phạm vi sách, ghi lại để bạn không bất ngờ.
+	</p>
+	<p>Hai file build còn lại của project, mỗi file một việc, để bức tranh Gradle đủ mảnh:</p>
+	<Code code={settingsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/settings.gradle.kts</code> (dòng 16–17)</p>
+	<p>
+		<code>settings.gradle.kts</code> khai <strong>project gồm những module nào</strong> — ở đây đúng một module tên
+		<code>app</code>. Đây cũng là chỗ đặt tên project ("Kodeco Chat") và khai các <em>repository</em> để tải thư viện (dòng 1–14,
+		không in ở đây).
+	</p>
+	<Code code={wrapperCode} lang="properties" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/gradle/wrapper/gradle-wrapper.properties</code> (dòng 1–4)</p>
+	<p>
+		File này khoá <strong>bản Gradle</strong> dùng cho project: <code>gradle-8.2</code>. Nhờ nó, ai mở project cũng build bằng đúng
+		một bản Gradle, dù máy họ cài bản nào — máy chưa có thì tự tải. Đó là lý do bạn <em>không cần cài Gradle</em> để build project
+		Android.
+	</p>
+	<h2 id="bon-so">9. Bốn con số định vị project vào cuối năm 2023</h2>
+	<p>
+		Sách được viết cho một thời điểm cụ thể, và điều đó nằm ngay trong các file build. Đã mở từng file để lấy đúng con số — đây là
+		bảng để bạn biết mình đang học trên nền công nghệ nào:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Thành phần</th><th>Bản trong project</th><th>File / dòng</th><th>Nghĩa</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Android Gradle Plugin</td>
+				<td><code>8.2.0</code></td>
+				<td><code>build.gradle.kts</code> dòng 3</td>
+				<td>Ra khoảng tháng 11/2023</td>
+			</tr>
+			<tr>
+				<td>Kotlin</td>
+				<td><code>1.9.10</code></td>
+				<td><code>build.gradle.kts</code> dòng 4</td>
+				<td>Ra tháng 8/2023 — <strong>trước</strong> Kotlin 2.0</td>
+			</tr>
+			<tr>
+				<td>Gradle</td>
+				<td><code>8.2</code></td>
+				<td><code>gradle-wrapper.properties</code> dòng 4</td>
+				<td>Dấu thời gian trong file ghi <code>Thu Oct 12 ... 2023</code></td>
+			</tr>
+			<tr>
+				<td>compileSdk / targetSdk</td>
+				<td><code>34</code></td>
+				<td><code>app/build.gradle.kts</code> dòng 8 và 13</td>
+				<td>API 34 = <strong>Android 14</strong></td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="src">Nguồn: <code>{FINAL}/</code> — đã mở từng file build và đọc trực tiếp</p>
+	<div class="callout diff">
+		<strong>Điều đã thay đổi kể từ đó — và điều không thay đổi</strong>
+		<p><strong>Đã thay đổi:</strong></p>
+		<ul>
+			<li>
+				<strong>Kotlin 2.0 đổi cách bật Compose.</strong> Project của sách bật Compose bằng khối
+				<code>composeOptions</code> với một số phiên bản riêng cho Compose compiler:
+			</li>
+		</ul>
+		<Code code={composeOptionsCode} lang="kotlin" theme="github-dark" />
+		<p class="src">Nguồn: <code>{FINAL}/app/build.gradle.kts</code> (dòng 39–44)</p>
+		<ul>
+			<li>
+				Từ Kotlin 2.0 trở đi, Compose compiler <strong>đi kèm luôn với Kotlin</strong> và được bật bằng một plugin
+				(<code>org.jetbrains.kotlin.plugin.compose</code>) — khối <code>composeOptions</code> không còn cần nữa. Nếu bạn tạo project
+				mới bằng Android Studio bản hiện tại rồi so với project của sách, đây là chỗ khác nhau rõ nhất. Chapter 4 nói kỹ hơn.
+			</li>
+			<li>
+				<strong>Android đã ra thêm nhiều bản</strong> sau API 34. Con số <code>compileSdk</code> trong project vì thế trông cũ, nhưng
+				project vẫn build và chạy được.
+			</li>
+			<li>
+				<strong>Tên gọi tài liệu đổi.</strong> "Android Architecture Components" giờ được gộp vào <strong>Jetpack</strong>, và trang
+				kiến trúc chính thức mang tên "Guide to app architecture".
+			</li>
+		</ul>
+		<p><strong>Không thay đổi</strong> — và đây là phần lớn nội dung chapter 1:</p>
+		<ul>
+			<li>Bốn app component và vai trò của chúng.</li>
+			<li>Security sandbox và cơ chế permission.</li>
+			<li>Vai trò của manifest, cú pháp <code>&lt;activity&gt;</code> + <code>&lt;intent-filter&gt;</code>.</li>
+			<li>Cách resource hoạt động và cơ chế hậu tố thư mục.</li>
+			<li>Intent, Content Resolver, và ý "mọi component là entry point".</li>
+			<li>Vai trò của Gradle và Android Gradle plugin.</li>
+		</ul>
+		<p>
+			Nói cách khác: những gì <em>đã đổi</em> đều là con số phiên bản và tên gọi. Kiến thức nền của chapter 1 vẫn đúng nguyên.
+		</p>
+	</div>
+
+	<h2 id="whats-in-book">10. Sách sẽ dạy gì — và bản đồ tới các chapter khác</h2>
+	<p>
+		Trước khi hết chapter, sách dành một mục (<em>What You'll Learn in This Book</em>) để trấn an và vạch đường. Nó mở bằng một câu
+		rất người: <em>"Whew, that's a lot of stuff to go through"</em> — nhiều thứ phải đi qua thật, và dễ bị lạc, <strong>nhất là khi
+		bạn bắt đầu đào sâu hơn</strong>. Nhưng "fear not", đó chính là lý do cuốn sách tồn tại.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 108)</p>
+	<p>Sách liệt kê lộ trình. Đã đối chiếu từng mục với mục lục thật của sách để chỉ đúng chương:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Sách hẹn dạy</th><th>Ở chương</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>Cài đặt Android Studio</td><td><strong>Chương 2</strong></td></tr>
+			<tr>
+				<td>Nền tảng của một app Android: <em>lifecycle</em>, <em>view</em>, và đào sâu hơn vào manifest, resource, Intent</td>
+				<td><strong>Chương 3</strong></td>
+			</tr>
+			<tr><td>Xử lý dependency và cấu hình hệ thống build Gradle</td><td><strong>Chương 4</strong></td></tr>
+			<tr>
+				<td>Dựng giao diện bằng <strong>Jetpack Compose</strong> — bộ công cụ UI "làm lập trình viên Android khắp thế giới hào hứng
+					với UI trở lại", vì nó <em>thay thế</em> bộ dựa trên XML nguyên bản</td>
+				<td><strong>Chương 5</strong></td>
+			</tr>
+			<tr><td>Quản lý <em>state</em> (trạng thái) của một màn hình</td><td><strong>Chương 6</strong></td></tr>
+			<tr><td>Điều hướng (navigate) giữa các màn hình</td><td><strong>Chương 7</strong></td></tr>
+			<tr><td>Gọi network để làm giàu app bằng dữ liệu bên ngoài</td><td><strong>Chương 8</strong></td></tr>
+			<tr><td>Lưu dữ liệu, và giữ dữ liệu an toàn</td><td><strong>Chương 9, 10, 11</strong></td></tr>
+			<tr>
+				<td><em>Best practice</em> — cả về <strong>kiến trúc app</strong> lẫn về viết code nói chung</td>
+				<td>Rải khắp sách, đậm nhất ở <strong>Chương 6 và 7</strong></td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 110–114)</p>
+	<p>
+		Sách cũng nói trước một điều về cách các project được tổ chức, và điều này hữu dụng khi bạn học: <strong>đôi khi chapter sau xây
+		tiếp trên app của chapter trước, đôi khi bạn làm một app hoàn toàn mới</strong> — nhưng mỗi lần, app bạn làm sẽ khớp với chủ đề
+		bạn đang học.
+	</p>
+	<div class="callout journey">
+		<strong>Đã kiểm bằng project thật: có đúng 2 app trong cả sách</strong>
+		<ul>
+			<li>
+				<strong>Kodeco Chat</strong> — Chương 2 đến 7. Một app chat, xây dần: tạo project (2), lifecycle (3), Gradle (4), giao diện
+				Compose (5), state và ViewModel (6), navigation và kiến trúc (7).
+			</li>
+			<li>
+				<strong>Recipe Finder</strong> — Chương 8 đến 11. Một app tìm công thức nấu ăn: gọi mạng (8), DataStore (9), Room (10), lưu
+				trữ an toàn (11).
+			</li>
+		</ul>
+		<p>
+			Biết trước điều này giúp bạn đặt kỳ vọng đúng: khi tới chapter 8, đừng tìm app chat nữa — bạn chuyển sang app khác, và
+			<code>package</code> đổi từ <code>com.kodeco.chat</code> sang <code>com.kodeco.recipefinder</code>.
+		</p>
+	</div>
+	<p>
+		Và sách kết chapter bằng lời hứa: đến hết sách, bạn sẽ có <strong>nền vững về mọi thứ cơ bản</strong> cần để xây app Android
+		<em>hiệu năng tốt và mở rộng được</em> từ đầu — thậm chí học được vài thứ nâng cao như phần thưởng thêm. Rồi câu cuối:
+		<em>"buckle up: Your journey as an Android Developer starts now. Have fun! :]"</em>
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 118–120)</p>
+	<h2 id="key-points">11. Key Points — và đối chiếu với những gì đã kiểm</h2>
+	<p>
+		Sách kết bằng 5 điểm chính. Dưới đây là 5 điểm đó, mỗi điểm kèm phần bài học đã kiểm được từ code thật — vì có vài điểm sách
+		nói ở mức lý thuyết mà thực tế project khác đi:
+	</p>
+	<ol class="keypoints">
+		<li>
+			<strong>Bạn có thể viết app Android native bằng Java hoặc Kotlin. Cũng có các framework đa nền tảng như React Native hay
+			Flutter.</strong>
+			<br />
+			<span class="hint" style="display: block; margin-top: 0.4rem;">
+				Sách chọn Kotlin, và lý do đầy đủ ở mục 2. Điều cần nhớ nhất: chính framework Android <em>là</em> hỗn hợp của cả Java và
+				Kotlin — nên chọn Kotlin không có nghĩa là bạn sẽ không bao giờ thấy Java.
+			</span>
+		</li>
+		<li>
+			<strong>App Android có thể gồm các component sau: Activity, Service, Content Provider và Broadcast Receiver.</strong>
+			<br />
+			<span class="hint" style="display: block; margin-top: 0.4rem;">
+				Đã kiểm toàn bộ manifest của 11 project: chỉ <strong>Activity</strong> xuất hiện, và luôn đúng một cái
+				<code>MainActivity</code>. Ba loại còn lại: 0 kết quả. Học để nhận diện, không để thực hành — xem mục 4.5.
+				<em>(Ghi chú nhỏ: bản gốc key point này in sai chính tả "Receviers".)</em>
+			</span>
+		</li>
+		<li>
+			<strong>Bạn viết file manifest để khai báo các component app có. Bạn cũng khai báo permission và tính năng phần cứng app
+			cần.</strong>
+			<br />
+			<span class="hint" style="display: block; margin-top: 0.4rem;">
+				Manifest thật của Kodeco Chat dài 28 dòng — đã đọc trọn ở mục 6.2. Trong cả sách chỉ có <strong>một</strong> khai báo
+				permission thật: <code>INTERNET</code> ở chapter 8, dòng 5. Không project nào khai báo tính năng phần cứng.
+			</span>
+		</li>
+		<li>
+			<strong>Ngoài code thông thường, app còn chứa resource như ảnh, âm thanh, animation và màu sắc.</strong>
+			<br />
+			<span class="hint" style="display: block; margin-top: 0.4rem;">
+				<code>res/</code> của project có 19 file. Đáng chú ý: <code>colors.xml</code> (7 màu) <strong>không được dùng ở đâu cả</strong>
+				— màu thật nằm ở <code>Color.kt</code>. Dấu vết của việc Android đang chuyển từ XML sang Compose, xem mục 7.3.
+			</span>
+		</li>
+		<li>
+			<strong>Để biên dịch một app, bạn sẽ dùng Gradle.</strong>
+			<br />
+			<span class="hint" style="display: block; margin-top: 0.4rem;">
+				Cụ thể là Gradle <code>8.2</code> + Android Gradle Plugin <code>8.2.0</code> + Kotlin <code>1.9.10</code>, viết bằng
+				<code>.kts</code> (Kotlin) chứ không phải Groovy. Bốn con số và ý nghĩa của chúng ở mục 9.
+			</span>
+		</li>
+	</ol>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 124–128)</p>
+
+	<h2 id="di-tiep">12. Đi tiếp từ đây</h2>
+	<p>
+		Sách nói: nếu bạn không chờ được và muốn học cách cài đặt rồi làm việc với Android Studio, hãy sang chapter tiếp theo. Nó cũng
+		thừa nhận một điều rất thật — <strong>một cuốn sách chỉ chứa được một lượng thông tin nhất định</strong>, nên đôi khi bạn sẽ
+		muốn đào sâu hơn vào một chủ đề cụ thể. Khi đó sách gợi ý các nguồn: thư viện nội dung Android và Kotlin của Kodeco, tài liệu
+		chính thức của Android (<code>developer.android.com/docs</code>) và của Kotlin (<code>kotlinlang.org/docs</code>).
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 132–136)</p>
+	<div class="callout goals">
+		<strong>Bạn đã có gì sau chapter này</strong>
+		<p>
+			Chưa viết một dòng code nào, nhưng bạn đã có <strong>bản đồ</strong>. Cụ thể là bạn trả lời được những câu này — nếu câu nào
+			còn ngập ngừng thì mục tương ứng đáng đọc lại:
+		</p>
+		<ol>
+			<li>Vì sao framework Android buộc phải to, và cách học nó lành mạnh là gì? <em>(mục 1)</em></li>
+			<li>Sách chọn Kotlin vì những lý do nào, và đánh đổi của framework đa nền tảng là gì? <em>(mục 2)</em></li>
+			<li>Security sandbox nói gì, và vì sao nó là gốc của mọi chuyện về permission? <em>(mục 3)</em></li>
+			<li>Bốn component là gì, và vì sao "một Activity nhiều màn hình" mới là kiến trúc nên dùng? <em>(mục 4)</em></li>
+			<li>"Mọi component đều là entry point" nghĩa là gì với cách bạn viết code? <em>(mục 5)</em></li>
+			<li>Manifest làm gì, và quên khai báo component thì lỗi xuất hiện lúc nào? <em>(mục 6)</em></li>
+			<li>Resource là gì, và Android chọn đúng bản cho từng thiết bị/ngôn ngữ bằng cách nào? <em>(mục 7)</em></li>
+			<li>Gradle làm gì, và <code>isMinifyEnabled</code> quyết định điều gì? <em>(mục 8)</em></li>
+		</ol>
+		<p>
+			<strong>Chapter 2</strong> chuyển hẳn sang thực hành: cài Android Studio, tạo project Kodeco Chat, tạo máy ảo, chạy app đầu
+			tiên. Toàn bộ code minh hoạ bạn vừa xem trong bài này chính là project của chapter đó — nên bạn sẽ gặp lại chúng, lần này với
+			đầy đủ ngữ cảnh.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Về bản quyền:</strong> bài học này diễn giải lại nội dung chapter 1 của <em>Android Fundamentals by Tutorials</em>
+		(Kodeco) bằng tiếng Việt, kèm ví dụ từ project đi kèm sách. Mọi đoạn code đều ghi rõ file và số dòng để bạn tự mở đối chiếu.
+		Đây là tài liệu học tập cá nhân, không thay thế việc đọc sách gốc.
 	</p>
 </section>
-
-<style>
-	.lesson h2 {
-		margin-top: 2.2rem;
-		font-size: 1.15rem;
-		color: #1a202c;
-		border-bottom: 1px solid #e2e8f0;
-		padding-bottom: 0.35rem;
-	}
-	.lesson p,
-	.lesson li {
-		line-height: 1.65;
-		color: #2d3748;
-	}
-	.lesson code {
-		background: #edf2f7;
-		padding: 0.1rem 0.35rem;
-		border-radius: 4px;
-		font-size: 0.88em;
-	}
-	.component-list {
-		padding-left: 1.3rem;
-	}
-	.component-list li {
-		margin-bottom: 0.35rem;
-	}
-	.src {
-		font-size: 0.82rem;
-		color: #718096 !important;
-		margin: 0.8rem 0 0.3rem;
-	}
-	.callout {
-		background: #ebf8ff;
-		border-left: 4px solid #4299e1;
-		padding: 0.8rem 1rem;
-		border-radius: 0 6px 6px 0;
-		font-size: 0.9rem;
-		line-height: 1.6;
-		color: #2c5282;
-	}
-</style>

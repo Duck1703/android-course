@@ -1,0 +1,985 @@
+---
+// Chương 2.2 — Máy ảo, máy thật, và đọc toàn bộ project vừa sinh ra. Task 48 (Phase 7): áp chuẩn Chương 10.
+// Ranh giới tách + hợp đồng đặt tên: docs/CHAPTER_SPLIT_MAP.md
+// Nội dung diễn giải lại bằng tiếng Việt, không copy nguyên văn nguồn.
+// Code trích nguyên văn từ aaf-materials/ theo Quyết định #7 (docs/PROJECT_PLAN.md) — ghi rõ file + dòng ở mục nguon.
+// Đã mở từng file thật trong 02-getting-started-with-android-studio/projects/final/ để kiểm số dòng:
+//   MainActivity.kt (46 dòng) · ui/theme/Theme.kt (70 dòng) · ui/theme/Color.kt (11 dòng) · ui/theme/Type.kt (34 dòng)
+//   app/src/main/AndroidManifest.xml (28 dòng) · app/build.gradle.kts (69 dòng) · build.gradle.kts (5 dòng)
+//   settings.gradle.kts (17 dòng) · gradle.properties · gradle/wrapper/gradle-wrapper.properties
+//   res/values/strings.xml · res/values/themes.xml · res/values/colors.xml
+// Đã kiểm thêm: project Chương 2 chỉ có final, không có starter (ls thư mục projects/).
+// Đã kiểm thêm: theme của Chương 5 tên KodecochatTheme, nằm ở com.kodeco.chat.theme
+//   (aaf-materials/05-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat/theme/Themes.kt dòng 109).
+
+import { Code } from "astro:components";
+
+const BOOK = "content/book/ch02-getting-started-with-android-studio.md";
+const FINAL = "aaf-materials/02-getting-started-with-android-studio/projects/final";
+const SRC = "aaf-materials/02-getting-started-with-android-studio/projects/final/app/src/main/java/com/kodeco/chat";
+
+const mainActivityCode = `class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {
+      KodecoChatTheme {
+        // A surface container using the 'background' color from the theme
+        Surface(
+          modifier = Modifier.fillMaxSize(),
+          color = MaterialTheme.colorScheme.background
+        ) {
+          Greeting("Fuad")
+        }
+      }
+    }
+  }
+}`;
+
+const greetingCode = `@Composable
+fun Greeting(name: String, modifier: Modifier = Modifier) {
+  Text(
+    text = "Hello $name!",
+    modifier = modifier
+  )
+}`;
+
+const previewCode = `@Preview(showBackground = true)
+@Composable
+fun GreetingPreview() {
+  KodecoChatTheme {
+    Greeting("Fuad")
+  }
+}`;
+
+const manifestCode = `<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
+
+  <application
+    android:allowBackup="true"
+    android:dataExtractionRules="@xml/data_extraction_rules"
+    android:fullBackupContent="@xml/backup_rules"
+    android:icon="@mipmap/ic_launcher"
+    android:label="@string/app_name"
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:supportsRtl="true"
+    android:theme="@style/Theme.KodecoChat"
+    tools:targetApi="31">
+    <activity
+      android:name=".MainActivity"
+      android:exported="true"
+      android:label="@string/app_name"
+      android:theme="@style/Theme.KodecoChat">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+  </application>
+
+</manifest>`;
+
+const gradleConfigCode = `android {
+  namespace = "com.kodeco.chat"
+  compileSdk = 34
+
+  defaultConfig {
+    applicationId = "com.kodeco.chat"
+    minSdk = 30
+    targetSdk = 34
+    versionCode = 1
+    versionName = "1.0"
+    ...
+  }
+  ...
+}`;
+
+const rootGradleCode = `// Top-level build file where you can add configuration options
+// common to all sub-projects/modules.
+plugins {
+  id("com.android.application") version "8.2.0" apply false
+  id("org.jetbrains.kotlin.android") version "1.9.10" apply false
+}`;
+
+const themeCode = `@Composable
+fun KodecoChatTheme(
+  darkTheme: Boolean = isSystemInDarkTheme(),
+  // Dynamic color is available on Android 12+
+  dynamicColor: Boolean = true,
+  content: @Composable () -> Unit
+) {
+  val colorScheme = when {
+    dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+      val context = LocalContext.current
+      if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    }
+
+    darkTheme -> DarkColorScheme
+    else -> LightColorScheme
+  }
+  val view = LocalView.current
+  if (!view.isInEditMode) {
+    SideEffect {
+      val window = (view.context as Activity).window
+      window.statusBarColor = colorScheme.primary.toArgb()
+      WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+    }
+  }
+
+  MaterialTheme(
+    colorScheme = colorScheme,
+    typography = Typography,
+    content = content
+  )
+}`;
+
+const colorSchemeCode = `private val DarkColorScheme = darkColorScheme(
+  primary = Purple80,
+  secondary = PurpleGrey80,
+  tertiary = Pink80
+)
+
+private val LightColorScheme = lightColorScheme(
+  primary = Purple40,
+  secondary = PurpleGrey40,
+  tertiary = Pink40
+
+  /* Other default colors to override
+  background = Color(0xFFFFFBFE),
+  ...
+  */
+)`;
+
+const stringsCode = `<resources>
+  <string name="app_name">Kodeco Chat</string>
+</resources>`;
+
+const themesXmlCode = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+  <style name="Theme.KodecoChat" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>`;
+
+const settingsGradleCode = `pluginManagement {
+  repositories {
+    google()
+    mavenCentral()
+    gradlePluginPortal()
+  }
+}
+dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+  repositories {
+    google()
+    mavenCentral()
+  }
+}
+
+rootProject.name = "Kodeco Chat"
+include(":app")`;
+
+const typographyCode = `// Set of Material typography styles to start with
+val Typography = Typography(
+  bodyLarge = TextStyle(
+    fontFamily = FontFamily.Default,
+    fontWeight = FontWeight.Normal,
+    fontSize = 16.sp,
+    lineHeight = 24.sp,
+    letterSpacing = 0.5.sp
+  )
+  /* Other default text styles to override
+  titleLarge = TextStyle(...),
+  labelSmall = TextStyle(...)
+  */
+)`;
+
+const colorCode = `val Purple80 = Color(0xFFD0BCFF)
+val PurpleGrey80 = Color(0xFFCCC2DC)
+val Pink80 = Color(0xFFEFB8C8)
+
+val Purple40 = Color(0xFF6650a4)
+val PurpleGrey40 = Color(0xFF625b71)
+val Pink40 = Color(0xFF7D5260)`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Bạn sẽ học được gì trong chương này</strong>
+		<ul>
+			<li><strong>Máy ảo Android (AVD)</strong> là gì, nó thật tới mức nào, và ba màn hình của wizard tạo máy ảo —
+				mỗi màn hình quyết định một thứ khác nhau, và người mới rất hay nhầm hai trong số đó với nhau.</li>
+			<li>Vì sao tab <strong>Recommended</strong> trong bảng System Image lại bị mờ đi, và đó <em>không</em> phải lỗi.</li>
+			<li>Cách biến một điện thoại Android thật thành thiết bị lập trình: <strong>Build number</strong> →
+				<strong>Developer Options</strong> → <strong>USB Debugging</strong>.</li>
+			<li>Vì sao Android gọi USB Debugging là một <strong>lỗ hổng bảo mật</strong> — lỗ hổng đó nằm chính xác ở đâu, và
+				khi nào bạn nên tắt nó đi.</li>
+			<li><strong>RSA key fingerprint</strong> là gì và hộp thoại xác nhận nó đang bảo vệ bạn khỏi chuyện gì.</li>
+			<li>Đọc hiểu <strong>chín file cốt lõi</strong> mà Android Studio vừa tự sinh ra: một file Kotlin chứa cả màn
+				hình, một file XML giới thiệu app với hệ điều hành, ba file theme, ba file Gradle và một file tài nguyên chuỗi.</li>
+			<li>Bốn con số định vị mọi project Android — <code>compileSdk</code>, <code>minSdk</code>, <code>targetSdk</code>,
+				<code>applicationId</code> — và vì sao chúng không thể thay nhau.</li>
+			<li>Cách <code>@string/app_name</code>, <code>@style/Theme.KodecoChat</code> và <code>.MainActivity</code> trong
+				Manifest lần được về đúng file nào trong project.</li>
+		</ul>
+		<p>
+			Chương 2 gồm ba chương nhỏ, và đây là chương giữa. <strong>Chương 2.1</strong> đã lo phần cài đặt Android Studio,
+			chọn bản tải, cấu hình giao diện và điền sáu ô của wizard tạo project mới. <strong>Chương 2.3</strong> sẽ chạy
+			app thật lên thiết bị bằng nút <em>Run App</em>, sửa một dòng chữ và thấy nó đổi ngay trên máy nhờ
+			<strong>Live Edit</strong>, rồi hướng dẫn cách cập nhật Android Studio, Android SDK và các build tool về sau.
+		</p>
+	</div>
+
+	<div class="callout">
+		<strong>Bạn đang đứng ở đâu.</strong> Hết Chương 2.1, trên máy bạn có hai thứ: một bản Android Studio đã cài và cấu
+		hình xong, và một project trống tên <em>Kodeco Chat</em> (package <code>com.kodeco.chat</code>) mà Android Studio vừa
+		sinh ra. Project đó chưa chạy được ở đâu, vì bạn <em>chưa có thiết bị</em> — mã nguồn nằm trên máy tính, còn app
+		Android thì phải chạy trên một máy Android. Đó là việc thứ nhất của chương này.
+		<p>
+			Việc thứ hai quan trọng không kém: project vừa sinh ra <em>không</em> trống thật. Nó có sẵn khoảng một chục file
+			mà bạn không viết dòng nào. Chương này mở từng file ra đọc. Lý do rất thực tế: project của Chương 2 là project
+			Android <strong>nhỏ nhất</strong> của cả khoá học — bốn file Kotlin và vài file cấu hình. Đến Chương 5 nó đã
+			phình lên hơn hai chục file Kotlin. Hiểu bộ xương bây giờ tốn khoảng mười phút; để dành hiểu sau thì tốn nhiều
+			hơn thế, vì lúc đó bộ xương đã bị che bởi code của chính bạn.
+		</p>
+	</div>
+
+	<h2 id="may-ao">5. Máy ảo (AVD) — chạy Android ngay trên máy tính</h2>
+	<p>
+		Xem code thì tốt, nhưng muốn <em>chạy</em> app và thấy nó hoạt động thì bắt buộc phải có một thiết bị — thật hoặc ảo.
+		Không có đường thứ ba: Android Studio không tự vẽ app ra cho bạn xem (trừ chế độ preview trong IDE, và preview chỉ
+		vẽ được từng composable rời chứ không phải app đang chạy).
+	</p>
+	<p>Từ đây có hai đường đi song song, và bạn chỉ cần chọn một:</p>
+	<ul>
+		<li><strong>Có điện thoại hoặc tablet Android thật</strong> → bỏ qua mục 5 này, nhảy thẳng xuống mục 6.</li>
+		<li><strong>Không có máy Android nào</strong> → làm mục 5 này để tạo một máy ảo, rồi bỏ qua mục 6.</li>
+	</ul>
+	<p>
+		Làm cả hai cũng không sao và về lâu dài còn có lợi: máy ảo giúp bạn test nhiều phiên bản Android khác nhau, máy thật
+		cho bạn cảm giác đúng về tốc độ và cảm ứng. Nhưng để đi tiếp sang Chương 2.3 thì <em>một</em> thiết bị là đủ.
+	</p>
+
+	<h3>AVD là gì</h3>
+	<p>
+		Nút bạn cần bấm mở ra <strong>Device Manager</strong> — bảng liệt kê mọi thiết bị đang dùng được cho project này. Máy
+		Android thật đang cắm cáp USB sẽ hiện ở đây, và cả các <strong>Android Virtual Device</strong>, thường được viết tắt
+		là <strong>AVD</strong>.
+	</p>
+	<p>
+		Định nghĩa gọn: <strong>AVD là một emulator (trình giả lập) hoạt động như một thiết bị Android ngay trên máy tính của
+		bạn</strong>. Nó cho phép test app <strong>mà không cần máy thật</strong>. Nếu bạn không có máy thật để test, bạn
+		<em>phải</em> tạo một máy ảo trước khi chạy được app — đây không phải bước tuỳ chọn.
+	</p>
+	<p class="hint">
+		<strong>Mô hình để nhớ:</strong> AVD là một chiếc điện thoại Android "chạy trong một cửa sổ" trên máy tính. Nó chạy
+		Android thật (không phải bản mô phỏng nửa vời): có Settings, có bàn phím ảo, có thông báo, một số system image còn
+		có cả Play Store, và cài app được như máy thường. Đổi lại nó chậm hơn máy thật, ăn RAM của máy tính, và không có
+		phần cứng thật (camera, cảm biến gia tốc, SIM) nên vài thứ chỉ giả lập được một phần. Với toàn bộ 11 chương của khoá
+		học này, AVD là đủ — không có bài nào cần camera hay SIM thật.
+	</p>
+	<p class="hint">
+		<strong>Máy tính cần khoẻ tới đâu:</strong> emulator dùng cơ chế ảo hoá của CPU để chạy nhanh gần bằng máy thật. Trên
+		máy tính RAM 8 GB trở lên và CPU đời gần đây thì trơn; máy yếu hơn vẫn chạy được nhưng khởi động chậm và hơi giật.
+		Mẹo tiết kiệm thời gian: <em>đừng tắt emulator sau mỗi lần chạy app</em> — để nó mở suốt buổi học, vì phần chậm nhất
+		là lần khởi động đầu tiên, còn cài lại app vào emulator đang mở thì rất nhanh.
+	</p>
+
+	<h3>Ba màn hình để tạo một AVD</h3>
+	<p>
+		Bấm dấu <strong>+</strong> ở đầu bảng Device Manager. Một wizard mở ra và đi qua đúng ba bước. Ba bước đó trả lời ba
+		câu hỏi hoàn toàn khác nhau, nên đáng tách bạch rõ ràng ngay từ đầu:
+	</p>
+	<ol class="chain">
+		<li>
+			<strong>Select Hardware</strong> — chọn <em>kiểu máy</em> muốn giả lập. Lựa chọn tốt cho khoá học này là
+			<strong>Pixel 7 Pro</strong>, vì nó mô phỏng sát một thiết bị mà rất nhiều người đang dùng thật, nên những gì bạn
+			thấy trên emulator gần với những gì người dùng thật sẽ thấy. Bước này chỉ quyết định kích thước màn hình, mật độ
+			điểm ảnh và danh sách phần cứng khai báo — <strong>chưa liên quan gì tới phiên bản Android</strong>.
+		</li>
+		<li>
+			<strong>System Image</strong> — đây mới là chỗ chọn <em>phiên bản Android</em> chạy trên chiếc máy ảo đó. Trên
+			đầu bảng có vài tab, và tab đáng chú ý nhất là <strong>Recommended</strong> — danh sách các bản Android mà Google
+			khuyên dùng khi test app. Có một điều rất dễ làm người mới bối rối: các dòng trong tab đó lúc này
+			<strong>bị mờ đi</strong>, không bấm chọn được. Lý do không phải lỗi, mà là <em>các bản đó chưa được tải xuống máy
+			bạn</em>. Cách sửa: bấm chữ <strong>Download</strong> ở cột <em>Release Name</em> của dòng bạn muốn. Quy tắc chọn
+			là <strong>lấy API Level cao nhất trong bảng</strong>. Cửa sổ <strong>Component Installer</strong> hiện ra và tự
+			tải bản Android đó về; tải xong thì bấm <em>Finish</em>, cửa sổ đóng lại và bảng System Image quay về — lúc này
+			dòng vừa tải đã chọn được. Bấm <em>Next</em>.
+		</li>
+		<li>
+			<strong>Summary</strong> — bảng tóm tắt toàn bộ đặc điểm chiếc máy ảo sắp được tạo. Bạn đặt tên được cho AVD ở đây
+			và xác nhận lại phiên bản Android. <strong>Không cần đổi gì</strong> ở màn hình này; bấm <em>Finish</em> là xong.
+		</li>
+	</ol>
+	<p>
+		Cửa sổ wizard biến mất và AVD mới xuất hiện trong danh sách của <strong>Device Manager</strong>, sẵn sàng dùng. Đây
+		chính là kết quả bạn cần thấy trước khi sang Chương 2.3 — nếu Device Manager vẫn trống thì đừng đi tiếp, vì mục
+		"chạy app" ở chương sau cần chọn một thiết bị từ danh sách này.
+	</p>
+	<p class="notice">
+		<strong>Hai con số đừng nhầm lẫn.</strong> Ở Chương 2.1, mục 3, bạn đặt <code>Minimum SDK = API 28</code> — đó là bản
+		Android <em>thấp nhất</em> mà app chịu chạy trên đó. Ở đây bạn tải <code>API 34</code> cho máy ảo — đó là bản Android
+		<em>mà máy ảo sẽ chạy</em>. Hai thứ khác nhau hoàn toàn: một cái là ngưỡng tương thích của app bạn viết, một cái là
+		hệ điều hành của thiết bị dùng để test. App khai <code>minSdk 28</code> chạy tốt trên máy API 34 (mới hơn ngưỡng);
+		ngược lại, app khai <code>minSdk 34</code> thì máy API 28 không cài được. Đây là lý do người ta luôn đặt
+		<code>minSdk</code> thấp và test trên máy mới.
+	</p>
+	<p class="hint">
+		<strong>Vì sao nên chọn API cao nhất cho máy ảo:</strong> bản Android mới nhất là nơi các quy tắc mới nhất được áp
+		dụng chặt nhất — quyền, giới hạn chạy nền, hành vi thông báo. App chạy tốt trên bản mới thì gần như luôn chạy tốt
+		trên bản cũ hơn; chiều ngược lại thì không đúng. Nên máy ảo nên là bản mới, còn <code>minSdk</code> nên là bản cũ.
+	</p>
+	<p>
+		Ba chỗ trong quy trình trên đã thay đổi so với thời điểm project mẫu được viết — giao diện Device Manager, tên bản
+		Android cao nhất, và danh sách hardware. Cả ba gom ở mục
+		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a> phía cuối chương, đọc trước khi bấm để khỏi mất thời gian tìm
+		một nút không còn tồn tại.
+	</p>
+
+	<h2 id="may-that">6. Dùng máy Android thật — và vì sao USB Debugging là một lỗ hổng</h2>
+	<p>
+		Nếu bạn có điện thoại hay tablet Android, dùng nó là lựa chọn tốt: nhanh hơn máy ảo, không ăn RAM máy tính, và cho
+		cảm giác đúng về app thật. Nhưng máy Android <strong>mặc định không cho phép</strong> máy tính cài app vào — cửa đó
+		đóng sẵn từ nhà sản xuất, và bạn phải tự mở. Trình tự đầy đủ:
+	</p>
+	<ol class="chain">
+		<li>Cắm thiết bị vào máy tính bằng <strong>cáp USB</strong>. Nên dùng cáp gốc hoặc cáp có truyền dữ liệu — có loại cáp
+			chỉ sạc được, cắm vào thì máy tính không nhìn thấy thiết bị.</li>
+		<li>
+			<strong>Trên Windows</strong>: bạn cần tải thêm <em>USB driver</em> cho đúng model máy của mình. Driver và hướng
+			dẫn cài nằm ở <code>developer.android.com/studio/run/oem-usb.html</code>. Trên macOS và Linux thường không cần
+			bước này. (Đây là điểm khác biệt hệ điều hành thứ hai trong Chương 2 — điểm thứ nhất là bước tải và cài Android
+			Studio ở Chương 2.1, mục 1.)
+		</li>
+		<li>
+			Trên thiết bị, mở <strong>Settings</strong> và gõ <em>"build number"</em> vào ô tìm kiếm ở trên cùng. Khi thấy mục
+			<strong>Build number</strong> hiện ra, <strong>bấm liên tục</strong> vào nó. Sau vài lần bấm, máy hiện một thông
+			báo đại ý "bạn còn vài bước nữa là thành developer"; cứ bấm tiếp cho tới khi có thông báo
+			<em>bạn đã trở thành developer</em>. Nếu thiết bị có khoá PIN, bạn sẽ phải nhập PIN mới đi qua được bước này.
+		</li>
+		<li>
+			Cái nút bấm nhiều lần đó vừa làm gì? Bấm nút back để quay lại trang Settings, rồi mở <strong>System</strong>. Bạn
+			sẽ thấy một mục <strong>mới xuất hiện</strong>, trước đó không có: <strong>Developer Options</strong>. Bấm vào để
+			xem toàn bộ tính năng dành cho lập trình viên. (Trên một số máy chỉ cần back một lần là về tới Settings; trên máy
+			khác Developer Options nằm ngay trong Settings chứ không nằm dưới System — tuỳ hãng.)
+		</li>
+		<li>
+			Trong rừng tuỳ chọn ở đó, thứ duy nhất bạn cần bây giờ là <strong>USB Debugging</strong>. Tìm nó và bật lên. Một
+			hộp thoại xác nhận hiện ra, giải thích USB debugging dùng để làm gì.
+		</li>
+	</ol>
+	<p class="hint">
+		<strong>Developer Options mở ra rất nhiều thứ — đừng bật bừa.</strong> Trong đó có những tuỳ chọn đủ sức làm máy chạy
+		lạ đi: giả lập màn hình nhỏ hơn, tắt hoạt ảnh, giới hạn tiến trình nền, ép bật GPU debug. Chúng có ích khi bạn biết
+		mình đang làm gì, nhưng ở giai đoạn này chỉ cần bật đúng một công tắc USB Debugging. Nếu về sau máy bạn có hành vi
+		lạ, đây là nơi đầu tiên nên kiểm lại.
+	</p>
+
+	<h3>Câu giải thích quan trọng nhất của mục này</h3>
+	<p>
+		Hộp thoại xác nhận vừa hiện ra đáng đọc chứ không nên bấm OK cho nhanh, vì nó nói ra một sự thật ít người mới để ý:
+	</p>
+	<p>
+		<strong>Cấp quyền USB debugging là một lỗ hổng bảo mật tiềm tàng</strong>, và chính vì vậy phần lớn thiết bị
+		<strong>tắt sẵn</strong> nó khi xuất xưởng. Bạn buộc phải bật vì đó là cách duy nhất để Android Studio cài app qua
+		cáp USB. Nói cách khác: đây không phải một công tắc "cho phép lập trình", nó là công tắc <em>hạ một lớp phòng vệ</em>
+		để đổi lấy khả năng lập trình.
+	</p>
+	<p class="hint">
+		<strong>Lỗ hổng nằm chính xác ở đâu?</strong> USB Debugging mở kênh <code>adb</code> (Android Debug Bridge) — kênh mà
+		Android Studio dùng để cài app, gỡ app, đọc log, chụp màn hình, và đọc-ghi vùng dữ liệu của app đang debug. Bất kỳ
+		máy tính nào bạn <em>cho phép</em> qua kênh này đều làm được đúng những việc đó, không chỉ Android Studio. Vì vậy:
+		chỉ bật khi cần lập trình, <strong>không bấm Allow trên máy tính lạ</strong> (máy dịch vụ, máy công cộng, cột sạc ở
+		sân bay), và xong việc học thì tắt lại là an toàn nhất. Cũng nên biết Developer Options có nút <em>Revoke USB
+		debugging authorizations</em> để xoá sạch danh sách máy tính đã được cho phép — hữu ích nếu bạn từng bấm Allow ở đâu
+		mà không nhớ.
+	</p>
+	<p>
+		Sau khi bấm <strong>OK</strong>, công tắc USB Debugging bật lên. Rồi có thể một popup nữa hiện ra, lần này hỏi bạn xác
+		nhận <strong>RSA key fingerprint</strong> của máy tính đang cắm vào. Đây là một lớp bảo vệ nữa: Android dùng nó để
+		bảo đảm <em>không máy tính nào chưa được cho phép có thể truy cập dữ liệu thiết bị</em>. Vì bạn vừa tự tay bật USB
+		Debugging và tự tay cắm cáp nên có thể coi đây đúng là máy tính của mình — bấm <strong>Allow</strong>. Tick thêm
+		<em>"Always allow from this computer"</em> nếu không muốn phải xác nhận lại mỗi lần cắm cáp.
+	</p>
+	<p class="hint">
+		<strong>RSA fingerprint là gì:</strong> mỗi máy tính có một cặp khoá (một khoá riêng giữ kín, một khoá công khai chia
+		ra ngoài). "Fingerprint" là một chuỗi ký tự ngắn đại diện cho khoá công khai của máy đó — giống như chứng minh thư
+		rút gọn. Điện thoại ghi nhớ fingerprint bạn đã Allow, nên lần sau một máy tính khác cắm vào sẽ có fingerprint khác và
+		bạn bị hỏi lại. Đây đúng là ý tưởng đằng sau việc SSH hỏi "host fingerprint" lần đầu bạn kết nối tới một server: hệ
+		thống không tin một cái tên, nó tin một cái khoá.
+	</p>
+	<p>
+		Xong bước này, thiết bị của bạn đã được thiết lập cho việc lập trình. Kiểm nhanh: mở Android Studio, nhìn dropdown
+		chọn thiết bị ở thanh trên cùng — tên máy bạn phải xuất hiện ở đó. Nếu chưa thấy, ba nguyên nhân thường gặp theo thứ
+		tự: cáp chỉ sạc chứ không truyền dữ liệu · chưa bấm Allow trên điện thoại · trên Windows chưa cài USB driver.
+	</p>
+
+	<h2 id="doc-project">7. Đọc toàn bộ project vừa sinh ra</h2>
+	<p>
+		Lời khuyên thường gặp khi mới mở một project Android là "chưa cần lo về các file này, bạn sẽ quen dần". Lời khuyên đó
+		hợp lý cho một chương cài đặt, nhưng nó bỏ mất một cơ hội chỉ xuất hiện <strong>đúng một lần</strong> trong cả khoá
+		học: project của Chương 2 là project Android <strong>nhỏ nhất</strong> bạn sẽ gặp — <strong>bốn file Kotlin</strong>
+		và vài file cấu hình. Đến Chương 5, cùng cái app đó đã có hơn hai chục file Kotlin, và lúc ấy các file nền sẽ chìm
+		trong code của chính bạn.
+	</p>
+	<p>
+		Nên mục này làm một việc: mở từng file trong project vừa sinh ra, đọc và giải thích nó tồn tại để làm gì. Bạn không
+		cần nhớ hết ngay — mục tiêu là sau khi đọc xong, không file nào trong project còn là một cái tên xa lạ.
+	</p>
+	<p>Đây là toàn bộ những gì có trong project mẫu của chương (đã mở thư mục thật để liệt kê):</p>
+	<pre class="tree">02-getting-started-with-android-studio/projects/final/
+├── settings.gradle.kts          ← project gồm những module nào, lấy thư viện ở đâu
+├── build.gradle.kts             ← khai báo plugin dùng chung (bản AGP + Kotlin)
+├── gradle.properties            ← các thiết lập cho tiến trình build
+├── gradle/wrapper/              ← khoá cứng phiên bản Gradle (8.2)
+└── app/
+    ├── build.gradle.kts         ← cấu hình của riêng module app + danh sách thư viện
+    └── src/main/
+        ├── AndroidManifest.xml  ← khai báo app với hệ điều hành
+        ├── res/                 ← tài nguyên: chuỗi, icon, màu XML, quy tắc backup
+        └── java/com/kodeco/chat/
+            ├── MainActivity.kt  ← màn hình duy nhất + composable Greeting
+            └── ui/theme/
+                ├── Theme.kt     ← KodecoChatTheme
+                ├── Color.kt     ← 6 màu gốc
+                └── Type.kt      ← Typography</pre>
+	<p>
+		Cây trên bỏ qua hai thư mục test (<code>src/test/</code> và <code>src/androidTest/</code>), mỗi thư mục có một file
+		ví dụ do Android Studio sinh sẵn — <code>ExampleUnitTest.kt</code> và <code>ExampleInstrumentedTest.kt</code>. Chúng
+		không tham gia vào app đang chạy và khoá học này chưa dùng tới, nhưng đáng biết là chúng có ở đó:
+		<code>src/test/</code> là test chạy trên máy tính, <code>src/androidTest/</code> là test cần một thiết bị Android thật
+		hoặc máy ảo.
+	</p>
+	<p class="notice">
+		Project của chương này <strong>chỉ có <code>final</code>, không có <code>starter</code></strong> — khác các chương
+		sau. Điều đó hoàn toàn hợp lý: chương này dạy bạn <em>tự tạo</em> project từ đầu bằng wizard, nên không có gì để "bắt
+		đầu từ". Từ Chương 3 trở đi mỗi chương sẽ có cả <code>starter</code> (điểm bắt đầu, thiếu phần bạn sắp viết) và
+		<code>final</code> (kết quả mong đợi).
+	</p>
+
+	<h3>7.1 — <code>MainActivity.kt</code>: cả màn hình app nằm trong 46 dòng</h3>
+	<p>
+		Đây là file duy nhất chứa code app. Cả file dài 46 dòng, trong đó 13 dòng đầu chỉ là khai báo package và các
+		<code>import</code>. Phần còn lại chia thành <strong>ba khối</strong>, mỗi khối một vai trò rõ ràng. Khối thứ nhất là
+		Activity:
+	</p>
+	<Code code={mainActivityCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc từng dòng:</p>
+	<ul>
+		<li>
+			<code>class MainActivity : ComponentActivity()</code> — <strong>Activity</strong> là một màn hình của app.
+			<code>ComponentActivity</code> là loại Activity biết cách hiển thị Compose. Dấu <code>:</code> trong Kotlin ở vị
+			trí này nghĩa là "kế thừa từ", tức <code>MainActivity</code> nhận toàn bộ khả năng của
+			<code>ComponentActivity</code> rồi thêm phần riêng của mình.
+		</li>
+		<li>
+			<code>override fun onCreate(...)</code> — hàm mà hệ điều hành Android <strong>gọi khi màn hình được tạo ra</strong>.
+			Bạn không bao giờ tự gọi nó; bạn chỉ viết nội dung để Android gọi. Từ khoá <code>override</code> nghĩa là "ghi đè
+			phiên bản có sẵn ở lớp cha". Tham số <code>savedInstanceState</code> là chỗ Android trả lại trạng thái đã lưu của
+			lần trước (dùng ở các chương sau, khi app cần sống sót qua việc quay ngang màn hình).
+		</li>
+		<li>
+			<code>super.onCreate(savedInstanceState)</code> — bắt buộc phải có, và phải gọi trước: nó để lớp cha làm phần việc
+			khởi tạo của nó xong đã. Bỏ dòng này thì app crash ngay khi mở.
+		</li>
+		<li>
+			<code>setContent &#123; ... &#125;</code> — <strong>cánh cửa từ thế giới Android cũ sang Compose</strong>. Mọi thứ
+			bạn viết trong cặp ngoặc này là giao diện. Chỉ một hàm này thay thế toàn bộ cách làm UI kiểu cũ (nạp một file XML
+			layout rồi tìm từng view trong đó). Đây là hàm bạn sẽ gặp lại rất nhiều từ Chương 5 trở đi.
+		</li>
+		<li>
+			<code>KodecoChatTheme &#123; ... &#125;</code> — bọc toàn bộ UI trong theme của app, tức bảng màu và bộ chữ. Nhờ nó
+			mà mọi thành phần bên trong tự lấy đúng màu, không cần bạn khai màu ở từng chỗ. Xem chi tiết ở 7.3.
+		</li>
+		<li>
+			<code>Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background)</code> — một mặt
+			phẳng phủ kín màn hình, tô bằng màu nền lấy từ theme. Chú ý cách nó <em>không</em> viết cứng một mã màu mà hỏi
+			theme: đổi theme thì nền đổi theo. Dòng comment mà Android Studio sinh sẵn ngay trên nó cũng nói đúng điều này.
+		</li>
+		<li>
+			<code>Greeting("Fuad")</code> — gọi composable ở khối thứ hai, truyền vào tên cần chào. Trong project mẫu, tên đó
+			là <em>Fuad</em>; đây chính là chỗ Chương 2.3 sẽ bảo bạn thay bằng tên của mình.
+		</li>
+	</ul>
+	<p>Khối thứ hai — composable vẽ chữ:</p>
+	<Code code={greetingCode} lang="kotlin" theme="github-dark" />
+	<ul>
+		<li>
+			<code>@Composable</code> — annotation đánh dấu "hàm này mô tả giao diện". Nó không trả về gì cả; nó
+			<em>phát ra</em> UI. Toàn bộ Chương 5 xoay quanh annotation này.
+		</li>
+		<li>
+			<code>name: String</code> — tham số. Nhờ nó mà <code>Greeting</code> dùng lại được với bất kỳ tên nào, thay vì gán
+			cứng một chuỗi vào <code>Text</code>. Đây là ví dụ nhỏ nhất của nguyên tắc lớn trong Compose: composable nhận dữ
+			liệu từ bên ngoài, không tự quyết dữ liệu.
+		</li>
+		<li>
+			<code>modifier: Modifier = Modifier</code> — tham số <strong>có giá trị mặc định</strong>, nên gọi
+			<code>Greeting("Fuad")</code> mà không truyền modifier vẫn chạy. Đây là quy ước chuẩn của Compose: mọi composable
+			công khai nên nhận một <code>Modifier</code> để nơi gọi tuỳ chỉnh được kích thước, khoảng cách, viền, sự kiện bấm.
+		</li>
+		<li>
+			<code>text = "Hello $name!"</code> — <code>$name</code> là <em>string template</em> của Kotlin: chèn giá trị biến
+			trực tiếp vào chuỗi, khỏi phải nối chuỗi bằng dấu cộng. Đổi <code>"Fuad"</code> thành tên bạn thì dòng chữ trên máy
+			đổi theo.
+		</li>
+	</ul>
+	<p>Khối thứ ba — bản xem trước:</p>
+	<Code code={previewCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>@Preview(showBackground = true)</code> cho Android Studio vẽ thử composable <strong>ngay trong IDE, không cần
+		build và cài app</strong> — tiết kiệm rất nhiều thời gian khi chỉnh giao diện. Chú ý hàm preview này <em>cũng</em> bọc
+		nội dung trong <code>KodecoChatTheme</code>: nếu không bọc, preview sẽ hiện màu và font khác app thật, và bạn sẽ chỉnh
+		giao diện theo một hình ảnh sai. <code>showBackground = true</code> chỉ để preview có nền cho dễ nhìn thay vì nền
+		trong suốt.
+	</p>
+	<p class="hint">
+		<strong>Điểm đáng chú ý:</strong> Android Studio sinh sẵn cho bạn <em>một</em> <code>@Preview</code> ngay từ project
+		trống. Đến Chương 5, cả project chat lớn hơn nhiều cũng chỉ có ba <code>@Preview</code> (đã đếm trong code thật).
+		Preview là công cụ dễ bị bỏ quên nhất trong Compose, dù nó tiết kiệm thời gian nhiều nhất — mỗi lần build và cài lại
+		app tốn hàng chục giây, còn preview vẽ lại gần như tức thì.
+	</p>
+	<p class="hint">
+		<strong>Một điều nữa về ba khối này:</strong> cả ba nằm cùng một file, nhưng chỉ khối thứ nhất là "màn hình" theo
+		nghĩa Android. Hai khối sau là hàm bình thường, ở cấp cao nhất của file (không nằm trong class nào). Đó là điểm khác
+		biệt lớn của Compose so với cách làm UI cũ: giao diện là <em>hàm</em>, và hàm thì tách file, gom nhóm, đem đi dùng lại
+		được. Chương 5 sẽ tách chúng ra thành file riêng.
+	</p>
+
+	<h3>7.2 — <code>AndroidManifest.xml</code>: cách app tự giới thiệu với hệ điều hành</h3>
+	<p>
+		File Kotlin nói app <em>làm gì</em>. Manifest nói với Android app <em>là gì</em> — tên hiển thị, icon, theme lúc khởi
+		động, có những màn hình nào, cần những quyền gì. Android đọc file này <strong>trước khi</strong> chạy bất kỳ dòng
+		Kotlin nào, nên cái gì không khai ở đây thì coi như không tồn tại:
+	</p>
+	<Code code={manifestCode} lang="xml" theme="github-dark" />
+	<table class="api">
+		<thead>
+			<tr><th>Khai báo</th><th>Ý nghĩa</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>android:label="@string/app_name"</code></td>
+				<td>
+					Tên hiển thị của app. Dấu <code>@string/</code> nghĩa là "lấy từ file tài nguyên", không viết cứng chữ ở
+					đây — nhờ vậy dịch app sang ngôn ngữ khác chỉ cần thêm một file <code>strings.xml</code> mới, không sửa
+					Manifest. Xem 7.5.
+				</td>
+			</tr>
+			<tr>
+				<td><code>android:icon="@mipmap/ic_launcher"</code> và <code>android:roundIcon=...</code></td>
+				<td>
+					Icon trên màn hình chính, ở hai dạng: vuông và tròn (một số launcher dùng icon tròn).
+					<code>mipmap</code> là thư mục ảnh nhiều độ phân giải cho nhiều loại màn hình — hệ thống tự chọn bản phù hợp
+					với mật độ điểm ảnh của máy.
+				</td>
+			</tr>
+			<tr>
+				<td><code>android:theme="@style/Theme.KodecoChat"</code></td>
+				<td>
+					Theme <strong>XML</strong> — dùng cho khoảnh khắc app vừa mở, trước khi Compose kịp chạy. Đừng nhầm nó với
+					<code>KodecoChatTheme</code> viết bằng Kotlin ở 7.3: hai theme khác nhau, phục vụ hai giai đoạn khác nhau của
+					cùng một lần mở app.
+				</td>
+			</tr>
+			<tr>
+				<td><code>android:allowBackup="true"</code> + <code>dataExtractionRules</code> + <code>fullBackupContent</code></td>
+				<td>
+					Cho phép Android sao lưu dữ liệu app lên cloud của người dùng, và trỏ tới hai file XML quy định
+					<em>cái gì được sao lưu, cái gì không</em>. Hai file đó trong project mẫu chỉ chứa comment mẫu, chưa khai
+					luật thật — nghĩa là mặc định: sao lưu tất cả.
+				</td>
+			</tr>
+			<tr>
+				<td><code>android:supportsRtl="true"</code></td>
+				<td>
+					Khai báo giao diện chịu được ngôn ngữ viết từ phải sang trái (Ả Rập, Do Thái). Bật sẵn là tốt: nó buộc bạn
+					dùng khái niệm "đầu dòng / cuối dòng" thay vì "trái / phải" khi làm layout.
+				</td>
+			</tr>
+			<tr>
+				<td><code>tools:targetApi="31"</code></td>
+				<td>
+					Chỉ là gợi ý cho công cụ trong IDE, không đi vào app: nó nói với trình kiểm tra rằng những thuộc tính mới
+					dùng ở đây cần API 31 trở lên, đừng báo cảnh báo sai. Tiền tố <code>tools:</code> luôn có nghĩa "dành cho
+					công cụ, không dành cho lúc chạy".
+				</td>
+			</tr>
+			<tr>
+				<td><code>&lt;activity android:name=".MainActivity"&gt;</code></td>
+				<td>
+					Khai báo màn hình. <strong>Activity không khai báo ở đây thì không mở được</strong> — một lỗi kinh điển của
+					người mới: viết xong một Activity mới, chạy thử, app crash với thông báo "Unable to find explicit activity
+					class". Dấu <code>.</code> đứng đầu là viết tắt cho package đã khai ở <code>namespace</code>, tức
+					<code>.MainActivity</code> nghĩa là <code>com.kodeco.chat.MainActivity</code>.
+				</td>
+			</tr>
+			<tr>
+				<td><code>android:exported="true"</code></td>
+				<td>
+					Cho phép thành phần <em>bên ngoài app</em> mở màn hình này. Bắt buộc <code>true</code> ở đây vì chính hệ
+					thống (launcher — màn hình chứa icon các app) phải mở được nó. Với các Activity chỉ dùng nội bộ thì nên để
+					<code>false</code> — đó là quy tắc bảo mật Android siết lại từ API 31: mọi thành phần có
+					<code>intent-filter</code> đều phải khai <code>exported</code> tường minh, không được để trống.
+				</td>
+			</tr>
+			<tr>
+				<td><code>&lt;intent-filter&gt;</code> với <code>action.MAIN</code> + <code>category.LAUNCHER</code></td>
+				<td>
+					<strong>Đây là cặp khai báo làm app xuất hiện trong danh sách app trên thiết bị.</strong> <code>MAIN</code> =
+					đây là điểm vào chính; <code>LAUNCHER</code> = hiện icon ở launcher. Xoá cặp này đi thì app vẫn cài được
+					nhưng <em>bạn không tìm thấy nó đâu để mở</em>.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		<strong>Một điều đáng để ý về Manifest của project này:</strong> nó <em>không</em> khai một quyền (permission) nào cả.
+		Không internet, không camera, không bộ nhớ. Đó là vì app hiện tại chỉ hiện một dòng chữ. Từ Chương 8, khi app bắt đầu
+		gọi mạng, dòng <code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code> sẽ phải xuất hiện ở
+		đây — và thiếu nó thì app không crash mà chỉ lặng lẽ không tải được gì, một kiểu lỗi rất mất thời gian.
+	</p>
+
+	<h3>7.3 — Ba file trong <code>ui/theme/</code>: màu, chữ, và cách chúng gộp lại</h3>
+	<p>
+		Android Studio tách theme thành ba file thay vì một, và cách tách đó rất đáng học vì nó lặp lại y hệt ở Chương 5 (chỉ
+		đổi tên file). Nguyên tắc tách: <code>Color.kt</code> và <code>Type.kt</code> chỉ chứa <em>dữ liệu thô</em> — danh sách
+		màu và danh sách kiểu chữ, không có logic. <code>Theme.kt</code> là file <em>gộp</em>: nó quyết định lúc chạy sẽ dùng
+		bộ nào.
+	</p>
+	<p>Trước hết, hai bảng màu được lắp từ sáu màu thô:</p>
+	<Code code={colorSchemeCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Hai giá trị này là <code>private</code>, tức chỉ dùng trong file. <code>darkColorScheme()</code> và
+		<code>lightColorScheme()</code> là hàm của Material 3: bạn chỉ khai vài màu chính, phần còn lại của bảng màu chúng tự
+		điền giá trị mặc định hợp lý. Đó là lý do khối comment <em>"Other default colors to override"</em> nằm ngay dưới — nó
+		liệt kê những màu bạn <em>có thể</em> ghi đè nếu muốn, và bỏ qua thì vẫn có màu.
+	</p>
+	<p>Và đây là hàm theme, thứ mà <code>MainActivity</code> gọi ở khối thứ nhất:</p>
+	<Code code={themeCode} lang="kotlin" theme="github-dark" />
+	<p>Ba tham số của <code>KodecoChatTheme</code>, mỗi cái là một quyết định thiết kế:</p>
+	<ul>
+		<li>
+			<code>darkTheme: Boolean = isSystemInDarkTheme()</code> — <strong>mặc định đi theo cài đặt của hệ điều hành</strong>.
+			Bạn không phải viết một dòng nào thì app đã tự hỗ trợ dark mode: người dùng bật chế độ tối trong Settings của máy,
+			app đổi theo. Muốn ép sáng hoặc tối thì truyền tay giá trị vào — chính là cách Chương 5 dùng trong các
+			<code>@Preview</code> để xem trước cả hai chế độ cạnh nhau.
+		</li>
+		<li>
+			<code>dynamicColor: Boolean = true</code> — bật <strong>Material You</strong>: Android lấy màu chủ đạo từ ảnh nền
+			của người dùng và app đổi màu theo. Điều kiện là máy phải đủ mới:
+			<code>Build.VERSION.SDK_INT &gt;= Build.VERSION_CODES.S</code> (API 31, tức Android 12) — nhìn rõ trong nhánh đầu
+			của khối <code>when</code>. Trên máy cũ hơn, điều kiện sai và code rơi xuống nhánh dưới.
+		</li>
+		<li>
+			<code>content: @Composable () -&gt; Unit</code> — tham số nhận <strong>một khối giao diện</strong>. Đây là kiểu thiết
+			kế gọi là <em>slot API</em>: theme không biết nó đang bọc cái gì, ai gọi thì đưa nội dung vào. Vì vậy trong
+			<code>MainActivity</code> bạn viết được <code>KodecoChatTheme &#123; Surface &#123; ... &#125; &#125;</code>. Ký hiệu
+			<code>() -&gt; Unit</code> là kiểu "hàm không nhận gì, không trả gì", còn <code>@Composable</code> trước nó nói thêm
+			rằng hàm đó phát ra UI.
+		</li>
+	</ul>
+	<p>
+		Khối <code>when</code> ở giữa chọn bảng màu theo đúng thứ tự ưu tiên: <strong>dynamic color (nếu máy đủ mới) → dark →
+		light</strong>. Sau đó có một đoạn hay bị đọc trượt: khối <code>if (!view.isInEditMode) &#123; SideEffect &#123; ...
+		&#125; &#125;</code> tô màu thanh trạng thái ở đầu màn hình theo màu <code>primary</code> của theme, và điều chỉnh cho
+		chữ trên thanh đó (giờ, pin, sóng) đủ tương phản. Hai chi tiết đáng nhớ trong đoạn này:
+		<code>view.isInEditMode</code> là cách hỏi "code này đang chạy trong preview của IDE chứ không phải trên máy thật?" —
+		vì trong preview không có cửa sổ hệ thống nào để tô; và <code>SideEffect</code> là chỗ đặt những việc
+		<em>không phải vẽ UI</em> nhưng cần chạy sau mỗi lần Compose dựng lại giao diện. Cuối hàm,
+		<code>MaterialTheme(colorScheme, typography, content)</code> mới là thứ thực sự <em>phát</em> màu và font xuống mọi
+		composable bên trong.
+	</p>
+	<p>Hai file còn lại chỉ là dữ liệu thô cho khối trên. Màu:</p>
+	<Code code={colorCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Sáu màu, chia hai bộ: hậu tố <strong>80</strong> (màu nhạt — dùng cho <em>dark theme</em>) và <strong>40</strong> (màu
+		đậm — dùng cho <em>light theme</em>). Nghe ngược nhưng đúng: nền tối thì chữ và điểm nhấn phải sáng, nền sáng thì
+		ngược lại. Con số đó là <em>tone</em> trong hệ màu của Material 3, chạy từ 0 (đen) tới 100 (trắng).
+		<code>0xFFD0BCFF</code> là mã màu ARGB viết ở hệ 16: <code>FF</code> đầu là độ đục (hoàn toàn không trong suốt), sáu ký
+		tự sau là ba thành phần đỏ-lục-lam.
+	</p>
+	<p>Và chữ:</p>
+	<Code code={typographyCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Chỉ <strong>một</strong> style được định nghĩa thật (<code>bodyLarge</code> — cỡ chữ cho đoạn văn thường), phần còn lại
+		Android Studio để sẵn dạng comment để bạn mở ra khi cần. Đây là mẫu "template tối giản": không thừa code, nhưng đặt
+		đúng chỗ để mở rộng. Năm thuộc tính của <code>bodyLarge</code> cũng là năm thứ bạn sẽ điều chỉnh nhiều nhất về sau:
+		font (<code>fontFamily</code>), độ đậm (<code>fontWeight</code>), cỡ chữ (<code>fontSize</code>), khoảng cách dòng
+		(<code>lineHeight</code>) và khoảng cách chữ (<code>letterSpacing</code>). Đơn vị <code>sp</code> là
+		<em>scale-independent pixel</em> — cỡ chữ theo <code>sp</code> sẽ to lên nếu người dùng đặt cỡ chữ lớn trong Settings,
+		đó là lý do chữ luôn dùng <code>sp</code> chứ không dùng <code>dp</code>. Chương 5 chính là lúc bạn mở rộng file này:
+		thay <code>FontFamily.Default</code> bằng một font Google tải về.
+	</p>
+	<p>
+		Về sự phân công giữa ba file: nếu bạn muốn đổi <em>diện mạo</em> app, gần như luôn chỉ cần sửa
+		<code>Color.kt</code> và <code>Type.kt</code>; <code>Theme.kt</code> chỉ sửa khi muốn đổi <em>logic</em> chọn theme, ví
+		dụ tắt Material You hoặc thêm chế độ tương phản cao. Đó là một cách chia file bạn nên bắt chước cho project của mình.
+	</p>
+	<p>
+		Có một chỗ dễ nhầm giữa Chương 2 và Chương 5 liên quan tới chính ba file này — tên hàm theme và package chứa nó đều
+		đổi. Chi tiết ở mục <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>.
+	</p>
+
+	<h3>7.4 — Hai file Gradle: nơi khai bản Android và thư viện</h3>
+	<p>
+		Chương 4 sẽ dạy Gradle tử tế, từ đầu tới lúc ký app phát hành. Bây giờ chỉ cần đọc được năm khai báo quan trọng nhất
+		trong <code>app/build.gradle.kts</code> — file cấu hình của riêng module <code>app</code>:
+	</p>
+	<Code code={gradleConfigCode} lang="kotlin" theme="github-dark" />
+	<table class="api">
+		<thead>
+			<tr><th>Khai báo</th><th>Nghĩa</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>namespace = "com.kodeco.chat"</code></td><td>Package gốc của code — thứ khiến <code>.MainActivity</code> trong Manifest hiểu được, và cũng là package của lớp <code>R</code> chứa mọi tài nguyên.</td></tr>
+			<tr><td><code>compileSdk = 34</code></td><td>Bản SDK dùng để <em>biên dịch</em>. Nó quyết định bạn được phép gọi API tới mức nào — ở đây là tới API 34. Đặt cao không làm app cần máy mới hơn.</td></tr>
+			<tr><td><code>applicationId = "com.kodeco.chat"</code></td><td>Danh tính app khi <em>cài lên máy</em> — chính là ô "Package name" bạn điền ở Chương 2.1, mục 3. Hai app cùng <code>applicationId</code> không thể cùng tồn tại trên một thiết bị.</td></tr>
+			<tr><td><code>minSdk = 30</code></td><td>Bản Android thấp nhất cài được app. Máy cũ hơn mức này sẽ không thấy app trên Play Store. <strong>Con số này có một điểm lệch đáng biết — xem mục cạm bẫy.</strong></td></tr>
+			<tr><td><code>targetSdk = 34</code></td><td>Bản Android mà app <em>đã được test và nhắm tới</em>. Nó quyết định app phải tuân theo quy tắc hành vi mới của bản nào — nâng số này lên là cam kết đã kiểm app chạy đúng với các thay đổi của bản đó.</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Ba chữ số ấy hay bị gộp thành một trong đầu người mới, nên nói lại cho rõ bằng một câu:
+		<strong><code>compileSdk</code> là bộ công cụ bạn viết bằng, <code>minSdk</code> là sàn thiết bị bạn nhận,
+		<code>targetSdk</code> là bản bạn hứa đã thử</strong>. Chúng độc lập với nhau, và trong project mẫu chúng lần lượt là
+		34 / 30 / 34.
+	</p>
+	<p>
+		Phần dưới của cùng file này còn hai khối đáng biết mặt trước, dù Chương 4 mới giải thích: khối <code>buildTypes</code>
+		phân biệt bản <em>debug</em> (đang chạy khi bạn bấm Run) với bản <em>release</em> (bản đem phát hành), và khối
+		<code>dependencies</code> liệt kê các thư viện app dùng — trong project này là Compose, Material 3 và vài thư viện lõi
+		AndroidX, cộng ba thư viện chỉ dùng cho test. Có một dòng trong danh sách đó đáng chỉ mặt sớm:
+		<code>implementation(platform("androidx.compose:compose-bom:2023.10.00"))</code>. Đó là một <em>BOM</em> — một bảng
+		phiên bản gộp: nhờ nó mà các dòng Compose ngay dưới không cần ghi số phiên bản, tất cả lấy theo bảng. Chương 4, mục 9
+		sẽ mở lại đúng dòng này.
+	</p>
+	<p>File Gradle ở gốc project ngắn hơn nhiều, và nó cho biết project mẫu được viết trong "thời đại" nào:</p>
+	<Code code={rootGradleCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>com.android.application</code> phiên bản <strong>8.2.0</strong> là <em>Android Gradle Plugin</em> (AGP) — phần
+		biết cách biến code Kotlin cộng tài nguyên thành một file app cài được. <code>org.jetbrains.kotlin.android</code>
+		<strong>1.9.10</strong> là bản Kotlin. Hai con số này định vị project mẫu vào khoảng <strong>cuối 2023</strong>, và
+		điều đó được xác nhận thêm bởi file <code>gradle/wrapper/gradle-wrapper.properties</code>: nó ghim Gradle bản
+		<code>gradle-8.2-bin.zip</code> và dòng timestamp trong file là tháng 10/2023. Cụm <code>apply false</code> nghĩa là
+		"khai báo phiên bản ở đây thôi, module nào cần thì tự bật" — cách chuẩn để mọi module trong project dùng chung một
+		phiên bản plugin.
+	</p>
+	<p class="hint">
+		<strong>Gradle wrapper là gì và vì sao nó quan trọng:</strong> thư mục <code>gradle/wrapper/</code> cộng hai script
+		<code>gradlew</code> ở gốc project cho phép build project bằng <em>đúng</em> phiên bản Gradle đã ghim, tự tải về nếu
+		máy chưa có. Nhờ vậy project build ra kết quả giống nhau trên máy bạn, máy đồng nghiệp và máy chủ CI — không phụ thuộc
+		vào việc mỗi người cài Gradle bản nào. Đây là lý do bạn không nên xoá thư mục này dù trông nó có vẻ vô dụng.
+	</p>
+	<p>
+		Còn <code>gradle.properties</code> giữ các thiết lập cho chính tiến trình build, đáng chú ý ba dòng: cấp cho Gradle
+		2 GB bộ nhớ và bắt dùng UTF-8 (<code>org.gradle.jvmargs</code>), bật AndroidX
+		(<code>android.useAndroidX=true</code> — bộ thư viện Android hiện đại), và <code>android.nonTransitiveRClass=true</code>
+		để lớp <code>R</code> của mỗi thư viện chỉ chứa tài nguyên của chính nó, cho lớp <code>R</code> nhỏ lại.
+	</p>
+
+	<h3>7.5 — Những file nhỏ còn lại</h3>
+	<p>File tài nguyên chuỗi, ngắn tới mức chỉ có một dòng đáng kể:</p>
+	<Code code={stringsCode} lang="xml" theme="github-dark" />
+	<p>
+		Đây chính là đích đến của <code>@string/app_name</code> trong Manifest, và là nơi chữ <em>"Kodeco Chat"</em> bạn gõ ở ô
+		<strong>Name</strong> (Chương 2.1, mục 3) thực sự được lưu. Muốn đổi tên app hiển thị trên máy: sửa ở đây, không sửa
+		trong Manifest. Cách làm này còn có một lợi ích lớn hơn về sau: muốn app hỗ trợ tiếng Việt, bạn thêm thư mục
+		<code>res/values-vi/</code> với một <code>strings.xml</code> khác, và Android tự chọn file đúng theo ngôn ngữ máy — không
+		sửa một dòng code nào.
+	</p>
+	<p>
+		Cùng thư mục <code>res/values/</code> còn hai file nữa. <code>themes.xml</code> là nơi định nghĩa cái theme XML mà
+		Manifest trỏ tới:
+	</p>
+	<Code code={themesXmlCode} lang="xml" theme="github-dark" />
+	<p>
+		Chỉ một dòng, và dòng đó đáng đọc: theme <code>Theme.KodecoChat</code> kế thừa
+		<code>android:Theme.Material.Light.NoActionBar</code>. Phần <code>NoActionBar</code> là chi tiết quan trọng — nó bảo hệ
+		thống <em>đừng</em> vẽ thanh tiêu đề kiểu cũ ở đầu màn hình, vì trong Compose bạn sẽ tự dựng thanh trên bằng
+		composable (Chương 5 làm chính việc đó). Nếu theme này không có <code>NoActionBar</code>, app sẽ có hai thanh tiêu đề
+		xếp lên nhau.
+	</p>
+	<p>
+		File thứ hai là <code>colors.xml</code>, chứa bảy màu XML (mấy tông tím, xanh ngọc, đen, trắng). Đây là di sản của thời
+		làm UI bằng XML: project Compose gần như không dùng tới chúng, vì màu đã nằm trong <code>Color.kt</code> ở 7.3. Biết
+		rằng chúng tồn tại là đủ, và cũng đủ để không bối rối khi thấy màu bị khai ở hai nơi.
+	</p>
+	<p>
+		Cuối cùng, <code>settings.gradle.kts</code> — file mà Gradle đọc <em>trước tiên</em>, trước cả hai file
+		<code>build.gradle.kts</code>:
+	</p>
+	<Code code={settingsGradleCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Nó làm hai việc. Việc thứ nhất là khai cấu trúc project: <code>rootProject.name = "Kodeco Chat"</code> đặt tên project
+		và <code>include(":app")</code> nói project này có đúng một module tên <code>app</code>. Việc thứ hai là khai
+		<em>nơi tải thư viện</em>: <code>google()</code> (kho của Google, chứa thư viện Android và AndroidX),
+		<code>mavenCentral()</code> (kho chung của cộng đồng Java/Kotlin), và <code>gradlePluginPortal()</code> cho plugin. Chú
+		ý dòng <code>repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)</code>: nó buộc mọi module dùng chung
+		danh sách kho đã khai ở đây và <em>báo lỗi</em> nếu module nào tự khai thêm kho riêng. Nghe khó tính, nhưng đó là một
+		biện pháp bảo mật thật: một kho lạ được thêm vào ở một module có thể tráo thư viện của bạn bằng bản đã bị sửa. Chương 4,
+		mục 5 sẽ mở lại đúng file này.
+	</p>
+	<p>
+		Ba file trên đóng lại vòng tròn của toàn bộ mục 7: <code>MainActivity.kt</code> có code,
+		<code>AndroidManifest.xml</code> khai app với hệ điều hành và trỏ tới <code>strings.xml</code> cùng
+		<code>themes.xml</code>, <code>ui/theme/</code> giữ diện mạo cho phần Compose, và ba file Gradle dựng tất cả những thứ
+		đó thành một app cài được. Chín file, không file nào là dư.
+	</p>
+
+	<div class="callout">
+		<strong>Tổng kết Chương 2.2</strong>
+		<ul>
+			<li><strong>Phải có thiết bị mới chạy được app</strong> — thật hoặc ảo, chọn một là đủ. Máy ảo
+				(<strong>AVD</strong>) là một thiết bị Android chạy trong một cửa sổ trên máy tính, đủ dùng cho cả 11 chương.</li>
+			<li><strong>Wizard tạo AVD có ba bước, trả lời ba câu khác nhau:</strong> Select Hardware chọn <em>kiểu máy</em> ·
+				System Image chọn <em>phiên bản Android</em> (tab Recommended bị mờ vì chưa tải, bấm Download ở cột Release Name,
+				quy tắc là lấy API cao nhất) · Summary chỉ để đặt tên và bấm Finish.</li>
+			<li><strong>Đừng nhầm hai con số:</strong> <code>Minimum SDK = API 28</code> là sàn tương thích của app;
+				<code>API 34</code> là hệ điều hành của máy ảo. App <code>minSdk</code> thấp chạy được trên máy mới, không có
+				chiều ngược lại.</li>
+			<li><strong>Máy thật cần ba bước mở cửa:</strong> bấm liên tục vào <em>Build number</em> để thành developer → mở
+				<em>Developer Options</em> → bật <strong>USB Debugging</strong>. Trên Windows thêm bước cài USB driver.</li>
+			<li><strong>USB Debugging là một lỗ hổng có chủ ý:</strong> nó mở kênh <code>adb</code> cho phép cài app, đọc log,
+				chụp màn hình, đọc dữ liệu app. Chỉ bật khi cần, không bấm Allow trên máy lạ, xong việc thì tắt.
+				<strong>RSA fingerprint</strong> là chứng minh thư rút gọn của máy tính; điện thoại ghi nhớ nó để chặn máy khác.</li>
+			<li><strong>Project "trống" thật ra có chín file cốt lõi:</strong> <code>MainActivity.kt</code> (ba khối: Activity ·
+				composable <code>Greeting</code> · <code>@Preview</code>) · <code>AndroidManifest.xml</code> (tên, icon, theme
+				khởi động, khai Activity, cặp <code>MAIN</code> + <code>LAUNCHER</code> làm app hiện ở launcher) · ba file
+				<code>ui/theme/</code> (<code>Theme.kt</code> gộp logic, <code>Color.kt</code> và <code>Type.kt</code> là dữ liệu
+				thô) · ba file Gradle · <code>strings.xml</code>.</li>
+			<li><strong>Bốn con số định vị project:</strong> <code>compileSdk = 34</code> là bộ công cụ viết bằng,
+				<code>minSdk = 30</code> là sàn thiết bị, <code>targetSdk = 34</code> là bản đã hứa kiểm,
+				<code>applicationId</code> là danh tính app trên máy.</li>
+			<li><strong>Mọi dấu <code>@</code> trong XML là một đường dẫn tới tài nguyên:</strong>
+				<code>@string/app_name</code> → <code>res/values/strings.xml</code> · <code>@style/Theme.KodecoChat</code> →
+				<code>res/values/themes.xml</code> · <code>@mipmap/ic_launcher</code> → thư mục icon nhiều độ phân giải.</li>
+			<li><strong>Project mẫu ghim ở cuối 2023:</strong> AGP 8.2.0, Kotlin 1.9.10, Gradle 8.2. Biết mốc thời gian này giúp
+				bạn hiểu vì sao vài chỗ trong hướng dẫn không còn khớp với Android Studio hôm nay.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Tiếp theo — Chương 2.3:</strong> thiết bị đã có, project đã đọc hiểu, giờ tới lúc bấm nút. Chương 2.3 chọn thiết
+		bị trong dropdown và bấm <strong>Run App</strong> để build rồi cài <em>Kodeco Chat</em> lên máy, sửa
+		<code>Greeting("Fuad")</code> thành tên của bạn và thấy chữ trên màn hình đổi <em>ngay lập tức</em> nhờ
+		<strong>Live Edit</strong> (kèm cách bật lại tính năng đó nếu nó không tự chạy), rồi hướng dẫn cách cập nhật Android
+		Studio, tải thêm bản Android SDK mới hoặc cũ, và cài các build tool trong hai tab <em>SDK Platforms</em> và
+		<em>SDK Tools</em>.
+	</p>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Chương này là chương "bấm chuột" nhiều nhất của khoá học, nên cũng là chương dễ lệch nhất theo thời gian: Android Studio
+		đổi giao diện mỗi năm vài lần, và số hiệu API thì tăng đều. Sáu điểm dưới đây là những chỗ hướng dẫn từng bước sẽ không
+		còn khớp với những gì bạn thấy trên máy, cộng vài chỗ project mẫu và lý thuyết nói khác nhau. Đọc trước để không mất
+		buổi tối đi tìm một cái nút đã bị xoá hoặc một lỗi không tồn tại.
+	</p>
+	<p class="notice">
+		<strong>1. Số hiệu API cao nhất trong bảng System Image không còn là 34.</strong> Project mẫu của khoá học ghim ở cuối
+		2023, thời điểm bản Android mới nhất là <em>UpsideDownCake</em> / API 34. Từ đó tới nay đã có Vanilla Ice Cream (API 35),
+		Baklava (API 36) và các bản sau, nên bảng System Image trên máy bạn sẽ hiện những con số cao hơn nhiều. Hãy theo
+		<em>quy tắc</em> — chọn API Level cao nhất có trong bảng — chứ đừng đi tìm đúng con số 34. Nếu bạn cố ý chọn API 34 để
+		"giống hướng dẫn" thì cũng chạy được, chỉ là bạn đang test app trên một hệ điều hành cũ hơn máy của người dùng thật.
+	</p>
+	<p class="notice">
+		<strong>2. Pixel 7 Pro có thể không còn trong danh sách hardware mặc định.</strong> Danh sách thiết bị giả lập được cập
+		nhật theo các máy Pixel mới, và các đời cũ dần bị dồn xuống mục khác hoặc bỏ hẳn. Bất kỳ Pixel đời gần đây đều thay thế
+		được. Điều duy nhất chương này cần ở chiếc máy ảo là nó có kích thước một chiếc điện thoại — đừng chọn tablet, TV hay
+		đồng hồ, vì layout của app sẽ trông khác hẳn những gì bài học mô tả.
+	</p>
+	<p class="notice">
+		<strong>3. Device Manager đã được làm lại, nút "+" có thể không còn ở chỗ đó.</strong> Các bản Android Studio mới gộp
+		bước và đổi cách gọi tên: thay vì nút <strong>+</strong> ở đầu bảng, bạn có thể thấy một mục kiểu "Add a new device", và
+		ba màn hình của wizard có khi bị gộp thành một trang duy nhất với danh sách thiết bị bên trái, cấu hình bên phải. Ba
+		việc bạn phải làm thì không đổi: <em>chọn kiểu máy → chọn và tải phiên bản Android → xác nhận</em>. Khi hướng dẫn nói
+		"bấm nút ở góc", hãy đọc nó thành "tìm chỗ thêm thiết bị mới".
+	</p>
+	<p class="notice">
+		<strong>4. Hướng dẫn tạo project yêu cầu <code>Minimum SDK = API 28</code>, nhưng project mẫu khai
+		<code>minSdk = 30</code>.</strong> Đây là điểm lệch thật, đã kiểm bằng cách mở
+		<code>app/build.gradle.kts</code> dòng 12 của project mẫu: con số ở đó là 30 (Android 11), không phải 28 (Android 9
+		"Pie"). Đáng biết thêm là <em>cả mười project</em> có file build trong bộ project mẫu của khoá học đều khai
+		<code>minSdk = 30</code>, nên đây không phải một lỗi đánh máy ở một chỗ. Hệ quả thực tế: <strong>gần như không có</strong> —
+		mọi đoạn code trong khoá học đều chạy được ở cả hai mức. Nhưng nếu bạn tự tạo project theo hướng dẫn (điền 28) rồi mở
+		project mẫu ra so, bạn sẽ thấy hai con số khác nhau và tưởng mình làm sai. Bạn không làm sai. Nên chọn cái nào? Với việc
+		học, chọn gì cũng được; với app thật, đặt <code>minSdk</code> càng thấp càng nhiều thiết bị dùng được, đổi lại bạn phải
+		tự xử lý những API mới chưa có ở bản cũ.
+	</p>
+	<p class="notice">
+		<strong>5. Tên hàm theme và package chứa nó đổi giữa Chương 2 và Chương 5 — đừng copy code qua lại.</strong> Ở Chương 2,
+		theme tên <code>KodecoChatTheme</code> (chữ <strong>C</strong> hoa) và nằm trong package
+		<code>com.kodeco.chat.ui.theme</code>, file <code>Theme.kt</code>. Ở Chương 5, theme tên
+		<code>KodecochatTheme</code> (chữ <strong>c</strong> nhỏ) và nằm trong package <code>com.kodeco.chat.theme</code> — bỏ
+		tầng <code>ui</code>, file đổi tên thành <code>Themes.kt</code>. Đã kiểm trong code thật: project Chương 5 giữ
+		<em>cả hai</em> thư mục, nhưng mọi file UI đều import bản mới ở <code>theme/</code>, còn thư mục <code>ui/theme/</code>
+		cũ nằm đó không ai gọi. Không có gì sai ở đây, nhưng nếu bạn copy code Chương 5 vào project Chương 2 (hay ngược lại) thì
+		sẽ gặp lỗi <em>"unresolved reference"</em>, và lỗi đó rất khó đoán vì hai cái tên chỉ khác nhau một chữ hoa. Khoá học này
+		ghi rõ mỗi khác biệt như vậy thay vì âm thầm sửa cho khớp.
+	</p>
+	<p class="notice">
+		<strong>6. Nếu bạn tạo project mới hôm nay, cấu hình Compose trong Gradle sẽ khác project mẫu.</strong> Project mẫu khai
+		một khối <code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code> trong
+		<code>app/build.gradle.kts</code>, vì ở thời Kotlin 1.9 thì Compose compiler là một thư viện riêng phải ghim phiên bản
+		khớp với bản Kotlin. Từ Kotlin 2.0, Compose compiler đi kèm luôn với Kotlin và được bật bằng plugin
+		<code>org.jetbrains.kotlin.plugin.compose</code>, nên khối <code>composeOptions</code> cùng dòng
+		<code>kotlinCompilerExtensionVersion</code> <strong>không còn cần</strong> trong project mới. Bạn vẫn đọc hiểu được
+		project mẫu và nó vẫn build được; chỉ đừng bắt chước khối đó khi tự tạo project. Chương 4 sẽ nói kỹ hơn về file này.
+	</p>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 113 (lời khuyên "chưa cần lo về các file này") · dòng 117
+			và 173 (hai ghi chú "skip to…" đối xứng nhau cho hai đường máy ảo / máy thật) · dòng 119 (muốn chạy app thì cần một
+			thiết bị) · dòng 124–129 (Device Manager và định nghĩa AVD) · dòng 131–141 (nút "+" và màn hình Select Hardware,
+			Pixel 7 Pro) · dòng 143–157 (System Image, tab Recommended bị mờ, Download ở cột Release Name, Component Installer,
+			ví dụ UpsideDownCake / API 34) · dòng 159–169 (màn hình Summary và AVD xuất hiện trong Device Manager) · dòng 175
+			(cắm cáp USB) · dòng 177 (USB driver cho Windows, link <code>oem-usb.html</code>) · dòng 179–189 (tìm và bấm liên tục
+			vào Build number, yêu cầu nhập PIN) · dòng 191–198 (Settings ▸ System ▸ Developer Options) · dòng 203–212 (bật USB
+			Debugging, hộp thoại xác nhận, bấm OK và công tắc bật lên) · dòng 210 (USB debugging là lỗ hổng bảo mật tiềm tàng) ·
+			dòng 217–224 (RSA key
+			fingerprint và "Always allow from this computer") · dòng 226 (thiết bị đã sẵn sàng cho lập trình) · dòng 89 (yêu cầu
+			<code>Minimum SDK = API 28</code>, dùng để đối chiếu với <code>minSdk = 30</code> trong code thật) · dòng 312–313
+			(mốc Android 14 / API 34 và việc Android Studio đã tách rời phiên bản Android). Các sơ đồ và ảnh chụp màn hình gốc
+			(<code>img19.png</code> đến <code>img33.png</code>) không được kèm theo — khoá học này diễn giải lại bằng chữ, bảng và
+			cây thư mục.
+		</li>
+		<li>
+			<strong>Code thật đã đối chiếu:</strong> <code>{SRC}/MainActivity.kt</code> (46 dòng — Activity ở dòng 15–30,
+			<code>Greeting</code> ở dòng 32–38, <code>GreetingPreview</code> ở dòng 40–46) ·
+			<code>{SRC}/ui/theme/Theme.kt</code> (70 dòng — hai <code>ColorScheme</code> ở dòng 18–38, hàm
+			<code>KodecoChatTheme</code> ở dòng 40–70, đoạn <code>SideEffect</code> tô thanh trạng thái ở dòng 56–63) ·
+			<code>{SRC}/ui/theme/Color.kt</code> (dòng 5–11) · <code>{SRC}/ui/theme/Type.kt</code> (dòng 9–34) ·
+			<code>{FINAL}/app/src/main/AndroidManifest.xml</code> (dòng 1–28) ·
+			<code>{FINAL}/app/build.gradle.kts</code> (khối <code>android</code> + <code>defaultConfig</code> ở dòng 6–21,
+			<code>minSdk = 30</code> ở dòng 12, <code>buildTypes</code> ở dòng 23–31, <code>composeOptions</code> ở dòng 42–44,
+			<code>dependencies</code> ở dòng 52–69 với BOM Compose <code>2023.10.00</code> ở dòng 57) ·
+			<code>{FINAL}/build.gradle.kts</code> (dòng 1–5 — AGP 8.2.0, Kotlin 1.9.10) ·
+			<code>{FINAL}/settings.gradle.kts</code> (dòng 1–17) · <code>{FINAL}/gradle.properties</code> (dòng 9, 17, 23) ·
+			<code>{FINAL}/gradle/wrapper/gradle-wrapper.properties</code> (dòng 1 — timestamp tháng 10/2023; dòng 4 —
+			<code>gradle-8.2-bin.zip</code>) · <code>{FINAL}/app/src/main/res/values/strings.xml</code> ·
+			<code>{FINAL}/app/src/main/res/values/themes.xml</code> ·
+			<code>{FINAL}/app/src/main/res/values/colors.xml</code> (7 màu, dòng 3–9) ·
+			<code>{FINAL}/app/src/main/res/xml/data_extraction_rules.xml</code> (chỉ chứa comment mẫu) · cây thư mục và việc
+			project chỉ có <code>final</code>, không có <code>starter</code>: liệt kê trực tiếp trong <code>{FINAL}/</code>.
+			Đối chiếu chéo với Chương 5:
+			<code>aaf-materials/05-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat/theme/Themes.kt</code>
+			(<code>fun KodecochatTheme</code> ở dòng 109) và <code>.../MainActivity.kt</code> (dòng 42 import
+			<code>com.kodeco.chat.theme.KodecochatTheme</code>) — xác nhận điểm lệch tên theme ở mục cạm bẫy, cùng con số
+			3 <code>@Preview</code> trong toàn project Chương 5.
+		</li>
+		<li>
+			<strong>Phần bổ sung ngoài giáo trình:</strong> toàn bộ mục 7 (đọc từng file của project vừa sinh ra) — giáo trình chỉ
+			khuyên "chưa cần lo về các file này" · giải thích cơ chế đằng sau AVD, yêu cầu cấu hình máy tính và mẹo để emulator
+			mở suốt buổi học · phân tích lỗ hổng <code>adb</code> đứng sau USB Debugging và nút <em>Revoke USB debugging
+			authorizations</em> · giải thích RSA fingerprint bằng phép so sánh với host fingerprint của SSH · phân biệt ba con số
+			<code>compileSdk</code> / <code>minSdk</code> / <code>targetSdk</code> · giải thích BOM của Compose, Gradle wrapper,
+			<code>FAIL_ON_PROJECT_REPOS</code>, <code>NoActionBar</code>, đơn vị <code>sp</code>, hệ tone 40/80 của Material 3,
+			slot API và <code>SideEffect</code> · ba lý do thường gặp khi Android Studio không nhìn thấy thiết bị · thư mục
+			<code>res/values-vi/</code> cho việc dịch app · hai thư mục test sinh sẵn · và toàn bộ mục
+			<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>, trong đó điểm 6 (Compose compiler từ Kotlin 2.0) là kiến thức
+			hiện tại nằm ngoài giáo trình.
+		</li>
+	</ul>
+</section>
+

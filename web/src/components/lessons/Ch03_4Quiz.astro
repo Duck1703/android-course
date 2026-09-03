@@ -1,0 +1,746 @@
+---
+// Quiz + bài tập cho Chương 3.4 — Theme, chuỗi việc khi bấm Send, đối chiếu code thật (phạm vi mục 20–27).
+// Tách từ quiz gộp Ch03Quiz.astro theo cùng ranh giới với 4 chương nhỏ của Chương 3.
+// KẾ THỪA từ quiz gộp:
+//   q19 (tình trạng hàm KodecoChatTheme trong ui/theme/Theme.kt sau khi làm theo hướng dẫn) -> câu 4.
+//     Viết lại lời dẫn để đứng độc lập (bỏ mọi cách nhắc tới tài liệu in, nói rõ BƯỚC nào gây ra),
+//     rút từ 4 lựa chọn về 3: đáp án (c) và (d) cũ ("manifest tự gọi nó" / "themes.xml gọi nó") là cùng
+//     một hiểu sai nên gộp thành một lựa chọn duy nhất. Explain viết lại đầy hơn: thêm bằng chứng đếm
+//     được (final 1 kết quả · starter 4 kết quả) và hệ quả nhìn thấy khi bật chế độ tối. KHÔNG phát hiện
+//     chỗ sai về sự thật trong câu cũ — chỉ thiếu bằng chứng và thiếu vế "vì sao 2 lựa chọn kia sai".
+//   Bài tập sắp thứ tự 7 bước "bấm Send một lần" -> Bài tập 1 của file này (đúng phạm vi mục 23).
+//     Giữ nguyên 7 bước và đáp án: bàn phím gửi ký tự cho OutlinedTextField=1 · chatInputText = it=2 ·
+//     recomposition lần một, chữ hiện trong ô nhập=3 · lambda onClick của Button chạy=4 ·
+//     chép chatInputText sang chatOutputText=5 · gán chatInputText rỗng=6 · recomposition lần hai,
+//     chữ nhảy lên trên và ô nhập trống=7. Phần đáp án viết lại dài hơn: ba chỗ dễ sắp sai + vì sao
+//     Column và Button bị bỏ qua ở lần vẽ lại thứ hai.
+// VIẾT MỚI 9 câu:
+//   câu 1 — mục 20: dòng style duy nhất không có thẻ <item> nào nghĩa là không ghi đè gì.
+//   câu 2 — mục 20: android:theme trên <application> (dòng 46) so với trên <activity> (dòng 52).
+//   câu 3 — mục 21: hai hệ theme song song khác nhau ở chỗ AI áp dụng và áp vào LÚC NÀO.
+//   câu 5 — mục 22: đảo thứ tự lồng Surface / KodecoChatTheme thì Surface đọc bảng màu mặc định.
+//   câu 6 — mục 22: khoảng trống theme kéo qua Chương 4, được lấp ở Chương 5 bằng một hàm KHÁC.
+//   câu 7 — mục 23: chuỗi bảy bước không ghi gì xuống máy nên tắt app rồi mở lại là mất.
+//   câu 8 — mục 24: ba loại lệch, chuyện mất lời gọi theme thuộc loại "hệ quả không ai nói ra".
+//   câu 9 — mục 25.1: composeOptions / kotlinCompilerExtensionVersion và mốc Kotlin 2.0.
+//   câu 10 — mục 26 + 27: bốn thứ Gradle đã gặp trong Chương 3 và vì sao chúng là nội dung Chương 4.
+// Tránh lặp ý với Ch03_1Quiz (đã có: đảo thứ tự 2 dòng onClick · vì sao Text tự cập nhật · xoay máy
+//   làm mất chữ) nên câu 7 hỏi hướng khác hẳn: tắt app rồi mở lại, tức chuyện lưu trữ.
+// Đã tự mở từng file thật kiểm lại mọi số dòng trước khi viết (2026-08-31):
+//   03/final/res/values/themes.xml 38 dòng — <resources> 35, style duy nhất 37 (thẻ tự đóng />),
+//     </resources> 38; đếm thẻ <item> trong file: 0.
+//   03/starter/res/values/themes.xml 39 dòng — <resources> 36, style 38, </resources> 39 (lệch 1 dòng
+//     so với bản final vì khối comment giấy phép gói dòng khác nhau; thân file y hệt).
+//   03/final/AndroidManifest.xml 61 dòng — android:theme dòng 46 (<application>) và 52 (<activity>).
+//   03/starter/AndroidManifest.xml 62 dòng — android:theme dòng 47 và 53.
+//   03/final/ui/theme/Theme.kt 103 dòng — @Composable 73, fun KodecoChatTheme( 74, SideEffect 91,
+//     MaterialTheme( 98, dấu } đóng hàm 103. Bản starter: fun KodecoChatTheme( ở dòng 75.
+//   03/final/ui/theme/Color.kt — Purple80/PurpleGrey80/Pink80 dòng 38–40, Purple40/PurpleGrey40/Pink40 42–44.
+//   03/final/ui/theme/Type.kt — val Typography dòng 43.
+//   03/final/MainActivity.kt — license 1–32, import 36–48, class 50–78, setContent 53, Column 54,
+//     hai biến state 56–57, Text 58, OutlinedTextField 60–66, Button 68–71 (hai dòng đổi state 69–70),
+//     nhãn nút 72, dòng trống dư 73.
+//   03/starter/MainActivity.kt — import 37–47 (KodecoChatTheme dòng 47), class 49–64 (lời gọi
+//     KodecoChatTheme dòng 53), Greeting 66–72, GreetingPreview 74–80 (lời gọi thứ hai dòng 77).
+//   03/final/app/build.gradle.kts 102 dòng — namespace 41, compileSdk 42, minSdk 46, targetSdk 47,
+//     buildFeatures { compose = true } 73–75, composeOptions 76–78 (kotlinCompilerExtensionVersion
+//     = "1.5.3" ở dòng 77), activity-compose 89, compose-bom 2023.10.00 dòng 90, material3 (không số) 94.
+//   03/final/build.gradle.kts 39 dòng — plugins { dòng 36, AGP 8.2.0 dòng 37, Kotlin 1.9.10 dòng 38.
+//   Tìm chuỗi KodecoChatTheme (phân biệt chữ hoa/thường) trong app/src/main/java/ của từng project:
+//     03/starter 4 kết quả (MainActivity 47, 53, 77 + ui/theme/Theme.kt 75) · 03/final 1 kết quả
+//     (Theme.kt 74) · 04/final 1 kết quả (Theme.kt 74) · 05/final 1 kết quả (ui/theme/Theme.kt 75).
+//     Cùng chuỗi nhưng KHÔNG phân biệt hoa/thường ở 05/final: 7 kết quả trong 4 file —
+//     MainActivity.kt 42 (import) và 48 (lời gọi KodecochatTheme, chữ c thường),
+//     components/KodecochatAppBar.kt 53, 85, 94, theme/Themes.kt 109 (khai báo), ui/theme/Theme.kt 75.
+//   05/final/theme/Color.kt — bảng màu Blue/DarkBlue/Yellow/Red/Grey dòng 39–72.
+//   So starter với final của Chương 3: 3 file trong ui/theme/ (Color.kt, Theme.kt, Type.kt) chỉ khác nhau
+//     ở cách gói dòng trong khối comment giấy phép, thân code y hệt — hàm theme KHÔNG bị xoá.
+// Đáp án rải đều: a 4 câu (2, 6, 8, 10) · b 3 câu (1, 4, 9) · c 3 câu (3, 5, 7).
+// Ghi nhận (không sửa): 10/10 câu có đáp án đúng là lựa chọn NGẮN NHẤT — đúng theo kỹ thuật "distractor dài,
+//   đáp án ngắn" của chuẩn quiz, nhưng đây là tín hiệu đoán được MẠNH NHẤT trong cả 4 quiz của Chương 3
+//   (3.1 = 5/11 · 3.2 = 7/15 · 3.3 = 8/11 · 3.4 = 10/10). Nếu về sau rà lại chất lượng quiz cả khoá thì đây là
+//   file nên nới dài vài đáp án đúng TRƯỚC TIÊN — trước cả Ch03_3Quiz.astro.
+// Script gồm 2 phần: chấm MCQ + kiểm thứ tự của bài tập 1 (danh sách #send-order).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		10 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau khi chấm — kể cả ở câu bạn
+		làm đúng, nên đọc hết: vế nói <em>vì sao hai lựa chọn còn lại sai</em> mới là chỗ dạy thêm. Nhiều câu ở đây hỏi về
+		những chỗ code làm khác với điều bạn tưởng, nên chọn sai ở lần đầu là bình thường và đáng giá hơn chọn đúng do đoán.
+	</p>
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>
+				1. Cả file <code>res/values/themes.xml</code> chỉ có đúng một dòng khai style, và bên trong dòng đó
+				<strong>không có thẻ <code>&lt;item&gt;</code> nào</strong>. Điều đó nói lên gì về theme của app?
+			</legend>
+			<label>
+				<input type="radio" name="q1" value="a" /> File còn thiếu: một style phải có ít nhất một thẻ
+				<code>&lt;item&gt;</code> mới được hệ thống áp dụng, nên trên thực tế theme này bị bỏ qua lúc chạy
+			</label>
+			<label>
+				<input type="radio" name="q1" value="b" /> Theme này không ghi đè thuộc tính nào của theme cha — nó chỉ là một
+				cái tên riêng đặt cho theme của hệ điều hành
+			</label>
+			<label>
+				<input type="radio" name="q1" value="c" /> Các thuộc tính thật của theme nằm ở <code>res/values/colors.xml</code>;
+				<code>themes.xml</code> chỉ giữ phần tên, đó là cách Android tách màu ra khỏi theme
+			</label>
+			<p class="explain" hidden>
+				Thẻ <code>&lt;item&gt;</code> là cách duy nhất để một style <em>ghi đè</em> một thuộc tính của cha (ví dụ
+				<code>&lt;item name="android:windowBackground"&gt;@color/white&lt;/item&gt;</code>). Không có thẻ nào nghĩa là
+				không ghi đè gì: <code>Theme.KodecoChat</code> thừa hưởng trọn vẹn
+				<code>android:Theme.Material.Light.NoActionBar</code> rồi dừng ở đó. Đáp án a hiểu ngược quan hệ: một style rỗng
+				hoàn toàn hợp lệ, dòng đó thậm chí viết dạng thẻ tự đóng <code>/&gt;</code>, và theme <em>vẫn</em> có hiệu lực —
+				bằng chứng nhìn thấy được là app mở ra nền sáng và không có thanh tiêu đề mặc định ở đỉnh. Đáp án c lẫn hai loại
+				resource: <code>colors.xml</code> chỉ khai <em>giá trị</em> màu (mỗi dòng một mã màu) để nơi khác tham chiếu tới,
+				nó không có cách nào gắn màu đó vào một theme; muốn gắn thì vẫn phải viết một thẻ <code>&lt;item&gt;</code> bên
+				trong style.
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>
+				2. Trong manifest, <code>android:theme="@style/Theme.KodecoChat"</code> xuất hiện <strong>hai lần</strong>: một lần
+				trên thẻ <code>&lt;application&gt;</code> (dòng 46) và một lần trên thẻ <code>&lt;activity&gt;</code> (dòng 52).
+				Quy tắc ở đây là gì?
+			</legend>
+			<label>
+				<input type="radio" name="q2" value="a" /> Khai ở <code>&lt;application&gt;</code> là mặc định cho mọi Activity;
+				khai ở một <code>&lt;activity&gt;</code> thì ghi đè mặc định đó cho riêng Activity ấy
+			</label>
+			<label>
+				<input type="radio" name="q2" value="b" /> Hai dòng cộng dồn với nhau: hệ thống trộn hai theme lại, thuộc tính chỉ
+				có ở một bên thì lấy bên đó, thuộc tính trùng nhau thì lấy giá trị khai ở <code>&lt;application&gt;</code> vì thẻ
+				đó nằm ngoài
+			</label>
+			<label>
+				<input type="radio" name="q2" value="c" /> Phải khai đủ cả hai chỗ mới có hiệu lực: dòng trên
+				<code>&lt;application&gt;</code> áp theme cho cửa sổ, còn dòng trên <code>&lt;activity&gt;</code> áp theme cho
+				phần nội dung vẽ bên trong cửa sổ đó
+			</label>
+			<p class="explain" hidden>
+				Đây là quan hệ <em>mặc định và ghi đè</em>, giống hệt cách một thuộc tính khai ở phạm vi rộng bị thuộc tính khai ở
+				phạm vi hẹp lấn lượt. Ở app này hai giá trị giống nhau nên dòng 52 không làm thay đổi gì cả — nó chỉ có ích khi bạn
+				muốn một màn hình cụ thể dùng theme khác, ví dụ một màn hình splash nền tối trong khi cả app nền sáng. Đáp án b bịa
+				ra một cơ chế trộn không tồn tại: theme khai ở <code>&lt;activity&gt;</code> <em>thay thế</em> giá trị của
+				<code>&lt;application&gt;</code> cho Activity đó, chứ không hoà vào nhau; việc kế thừa thuộc tính chỉ diễn ra qua
+				<code>parent</code> bên trong định nghĩa của chính style. Đáp án c gán cho hai dòng này vai trò của
+				<em>hai hệ thống theme</em> ở câu 3 — cả hai dòng đều là theme XML của nền tảng, và bỏ dòng 52 đi thì Activity vẫn
+				chạy đúng theme vì nó nhận mặc định từ dòng 46.
+			</p>
+		</fieldset>
+		<fieldset data-answer="c">
+			<legend>
+				3. App này có <strong>hai</strong> hệ thống theme: một viết bằng XML trong <code>res/values/themes.xml</code>, một
+				viết bằng Kotlin trong <code>ui/theme/Theme.kt</code>. Khác biệt cốt lõi giữa chúng là gì?
+			</legend>
+			<label>
+				<input type="radio" name="q3" value="a" /> Cùng một hệ thống viết ở hai chỗ cho hai loại thiết bị: bản XML dùng cho
+				máy Android bản cũ chưa hỗ trợ Compose, bản Kotlin dùng cho máy bản mới, hệ thống tự chọn bản phù hợp lúc chạy
+			</label>
+			<label>
+				<input type="radio" name="q3" value="b" /> Bản XML là bản khai để hệ điều hành đọc, còn bản Kotlin là bản dịch của
+				chính nó sang code — công cụ build sinh ra bản Kotlin từ file XML để code Compose đọc được cùng bộ giá trị
+			</label>
+			<label>
+				<input type="radio" name="q3" value="c" /> Khác ở <em>ai áp dụng</em> và <em>áp cho cái gì</em>: hệ điều hành áp bản
+				XML cho cửa sổ trước khi code bạn chạy; code của bạn áp bản Kotlin cho các thành phần Material 3 vẽ bên trong
+			</label>
+			<p class="explain" hidden>
+				Cách nhớ gọn nhất: theme XML là "khung cửa sổ" (nền cửa sổ, màu thanh trạng thái, có thanh tiêu đề hay không, hình
+				dáng app lúc vừa mở), theme Compose là "bảng màu và bộ chữ cho nội dung vẽ bên trong khung" (màu và kiểu chữ của
+				<code>Button</code>, <code>Text</code>, <code>OutlinedTextField</code>…). Hai thứ không thay thế được nhau và một
+				app hoàn chỉnh cần cả hai. Đáp án a nhầm sang chuyện tương thích phiên bản: theme XML <em>không</em> phải bản dự
+				phòng cho máy cũ — app Compose chạy trên máy mới nhất vẫn cần nó, vì cửa sổ phải có hình dáng ngay từ mili-giây
+				đầu, trước khi một dòng Kotlin nào chạy. Đáp án b bịa ra một bước sinh code không tồn tại: <code>Theme.kt</code> là
+				file người viết, nằm trong <code>src/</code> và sửa được tay; thứ được sinh ra lúc build là lớp <code>R</code>, và
+				nó chỉ chứa hằng số ID. Bằng chứng nữa cho thấy hai hệ độc lập: ở Chương 3 bản XML có hiệu lực còn bản Kotlin không
+				ai gọi — chuyện của câu 4.
+			</p>
+		</fieldset>
+		<fieldset data-answer="b">
+			<legend>
+				4. Bước dựng app chat thay <strong>toàn bộ</strong> nội dung <code>MainActivity.kt</code> bằng code mới. Sau bước
+				đó, hàm <code>KodecoChatTheme</code> trong <code>ui/theme/Theme.kt</code> ở tình trạng nào?
+			</legend>
+			<label>
+				<input type="radio" name="q4" value="a" /> Bị xoá khỏi project cùng với đoạn code cũ, nên muốn dùng theme Compose
+				bạn phải viết lại hàm đó từ đầu
+			</label>
+			<label>
+				<input type="radio" name="q4" value="b" /> Vẫn còn nguyên trong file, nhưng không còn dòng nào gọi tới nó
+			</label>
+			<label>
+				<input type="radio" name="q4" value="c" /> Vẫn được áp dụng bình thường, vì dòng <code>android:theme</code> trong
+				manifest trỏ tới <code>Theme.KodecoChat</code> và hệ thống dùng chính hàm này để dựng theme cho Activity
+			</label>
+			<p class="explain" hidden>
+				Bước "thay toàn bộ nội dung file" chỉ chạm vào <code>MainActivity.kt</code>, nên hàm theme còn nguyên — nó nằm ở
+				một file khác. Thứ mất đi là <em>lời gọi</em>: bản <code>starter</code> có bọc giao diện trong
+				<code>KodecoChatTheme &#123; &#125;</code>, code mới thì không. Tự kiểm được bằng Find in Files (Ctrl-Shift-F):
+				tìm <code>KodecoChatTheme</code> trong thư mục code Kotlin cho ra <strong>4</strong> kết quả ở bản
+				<code>starter</code> (một dòng import, hai lời gọi, một dòng khai báo hàm) nhưng <strong>đúng 1</strong> ở bản
+				<code>final</code> — chính dòng khai báo. Một hàm chỉ xuất hiện ở đúng chỗ khai báo là code chết. Đáp án a sai ở
+				chỗ đọc "thay toàn bộ file" thành "xoá cả thư mục theme"; đối chiếu ba file trong <code>ui/theme/</code> giữa hai
+				bản cho thấy chúng giống nhau. Đáp án c là hiểu sai đáng nói nhất, và nó chính là câu 3 nhìn từ hướng khác:
+				<code>@style/Theme.KodecoChat</code> là một style XML, hệ điều hành không có cách nào gọi một hàm Kotlin từ đó.
+				Hệ quả nhìn thấy được: bật chế độ tối trên máy rồi mở app — nền vẫn sáng, chữ vẫn tối, nút vẫn màu tím mặc định
+				của Material 3 chứ không phải bộ màu trong <code>ui/theme/Color.kt</code>.
+			</p>
+		</fieldset>
+		<fieldset data-answer="c">
+			<legend>
+				5. Bạn nối lại theme bằng cách bọc <code>Surface</code> trong <code>KodecoChatTheme</code>. Nếu <em>đảo</em> thứ tự
+				lồng nhau — <code>Surface</code> bọc ngoài, <code>KodecoChatTheme</code> nằm trong — thì chuyện gì xảy ra?
+			</legend>
+			<label>
+				<input type="radio" name="q5" value="a" /> Không biên dịch được: <code>KodecoChatTheme</code> phải là thành phần
+				ngoài cùng của <code>setContent</code>, nên đặt nó bên trong một Composable khác là lỗi
+			</label>
+			<label>
+				<input type="radio" name="q5" value="b" /> Kết quả không đổi, vì cả hai đều nằm trong cùng một khối
+				<code>setContent</code> nên bảng màu của theme có hiệu lực cho mọi thành phần trong khối đó, bất kể thứ tự lồng
+			</label>
+			<label>
+				<input type="radio" name="q5" value="c" /> <code>Surface</code> vẽ nền bằng bảng màu <em>mặc định</em> thay vì bảng
+				màu của project, vì lúc nó chạy thì theme còn chưa được cấp
+			</label>
+			<p class="explain" hidden>
+				<code>KodecoChatTheme</code> không vẽ gì cả — việc của nó là <em>cấp</em> một bảng màu và bộ chữ cho phần cây giao
+				diện nằm <strong>bên trong</strong> nó. Ngoài phạm vi đó, <code>MaterialTheme.colorScheme.background</code> trả về
+				giá trị mặc định của thư viện. Nên đảo thứ tự thì nền lấy màu mặc định, còn <code>Column</code> và các thành phần
+				bên trong lại lấy màu của project: nền và nội dung lệch bảng màu nhau, và ở chế độ tối kết quả là chữ sáng trên nền
+				sáng. Đáp án b bỏ qua chi tiết cốt lõi rằng phạm vi hiệu lực của theme là <em>cây con bên trong nó</em>, không phải
+				cả khối <code>setContent</code>. Đáp án a nhầm sang một luật cú pháp không có: <code>KodecoChatTheme</code> là
+				Composable bình thường, lồng ở đâu cũng biên dịch được — và đó chính là chỗ khó chịu, vì bạn không nhận được cảnh
+				báo nào, chỉ thấy màu sai bằng mắt.
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>
+				6. Khoảng trống theme này kéo dài tới đâu trong khoá học? Đã kiểm bằng cách tìm chuỗi
+				<code>KodecoChatTheme</code> trong project của từng chương.
+			</legend>
+			<label>
+				<input type="radio" name="q6" value="a" /> Chương 4 vẫn y nguyên tình trạng; Chương 5 mới có lời gọi theme, nhưng
+				là một hàm khác, khai ở một file khác
+			</label>
+			<label>
+				<input type="radio" name="q6" value="b" /> Chỉ Chương 3 thiếu lời gọi. Từ Chương 4, project quay lại gọi đúng hàm
+				<code>KodecoChatTheme</code> trong <code>ui/theme/Theme.kt</code>, nên khoảng trống được lấp ngay ở chương liền sau
+			</label>
+			<label>
+				<input type="radio" name="q6" value="c" /> Khoảng trống kéo dài tới hết khoá học: không project của chương nào bọc
+				giao diện trong một theme Compose, nên mọi app trong khoá học đều dùng bộ màu tím mặc định của Material 3
+			</label>
+			<p class="explain" hidden>
+				Kết quả tìm chuỗi: Chương 4 cũng cho <strong>đúng 1</strong> kết quả — vẫn là dòng khai báo hàm, vẫn không ai gọi.
+				Đến Chương 5 project được tổ chức lại và <code>MainActivity</code> có gọi theme, nhưng hai chi tiết rất dễ nhầm:
+				tên hàm là <code>KodecochatTheme</code> với chữ <code>c</code> viết <strong>thường</strong>, và nó khai ở
+				<code>theme/Themes.kt</code> chứ không phải <code>ui/theme/Theme.kt</code>. Hàm mới dùng bảng màu Blue / DarkBlue /
+				Yellow / Red / Grey riêng; bộ <code>ui/theme/</code> cũ vẫn nằm đó, vẫn không ai gọi, suốt cả Chương 5. Đáp án b
+				đúng về tinh thần "được lấp" nhưng sai cả mốc chương lẫn cách lấp, và sai theo hướng tai hại: nếu tin nó thì bạn sẽ
+				đi tìm chỗ sửa <code>ui/theme/</code> ở các chương sau và không bao giờ tìm ra. Đáp án c thì bi quan quá mức —
+				khoảng trống chỉ trải qua hai chương, và cách nó được lấp (bằng một hệ thống khác hẳn) đáng biết hơn bản thân
+				chuyện nó được lấp.
+			</p>
+		</fieldset>
+		<fieldset data-answer="c">
+			<legend>
+				7. Bạn gõ một câu, bấm Send, chữ nhảy lên trên. Bây giờ <strong>tắt hẳn app rồi mở lại</strong>. Câu vừa gửi còn
+				không, và vì sao?
+			</legend>
+			<label>
+				<input type="radio" name="q7" value="a" /> Còn — hai biến state được lưu tự động vào bộ nhớ máy vì
+				<code>remember</code> ghi giá trị xuống một file nội bộ của app, và đọc lại nó ở lần khởi động sau
+			</label>
+			<label>
+				<input type="radio" name="q7" value="b" /> Còn, nhưng chỉ khi bạn tắt app bằng nút Home; tắt bằng cách gạt app khỏi
+				danh sách gần đây thì hệ thống xoá vùng nhớ đó nên chữ mất
+			</label>
+			<label>
+				<input type="radio" name="q7" value="c" /> Mất — chuỗi việc khi bấm Send không ghi gì xuống ổ đĩa, chữ chỉ tồn tại
+				trong bộ nhớ của tiến trình đang chạy
+			</label>
+			<p class="explain" hidden>
+				Chuỗi bảy bước khi bấm Send dừng lại ở đúng ba chỗ, và đây là chỗ thứ nhất: nó <em>không</em> chạm tới ổ đĩa. Hai
+				chỗ còn lại: không chạm tới mạng (chữ chỉ đi từ ô nhập sang ô hiển thị trên cùng một máy, không có người nhận thật
+				nào) và không sống qua việc xoay máy. Ba khoảng trống đó lần lượt là nội dung các chương sau: state sống lâu hơn
+				Activity nhờ ViewModel, lấy dữ liệu thật từ mạng ở Chương 8, lưu xuống máy ở các Chương 9–11. Đáp án a gán cho
+				<code>remember</code> một việc nó không làm: nó giữ giá trị qua các lần vẽ lại <em>trong bộ nhớ</em>, không ghi file
+				nào — muốn ghi thật thì cần DataStore hoặc database, và đó là hai chương riêng. Đáp án b lẫn hai tầng: cách người
+				dùng tắt app có ảnh hưởng tới việc tiến trình bị huỷ lúc nào, nhưng ở đây không có gì được ghi xuống đĩa ngay từ đầu
+				nên tắt kiểu nào cũng mất như nhau.
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>
+				8. Suốt Chương 3 có tám chỗ được nêu ra là "tài liệu phổ biến dạy một đằng, code làm một nẻo", chia thành ba loại.
+				Chuyện <em>lời gọi theme Compose bị mất</em> thuộc loại nào?
+			</legend>
+			<label>
+				<input type="radio" name="q8" value="a" /> Hệ quả không ai nói ra: bước làm đúng, app vẫn build và chạy, nhưng nó
+				âm thầm làm mất một thứ khác
+			</label>
+			<label>
+				<input type="radio" name="q8" value="b" /> Nền tảng đã đổi theo thời gian: cách bọc theme Compose kiểu cũ nay đã có
+				cách mới thay thế, nên đoạn code bọc theme trong bản starter là cách viết đã lỗi thời và bỏ đi là hợp lý
+			</label>
+			<label>
+				<input type="radio" name="q8" value="c" /> Câu chữ sai thẳng về kỹ thuật: hướng dẫn gọi sai tên hàm theme, làm theo
+				thì không biên dịch được và bạn buộc phải sửa mới chạy được app
+			</label>
+			<p class="explain" hidden>
+				Ba loại lệch và cách xử lý mỗi loại khác nhau hẳn, nên phân loại đúng là biết phải làm gì. Loại "hệ quả không ai nói
+				ra" nhận ra bằng một dấu hiệu rất cụ thể: <strong>không có tín hiệu lỗi nào</strong> — không cảnh báo, không lỗi
+				biên dịch, app vẫn chạy — chỉ thiếu một phần mà bạn phải tự thấy bằng mắt. Bỏ qua vẫn được, nhưng biết thì tự nối
+				lại được. Đáp án b sai về sự thật: cách bọc <code>KodecoChatTheme &#123; Surface &#123; ... &#125; &#125;</code>
+				vẫn đúng nguyên hôm nay, chính là cách project mới tạo bằng Android Studio đang viết; chỗ duy nhất trong cả Chương 3
+				thuộc loại "nền tảng đã đổi" và liên quan tới Compose là cách khai compiler ở câu 9. Đáp án c mô tả loại nghiêm
+				trọng nhất — loại có ví dụ thật là chuyện gọi thẻ xin quyền là <code>&lt;permission&gt;</code> thay vì
+				<code>&lt;uses-permission&gt;</code> — nhưng ở đây tên hàm không sai chỗ nào, và điểm đáng chú ý của chuyện theme
+				đúng là nó <em>không</em> gây lỗi biên dịch.
+			</p>
+		</fieldset>
+		<fieldset data-answer="b">
+			<legend>
+				9. Trong <code>app/build.gradle.kts</code> của project mẫu có khối <code>composeOptions</code> với dòng
+				<code>kotlinCompilerExtensionVersion = "1.5.3"</code> (dòng 76–78). Project mới tạo bằng Android Studio hôm nay
+				<strong>không có</strong> khối đó. Vì sao?
+			</legend>
+			<label>
+				<input type="radio" name="q9" value="a" /> Vì <code>compose-bom</code> đã lo con số này: BOM quyết định phiên bản
+				cho cả bộ Compose nên khai thêm <code>kotlinCompilerExtensionVersion</code> là dư, xoá khỏi project mẫu cũng không
+				ảnh hưởng gì
+			</label>
+			<label>
+				<input type="radio" name="q9" value="b" /> Vì từ Kotlin 2.0, compiler Compose đi kèm chính bộ Kotlin — không còn số
+				phiên bản riêng để khai, thay vào đó bạn thêm một plugin
+			</label>
+			<label>
+				<input type="radio" name="q9" value="c" /> Vì project mới tạo chưa bật Compose; ngay khi bạn thêm
+				<code>buildFeatures &#123; compose = true &#125;</code> thì Android Studio sinh lại khối
+				<code>composeOptions</code> kèm con số khớp với bản Kotlin đang dùng
+			</label>
+			<p class="explain" hidden>
+				Compose cần một <em>compiler plugin</em> riêng để biến hàm <code>@Composable</code> thành code vẽ giao diện. Thời
+				Kotlin 1.9.x plugin đó có số phiên bản <strong>độc lập</strong> với Kotlin, nên phải khai tay và phải khai đúng con
+				số tương thích — đây từng là nguồn lỗi build kinh điển: nâng Kotlin mà quên nâng số này thì build đứt. Từ Kotlin 2.0
+				plugin được chuyển vào chính bộ Kotlin, khai bằng
+				<code>id("org.jetbrains.kotlin.plugin.compose")</code> thay cho một con số. Hai chiều hệ quả: thấy
+				<code>composeOptions</code> trong project mẫu thì đừng nghĩ là sai (đó là cách đúng cho Kotlin 1.9.10 mà project
+				đang ghim), nhưng nâng project mẫu lên Kotlin 2.x mà giữ nguyên dòng đó thì build báo lỗi không tương thích. Đáp án
+				a lẫn hai thứ khác tầng: BOM chỉ quyết định phiên bản các <em>thư viện</em> Compose (<code>material3</code>,
+				<code>ui</code>, <code>foundation</code>…), nó không nói gì về compiler; xoá khối đó ở một project Kotlin 1.9.x thì
+				bản build rơi về con số mặc định của Android Gradle Plugin, và nếu con số ấy không khớp bản Kotlin đang dùng, build
+				dừng kèm thông báo đòi đúng version Kotlin. Đáp án c đảo ngược chiều thời gian: hai khai báo đó không đi cùng nhau —
+				project hôm nay vẫn có <code>buildFeatures &#123; compose = true &#125;</code> nhưng vẫn không có
+				<code>composeOptions</code>.
+			</p>
+		</fieldset>
+		<fieldset data-answer="a">
+			<legend>
+				10. Suốt Chương 3 bạn đã <em>gặp</em> bốn thứ nằm trong file Gradle mà chưa được giải thích — chúng là lý do Chương 4
+				tồn tại. Bốn thứ đó là nhóm nào?
+			</legend>
+			<label>
+				<input type="radio" name="q10" value="a" /> <code>buildFeatures &#123; compose = true &#125;</code> ·
+				<code>namespace</code> · <code>minSdk</code> · <code>compose-bom</code>
+			</label>
+			<label>
+				<input type="radio" name="q10" value="b" /> <code>res/values/strings.xml</code> · lớp <code>R</code> ·
+				<code>res/values/themes.xml</code> · các thư mục <code>res/mipmap-*/</code> — vì lớp <code>R</code> do bản build sinh
+				ra, nên toàn bộ phần resource thuộc phạm vi công cụ build và sẽ được mổ ở Chương 4
+			</label>
+			<label>
+				<input type="radio" name="q10" value="c" /> <code>&lt;intent-filter&gt;</code> · <code>android:exported</code> ·
+				<code>&lt;uses-permission&gt;</code> · <code>android:theme</code> — vì tờ khai là thứ bản build gộp lại rồi đóng vào
+				file APK, nên nó thuộc phần công cụ build chứ không thuộc phần code
+			</label>
+			<p class="explain" hidden>
+				Bốn chỗ đó xuất hiện đúng ở bốn thời điểm khác nhau của Chương 3: <code>buildFeatures &#123; compose = true &#125;</code>
+				(dòng 73–75) bật compiler Compose, <code>namespace = "com.kodeco.chat"</code> (dòng 41) thay cho thuộc tính
+				<code>package</code> từng phải khai trong manifest, <code>minSdk = 30</code> (dòng 46) quyết định app cài được lên máy
+				nào, và <code>compose-bom</code> (dòng 90) quyết định phiên bản cả bộ thư viện Compose bằng một dòng. Cả bốn đều nằm
+				trong hai file <code>build.gradle.kts</code> — đúng thứ Chương 4 mở ra, cùng với
+				<code>libs.versions.toml</code> và cơ chế tải thư viện từ mạng. Đáp án b bắt đúng một sự thật rồi suy rộng quá xa:
+				lớp <code>R</code> thật là do bản build sinh ra, nhưng bốn thứ nó liệt kê đều là file trong <code>res/</code>, không
+				phải dòng nào trong file Gradle — và chúng đã được học xong ở Chương 3.2 và 3.3. Đáp án c mắc cùng kiểu lỗi ở phía
+				manifest: bản build đúng là có gộp manifest của app với manifest của các thư viện, nhưng bốn thứ liệt kê là thẻ và
+				thuộc tính XML bên trong manifest, và chương này đã giải thích cả bốn — chúng không còn là câu hỏi bỏ ngỏ nào.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+	<h2>Bài tập</h2>
+	<p class="intro">
+		Ba bài dưới đây đi theo ba kiểu khác nhau. Bài 1 làm ngay trên trang: xếp lại chuỗi bảy việc khi bấm Send, vì hiểu chuỗi
+		đó theo đúng thứ tự khác hẳn với nhớ tên từng bước. Bài 2 là bài sửa code — nối lại lời gọi theme đã mất, và là bài duy
+		nhất trong cả Chương 3 cho bạn thấy kết quả bằng mắt ngay sau khi chạy lại. Bài 3 buộc bạn mở file thật trong
+		<code>aaf-materials/03-android-fundamentals/projects/</code> để tự đếm; nó cố tình không thể trả lời bằng cách nhớ lại.
+	</p>
+
+	<div class="exercise">
+		<h3>Bài tập 1 — Sắp xếp: bấm Send một lần thì bảy việc xảy ra theo thứ tự nào</h3>
+		<p>
+			Bảy bước dưới đây bị xáo trộn. Chúng mô tả tất cả những gì xảy ra từ lúc bạn gõ một chữ cái tới lúc chữ nhảy lên trên
+			màn hình sau khi bấm Send. Với mỗi bước, chọn số thứ tự đúng (1 đến 7) rồi bấm "Kiểm tra thứ tự":
+		</p>
+		<ul class="order-list" id="send-order">
+			<li data-correct="4">
+				<select aria-label="Thứ tự cho bước: lambda onClick của Button chạy">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+					<option value="7">7</option>
+				</select>
+				<span>Bạn bấm Send — lambda trong <code>onClick</code> của <code>Button</code> chạy</span>
+			</li>
+			<li data-correct="2">
+				<select aria-label="Thứ tự cho bước: gán chatInputText = it">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+					<option value="7">7</option>
+				</select>
+				<span>
+					<code>onValueChange</code> chạy <code>chatInputText = it</code> — nhờ <code>by</code>, phép gán này gọi
+					<code>setValue</code> trên <code>MutableState</code> bên dưới
+				</span>
+			</li>
+			<li data-correct="7">
+				<select aria-label="Thứ tự cho bước: recomposition lần hai, chữ nhảy lên trên và ô nhập trống">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+					<option value="7">7</option>
+				</select>
+				<span>
+					Compose vẽ lại cả <code>Text</code> và <code>OutlinedTextField</code>: chữ nhảy lên trên, ô nhập trở về trống
+				</span>
+			</li>
+			<li data-correct="1">
+				<select aria-label="Thứ tự cho bước: bàn phím gửi ký tự cho OutlinedTextField">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+					<option value="7">7</option>
+				</select>
+				<span>Bạn gõ một ký tự — bàn phím gửi chuỗi mới cho <code>OutlinedTextField</code></span>
+			</li>
+			<li data-correct="6">
+				<select aria-label="Thứ tự cho bước: gán chatInputText rỗng">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+					<option value="7">7</option>
+				</select>
+				<span><code>chatInputText = ""</code> — xoá ô nhập bằng cách gán chuỗi rỗng</span>
+			</li>
+			<li data-correct="3">
+				<select aria-label="Thứ tự cho bước: recomposition lần một, chữ hiện trong ô nhập">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+					<option value="7">7</option>
+				</select>
+				<span>Compose vẽ lại <code>OutlinedTextField</code> với <code>value</code> mới — ký tự hiện ra trên màn hình</span>
+			</li>
+			<li data-correct="5">
+				<select aria-label="Thứ tự cho bước: chép chatInputText sang chatOutputText">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+					<option value="7">7</option>
+				</select>
+				<span><code>chatOutputText = chatInputText</code> — chép nội dung sang biến state thứ hai</span>
+			</li>
+		</ul>
+		<button type="button" id="check-order">Kiểm tra thứ tự</button>
+		<p id="order-result" role="status" aria-live="polite" hidden></p>
+		<details>
+			<summary>Xem đáp án và ba chỗ dễ sắp sai</summary>
+			<p>
+				Thứ tự đúng: (1) bàn phím gửi ký tự cho <code>OutlinedTextField</code> → (2) <code>onValueChange</code> chạy
+				<code>chatInputText = it</code> → (3) recomposition lần một, ký tự hiện trong ô nhập → (4) bạn bấm Send, lambda
+				<code>onClick</code> chạy → (5) <code>chatOutputText = chatInputText</code> → (6) <code>chatInputText = ""</code> →
+				(7) recomposition lần hai, chữ nhảy lên trên và ô nhập trở về trống.
+			</p>
+			<p>
+				<strong>Chỗ dễ sai thứ nhất — bước 1 và 2.</strong> Rất dễ nghĩ ô nhập tự lưu chữ vào trong mình rồi báo ra ngoài
+				sau. Thật ra <code>OutlinedTextField</code> không giữ gì cả: nó nhận ký tự từ bàn phím rồi <em>lập tức</em> gọi
+				<code>onValueChange</code> và chờ ai đó làm gì với chuỗi đó. Nếu bạn để <code>onValueChange</code> rỗng, ô nhập
+				không bao giờ hiện chữ — mà không có lỗi nào cả.
+			</p>
+			<p>
+				<strong>Chỗ dễ sai thứ hai — bước 3 nằm giữa.</strong> Recomposition không phải chuyện chỉ xảy ra một lần lúc bấm
+				nút: nó xảy ra cho <em>mỗi</em> ký tự bạn gõ. Gõ một câu 20 chữ là 20 lần vẽ lại trước khi bạn kịp bấm Send, và nó
+				vẫn nhanh vì Compose chỉ vẽ lại phần có đọc biến vừa đổi.
+			</p>
+			<p>
+				<strong>Chỗ dễ sai thứ ba — thứ tự bước 5 và 6.</strong> Hai dòng này <strong>không</strong> đổi chỗ được: đảo lại
+				thì ô nhập bị xoá trước, <code>chatOutputText</code> nhận chuỗi rỗng và không có gì hiển thị. Cả hai thứ tự đều biên
+				dịch được và đều không crash, nên đây là loại lỗi chỉ nhìn thấy bằng cách chạy thử — hoặc bằng cách đặt breakpoint
+				đúng vào dòng <code>chatInputText = ""</code> để thấy giá trị hai biến ngay <em>giữa</em> lúc chúng trao đổi nội
+				dung.
+			</p>
+			<p>
+				Còn một chi tiết đáng để ý ở bước 7 mà bảy dòng trên không nói ra: lần vẽ lại này chạm vào <code>Text</code> và
+				<code>OutlinedTextField</code>, nhưng <strong>bỏ qua</strong> <code>Column</code> và <code>Button</code> — vì hai
+				thành phần đó không đọc biến state nào. Đó chính là cơ chế giúp Compose không phải vẽ lại cả màn hình cho mỗi lần
+				đổi giá trị. Và điều đáng rút ra lớn nhất của cả chuỗi: <em>bạn không viết một dòng nào để "cập nhật giao diện"</em>
+				— không <code>setText</code>, không <code>findViewById</code>. Bạn chỉ đổi giá trị biến; việc vẽ lại là hệ quả tự
+				động.
+			</p>
+		</details>
+	</div>
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 2 — Nối lại lời gọi theme đã mất, và xem khác biệt bằng mắt</h3>
+		<p>
+			Bài này sửa code thật, nên làm trên một bản copy của project cho an toàn. Mở bản <code>final</code> trong
+			<code>aaf-materials/03-android-fundamentals/projects/</code>. Hàm <code>KodecoChatTheme</code> vẫn nằm ở
+			<code>app/src/main/java/com/kodeco/chat/ui/theme/Theme.kt</code> (<strong>dòng 74</strong>) nhưng không còn ai gọi —
+			câu 4 của quiz. Hãy nối lại:
+		</p>
+		<ol>
+			<li>
+				Chạy app <em>trước khi</em> sửa. Bật chế độ tối trên máy ảo (Settings ▸ Display ▸ Dark theme) rồi mở lại app. Ghi
+				nhận cho kỹ: nền vẫn sáng, chữ vẫn tối, nút Send vẫn màu tím. Không có gì đổi.
+			</li>
+			<li>
+				Mở <code>app/src/main/java/com/kodeco/chat/MainActivity.kt</code>. Khối <code>import</code> hiện ở
+				<strong>dòng 36–48</strong>; thêm vào đó 5 dòng:
+				<pre><code>import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
+import com.kodeco.chat.ui.theme.KodecoChatTheme</code></pre>
+				Bốn dòng đầu là những dòng bản <code>starter</code> từng có rồi bị bước "thay toàn bộ file" xoá đi; nếu quên dòng
+				nào, Android Studio gạch đỏ tên hàm và gợi ý import bằng Alt-Enter.
+			</li>
+			<li>
+				Bọc lại phần giao diện bên trong <code>setContent</code> (dòng 53). <code>Column</code> ở dòng 54 và toàn bộ nội
+				dung cũ giữ nguyên, không sửa một chữ:
+				<pre><code>setContent &#123;
+  KodecoChatTheme &#123;
+    Surface(
+      modifier = Modifier.fillMaxSize(),
+      color = MaterialTheme.colorScheme.background
+    ) &#123;
+      Column &#123;
+        // ... giữ nguyên toàn bộ code cũ ở đây
+      &#125;
+    &#125;
+  &#125;
+&#125;</code></pre>
+			</li>
+			<li>
+				Chạy lại, bật/tắt chế độ tối và so với lần đầu. Nếu máy ảo là Android 12 trở lên, thử đổi hình nền rồi mở lại app.
+			</li>
+			<li>
+				<strong>Phần thử nghiệm ngược:</strong> đảo thứ tự lồng nhau — để <code>Surface</code> bọc ngoài,
+				<code>KodecoChatTheme</code> nằm bên trong nó — rồi chạy lại ở chế độ tối. Ghi lại chính xác chỗ nào trên màn hình
+				đổi màu và chỗ nào không.
+			</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>Bước 1 và 4 — bốn thứ đổi.</strong> Trước khi sửa, các thành phần Material 3 rơi về bộ màu <em>mặc định</em>
+				của thư viện (bộ tím baseline), và không có <code>Surface</code> nào nên nền màn hình là nền cửa sổ thô mà theme XML
+				cấp. Sau khi sửa: <strong>(1)</strong> màu lấy từ hai bộ khai trong <code>ui/theme/Color.kt</code> —
+				<code>Purple80</code> / <code>PurpleGrey80</code> / <code>Pink80</code> ở dòng 38–40 cho chế độ tối và
+				<code>Purple40</code> / <code>PurpleGrey40</code> / <code>Pink40</code> ở dòng 42–44 cho chế độ sáng;
+				<strong>(2)</strong> chữ dùng bộ <code>val Typography</code> khai ở <code>ui/theme/Type.kt</code> dòng 43;
+				<strong>(3)</strong> bảng màu tự đảo khi máy ở chế độ tối, nhờ tham số mặc định
+				<code>darkTheme = isSystemInDarkTheme()</code>; <strong>(4)</strong> thanh trạng thái ở đỉnh màn hình đổi màu theo
+				màu chính của theme, nhờ khối <code>SideEffect</code> bên trong hàm theme (bắt đầu ở dòng 91). Trên Android 12 trở
+				lên còn thêm một thứ nữa: màu lấy theo hình nền của bạn, vì
+				<code>dynamicColor</code> mặc định là <code>true</code> — đó là Material You.
+			</p>
+			<p>
+				<strong>Bước 5 — đảo thứ tự lồng.</strong> Nền vẽ bằng bảng màu mặc định vì lúc <code>Surface</code> đọc
+				<code>MaterialTheme.colorScheme.background</code> thì theme của project còn chưa được cấp; còn <code>Text</code>,
+				<code>OutlinedTextField</code> và <code>Button</code> nằm bên trong nên vẫn lấy màu của project. Ở chế độ tối, kết
+				quả là nền sáng cõng nội dung màu tối — dễ nhìn ra nhất ở chỗ giáp giữa nền và ô nhập. Điều đáng rút ra:
+				<code>KodecoChatTheme</code> không vẽ gì cả, nó chỉ <em>cấp</em> bảng màu cho phần cây giao diện nằm bên trong nó,
+				nên thứ tự lồng nhau là một quyết định có hậu quả nhìn thấy được, không phải chuyện trình bày.
+			</p>
+			<p>
+				<strong>Một điều nữa để ý:</strong> cả năm bước trên không sửa <code>res/values/themes.xml</code> một chữ nào, mà
+				giao diện vẫn đổi hẳn. Đó là bằng chứng trực tiếp cho câu 3: hai hệ thống theme làm hai việc khác nhau, và việc bạn
+				vừa nối lại là hệ thứ hai.
+			</p>
+		</details>
+	</div>
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 3 — Tự tìm bằng chứng: hàm theme mất lời gọi ở đâu và mất từ lúc nào</h3>
+		<p>
+			Bài này chỉ <em>đọc</em> file, không sửa gì, và không thể trả lời bằng cách nhớ lại — mọi câu đều là một con số bạn phải
+			tự đếm. Mở cả hai project <code>starter</code> và <code>final</code> trong
+			<code>aaf-materials/03-android-fundamentals/projects/</code>, bằng Android Studio hoặc bất kỳ trình soạn thảo nào có
+			chức năng tìm trong thư mục.
+		</p>
+		<ol>
+			<li>
+				Trong <em>mỗi</em> bản, tìm chuỗi <code>KodecoChatTheme</code> trong thư mục
+				<code>app/src/main/java/</code> (Ctrl-Shift-F ở Android Studio, có bật phân biệt chữ hoa/thường). Ghi lại số kết quả
+				của từng bản, kèm file và số dòng. Chênh lệch giữa hai con số nói lên điều gì?
+			</li>
+			<li>
+				Mở thư mục <code>app/src/main/java/com/kodeco/chat/ui/theme/</code> ở cả hai bản: có mấy file, tên gì? Rồi so nội
+				dung từng file giữa hai bản. Điều đó chứng minh gì về câu hỏi "hàm theme có bị xoá không"?
+			</li>
+			<li>
+				Mở <code>app/src/main/res/values/themes.xml</code> ở bản <code>final</code>. Đếm: cả file bao nhiêu dòng · thẻ
+				<code>&lt;resources&gt;</code> ở dòng nào · có mấy thẻ <code>&lt;style&gt;</code> · có mấy thẻ
+				<code>&lt;item&gt;</code>. Rồi làm đúng vậy với bản <code>starter</code> và giải thích chỗ lệch.
+			</li>
+			<li>
+				Thư mục <code>app/src/main/res/values/</code> có mấy file? Với mỗi file, đếm số phần tử bên trong thẻ gốc ở bản
+				<code>final</code>. Một trong ba file khác hẳn giữa hai bản — file nào, và vì sao chỉ nó khác?
+			</li>
+			<li>
+				Cuối cùng, mở cùng câu hỏi ở bước 1 cho project của <strong>Chương 4</strong>
+				(<code>aaf-materials/04-gradle-basics-a-look-behind-the-curtain/projects/final/</code>). Số kết quả là bao nhiêu, và
+				con số đó trả lời câu hỏi gì?
+			</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>Bước 1 — 4 kết quả so với 1.</strong> Bản <code>starter</code>: <code>MainActivity.kt</code> dòng 47 (dòng
+				<code>import com.kodeco.chat.ui.theme.KodecoChatTheme</code>), dòng 53 (lời gọi bọc giao diện trong
+				<code>setContent</code>) và dòng 77 (lời gọi thứ hai, bên trong hàm <code>GreetingPreview</code>) — cộng
+				<code>ui/theme/Theme.kt</code> dòng 75, chỗ khai báo hàm. Bản <code>final</code>: <strong>đúng 1</strong> kết quả,
+				<code>Theme.kt</code> dòng 74, chỗ khai báo. Ba kết quả mất đi đều nằm trong <code>MainActivity.kt</code> — đúng file
+				bị thay toàn bộ nội dung. Quy tắc đọc được từ đây dùng lại được ở mọi codebase: một hàm chỉ xuất hiện <em>một</em>
+				lần trong cả project thì lần đó là chỗ khai báo, và hàm đó là code chết.
+			</p>
+			<p>
+				<strong>Bước 2 — 3 file, giống nhau ở cả hai bản.</strong> <code>Color.kt</code>, <code>Theme.kt</code>,
+				<code>Type.kt</code>. So nội dung: thân code y hệt nhau, chỗ khác duy nhất là cách gói dòng trong khối comment giấy
+				phép ở đầu file — đó cũng là lý do số dòng lệch một chút (khai báo hàm ở dòng 75 bản starter, dòng 74 bản final) và
+				là lý do bạn không nên dùng số dòng của bản này để tìm chỗ trong bản kia. Kết luận: hàm theme <strong>không</strong>
+				bị xoá, chỉ mất lời gọi. Đây là phân biệt đáng giá, vì hai tình trạng đó cần hai cách sửa khác nhau hẳn: mất hàm thì
+				phải viết lại, mất lời gọi thì chỉ cần thêm một khối bọc như bài tập 2.
+			</p>
+			<p>
+				<strong>Bước 3 — 38 dòng so với 39 dòng, và 1 style / 0 item ở cả hai.</strong> Bản <code>final</code>: cả file 38
+				dòng, <code>&lt;resources&gt;</code> ở dòng 35, đúng <strong>1</strong> thẻ <code>&lt;style&gt;</code> ở dòng 37 viết
+				dạng tự đóng <code>/&gt;</code>, <code>&lt;/resources&gt;</code> ở dòng 38, và <strong>0</strong> thẻ
+				<code>&lt;item&gt;</code>. Bản <code>starter</code> đúng cùng nội dung nhưng dịch xuống một dòng (39 dòng;
+				<code>&lt;resources&gt;</code> 36, style 38) — lại vẫn là chuyện gói dòng của khối giấy phép, không phải khác biệt về
+				code. Con số 0 thẻ <code>&lt;item&gt;</code> là bằng chứng cho câu 1 của quiz: theme này không ghi đè gì.
+			</p>
+			<p>
+				<strong>Bước 4 — 3 file, và file khác biệt là <code>strings.xml</code>.</strong> Thư mục
+				<code>res/values/</code> có <code>colors.xml</code>, <code>strings.xml</code>, <code>themes.xml</code>. Ở bản
+				<code>final</code>: <code>colors.xml</code> có <strong>7</strong> thẻ <code>&lt;color&gt;</code> (dòng 36–42),
+				<code>strings.xml</code> có <strong>5</strong> thẻ <code>&lt;string&gt;</code> (dòng 35–39),
+				<code>themes.xml</code> có 1 style. Bản <code>starter</code> giống hệt ở hai file đầu-cuối, nhưng
+				<code>strings.xml</code> chỉ có <strong>1</strong> chuỗi — <code>app_name</code>. Vì sao chỉ nó khác: Chương 3 thực
+				chất chỉ thực hành resource loại <code>string</code>; 4 chuỗi được thêm vào trong chương chính là 4 chuỗi bạn chuyển
+				từ code ra file. <code>themes.xml</code> và <code>colors.xml</code> chỉ được <em>đọc</em>, không ai sửa.
+			</p>
+			<p>
+				<strong>Bước 5 — vẫn đúng 1 kết quả.</strong> Project Chương 4 cũng chỉ có dòng khai báo hàm ở
+				<code>ui/theme/Theme.kt</code> dòng 74, không lời gọi nào. Con số đó trả lời câu hỏi "khoảng trống này kéo dài tới
+				đâu" (câu 6 của quiz): nó trải qua hết Chương 4. Muốn kiểm tiếp thì lặp lại đúng cách tìm này ở project Chương 5 — và
+				ở đó có một cái bẫy: tìm với phân biệt chữ hoa/thường vẫn chỉ ra 1 kết quả, phải <em>tắt</em> phân biệt hoa/thường
+				mới thấy 7 kết quả, vì hàm được gọi ở Chương 5 tên là <code>KodecochatTheme</code> với chữ <code>c</code> viết
+				thường và khai ở một file khác. Đó là một hàm mới, không phải hàm này.
+			</p>
+		</details>
+	</div>
+</section>
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+
+	const checkOrderBtn = document.getElementById("check-order");
+	const orderResultEl = document.getElementById("order-result");
+
+	checkOrderBtn?.addEventListener("click", () => {
+		const items = document.querySelectorAll("#send-order li");
+		let correctCount = 0;
+
+		items.forEach((li) => {
+			const correctValue = li.getAttribute("data-correct");
+			const select = li.querySelector("select");
+			const picked = select?.value;
+
+			li.classList.remove("correct", "incorrect");
+			if (picked && picked === correctValue) {
+				correctCount++;
+				li.classList.add("correct");
+			} else {
+				li.classList.add("incorrect");
+			}
+		});
+
+		if (orderResultEl) {
+			orderResultEl.textContent = `Kết quả: ${correctCount}/${items.length} bước đúng vị trí.`;
+			orderResultEl.removeAttribute("hidden");
+		}
+	});
+</script>

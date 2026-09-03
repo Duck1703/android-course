@@ -1,0 +1,506 @@
+/* ==========================================================================
+   quiz.css — khu vuc luyen tap: cau hoi nhieu dap an, bai tap sap xep,
+   bai tap code, dap an mo/dong.
+
+   TUYET DOI khong doi ten cac id/class ma script cham bai dang dung:
+     #quiz-form  #quiz-score  fieldset[data-answer]  .explain[hidden]
+     fieldset.correct / .incorrect   #check-order  #order-result
+     .order-list li[data-correct]  li.correct / li.incorrect
+   ========================================================================== */
+
+.quiz {
+	margin-top: var(--s12);
+	padding-top: var(--s8);
+	border-top: 2px solid var(--outline-soft);
+}
+
+.quiz > h2:first-of-type {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-top: 0;
+}
+
+.quiz > h2::before {
+	content: "";
+	width: 1.15rem;
+	height: 1.15rem;
+	flex-shrink: 0;
+	background-color: var(--primary);
+	-webkit-mask: var(--ic-quiz) center / contain no-repeat;
+	mask: var(--ic-quiz) center / contain no-repeat;
+}
+
+/* ------------------------------------------------ 1 cau hoi = 1 fieldset -- */
+#quiz-form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s4);
+	margin: var(--s5) 0 0;
+}
+
+.quiz fieldset {
+	position: relative;
+	margin: 0;
+	padding: var(--s5);
+	border: 1px solid var(--outline);
+	border-radius: var(--r-md);
+	background: var(--surface);
+	box-shadow: var(--e1);
+	transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.quiz fieldset:hover {
+	box-shadow: var(--e2);
+}
+
+.quiz legend {
+	padding: 0 0.5rem;
+	margin-left: -0.3rem;
+	font-family: var(--font-display);
+	font-size: var(--fs-sm);
+	font-weight: 700;
+	line-height: 1.5;
+	color: var(--text);
+}
+
+.quiz legend code {
+	font-weight: 400;
+}
+
+/* Da tra loi dung */
+.quiz fieldset.correct {
+	border-color: var(--success-outline);
+	background: color-mix(in srgb, var(--success-container) 55%, var(--surface));
+}
+
+/* Tra loi sai */
+.quiz fieldset.incorrect {
+	border-color: var(--danger-outline);
+	background: color-mix(in srgb, var(--danger-container) 52%, var(--surface));
+}
+
+/* --------------------- dap an: <label> thanh the bam duoc (option card) --- */
+.quiz fieldset label {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.6rem;
+	margin: var(--s2) 0;
+	padding: 0.6rem 0.8rem;
+	border: 1px solid var(--outline-soft);
+	border-radius: var(--r-sm);
+	background: var(--surface-2);
+	font-size: var(--fs-sm);
+	line-height: 1.55;
+	color: var(--text-2);
+	cursor: pointer;
+	transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+
+.quiz fieldset label:hover {
+	border-color: var(--primary);
+	background: var(--primary-container);
+	color: var(--on-primary-container);
+}
+
+.quiz fieldset label input[type="radio"],
+.quiz fieldset label input[type="checkbox"] {
+	margin: 0.28rem 0 0;
+	flex-shrink: 0;
+	accent-color: var(--primary);
+	width: 15px;
+	height: 15px;
+	cursor: pointer;
+}
+
+/* Dap an dang chon */
+.quiz fieldset label:has(input:checked) {
+	border-color: var(--primary);
+	background: var(--primary-container);
+	color: var(--on-primary-container);
+	font-weight: 550;
+}
+
+/* Sau khi cham bai: to dap an trong o dung/sai */
+.quiz fieldset.correct label:has(input:checked) {
+	border-color: var(--accent);
+	background: var(--success-container);
+	color: var(--on-accent-container);
+}
+
+.quiz fieldset.incorrect label:has(input:checked) {
+	border-color: var(--danger);
+	background: var(--danger-container);
+	color: var(--text);
+}
+
+.quiz fieldset label:focus-within {
+	outline: 2px solid var(--primary);
+	outline-offset: 1px;
+}
+
+.quiz fieldset label code {
+	background: color-mix(in srgb, var(--surface) 68%, transparent);
+}
+
+/* ------------------------------------- .explain = giai thich sau khi cham -- */
+.quiz .explain {
+	position: relative;
+	margin: var(--s3) 0 0;
+	padding: var(--s3) var(--s4) var(--s3) calc(var(--s4) + 1.4rem);
+	border-radius: var(--r-sm);
+	background: var(--surface-2);
+	border: 1px solid var(--outline-soft);
+	font-size: var(--fs-sm);
+	line-height: 1.62;
+	color: var(--text-2);
+}
+
+.quiz .explain::before {
+	content: "";
+	position: absolute;
+	left: var(--s3);
+	top: calc(var(--s3) + 0.26rem);
+	width: 0.95rem;
+	height: 0.95rem;
+	background-color: var(--text-3);
+	-webkit-mask: var(--ic-info) center / contain no-repeat;
+	mask: var(--ic-info) center / contain no-repeat;
+}
+
+.quiz fieldset.correct .explain {
+	background: color-mix(in srgb, var(--success-container) 46%, var(--surface));
+	border-color: var(--success-outline);
+}
+
+.quiz fieldset.correct .explain::before {
+	background-color: var(--accent);
+	-webkit-mask-image: var(--ic-check-circle);
+	mask-image: var(--ic-check-circle);
+}
+
+.quiz fieldset.incorrect .explain {
+	background: color-mix(in srgb, var(--danger-container) 42%, var(--surface));
+	border-color: var(--danger-outline);
+}
+
+.quiz fieldset.incorrect .explain::before {
+	background-color: var(--danger);
+	-webkit-mask-image: var(--ic-warn);
+	mask-image: var(--ic-warn);
+}
+
+.quiz .explain code {
+	background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+/* ------------------------------------ nut cham bai + ket qua ------------- */
+.quiz button[type="submit"],
+.quiz #check-order {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	margin-top: var(--s4);
+	padding: 0.62rem 1.3rem;
+	border: 0;
+	border-radius: var(--r-full);
+	background: var(--primary);
+	color: var(--on-primary);
+	font-family: var(--font-display);
+	font-size: var(--fs-sm);
+	font-weight: 650;
+	cursor: pointer;
+	box-shadow: var(--e2);
+	transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.quiz button[type="submit"]:hover,
+.quiz #check-order:hover {
+	background: var(--primary-hover);
+	box-shadow: var(--e3);
+	transform: translateY(-1px);
+}
+
+.quiz button[type="submit"]:active,
+.quiz #check-order:active {
+	transform: translateY(0);
+	box-shadow: var(--e1);
+}
+
+.quiz #quiz-score,
+.quiz #order-result {
+	margin-top: var(--s4);
+	padding: var(--s3) var(--s4);
+	border-radius: var(--r-sm);
+	background: var(--primary-container);
+	color: var(--on-primary-container);
+	font-family: var(--font-display);
+	font-size: var(--fs-sm);
+	font-weight: 650;
+}
+
+.quiz #quiz-score:empty,
+.quiz #order-result:empty {
+	display: none;
+}
+
+/* ------------------------------------------ bai tap sap xep (.order-list) -- */
+.quiz .order-list {
+	list-style: none;
+	margin: var(--s4) 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--s2);
+}
+
+.quiz .order-list li {
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+	margin: 0;
+	padding: 0.6rem 0.85rem;
+	border: 1px solid var(--outline);
+	border-radius: var(--r-sm);
+	background: var(--surface);
+	font-size: var(--fs-sm);
+	line-height: 1.55;
+	color: var(--text-2);
+	transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.quiz .order-list li.correct {
+	border-color: var(--success-outline);
+	background: color-mix(in srgb, var(--success-container) 55%, var(--surface));
+	color: var(--text);
+}
+
+.quiz .order-list li.incorrect {
+	border-color: var(--danger-outline);
+	background: color-mix(in srgb, var(--danger-container) 50%, var(--surface));
+	color: var(--text);
+}
+
+.quiz .order-list select {
+	flex: 0 0 auto;
+	padding: 0.3rem 0.45rem;
+	border: 1px solid var(--outline);
+	border-radius: var(--r-xs);
+	background: var(--surface-2);
+	color: var(--text);
+	font-size: var(--fs-xs);
+	cursor: pointer;
+}
+
+.quiz .order-list select:focus {
+	border-color: var(--primary);
+}
+
+.quiz .order-list code {
+	background: var(--surface-3);
+}
+
+/* ---------------------------------- the bai tap (.exercise) va (.chal) ---- */
+.quiz .exercise,
+.lesson .chal {
+	position: relative;
+	margin: var(--s5) 0;
+	padding: var(--s5) var(--s5) var(--s5) calc(var(--s5) + 1.5rem);
+	border: 1px solid var(--outline);
+	border-left: 3px solid var(--primary);
+	border-radius: var(--r-md);
+	background: var(--surface);
+	box-shadow: var(--e1);
+	font-size: var(--fs-sm);
+	line-height: 1.66;
+	color: var(--text-2);
+}
+
+.quiz .exercise::before,
+.lesson .chal::before {
+	content: "";
+	position: absolute;
+	left: var(--s4);
+	top: calc(var(--s5) + 0.15rem);
+	width: 1.05rem;
+	height: 1.05rem;
+	background-color: var(--primary);
+	-webkit-mask: var(--ic-pencil) center / contain no-repeat;
+	mask: var(--ic-pencil) center / contain no-repeat;
+}
+
+.quiz .exercise h3,
+.lesson .chal h3 {
+	margin: 0 0 var(--s3);
+	font-size: var(--fs-sm);
+	font-weight: 700;
+	color: var(--text);
+}
+
+.quiz .exercise p,
+.lesson .chal p {
+	margin: var(--s3) 0;
+}
+
+.quiz .exercise p:last-child,
+.lesson .chal p:last-child {
+	margin-bottom: 0;
+}
+
+.quiz .exercise ol,
+.quiz .exercise ul,
+.lesson .chal ol,
+.lesson .chal ul {
+	margin: var(--s3) 0;
+	padding-left: 1.3rem;
+}
+
+.quiz .exercise li,
+.lesson .chal li {
+	margin: 0.35rem 0;
+}
+
+/* --------------------------------- <details> = phan dap an mo/dong -------- */
+.quiz details,
+.lesson details {
+	margin: var(--s3) 0 0;
+	border: 1px solid var(--outline-soft);
+	border-radius: var(--r-sm);
+	background: var(--surface-2);
+	font-size: var(--fs-sm);
+	overflow: hidden;
+}
+
+.quiz details[open],
+.lesson details[open] {
+	background: var(--surface);
+}
+
+.quiz details summary,
+.lesson details summary {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.5rem 0.8rem;
+	color: var(--primary);
+	font-weight: 600;
+	cursor: pointer;
+	list-style: none;
+	transition: background 0.14s ease;
+}
+
+.quiz details summary::-webkit-details-marker,
+.lesson details summary::-webkit-details-marker {
+	display: none;
+}
+
+.quiz details summary::before,
+.lesson details summary::before {
+	content: "";
+	width: 0.85rem;
+	height: 0.85rem;
+	flex-shrink: 0;
+	background-color: currentColor;
+	-webkit-mask: var(--ic-caret) center / contain no-repeat;
+	mask: var(--ic-caret) center / contain no-repeat;
+	transition: transform 0.16s ease;
+}
+
+.quiz details[open] summary::before,
+.lesson details[open] summary::before {
+	transform: rotate(90deg);
+}
+
+.quiz details summary:hover,
+.lesson details summary:hover {
+	background: var(--primary-container);
+}
+
+/* Cung ly do nhu .module > summary trong shell.css: details co
+   overflow:hidden nen outline focus bi cat — ve vao trong. */
+.quiz details summary:focus-visible,
+.lesson details summary:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: -3px;
+	border-radius: var(--r-xs);
+}
+
+.quiz details > *:not(summary),
+.lesson details > *:not(summary) {
+	margin: var(--s2) var(--s4);
+}
+
+.quiz details > p,
+.lesson details > p {
+	color: var(--text-2);
+	line-height: 1.62;
+}
+
+.quiz details > *:last-child,
+.lesson details > *:last-child {
+	margin-bottom: var(--s4);
+}
+
+/* ---------------------------- code trong quiz (pre.quiz-code, exercise pre) */
+/* pre.quiz-code hien dang nam trong fieldset hoac .exercise, nhung liet ke
+   rieng de neu sau nay dat o cho khac thi van co style.
+   :not(.astro-code) — block do <Code> sinh ra da duoc CodeEnhance boc trong
+   .codeblock (co border + bar copy rieng), them border nua se thanh vien kep.
+   :not(.tree) — cay thu muc co style rieng trong lesson.css.
+   Giu du 2 :not() de specificity thang rule chung .quiz pre:not(...):not(...)
+   trong lesson.css, neu khong ca khoi nay se thanh rule chet. */
+.quiz fieldset pre:not(.astro-code):not(.tree),
+.quiz .exercise pre:not(.astro-code):not(.tree),
+.quiz pre.quiz-code:not(.astro-code):not(.tree) {
+	margin: var(--s3) 0;
+	padding: var(--s3) var(--s4);
+	border: 1px solid var(--code-outline);
+	border-radius: var(--r-sm);
+	background: var(--code-bg);
+	color: var(--code-fg);
+	font-size: var(--fs-xs);
+	line-height: 1.65;
+	overflow-x: auto;
+	tab-size: 2;
+}
+
+.quiz fieldset pre:not(.astro-code):not(.tree) code,
+.quiz .exercise pre:not(.astro-code):not(.tree) code,
+.quiz pre.quiz-code:not(.astro-code):not(.tree) code {
+	padding: 0;
+	background: none;
+	color: inherit;
+	font-size: inherit;
+}
+
+.quiz .exercise code,
+.lesson .chal code {
+	background: var(--surface-3);
+}
+
+@media (max-width: 560px) {
+	.quiz fieldset {
+		padding: var(--s4);
+	}
+
+	.quiz .exercise,
+	.lesson .chal {
+		padding: var(--s4) var(--s4) var(--s4) calc(var(--s4) + 1.4rem);
+	}
+
+	.quiz .exercise::before,
+	.lesson .chal::before {
+		left: var(--s3);
+		top: calc(var(--s4) + 0.15rem);
+	}
+
+	.quiz button[type="submit"],
+	.quiz #check-order {
+		width: 100%;
+		justify-content: center;
+	}
+
+	.quiz .order-list li {
+		align-items: flex-start;
+	}
+}

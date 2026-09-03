@@ -1,12 +1,46 @@
 ---
-// Task 11 — Quiz + bài tập đọc Manifest cho Chapter 1.
-// Câu hỏi và giải thích được tự viết từ content/book/ch01-welcome-to-android-kotlin.md.
+// Quiz + bài tập cho lesson Chapter 1 — Welcome to Android & Kotlin.
+// Task 42 (Phase 5 — depth pass): mở rộng từ 3 câu / 1 bài tập lên 19 câu / 4 bài tập,
+// theo chuẩn dựng ở Task 35 (Ch05), Task 37 (Ch04) và Task 41 (Ch06).
+// Nguồn: content/book/ch01-welcome-to-android-kotlin.md + các file thật đã mở trong
+//   aaf-materials/02-getting-started-with-android-studio/projects/final/
+//   (chapter 1 không có project riêng — 4 file .keep rỗng).
 // Quiz chấm bằng vanilla JavaScript phía client, không thêm framework.
+const FINAL = "aaf-materials/02-getting-started-with-android-studio/projects/final";
+
+// Manifest giả lập cho Bài tập 4 — KHÔNG phải file thật của aaf-materials, cố tình gài 3 lỗi:
+// (1) <activity> đặt ngoài <application>; (2) thiếu android:exported="true" trên activity có intent-filter;
+// (3) category DEFAULT thay vì LAUNCHER nên app không có biểu tượng để mở.
+const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <application
+    android:allowBackup="true"
+    android:icon="@mipmap/ic_launcher"
+    android:label="@string/app_name"
+    android:supportsRtl="true"
+    android:theme="@style/Theme.KodecoChat">
+  </application>
+
+  <activity
+    android:name=".MainActivity"
+    android:label="@string/app_name"
+    android:theme="@style/Theme.KodecoChat">
+    <intent-filter>
+      <action android:name="android.intent.action.MAIN" />
+      <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
+  </activity>
+
+</manifest>`;
 ---
 
 <section class="quiz" id="quiz">
 	<h2>Quiz nhanh</h2>
-	<p class="intro">Chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án".</p>
+	<p class="intro">
+		19 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Câu 1–7 kiểm kiến thức sách; câu 8–19 kiểm những
+		gì đã đối chiếu với code thật trong <code>aaf-materials/</code>.
+	</p>
 
 	<form id="quiz-form">
 		<fieldset data-answer="b">
@@ -46,13 +80,377 @@
 			</p>
 		</fieldset>
 
+		<fieldset data-answer="c">
+			<legend>4. Security sandbox của Android chặn theo <strong>mấy chiều</strong>?</legend>
+			<label><input type="radio" name="q4" value="a" /> Một chiều — chỉ chặn app khác nhìn vào app của bạn</label>
+			<label><input type="radio" name="q4" value="b" /> Một chiều — chỉ chặn app của bạn nhìn ra ngoài</label>
+			<label>
+				<input type="radio" name="q4" value="c" /> Hai chiều — app khác không nhìn vào được, và app của bạn cũng không
+				tự tiện ra ngoài được
+			</label>
+			<p class="explain" hidden>
+				Sách nói cả <strong>hai chiều</strong>. Từ ngoài nhìn vào: không app nào khác biết chuyện gì diễn ra trong app
+				của bạn. Từ trong nhìn ra: app của bạn không truy cập được app khác, file cụ thể hay thông tin hệ thống — trừ
+				khi được cho phép. Người quyết định chiều thứ nhất là <em>chính app của bạn</em>; người quyết định chiều thứ hai
+				là <em>hệ thống Android</em>. Xem mục 3 của lesson.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				5. Vì sao mục về security sandbox lại được sách đặt <strong>trước</strong> phần giới thiệu component?
+			</legend>
+			<label><input type="radio" name="q5" value="a" /> Vì bảo mật là chủ đề khó nhất, cần học sớm để có thời gian ngấm</label>
+			<label>
+				<input type="radio" name="q5" value="b" /> Vì sandbox là tiền đề: app bị cô lập nên mới cần Manifest để khai báo,
+				và cần Intent để giao tiếp qua hệ thống
+			</label>
+			<label><input type="radio" name="q5" value="c" /> Chỉ là thứ tự tình cờ, không có lý do</label>
+			<p class="explain" hidden>
+				Sandbox <strong>giải thích lý do tồn tại</strong> của hai mục sau. Vì app bị cô lập, hệ thống phải biết trước app
+				có thành phần gì → sinh ra <strong>Manifest</strong>. Vì app không tự cầm tay gọi app khác được, mọi giao tiếp phải
+				đi qua hệ thống → sinh ra <strong>Intent</strong>. Đọc theo thứ tự này thì hai mục sau không còn là quy ước vô lý.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				6. Sách nói "tất cả component đều là <em>entry point</em> của app". Câu này nghĩa là gì với người từng học Python
+				hay Java thuần?
+			</legend>
+			<label><input type="radio" name="q6" value="a" /> App Android có nhiều hàm <code>main()</code>, bạn chọn gọi cái nào</label>
+			<label><input type="radio" name="q6" value="b" /> App Android chạy từ trên xuống dưới như một script, chỉ dài hơn</label>
+			<label>
+				<input type="radio" name="q6" value="c" /> App có thể bắt đầu chạy ở nhiều chỗ khác nhau, và <strong>hệ thống gọi
+				bạn</strong> chứ không phải bạn gọi hệ thống
+			</label>
+			<p class="explain" hidden>
+				Đây là <strong>inversion of control</strong> (đảo ngược quyền điều khiển): bạn viết sẵn component, khai báo chúng,
+				rồi <em>chờ được gọi</em>. Hệ quả cụ thể nhất là <code>onCreate()</code> — bạn viết nó nhưng không bao giờ tự gọi.
+				App bạn còn có thể đang chạy mà <em>không có màn hình nào</em> hiện lên (khi hệ thống chỉ gọi một Broadcast Receiver).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>7. Để nói chuyện với một <strong>Content Provider</strong>, bạn dùng gì?</legend>
+			<label><input type="radio" name="q7" value="a" /> Content Resolver</label>
+			<label><input type="radio" name="q7" value="b" /> Intent</label>
+			<label><input type="radio" name="q7" value="c" /> Cái nào cũng được, tuỳ bạn chọn</label>
+			<p class="explain" hidden>
+				Việc dùng cơ chế nào <strong>không do bạn chọn</strong>, mà do loại component quyết định.
+				<strong>Intent</strong> dùng cho Activity, Service và Broadcast Receiver. <strong>Content Resolver</strong> dành
+				riêng cho Content Provider, và sách nói nó <em>hạn chế hơn nhiều</em>: chỉ làm người trung gian giữa Content
+				Provider và component muốn nói chuyện với nó.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				8. Chapter 1 của sách có project code kèm theo không? (Xem trong
+				<code>aaf-materials/01-welcome-to-android-and-kotlin/</code>)
+			</legend>
+			<label><input type="radio" name="q8" value="a" /> Có — một project <code>starter</code> và một <code>final</code> đầy đủ</label>
+			<label>
+				<input type="radio" name="q8" value="b" /> Không — chỉ có 4 file <code>.keep</code> rỗng 0 byte, nên code minh hoạ
+				phải lấy từ chapter 2
+			</label>
+			<label><input type="radio" name="q8" value="c" /> Có, nhưng chỉ project <code>challenge</code></label>
+			<p class="explain" hidden>
+				Chapter 1 là chapter lý thuyết, <strong>không</strong> có project. Bốn đường dẫn
+				<code>assets/</code>, <code>projects/starter/</code>, <code>projects/final/</code>,
+				<code>projects/challenge/</code> chỉ chứa file <code>.keep</code> rỗng để giữ thư mục trong git. Vì vậy mọi code
+				thật trong lesson này được lấy từ <code>02-getting-started-with-android-studio/projects/final/</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				9. Hai giá trị nào trong <code>&lt;intent-filter&gt;</code> nói với Android rằng "Activity này là chỗ mở app từ
+				biểu tượng"?
+			</legend>
+			<label>
+				<input type="radio" name="q9" value="a" /> <code>android.intent.action.MAIN</code> +
+				<code>android.intent.category.LAUNCHER</code>
+			</label>
+			<label>
+				<input type="radio" name="q9" value="b" /> <code>android:exported="true"</code> +
+				<code>android:label</code>
+			</label>
+			<label>
+				<input type="radio" name="q9" value="c" /> <code>android:name=".MainActivity"</code> +
+				<code>android:theme</code>
+			</label>
+			<p class="explain" hidden>
+				<code>action.MAIN</code> nghĩa là "đây là điểm bắt đầu"; <code>category.LAUNCHER</code> nghĩa là "hãy hiện app này
+				trong danh sách biểu tượng". Thiếu cặp này thì app <strong>vẫn build được</strong> nhưng không có icon để bấm mở.
+				<code>android:exported="true"</code> là điều kiện <em>kèm theo</em> (từ Android 12 bắt buộc phải khai rõ khi
+				Activity có intent-filter), không phải thứ tạo ra biểu tượng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				10. Đoạn manifest sách in ra có <code>android:theme="@style/SplashTheme"</code>. Dán đúng đoạn đó vào project
+				chapter 2 thì sao?
+			</legend>
+			<label><input type="radio" name="q10" value="a" /> Chạy bình thường, hiện màn hình splash</label>
+			<label><input type="radio" name="q10" value="b" /> Build được nhưng app crash lúc mở</label>
+			<label>
+				<input type="radio" name="q10" value="c" /> <strong>Không build được</strong> — <code>SplashTheme</code> không tồn
+				tại trong project chapter 2
+			</label>
+			<p class="explain" hidden>
+				Đã grep toàn bộ <code>aaf-materials/</code>: <code>SplashTheme</code> chỉ có trong
+				<code>res/values/styles.xml</code> của chapter <strong>5, 6 và 7</strong> — và ngay cả ở đó, manifest vẫn dùng
+				<code>Theme.KodecoChat</code> chứ không dùng <code>SplashTheme</code>. Đoạn XML trong sách là ví dụ
+				<strong>minh hoạ cú pháp</strong>, không phải đoạn copy-paste được. Resource không resolve được là lỗi
+				<em>lúc build</em>, không phải lúc chạy.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				11. Manifest ghi <code>android:icon="@mipmap/ic_launcher"</code>. Lần theo tham chiếu này thì gặp gì?
+			</legend>
+			<label><input type="radio" name="q11" value="a" /> Một file ảnh <code>ic_launcher.png</code> duy nhất</label>
+			<label>
+				<input type="radio" name="q11" value="b" /> Một file XML <code>adaptive-icon</code>, bên trong lại trỏ tiếp sang
+				<code>@drawable/ic_launcher_background</code> và <code>_foreground</code>
+			</label>
+			<label><input type="radio" name="q11" value="c" /> Một hàm Kotlin vẽ icon</label>
+			<p class="explain" hidden>
+				Đây là chuỗi tham chiếu <strong>3 tầng</strong>: manifest → <code>mipmap-anydpi/ic_launcher.xml</code> (5 dòng,
+				thẻ <code>&lt;adaptive-icon&gt;</code> với <code>background</code>, <code>foreground</code>, <code>monochrome</code>)
+				→ hai file vector trong <code>drawable/</code>. Nó là <strong>ví dụ cụ thể</strong> cho câu sách nói ở dòng 92:
+				resource có thể tham chiếu tới resource khác. Xem mục 7.2 của lesson.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				12. <code>res/values/colors.xml</code> khai 7 màu. Bao nhiêu chỗ trong <code>app/src/</code> thực sự dùng chúng?
+			</legend>
+			<label>
+				<input type="radio" name="q12" value="a" /> <strong>Không chỗ nào</strong> — grep <code>R.color</code>,
+				<code>purple_500</code>, <code>teal_200</code> chỉ khớp lại chính file <code>colors.xml</code>
+			</label>
+			<label><input type="radio" name="q12" value="b" /> Toàn bộ giao diện Compose đọc từ đây</label>
+			<label><input type="radio" name="q12" value="c" /> Chỉ theme XML dùng, Compose thì không</label>
+			<p class="explain" hidden>
+				<code>colors.xml</code> là <strong>code chết</strong>. Màu thật của app nằm ở
+				<code>ui/theme/Color.kt</code> (dòng 5–10) và được <code>Theme.kt</code> (dòng 19–26) dùng. File XML kia là dấu
+				vết Android Studio sinh sẵn từ thời làm UI bằng XML. Đây là bằng chứng rõ nhất trong project về
+				<strong>giai đoạn chuyển giao XML → Compose</strong>: file vẫn còn đó, nhưng không còn tác dụng. Xem mục 7.3.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				13. <code>MainActivity.kt</code> dòng 35 viết <code>text = "Hello $name!"</code> — chuỗi ghi thẳng trong
+				code. Nhận xét đúng là gì?
+			</legend>
+			<label><input type="radio" name="q13" value="a" /> Đúng chuẩn — chuỗi ngắn thì không cần resource</label>
+			<label><input type="radio" name="q13" value="b" /> Là lỗi của tác giả, cần báo lại nhà xuất bản</label>
+			<label>
+				<input type="radio" name="q13" value="c" /> Project đang làm <strong>ngược</strong> điều sách vừa dạy ở dòng 94 —
+				nhưng là chọn lựa có ý đồ dạy học, không phải lỗi
+			</label>
+			<p class="explain" hidden>
+				Sách nói ở dòng 94 rằng bạn <em>nên</em> đưa chuỗi hiển thị vào resource để app dịch được sang nhiều ngôn ngữ.
+				Rồi chính project lại hardcode <code>"Hello ..."</code> trong Kotlin. Lý do hợp lý: đây là code mặc định do
+				Android Studio sinh ra khi tạo project mới, và chapter 2 chỉ cần bạn thấy app chạy. Điều cần rút ra là
+				<strong>biết nhận diện</strong> chỗ nào là chuẩn nên theo, chỗ nào là code tạm — chứ không phải học theo mọi dòng
+				trong project.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				14. Trong cả 11 chapter project của sách, có bao nhiêu chỗ thật sự khai báo permission hệ thống?
+			</legend>
+			<label><input type="radio" name="q14" value="a" /> Mỗi chapter một vài chỗ</label>
+			<label>
+				<input type="radio" name="q14" value="b" /> Đúng <strong>một</strong> chỗ: <code>INTERNET</code> trong manifest
+				chapter 8, dòng 5
+			</label>
+			<label><input type="radio" name="q14" value="c" /> Không chỗ nào</label>
+			<p class="explain" hidden>
+				Sách nói manifest dùng để khai permission, nhưng cả bộ project chỉ có <strong>một</strong> khai báo thật:
+				<code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code> ở
+				<code>08-networking/projects/final/app/src/main/AndroidManifest.xml</code> dòng 5. Không project nào khai báo
+				tính năng phần cứng. Chú ý thêm: <code>INTERNET</code> là <em>normal permission</em> — chỉ cần khai trong manifest,
+				hệ thống <strong>không</strong> hiện hộp thoại hỏi người dùng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>15. Làm sao nhìn một file build là biết nó viết bằng Kotlin hay Groovy?</legend>
+			<label>
+				<input type="radio" name="q15" value="a" /> Xem phần mở rộng: <code>.gradle.kts</code> = Kotlin,
+				<code>.gradle</code> = Groovy; và Kotlin có dấu <code>=</code> khi gán (<code>compileSdk = 34</code>)
+			</label>
+			<label><input type="radio" name="q15" value="b" /> Xem file có dấu chấm phẩy ở cuối dòng hay không</label>
+			<label><input type="radio" name="q15" value="c" /> Không phân biệt được, phải chạy build mới biết</label>
+			<p class="explain" hidden>
+				<code>.kts</code> là "Kotlin script". Toàn bộ 11 project của sách dùng <code>.kts</code>. Điều này quan trọng lúc
+				tìm câu trả lời trên mạng: rất nhiều bài viết cũ dùng cú pháp Groovy (<code>compileSdk 34</code>, không dấu bằng),
+				dán vào file <code>.kts</code> sẽ lỗi cú pháp. Sách chọn Kotlin với 3 lý do: IDE support, compile-time checking,
+				better readability (dòng 102).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				16. Sách nói bản release "lý tưởng là được obfuscate". <code>app/build.gradle.kts</code> dòng 23–31 lại đặt
+				<code>isMinifyEnabled = false</code>. Giải thích đúng?
+			</legend>
+			<label><input type="radio" name="q16" value="a" /> Sách viết sai, đúng ra phải nói là không cần obfuscate</label>
+			<label>
+				<input type="radio" name="q16" value="b" /> Sách nói điều <em>nên</em> làm với app phát hành; project để
+				<code>false</code> vì là project học — bật minify làm build lâu và dễ crash ở chỗ khó lần ra
+			</label>
+			<label><input type="radio" name="q16" value="c" /> <code>isMinifyEnabled</code> không liên quan gì tới obfuscate</label>
+			<p class="explain" hidden>
+				Đây là khác biệt <strong>lời khuyên vs cấu hình thực tế</strong>, cả hai đều hợp lý trong bối cảnh của mình. Với
+				app thật nên đặt <code>true</code>: nó vừa <em>minify</em> (xoá code không dùng → file nhẹ hơn) vừa
+				<em>obfuscate</em> (đổi tên class/hàm thành <code>a</code>, <code>b</code>, <code>c</code> → khó dịch ngược).
+				<code>proguardFiles(...)</code> đi kèm là danh sách <em>ngoại lệ</em>: "đừng xoá, đừng đổi tên những thứ này" —
+				cần vì có code được gọi qua reflection mà công cụ không nhìn thấy.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				17. Sách nói build release ra "một file để cài và phân phối app". Thực tế có mấy dạng file?
+			</legend>
+			<label><input type="radio" name="q17" value="a" /> Một dạng duy nhất: <code>.apk</code></label>
+			<label><input type="radio" name="q17" value="b" /> Một dạng duy nhất: <code>.aab</code></label>
+			<label>
+				<input type="radio" name="q17" value="c" /> Hai dạng: <code>.apk</code> (cài trực tiếp lên máy) và
+				<code>.aab</code> (Google Play yêu cầu từ tháng 8/2021)
+			</label>
+			<p class="explain" hidden>
+				Sách viết chung là "một file" nên không sai, nhưng chi tiết này ngoài phạm vi chapter 1: muốn cài thẳng lên máy
+				hoặc chia file cho người khác thì dùng <code>.apk</code>; muốn nộp lên Google Play thì phải là
+				<code>.aab</code> (Android App Bundle) — Google Play sẽ tự cắt ra các <code>.apk</code> phù hợp từng thiết bị.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				18. Bốn con số của project (AGP <code>8.2.0</code>, Kotlin <code>1.9.10</code>, Gradle <code>8.2</code>,
+				compileSdk <code>34</code>) nói lên điều gì?
+			</legend>
+			<label><input type="radio" name="q18" value="a" /> Project đã quá cũ, không nên học nữa</label>
+			<label>
+				<input type="radio" name="q18" value="b" /> Project được viết cho khoảng cuối 2023 — chỉ <em>số phiên bản</em> và
+				<em>tên gọi</em> đã đổi, kiến thức nền của chapter 1 vẫn đúng nguyên
+			</label>
+			<label><input type="radio" name="q18" value="c" /> Kotlin <code>1.9.10</code> đã bao gồm Compose compiler sẵn</label>
+			<p class="explain" hidden>
+				API 34 = Android 14; dấu thời gian trong <code>gradle-wrapper.properties</code> ghi
+				<code>Thu Oct 12 ... 2023</code>. Cái đã thật sự thay đổi: từ <strong>Kotlin 2.0</strong>, Compose compiler đi kèm
+				luôn với Kotlin và bật bằng plugin <code>org.jetbrains.kotlin.plugin.compose</code> — khối
+				<code>composeOptions</code> mà project này dùng không còn cần nữa (nên đáp án c sai: 1.9.10 là bản
+				<em>trước</em> 2.0, vẫn cần khai riêng phiên bản Compose compiler). Bốn app component, sandbox, manifest,
+				resource, Intent, vai trò Gradle: không đổi.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				19. <code>res/xml/data_extraction_rules.xml</code> tồn tại trong project và được manifest trỏ tới. Nội dung nó là gì?
+			</legend>
+			<label>
+				<input type="radio" name="q19" value="a" /> Chỉ một comment TODO — file có mặt nhưng chưa cấu hình gì, tức
+				<strong>không có tác dụng thực tế</strong>
+			</label>
+			<label><input type="radio" name="q19" value="b" /> Danh sách đầy đủ những dữ liệu được phép sao lưu</label>
+			<label><input type="radio" name="q19" value="c" /> Code Kotlin xử lý sao lưu</label>
+			<p class="explain" hidden>
+				Bài học rút ra rộng hơn bản thân file này: <strong>không phải file nào có mặt trong project cũng đang làm việc
+				gì</strong>. Android Studio sinh sẵn nhiều file khung, có file đang hoạt động (như
+				<code>mipmap-anydpi/ic_launcher.xml</code>), có file chỉ là chỗ trống chờ bạn điền
+				(<code>data_extraction_rules.xml</code>), có file hoàn toàn bị bỏ quên (<code>colors.xml</code>, câu 12). Đọc code
+				thật là học cách phân biệt ba loại đó.
+			</p>
+		</fieldset>
+
 		<button type="submit">Kiểm tra đáp án</button>
 		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
 	</form>
 
-	<h2>Bài tập nhỏ: Đọc “nhãn” Manifest</h2>
+	<h2>Bài tập</h2>
+	<p class="intro">
+		Bài tập 1 làm ngay trên trang. Bài tập 2–4 cần mở file thật trong <code>aaf-materials/</code> (hoặc đọc lại lesson chính).
+	</p>
+
 	<div class="exercise">
-		<p>Không cần mở Android Studio. Hãy xem lại trích đoạn XML ở mục 3 và trả lời bốn câu sau:</p>
+		<h3>Bài tập 1 — Sắp xếp: hệ thống mở app của bạn theo thứ tự nào</h3>
+		<p>
+			Bốn bước dưới đây bị xáo trộn, mô tả chuyện xảy ra từ lúc bạn bấm biểu tượng app tới lúc màn hình hiện ra (xem mục
+			4.1, 5 và 6 của lesson). Với mỗi bước, chọn số thứ tự đúng (1 đến 4) rồi bấm "Kiểm tra thứ tự":
+		</p>
+		<ul class="order-list" id="boot-order">
+			<li data-correct="3">
+				<select aria-label="Thứ tự cho bước: hệ thống tạo process và khởi chạy Activity">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>Hệ thống tạo process cho app và khởi chạy Activity đó</span>
+			</li>
+			<li data-correct="1">
+				<select aria-label="Thứ tự cho bước: người dùng bấm biểu tượng app">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>Người dùng bấm biểu tượng app trên launcher</span>
+			</li>
+			<li data-correct="4">
+				<select aria-label="Thứ tự cho bước: hệ thống gọi onCreate và Activity dựng giao diện">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>Hệ thống gọi <code>onCreate()</code>, Activity dựng giao diện của mình</span>
+			</li>
+			<li data-correct="2">
+				<select aria-label="Thứ tự cho bước: hệ thống đọc manifest để tìm Activity khởi đầu">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
+				<span>
+					Hệ thống đọc manifest, tìm Activity có <code>action.MAIN</code> + <code>category.LAUNCHER</code>
+				</span>
+			</li>
+		</ul>
+		<button type="button" id="check-order">Kiểm tra thứ tự</button>
+		<p id="order-result" role="status" aria-live="polite" hidden></p>
+		<details>
+			<summary>Vì sao thứ tự này quan trọng</summary>
+			<p>
+				Cả bốn bước đều do <strong>hệ thống</strong> làm, trừ bước 1. Bạn không viết dòng code nào cho bước 2 và 3 — bạn chỉ
+				<em>khai báo</em> ở manifest rồi <em>chờ được gọi</em> ở bước 4. Đó chính là <strong>inversion of control</strong>
+				trong câu hỏi 6: bạn viết <code>onCreate()</code> nhưng không bao giờ tự gọi nó. Chapter 3 sẽ mở rộng bước 4 thành
+				một vòng đời (lifecycle) đầy đủ.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 2 — Đọc “nhãn” Manifest</h3>
+		<p>Không cần mở Android Studio. Hãy xem lại trích đoạn XML ở mục 6 và trả lời bốn câu sau:</p>
 		<ol>
 			<li>Phần tử cha nào chứa các component của app?</li>
 			<li>Activity nào được khai báo trong đoạn XML?</li>
@@ -66,6 +464,92 @@
 				trị cần tìm là <code>android.intent.action.MAIN</code> và
 				<code>android.intent.category.LAUNCHER</code> trong <code>&lt;intent-filter&gt;</code>. Nhờ khai báo này,
 				Android nhận biết <code>MainActivity</code> là điểm mở app từ launcher (màn hình danh sách biểu tượng app).
+			</p>
+			<p>
+				Trong manifest thật (<code>{FINAL}/app/src/main/AndroidManifest.xml</code>, 28 dòng):
+				<code>&lt;application&gt;</code> ở dòng 5–26, <code>&lt;activity&gt;</code> ở dòng 15–25,
+				<code>action.MAIN</code> ở dòng 21, <code>category.LAUNCHER</code> ở dòng 23. Dấu chấm đầu
+				<code>.MainActivity</code> nghĩa là "nối vào package của app" — viết đầy đủ sẽ là
+				<code>com.kodeco.chat.MainActivity</code>.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 3 — Lần theo một chuỗi tham chiếu resource</h3>
+		<p>
+			Mở <code>{FINAL}/app/src/main/</code> và tự lần theo <strong>hai</strong> chuỗi tham chiếu dưới đây, mỗi chuỗi viết ra
+			đủ các chặng cùng số dòng bạn tìm thấy:
+		</p>
+		<ol>
+			<li>
+				Từ <code>android:label</code> trong manifest → tới chuỗi chữ thật mà người dùng nhìn thấy trên biểu tượng app.
+			</li>
+			<li>
+				Từ <code>android:icon</code> trong manifest → tới các file vector vẽ ra hình icon. Chuỗi này <strong>dài hơn</strong>
+				chuỗi thứ nhất — đếm xem nó có mấy chặng.
+			</li>
+		</ol>
+		<p>Sau đó trả lời: chuỗi thứ hai minh hoạ cho câu nào mà sách nói ở dòng 92?</p>
+		<details>
+			<summary>Đáp án</summary>
+			<p>
+				<strong>Chuỗi 1 (2 chặng):</strong> <code>AndroidManifest.xml</code> dòng 10 (<code>@string/app_name</code>) →
+				<code>res/values/strings.xml</code> dòng 2 (<code>Kodeco Chat</code>). Muốn tên app tiếng Việt, bạn
+				<em>không</em> sửa manifest — bạn thêm <code>res/values-vi/strings.xml</code>.
+			</p>
+			<p>
+				<strong>Chuỗi 2 (3 chặng):</strong> <code>AndroidManifest.xml</code> dòng 9 (<code>@mipmap/ic_launcher</code>) →
+				<code>res/mipmap-anydpi/ic_launcher.xml</code> (thẻ <code>&lt;adaptive-icon&gt;</code>, 5 dòng) →
+				<code>res/drawable/ic_launcher_background.xml</code> + <code>ic_launcher_foreground.xml</code>. Chú ý thẻ
+				<code>&lt;monochrome&gt;</code> dùng lại <em>đúng</em> file foreground — một resource được hai chỗ tham chiếu.
+			</p>
+			<p>
+				Sách nói ở dòng 92 rằng resource có thể <strong>tham chiếu tới resource khác</strong>. Chuỗi 2 là ví dụ cụ thể:
+				manifest không hề biết hình icon trông thế nào, nó chỉ biết một cái tên; cái tên đó lại trỏ sang tên khác. Nhờ vậy
+				bạn đổi hoàn toàn hình icon mà không sửa một chữ nào trong manifest.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 4 — Tìm 3 lỗi trong manifest</h3>
+		<p>
+			Đoạn manifest dưới đây <strong>không phải</strong> file thật của <code>aaf-materials/</code> — nó được viết riêng cho bài
+			tập này và có cố tình gài <strong>3 lỗi</strong>. So với manifest thật ở mục 6.2, hãy tìm ra cả ba, và với mỗi lỗi nói rõ:
+			nó sai ở đâu, hậu quả là gì (lỗi lúc build hay app vẫn build nhưng hành vi sai), và sửa thế nào.
+		</p>
+		<pre class="quiz-code"><code>{brokenManifestCode}</code></pre>
+		<details>
+			<summary>Đáp án — 3 lỗi</summary>
+			<p>
+				<strong>Lỗi 1 — <code>&lt;activity&gt;</code> nằm ngoài <code>&lt;application&gt;</code>.</strong> Trong đoạn trên,
+				<code>&lt;application&gt;</code> tự đóng ngay (rỗng), rồi <code>&lt;activity&gt;</code> đứng thành con trực tiếp của
+				<code>&lt;manifest&gt;</code>. Mọi component <strong>phải</strong> nằm trong <code>&lt;application&gt;</code> —
+				đây chính là câu trả lời của Bài tập 2 câu 1. Hậu quả: <strong>lỗi lúc build</strong> (manifest merger báo phần tử
+				không hợp lệ ở vị trí đó). Sửa: chuyển cả khối <code>&lt;activity&gt;</code> vào trong
+				<code>&lt;application&gt;</code>.
+			</p>
+			<p>
+				<strong>Lỗi 2 — thiếu <code>android:exported="true"</code>.</strong> Activity có <code>&lt;intent-filter&gt;</code>
+				nghĩa là nó <em>có thể bị component ngoài gọi tới</em>, nên từ Android 12 (API 31) bạn <strong>buộc phải khai rõ
+				</strong> <code>exported</code> là <code>true</code> hay <code>false</code>. Hậu quả: <strong>lỗi lúc build</strong>
+				với thông báo yêu cầu khai <code>android:exported</code>. Sửa: thêm <code>android:exported="true"</code> như
+				manifest thật (dòng 17). Đây là quy định về bảo mật, nối trực tiếp với security sandbox ở mục 3 — hệ thống không
+				muốn bạn <em>vô tình</em> mở cửa cho app khác.
+			</p>
+			<p>
+				<strong>Lỗi 3 — <code>category.DEFAULT</code> thay vì <code>category.LAUNCHER</code>.</strong> Đây là lỗi
+				<em>khó thấy nhất</em> vì nó <strong>vẫn build được</strong>: cú pháp đúng hoàn toàn. Nhưng thiếu
+				<code>LAUNCHER</code> thì app <strong>không có biểu tượng</strong> trong danh sách app — cài xong không tìm đâu ra
+				để bấm mở. Sửa: đổi <code>DEFAULT</code> thành <code>android.intent.category.LAUNCHER</code>.
+			</p>
+			<p>
+				<strong>Không phải lỗi:</strong> đoạn trên thiếu <code>android:dataExtractionRules</code>,
+				<code>android:fullBackupContent</code>, <code>android:roundIcon</code> và <code>tools:targetApi</code> so với
+				manifest thật. Bốn thuộc tính này đều <em>không bắt buộc</em> — thiếu chúng app vẫn build và chạy bình thường
+				(và như câu 19 cho thấy, <code>data_extraction_rules.xml</code> mà project trỏ tới thực chất còn chưa cấu hình gì).
+				Việc thiếu <code>xmlns:tools</code> cũng hợp lý ở đây vì đoạn này không dùng namespace <code>tools:</code>.
 			</p>
 		</details>
 	</div>
@@ -82,12 +566,13 @@
 
 		fieldsets.forEach((fieldset) => {
 			const answer = fieldset.getAttribute("data-answer");
-			const picked = fieldset.querySelector<HTMLInputElement>("input:checked");
+			const name = fieldset.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
 			const explain = fieldset.querySelector(".explain");
 			explain?.removeAttribute("hidden");
 
 			fieldset.classList.remove("correct", "incorrect");
-			if (picked?.value === answer) {
+			if (picked && picked.value === answer) {
 				correct++;
 				fieldset.classList.add("correct");
 			} else {
@@ -100,91 +585,31 @@
 			scoreEl.removeAttribute("hidden");
 		}
 	});
-</script>
 
-<style>
-	.quiz h2 {
-		margin-top: 2.2rem;
-		font-size: 1.15rem;
-		color: #1a202c;
-		border-bottom: 1px solid #e2e8f0;
-		padding-bottom: 0.35rem;
-	}
-	.intro {
-		color: #718096;
-		font-size: 0.9rem;
-	}
-	fieldset {
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 0.9rem 1.1rem;
-		margin-bottom: 1rem;
-		background: #fff;
-	}
-	fieldset.correct {
-		border-color: #68d391;
-		background: #f0fff4;
-	}
-	fieldset.incorrect {
-		border-color: #fc8181;
-		background: #fff5f5;
-	}
-	legend {
-		font-weight: 600;
-		font-size: 0.92rem;
-		padding: 0 0.3rem;
-	}
-	label {
-		display: block;
-		font-size: 0.9rem;
-		margin: 0.35rem 0;
-		color: #2d3748;
-		line-height: 1.5;
-	}
-	.explain {
-		margin-top: 0.6rem;
-		font-size: 0.85rem;
-		color: #4a5568;
-		border-top: 1px dashed #e2e8f0;
-		padding-top: 0.5rem;
-	}
-	button[type="submit"] {
-		background: #2b6cb0;
-		color: #fff;
-		border: none;
-		padding: 0.55rem 1.1rem;
-		border-radius: 8px;
-		font-size: 0.9rem;
-		cursor: pointer;
-	}
-	button[type="submit"]:hover {
-		background: #2c5282;
-	}
-	#quiz-score {
-		margin-top: 0.8rem;
-		font-weight: 600;
-		color: #2d3748;
-	}
-	.exercise {
-		background: #fff;
-		border: 1px solid #e2e8f0;
-		border-radius: 10px;
-		padding: 1rem 1.2rem;
-		font-size: 0.92rem;
-		line-height: 1.6;
-		color: #2d3748;
-	}
-	.exercise code {
-		background: #edf2f7;
-		padding: 0.1rem 0.35rem;
-		border-radius: 4px;
-	}
-	details {
-		margin-top: 0.8rem;
-		font-size: 0.88rem;
-	}
-	details summary {
-		cursor: pointer;
-		color: #2b6cb0;
-	}
-</style>
+	const checkOrderBtn = document.getElementById("check-order");
+	const orderResultEl = document.getElementById("order-result");
+
+	checkOrderBtn?.addEventListener("click", () => {
+		const items = document.querySelectorAll("#boot-order li");
+		let correctCount = 0;
+
+		items.forEach((li) => {
+			const correctValue = li.getAttribute("data-correct");
+			const select = li.querySelector("select");
+			const picked = select?.value;
+
+			li.classList.remove("correct", "incorrect");
+			if (picked && picked === correctValue) {
+				correctCount++;
+				li.classList.add("correct");
+			} else {
+				li.classList.add("incorrect");
+			}
+		});
+
+		if (orderResultEl) {
+			orderResultEl.textContent = `Kết quả: ${correctCount}/${items.length} bước đúng vị trí.`;
+			orderResultEl.removeAttribute("hidden");
+		}
+	});
+</script>

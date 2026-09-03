@@ -1,0 +1,492 @@
+---
+// Chapter 6: Advanced Jetpack Compose — viết lại HOÀN TOÀN ở Task 41 (Phase 5 "Depth pass").
+// Nguyên tắc: bám sát content/book/ch06-advanced-jetpack-compose.md (511 dòng, 4 heading "##"),
+// mọi code lấy từ aaf-materials/06-advanced-jetpack-compose/projects/{starter,final}/.
+// Mọi số dòng trích dẫn trong bài đã mở file thật để kiểm — không có số dòng nào được suy đoán.
+// Giải thích tự viết tiếng Việt — không copy nguyên văn sách (xem CLAUDE.md mục Bản quyền).
+// Code thật được dùng theo Quyết định #7 trong docs/PROJECT_PLAN.md.
+// [TASK48] Chuong 6.2 — ViewModel, MVI và StateFlow
+
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/06-advanced-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat";
+
+const BOOK = "content/book/ch06-advanced-jetpack-compose.md";
+
+const emptyViewModelCode = `class MainViewModel : ViewModel() {
+}`;
+
+const bookViewModelStateCode = `// 1
+private val userId = UUID.randomUUID().toString()
+// 2
+private val _messages: MutableList<MessageUiModel> = initialMessages.toMutableStateList()
+// 3
+private val _messagesFlow: MutableStateFlow<List<MessageUiModel>> by lazy {
+  MutableStateFlow(emptyList())
+}
+val messages = _messagesFlow.asStateFlow()`;
+
+const realViewModelHeadCode = `class MainViewModel : ViewModel() {
+  /**
+   * hard coding the userID here
+   * ideally you would generate this on first app launch, then store it for future use
+   * see chapter 8 to see how you would store a value like this in Data Store
+   * for example
+   * \`userID = userPreferencesRepository.fetchInitialPreferences().currentUserId\`
+   */
+  private val userId = UUID.randomUUID().toString()
+  var currentUserId = MutableStateFlow(userId)`;
+
+const chatRoomModelCode = `@Immutable
+data class ChatRoom(
+  val id: String,
+  val name: String,
+  val createdOn: Instant? = Clock.System.now(),
+  val messagesCollectionId: String,
+  val isPrivate: Boolean = false,
+  val collectionID: String?,
+  val createdBy: String
+)`;
+
+const constantsCode = `/**
+ * collection name for default public room
+ */
+const val DEFAULT_PUBLIC_ROOM_MESSAGES_COLLECTION_ID =
+  "1440174b9330e430b46da939f0b04a34a40e10ac8073671156da174fef1ffaef" //"Public Room Messages Collection ID"`;
+
+const currentRoomCode = `private val emptyChatRoom = ChatRoom(
+  id = "public",
+  name = "Android Apprentice",
+  createdOn = Clock.System.now(),
+  messagesCollectionId = DEFAULT_PUBLIC_ROOM_MESSAGES_COLLECTION_ID,
+  isPrivate = false,
+  collectionID = "public",
+  createdBy = "Kodeco User"
+)
+
+private val _currentChatRoom = MutableStateFlow(emptyChatRoom)
+val currentRoom = _currentChatRoom.asStateFlow()`;
+
+const bookSendFunctionsCode = `// 1
+fun onCreateNewMessageClick(messageText: String, photoUri: Uri?) {
+  // 2
+  val currentMoment: Instant = Clock.System.now()
+  // 3
+  val message = Message(
+    UUID.randomUUID().toString(),
+     currentMoment,
+     currentRoom.value.id,
+     messageText,
+     userId,
+     photoUri
+  )
+  // 4
+  if (message.photoUri == null) {
+    viewModelScope.launch(Dispatchers.Default) {
+      createMessageForRoom(message, currentRoom.value)
+    }
+  }
+}
+// 5
+suspend fun createMessageForRoom(message: Message, chatRoom: ChatRoom) {
+  // 6
+  val user = User(userId)
+  val messageUIModel = MessageUiModel(message, user)
+  // 7
+  _messages.add(messageUIModel)
+  // 8
+  _messagesFlow.emit(_messages)
+}`;
+
+const finalSendFunctionsCode = `fun onCreateNewMessageClick(messageText: String, photoUri: Uri?) {
+  val currentMoment: Instant = Clock.System.now()
+  val message = Message(
+    UUID.randomUUID().toString(),
+    currentMoment,
+    currentRoom.value.id,
+    messageText,
+    userId,
+    photoUri
+  )
+
+  if (message.photoUri == null) {
+    viewModelScope.launch(Dispatchers.Default) {
+      createMessageForRoom(message, currentRoom.value)
+    }
+  }
+}
+
+suspend fun createMessageForRoom(message: Message, chatRoom: ChatRoom) {
+  val user = User(userId)
+  val messageUIModel = MessageUiModel(message, user)
+  // Add to the beginning of the list
+  _messages.add(0, messageUIModel)
+  _messagesFlow.emit(_messages)
+}`;
+---
+
+<section class="lesson">
+	<h2 id="viewmodel-vi-sao">7. ViewModel — vì sao xoay màn hình lại làm mất dữ liệu</h2>
+	<p>
+		Sách nối mục này về chapter 3 ("Android Fundamentals"), nơi bạn học lifecycle của Activity. Lập luận gồm bốn bước, và
+		bước nào bỏ đi thì phần sau mất nghĩa:
+	</p>
+	<ol class="chain">
+		<li>
+			Mỗi lần có <strong>configuration change</strong> (đổi cấu hình thiết bị — xoay màn hình, đổi ngôn ngữ, đổi cỡ chữ hệ
+			thống), Android <em>kích hoạt lại</em> các lifecycle event của Activity.
+		</li>
+		<li>
+			Sách dùng đúng chữ này: một việc <em>vô hại</em> như xoay máy khiến Activity <strong>bị tạo lại từ đầu</strong>. Không
+			phải "được thông báo là màn hình đã xoay" — mà là <em>chết đi và sinh ra một object mới</em>.
+		</li>
+		<li>
+			Nếu dữ liệu hoặc state của bạn <strong>gắn chặt vào UI</strong>, nó chết cùng Activity cũ. Danh sách tin nhắn nằm
+			trong <code>ConversationUiState</code> — và <code>ConversationUiState</code> được tạo trong
+			<code>setContent &#123; ... &#125;</code>, tức là bên trong Activity. Xoay máy → mất.
+		</li>
+		<li>
+			App càng lớn, việc <strong>tách dữ liệu và logic ra khỏi composable và khỏi tầng UI</strong> càng quan trọng. Android
+			có sẵn một architecture component cho việc đó: <strong>ViewModel</strong>.
+		</li>
+	</ol>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 91)</p>
+	<div class="hint">
+		<strong>Mental model — ViewModel là "cái tủ ngoài phòng".</strong> Hãy tưởng tượng Activity là một căn phòng bị đập đi
+		xây lại mỗi lần bạn xoay máy. Mọi thứ để <em>trong</em> phòng thì mất. ViewModel là cái tủ đặt <em>ngoài</em> phòng, do
+		hệ thống giữ hộ: phòng mới xây xong vẫn mở đúng cái tủ cũ ra và thấy nguyên đồ bên trong. Điều làm nó "biết" đây là
+		cùng một phòng là <strong>ViewModelStore</strong> gắn với Activity, được hệ thống giữ lại qua configuration change và
+		chỉ xoá thật khi Activity bị đóng hẳn (người dùng bấm Back hoặc gạt app khỏi danh sách gần đây).
+	</div>
+	<p class="notice">
+		<strong>Giới hạn cần biết ngay, để không kỳ vọng sai.</strong> ViewModel sống sót qua <em>configuration change</em>,
+		nhưng <strong>không</strong> sống sót qua việc hệ thống giết process app để lấy lại RAM, và <strong>không</strong> sống
+		sót qua việc tắt app rồi mở lại. Nghĩa là mọi tin nhắn bạn gõ trong chapter này vẫn biến mất khi bạn đóng app — và đó
+		đúng là hiện trạng của app tới hết chapter 6. Muốn lưu thật thì cần <em>DataStore</em> (Chương 9) hoặc <em>Room</em>
+		(Chương 10). Sách có nhắc điều này gián tiếp qua comment trong code, xem mục 8.
+	</p>
+
+	<h2 id="tao-viewmodel">8. Tạo <code>MainViewModel</code> và state nó giữ</h2>
+	<p>
+		Sách hướng dẫn thao tác cụ thể: tạo một package mới tên <code>viewmodel</code> dưới <code>com.kodeco.chat</code>, rồi
+		tạo trong đó một Kotlin class tên <code>MainViewModel</code>. Sách cũng nói rõ một điều dễ hiểu sai: bạn
+		<strong>có thể có nhiều ViewModel</strong> — mỗi Activity một cái, hoặc dùng chung một cái cho nhiều Activity. App này
+		chỉ cần một.
+	</p>
+	<Code code={emptyViewModelCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 98–99). File thật: <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 59)</p>
+	<p>
+		Kế thừa <code>ViewModel()</code> là toàn bộ điều kiện để một class trở thành ViewModel — không cần annotation, không
+		cần đăng ký ở đâu. <code>androidx.lifecycle.ViewModel</code> sẽ được Android Studio tự import.
+	</p>
+	<p>
+		Sách đặt vấn đề tiếp theo rất tự nhiên: muốn viết logic thêm tin nhắn thì trước hết phải có <em>chỗ giữ danh sách tin
+		nhắn</em>. Nhắc lại từ chapter 5: <code>MessageUiModel</code> là một object gộp <code>Message</code> (nội dung tin) và
+		<code>User</code> (người gửi). Vậy danh sách cần giữ là <code>List&lt;MessageUiModel&gt;</code>. Bốn property sau được
+		thêm vào ViewModel:
+	</p>
+	<Code code={bookViewModelStateCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 108–118)</p>
+	<p>Giải thích từng số, theo sách và có bổ sung phần sách nói vắn:</p>
+	<table class="api">
+		<thead>
+			<tr><th>#</th><th>Property</th><th>Nó là gì / vì sao cần</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>1</td>
+				<td><code>userId</code></td>
+				<td>
+					ID của người đang dùng app <em>trên máy này</em>. Là một UUID random, đảm bảo mỗi người chat có một danh tính
+					riêng. Sách tự thừa nhận cách làm lý tưởng: sinh ra ở lần mở app đầu tiên rồi <em>lưu lại</em> để dùng về sau —
+					và hẹn bạn tới chapter "Data Store" để học cách lưu.
+				</td>
+			</tr>
+			<tr>
+				<td>2</td>
+				<td><code>_messages</code></td>
+				<td>
+					Danh sách tin nhắn thật, dạng <code>MutableList</code> nên thêm/xoá được. Nó được khởi tạo bằng danh sách tin
+					nhắn giả (<code>initialMessages</code>). Sách nói rõ: về sau danh sách này sẽ lấy từ một service, nhưng tạm thời
+					giữ trong ViewModel — và nếu bạn không muốn thấy dữ liệu giả thì cứ khởi tạo bằng list rỗng.
+				</td>
+			</tr>
+			<tr>
+				<td>3</td>
+				<td><code>_messagesFlow</code></td>
+				<td>
+					Một flow <strong>private</strong> — chỉ các hàm <em>bên trong</em> ViewModel được sửa nó. Đây là chốt an toàn:
+					UI không thể tự ý bơm dữ liệu vào.
+				</td>
+			</tr>
+			<tr>
+				<td>3</td>
+				<td><code>messages</code></td>
+				<td>
+					Biến <strong>public</strong> mà UI Compose lắng nghe. Khi <code>_messagesFlow</code> có giá trị mới, UI cập
+					nhật theo.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="hint">
+		<strong>Bổ sung — pattern "cặp private/public" này có tên và có lý do.</strong> Sách dùng nó mà không đặt tên: một
+		<code>MutableStateFlow</code> private (tên bắt đầu bằng dấu <code>_</code>) đi kèm một bản chỉ-đọc public tạo ra bằng
+		<code>.asStateFlow()</code>. Đây là cách <em>ép</em> unidirectional data flow ở mức kiểu dữ liệu (type level), không
+		dựa vào việc mọi người tự nhớ quy ước: UI <em>không có cách nào</em> gọi <code>emit()</code> trên
+		<code>messages</code>, vì <code>StateFlow</code> đơn giản là không có hàm đó. Muốn đổi state, UI buộc phải gọi một hàm
+		public của ViewModel — đúng cái "sự kiện đổi state chỉ đến từ một nguồn" ở mục 6.
+	</div>
+	<p>
+		Ba dòng đầu code thật trong project trùng với sách, nhưng có thêm một thứ sách chỉ giới thiệu ở cuối chapter và một
+		comment rất đáng đọc:
+	</p>
+	<Code code={realViewModelHeadCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 59–68)</p>
+	<ul>
+		<li>
+			<code>var currentUserId = MutableStateFlow(userId)</code> đã có mặt ngay từ đầu file trong project, còn sách chỉ bảo
+			bạn thêm nó ở <em>gần cuối</em> chapter (dòng 337 của sách) khi đi sửa lỗi <code>authorId</code> hardcode. Đọc project
+			trước rồi đọc sách sẽ thấy như sách bỏ sót; thực ra là do thứ tự dạy.
+		</li>
+		<li>
+			Comment trong code nói: <em>lý tưởng thì sinh userID ở lần mở app đầu tiên rồi lưu lại</em>, và gợi ý luôn dòng code
+			tương lai <code>userPreferencesRepository.fetchInitialPreferences().currentUserId</code>. Đây là bằng chứng bằng code
+			cho cái giới hạn ở mục 7: mỗi lần bạn mở lại app, bạn là một người khác.
+		</li>
+	</ul>
+	<p class="notice">
+		<strong>Lệch #1 giữa sách và project — comment chỉ sai chapter.</strong> Comment trong file ghi <em>"see chapter 8 to
+		see how you would store a value like this in Data Store"</em>, còn phần văn bản của sách (dòng 120) lại hẹn bạn ở
+		<em>chapter 9, "Data Store"</em>. Kiểm tra mục lục sách: Data Store thật sự là <strong>chapter 9</strong>, chapter 8 là
+		Networking. Vậy comment trong code sai, văn bản sách đúng. Ghi lại để bạn không đi tìm lộn chapter.
+	</p>
+
+	<h2 id="chatroom-thieu">9. Hai file sách không hề bảo bạn tạo — nhưng thiếu là không compile được</h2>
+	<p>
+		Đây là chỗ vênh lớn nhất của chapter này, và nó ảnh hưởng trực tiếp tới người vừa làm theo sách. Ở phần tiếp theo, sách
+		đưa ra hàm <code>onCreateNewMessageClick()</code> có dùng <code>currentRoom.value.id</code> và
+		<code>createMessageForRoom(message, currentRoom.value)</code> — hai chỗ tham chiếu tới một property tên
+		<code>currentRoom</code> kiểu <code>ChatRoom</code>. Nhưng <strong>không có bất kỳ đoạn nào trong chapter hướng dẫn tạo
+		<code>currentRoom</code>, cũng không có đoạn nào tạo class <code>ChatRoom</code></strong>.
+	</p>
+	<p>
+		Trong project <code>final</code> thì cả hai đều tồn tại. Đây là class <code>ChatRoom</code> — một file
+		<strong>chỉ có trong <code>final</code>, không có trong <code>starter</code></strong>:
+	</p>
+	<Code code={chatRoomModelCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/data/model/ChatRoom.kt</code> (dòng 41–50) — file này không tồn tại trong <code>starter</code></p>
+	<p>Nó tham chiếu tới một hằng số, cũng nằm trong một file chỉ có ở <code>final</code>:</p>
+	<Code code={constantsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/data/Constants.kt</code> (dòng 37–41) — file này không tồn tại trong <code>starter</code></p>
+	<p>Và đây là phần tạo <code>currentRoom</code> mà sách không in ra:</p>
+	<Code code={currentRoomCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 81–92)</p>
+	<div class="callout diff">
+		<strong>Nếu bạn đang code theo sách và bị lỗi ở đây, bạn không làm sai.</strong>
+		<p>Thứ tự việc cần làm để code trong sách compile được:</p>
+		<ol>
+			<li>Tạo file <code>data/model/ChatRoom.kt</code> theo đoạn trên (hoặc copy từ project <code>final</code>).</li>
+			<li>Tạo file <code>data/Constants.kt</code> chứa <code>DEFAULT_PUBLIC_ROOM_MESSAGES_COLLECTION_ID</code>.</li>
+			<li>Thêm <code>emptyChatRoom</code>, <code>_currentChatRoom</code> và <code>currentRoom</code> vào ViewModel.</li>
+		</ol>
+		<p>
+			Vì sao lại có chỗ vênh này? Nhìn nội dung sẽ đoán được: <code>messagesCollectionId</code> là một chuỗi hash 64 ký tự
+			trông đúng như ID của một collection trên backend, và <code>isPrivate</code>/<code>collectionID</code> chỉ có nghĩa
+			khi có nhiều phòng chat thật. Nghĩa là <code>ChatRoom</code> được thiết kế cho <strong>chapter 8 (Networking)</strong>,
+			nhưng project <code>final</code> của chapter 6 đã được lấy từ một bản code về sau. Sách viết theo trạng thái cũ hơn.
+		</p>
+	</div>
+	<p class="hint">
+		<strong>Cách tối giản nếu bạn không muốn tạo hai file mới.</strong> Ở chapter này <code>chatRoom</code> hầu như không
+		được dùng vào việc gì — nó chỉ đóng góp <code>currentRoom.value.id</code> làm <code>roomId</code> của
+		<code>Message</code>, và bản thân <code>Message</code> đã có giá trị mặc định <code>roomId = "public"</code>. Nên bạn
+		hoàn toàn có thể bỏ tham số phòng chat, dùng thẳng <code>"public"</code>, và code vẫn chạy đúng như trong sách. Chỉ cần
+		hiểu rằng khi tới chapter 8 bạn sẽ phải quay lại thêm nó.
+	</p>
+	<h2 id="ham-gui-tin">10. Hai hàm xử lý việc gửi tin nhắn</h2>
+	<p>
+		Sách đưa tiếp hai hàm vào ViewModel để xử lý lúc người dùng bấm "send". Đây là đoạn code trung tâm của cả chapter — mọi
+		khái niệm ở mục 2–6 gặp nhau ở đây:
+	</p>
+	<Code code={bookSendFunctionsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 126–157)</p>
+	<h3>10.1 Tám điểm giải thích, và điểm nào là quan trọng nhất</h3>
+	<ol class="chain">
+		<li>
+			Hàm nhận <strong>hai tham số</strong>: nội dung tin nhắn là bắt buộc, ảnh đính kèm là tuỳ chọn (<code>Uri?</code> có
+			dấu hỏi = cho phép <code>null</code>). Sách nói thẳng hiện trạng của tính năng ảnh: UI đã có nút chọn ảnh, bấm vào
+			mở được thư viện ảnh, nhưng <em>ảnh không thật sự được đính kèm</em> vì chức năng đó chưa được viết.
+		</li>
+		<li>
+			Thời điểm gửi được tính <em>tại lúc gửi</em> bằng <code>Clock.System.now()</code>. Sách chỉ ra tại sao timestamp là
+			một phần của UI: cách hiển thị nó phụ thuộc vào việc chuyện đó xảy ra <em>bao lâu trước</em> — đúng như bạn đã thấy
+			với dữ liệu tin nhắn giả ("8:07 PM", "8:06 PM"…).
+		</li>
+		<li>Một <code>Message</code> mới được tạo, với ID random, thời điểm vừa tính, phòng hiện tại, nội dung, người gửi và ảnh.</li>
+		<li>
+			<strong>Đây là điểm sách giải thích dài nhất, và xứng đáng.</strong> Mỗi <code>ViewModel</code> có sẵn một
+			<code>viewModelScope</code>. Mọi coroutine chạy trong scope này <em>tự động bị huỷ</em> khi ViewModel bị xoá. Nghĩa
+			là ViewModel cho bạn sẵn một cách gắn phạm vi sống của coroutine vào phạm vi sống của màn hình. Sách gọi thẳng tên
+			vấn đề mà việc này giải quyết: một <em>vấn đề kinh điển của Android đời cũ</em> — memory leak (rò rỉ bộ nhớ) do một
+			view đưa thứ gì đó vào memory rồi bị "bỏ rơi" khi view ra khỏi phạm vi.
+		</li>
+		<li>
+			Vì dùng coroutine nên <code>createMessageForRoom()</code> phải là <code>suspend</code>. Sách cũng thừa nhận luôn:
+			hiện app chỉ có đúng một phòng chat "Android Apprentice", nên <strong>tham số <code>chatRoom</code> chưa được dùng
+			vào việc gì</strong> — nó chuẩn bị cho tương lai có tin nhắn riêng giữa nhiều người.
+		</li>
+		<li>Tạo <code>MessageUiModel</code> từ <code>userId</code> và message.</li>
+		<li>Thêm nó vào danh sách <code>_messages</code> đang giữ trong ViewModel.</li>
+		<li>
+			Sách gọi đây là chỗ <em>"phép màu thật sự"</em> xảy ra: flow mà UI đang lắng nghe được cập nhật giá trị mới bằng
+			<code>emit()</code>. Toàn bộ việc "UI tự vẽ lại" bắt đầu từ đúng dòng này.
+		</li>
+	</ol>
+	<div class="hint">
+		<strong>Bổ sung — vì sao phải <code>Dispatchers.Default</code>?</strong> Sách viết
+		<code>viewModelScope.launch(Dispatchers.Default)</code> mà không giải thích tham số. <code>Dispatchers</code> là thứ
+		quyết định coroutine chạy trên luồng nào: <code>Main</code> = luồng giao diện, <code>IO</code> = việc chờ đợi (đọc file,
+		gọi mạng), <code>Default</code> = việc tính toán tốn CPU. Mặc định của <code>viewModelScope</code> là
+		<code>Dispatchers.Main</code>, nên viết <code>Default</code> là <em>chủ động đẩy việc ra khỏi luồng giao diện</em> để
+		không làm màn hình khựng. Với việc nhẹ như thêm phần tử vào list thì chưa cần thiết, nhưng nó là thói quen đúng cho khi
+		hàm này sau này gọi mạng thật (chapter 8).
+	</div>
+	<p class="notice">
+		<strong>Điểm dễ bỏ qua nhất trong cả đoạn code: <code>if (message.photoUri == null)</code>.</strong> Đọc kỹ điều kiện
+		này sẽ thấy một hệ quả mà sách không nói ra thành lời: nếu tin nhắn <em>có</em> ảnh, khối <code>if</code> không chạy →
+		<code>createMessageForRoom()</code> không được gọi → <strong>tin nhắn đó không được thêm vào danh sách và biến mất hoàn
+		toàn, kể cả phần chữ</strong>. Không có <code>else</code>, không có thông báo lỗi. Sách chỉ nói "hiện chỉ xử lý trường
+		hợp không có ảnh", nhưng cách nói đó nhẹ hơn thực tế: đây không phải "chưa đính kèm được ảnh", mà là "gửi kèm ảnh thì
+		mất luôn tin nhắn". Xem mục 17 để biết tại sao code này bị bỏ dở như vậy.
+	</p>
+	<h3>10.2 So với code thật trong <code>final</code></h3>
+	<Code code={finalSendFunctionsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 103–127)</p>
+	<p>
+		Giống sách gần như từng chữ, chỉ khác đúng <strong>một</strong> chỗ — và chỗ đó rất quan trọng:
+		<code>_messages.add(0, messageUIModel)</code> thay vì <code>_messages.add(messageUIModel)</code>. Sách <em>cũng</em> yêu
+		cầu đổi thành như vậy, nhưng ở gần cuối chapter (dòng 484–488), sau khi đã thêm nút Jump to bottom. Lý do phải đổi được
+		giải thích ở mục 15 — nó gắn với <code>reverseLayout</code>, và nếu bạn đổi mà chưa hiểu sẽ tưởng tin nhắn hiện ngược.
+	</p>
+	<h2 id="mvi-flow">11. MVI, Flow và StateFlow</h2>
+	<p>
+		Sách mở mục này bằng cách mô tả <em>cách làm cũ</em> để bạn thấy cái mới giải quyết gì. Cách cũ: view khởi động → yêu
+		cầu dữ liệu từ ViewModel → ViewModel yêu cầu tiếp xuống tầng dữ liệu; dữ liệu quay ngược lên theo chiều đối diện, rồi UI
+		được cập nhật. Tất cả có thể làm bất đồng bộ bằng <code>suspend</code> function.
+	</p>
+	<p>
+		Vấn đề của mô hình đó: nó là <strong>hỏi–đáp</strong> (request). Muốn biết có dữ liệu mới thì phải hỏi lại. Sách nói kiến
+		trúc hiệu quả hơn là <strong>quan sát (observe)</strong> thay vì liên tục yêu cầu — khi đó mọi cập nhật ở nguồn dữ liệu
+		tự động <em>chảy</em> xuống view.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 170–180)</p>
+	<div class="hint">
+		<strong>Mental model — hai cách nhận thư.</strong> Kiểu <em>request</em>: mỗi 5 phút bạn ra hòm thư kiểm tra xem có thư
+		chưa. Kiểu <em>observe</em>: bạn đăng ký nhận thông báo, có thư thì bưu tá bấm chuông. Cách hai không những đỡ mệt, mà
+		còn không bao giờ bị chậm nhịp — không có khoảng thời gian nào bạn đang giữ thông tin cũ mà không biết. Đây chính là lý
+		do sách gọi hệ thống kiểu này là <strong>reactive</strong> (phản ứng): người quan sát tự động phản ứng với thay đổi của
+		thứ được quan sát.
+	</div>
+	<p>
+		Sách đặt tên cho pattern này: <strong>MVI — Model-View-Intent</strong>, tập trung vào <em>unidirectional data flow</em>
+		và <em>immutability</em> (tính bất biến). Ba chữ được định nghĩa như sau:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Thành phần</th><th>Theo sách</th><th>Là gì trong app Kodeco Chat</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Model</strong></td>
+				<td>Biểu diễn <em>state của ứng dụng</em>.</td>
+				<td><code>_messages</code> và <code>_messagesFlow</code> trong <code>MainViewModel</code>.</td>
+			</tr>
+			<tr>
+				<td><strong>View</strong></td>
+				<td>Biểu diễn UI, được vẽ ra <em>dựa trên</em> state nhận từ Model.</td>
+				<td><code>ConversationContent()</code> → <code>Messages()</code> → <code>MessageUi()</code>.</td>
+			</tr>
+			<tr>
+				<td><strong>Intent</strong></td>
+				<td>
+					Hành động / tương tác của người dùng với view, sinh ra event được gửi (dispatch) tới Model. <em>Không</em> liên
+					quan gì tới class <code>Intent</code> của Android.
+				</td>
+				<td>
+					Bấm nút send → <code>uiState.addMessage()</code> → <code>viewModel.onCreateNewMessageClick()</code>.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="notice">
+		<strong>Cảnh báo tên gọi.</strong> Chữ "Intent" trong MVI <em>không phải</em> <code>android.content.Intent</code> — cái
+		bạn học ở chapter 3 để mở Activity khác. Trùng tên hoàn toàn ngẫu nhiên. Trong MVI, "intent" nghĩa là "ý định của người
+		dùng". Đây là một trong những chỗ gây nhầm nhiều nhất khi mới đọc về MVI trên Android.
+	</p>
+	<h3>11.1 Flow và StateFlow</h3>
+	<p>Sách định nghĩa <strong>Flow</strong> bằng cách so sánh, và so sánh đó là cách nhớ tốt nhất:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Loại</th><th>Trả về</th><th>Ví dụ dùng</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>suspend</code> function</td>
+				<td>Đúng <strong>một</strong> giá trị, rồi kết thúc.</td>
+				<td>"Lấy hồ sơ người dùng này" — hỏi một lần, xong.</td>
+			</tr>
+			<tr>
+				<td><code>Flow</code></td>
+				<td>Phát ra (<em>emit</em>) <strong>nhiều</strong> giá trị lần lượt theo thời gian.</td>
+				<td>Sách nêu đúng hai ví dụ: nhận cập nhật <em>trực tiếp</em> từ database, hoặc từ một cloud API.</td>
+			</tr>
+			<tr>
+				<td><code>StateFlow</code></td>
+				<td>
+					Là <code>Flow</code> mở rộng, có thêm <strong>lifecycle awareness</strong> (biết vòng đời) sẵn bên trong.
+				</td>
+				<td>
+					Sách khuyên: trong app Android <em>thường bạn muốn dùng StateFlow</em>, vì <code>Flow</code> thuần không dành
+					riêng cho Android nên bạn phải tự quản lý thêm.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Cách Flow gặp Compose, theo sách: <strong>UI component đăng ký (subscribe) vào một Flow. Khi Flow có giá trị mới, các
+		composable đang đăng ký được recompose để hiển thị giá trị mới.</strong> Nối lại với mục 3: recomposition vẫn là cơ chế
+		duy nhất — Flow chỉ là thứ kích hoạt nó từ ngoài UI. Sách chốt: cặp ViewModel + Compose UI cho bạn một mô hình hiệu quả
+		— cập nhật UI khi màn hình đang được xem, và giải phóng bộ nhớ khi không còn được xem nữa.
+	</p>
+	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 184–194)</p>
+	<div class="hint">
+		<strong>Bổ sung — <code>StateFlow</code> khác <code>Flow</code> ở ba điểm cụ thể,</strong> vì "lifecycle awareness" nghe
+		khá mơ hồ:
+		<ul>
+			<li>
+				<strong>Luôn có giá trị hiện tại.</strong> <code>StateFlow</code> bắt buộc có giá trị khởi tạo (chính vì vậy
+				<code>MutableStateFlow(emptyList())</code> phải truyền <code>emptyList()</code>). Ai vừa đăng ký cũng nhận ngay giá
+				trị mới nhất, không phải chờ lần emit kế tiếp. <code>Flow</code> thuần thì không có gì cả cho tới khi phát.
+			</li>
+			<li>
+				<strong>Chỉ giữ một giá trị.</strong> Nó là "giá trị hiện tại của state", không phải dòng sự kiện. Emit hai lần cùng
+				một giá trị thì lần thứ hai bị bỏ qua (conflation) — đúng ý nghĩa của state.
+			</li>
+			<li>
+				<strong>Chia sẻ được cho nhiều người quan sát.</strong> Nhiều composable cùng đọc một <code>StateFlow</code> thì
+				vẫn là một nguồn duy nhất, không nhân bản công việc.
+			</li>
+		</ul>
+	</div>
+	<p class="notice">
+		<strong>Một hệ quả trực tiếp của "chỉ giữ một giá trị", đang có thật trong app này.</strong> Hàm
+		<code>createMessageForRoom()</code> gọi <code>_messagesFlow.emit(_messages)</code> — nó emit <em>chính cái list</em>, chứ
+		không phải một bản copy. Với <code>StateFlow</code>, nếu giá trị mới <code>==</code> giá trị cũ thì lần emit đó
+		<em>không</em> thông báo cho ai. Ở đây code chạy được vì <code>_messages</code> được tạo bằng
+		<code>toMutableStateList()</code> — một list mà Compose theo dõi từng thay đổi phần tử, nên UI vẫn cập nhật. Nhưng nó là
+		hai cơ chế phản ứng chồng lên nhau (Compose snapshot state <em>và</em> StateFlow), và đó là lý do đoạn code này hoạt
+		động nhưng khó giải thích. Cách viết an toàn hơn là emit một bản copy: <code>_messagesFlow.emit(_messages.toList())</code>.
+	</p>
+</section>
+

@@ -1,0 +1,458 @@
+---
+// Lesson Chapter 11 — Advanced Storage (chapter CUỐI CÙNG của sách).
+// Viết lại hoàn toàn ở Task 45 theo chuẩn độ sâu (CLAUDE.md mục A/B).
+// Code trích từ aaf-materials/11-advanced-storage/projects/{starter,final}/ — mọi số dòng đã kiểm bằng Read/grep.
+// Đối chiếu thêm với aaf-materials/10-room-db/projects/final/ để làm rõ cái gì đổi khi thêm mã hoá.
+// Nội dung giải thích tự viết tiếng Việt, diễn giải theo content/book/ch11-advanced-storage.md — không copy nguyên văn sách.
+// [TASK48] Chuong 11.4 — Nối dây, cái bẫy backup, và những gì đã lỗi thời
+
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/11-advanced-storage/projects/final/app/src/main/java/com/kodeco/recipefinder";
+
+const FINAL_ROOT = "aaf-materials/11-advanced-storage/projects/final";
+
+const CH10 = "aaf-materials/10-room-db/projects/final/app/src/main/java/com/kodeco/recipefinder";
+
+const BOOK = "content/book/ch11-advanced-storage.md";
+
+const bookWiringCode = `val randomPassCode: String
+// 1
+if (!securePrefs.hasKey(PASSCODE_KEY)) {
+  // 2
+  randomPassCode = RecipeDatabase.getPassCode(15)
+  // 3
+  securePrefs.saveString(PASSCODE_KEY, randomPassCode)
+} else {
+  // 4
+  randomPassCode = securePrefs.getString(PASSCODE_KEY)!!
+}
+// 5
+repository = RecipeRepository(
+  RecipeDatabase.getInstance(this, randomPassCode.toCharArray())
+)`;
+
+const realWiringBeforeCode = `class RecipeApp : Application() {
+  lateinit var prefs: Prefs
+  lateinit var repository: RecipeRepository
+
+  override fun onCreate() {
+    super.onCreate()
+    // Install a Timber tree.
+    if (BuildConfig.DEBUG) {
+      plant(Timber.DebugTree())
+    }
+
+    prefs = Prefs(this)
+    repository = RecipeRepository(
+      Room.databaseBuilder(
+        this,
+        RecipeDatabase::class.java,
+        "Recipes"
+      ).build()
+    )
+  }
+}`;
+
+const realWiringAfterCode = `class RecipeApp : Application() {
+  lateinit var securePrefs: SecurePrefs
+  lateinit var repository: RecipeRepository
+
+  override fun onCreate() {
+    super.onCreate()
+    // Install a Timber tree.
+    if (BuildConfig.DEBUG) {
+      plant(Timber.DebugTree())
+    }
+
+    securePrefs = SecurePrefs(this)
+    val randomPassCode: String
+    if (!securePrefs.hasKey(RecipeDatabase.PASSCODE_KEY)) {
+      randomPassCode = RecipeDatabase.getPassCode(15)
+      securePrefs.saveString(RecipeDatabase.PASSCODE_KEY, randomPassCode)
+    } else {
+      randomPassCode = securePrefs.getString(RecipeDatabase.PASSCODE_KEY)!!
+    }
+
+    repository = RecipeRepository(
+      RecipeDatabase.getInstance(this, randomPassCode.toCharArray())
+    )
+  }
+}`;
+
+const backupRulesCode = `<!-- res/xml/data_extraction_rules.xml — phan toi de nghi them -->
+<data-extraction-rules>
+  <cloud-backup>
+    <exclude domain="sharedpref" path="encrypted_preferences.xml" />
+    <exclude domain="database" path="recipe_database" />
+  </cloud-backup>
+  <device-transfer>
+    <exclude domain="sharedpref" path="encrypted_preferences.xml" />
+    <exclude domain="database" path="recipe_database" />
+  </device-transfer>
+</data-extraction-rules>`;
+
+const masterKeyNewCode = `// Buoc trung gian (security-crypto 1.1.0): MasterKey.Builder thay cho MasterKeys
+val masterKey = MasterKey.Builder(context)
+  .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+  .build()
+
+val prefs = EncryptedSharedPreferences.create(
+  context,                                  // context len DAU TIEN
+  "encrypted_preferences",                  // fileName
+  masterKey,                                // MasterKey object, khong con la String alias
+  EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+  EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+)`;
+
+const sqlcipherNewCode = `# toa do artifact da doi ten (ban moi nhat 4.18.0 — 18/08/2026)
+sqlcipher = { module = "net.zetetic:sqlcipher-android", version.ref = "sqlcipher" }`;
+
+const sqlcipherNewImportCode = `// package doi theo toa do moi, va SupportFactory doi ten
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
+
+// BAT BUOC voi artifact moi: tu load native library truoc khi dung bat ky thu gi
+System.loadLibrary("sqlcipher")
+
+val factory = SupportOpenHelperFactory(passphrase.toByteArray(Charsets.UTF_8))
+Room.databaseBuilder(context, RecipeDatabase::class.java, "recipe_database")
+  .openHelperFactory(factory)
+  .build()`;
+
+const sqlcipherRoom3Code = `// Room 3.x (androidx.room3) bo hoan toan SupportSQLite -> khong con openHelperFactory
+val driver = SQLCipherDriver(passphrase.toByteArray(Charsets.UTF_8), null, null)
+
+Room.databaseBuilder(context, RecipeDatabase::class.java, "recipe_database")
+  .setDriver(driver)
+  .build()`;
+
+const threadingBugCode = `// day la dieu THAT SU dang xay ra tren main thread trong RecipeApp.onCreate()
+securePrefs = SecurePrefs(this)                 // 1. tao/doc master key tu Android Keystore
+if (!securePrefs.hasKey(PASSCODE_KEY)) { }      // 2. doc file XML da ma hoa
+  securePrefs.saveString(PASSCODE_KEY, code)    // 3. ma hoa + ghi file (apply() -> ghi dia o thread khac)
+RecipeDatabase.getInstance(this, chars)          // 4. mo SQLite da ma hoa (lazy, chua doc thuc su)`;
+---
+
+<article class="lesson">
+	<h2 id="wiring">14. Nối dây — chỗ sách và project không khớp nhau</h2>
+
+	<p>Sách đưa đoạn này và bảo đặt trong <code>MainActivity</code>:</p>
+
+	<Code code={bookWiringCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: sách chapter 11 (<code>{BOOK}</code> dòng 499–515).</p>
+
+	<p>Đọc theo 5 số sách đánh dấu — logic rất đáng học, vì nó là mẫu "tạo một lần rồi dùng mãi":</p>
+
+	<ol>
+		<li><strong>Đã có passcode chưa?</strong> <code>hasKey()</code> trả lời. Đây là câu hỏi phân nhánh toàn bộ.</li>
+		<li><strong>Chưa có → sinh mới.</strong> Chỉ xảy ra đúng một lần trong đời cài đặt app.</li>
+		<li><strong>Lưu ngay.</strong> Nếu bước này thất bại mà database đã được tạo bằng passcode đó, dữ liệu vĩnh viễn không mở lại được.</li>
+		<li><strong>Đã có → đọc ra.</strong> <code>!!</code> ở đây là hợp lý: <code>hasKey()</code> vừa nói là có.</li>
+		<li><strong>Mở database bằng passcode đó.</strong></li>
+	</ol>
+
+	<div class="callout diff">
+		<p><strong>Bốn chỗ lệch giữa sách và project final ở riêng đoạn này.</strong></p>
+		<ol>
+			<li>
+				<strong>Vị trí khác nhau.</strong> Sách nói đặt trong <code>MainActivity</code>; project đặt trong
+				<code>RecipeApp.onCreate()</code> (<code>{FINAL}/RecipeApp.kt</code> dòng 58–69). <strong>Project đúng hơn</strong>:
+				<code>repository</code> là property của <code>RecipeApp</code> và được cả app dùng, nên nó phải được tạo ở
+				<code>Application</code>. Đặt trong Activity thì mỗi lần Activity tạo lại (xoay máy) lại chạy một lần.
+			</li>
+			<li>
+				<strong>Sách viết <code>PASSCODE_KEY</code> trần; project viết <code>RecipeDatabase.PASSCODE_KEY</code>.</strong>
+				Vì hằng số nằm trong <code>companion object</code> của <code>RecipeDatabase</code>. Copy nguyên đoạn của sách thì
+				không compile.
+			</li>
+			<li>
+				<strong>Sách tự mâu thuẫn với chính nó.</strong> Ở dòng 374, sách bảo thay dòng khởi tạo thành
+				<code>prefs = SecurePrefs(this)</code> — nhưng ở bước trước, chính sách đã đổi tên field thành
+				<code>securePrefs</code>. Project dùng <code>securePrefs = SecurePrefs(this)</code>.
+			</li>
+			<li>
+				<strong>Bản in bỏ dòng <code>val randomPassCode: String</code> khỏi ngữ cảnh.</strong> Nó xuất hiện ở dòng đầu
+				snippet nhưng người đọc dễ tưởng là phần của đoạn cũ. Không có nó thì hai nhánh <code>if/else</code> không gán
+				được vào đâu.
+			</li>
+		</ol>
+	</div>
+
+	<p>Đây là toàn bộ file thật, trước và sau:</p>
+
+	<Code code={realWiringBeforeCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{CH10}/RecipeApp.kt</code> dòng 57–62 — chú ý tên database là <code>"Recipes"</code> và builder gọi trực tiếp tại đây.</p>
+
+	<Code code={realWiringAfterCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/RecipeApp.kt</code> dòng 48–69.</p>
+
+	<p class="hint">
+		<strong>Một chi tiết Kotlin trong đoạn này:</strong> <code>val randomPassCode: String</code> được khai mà chưa gán, rồi
+		gán trong cả hai nhánh <code>if/else</code>. Kotlin cho phép vì compiler chứng minh được: mọi đường đi đều gán đúng một
+		lần. Bỏ nhánh <code>else</code> đi thì lỗi ngay lúc compile. Đây là cách giữ được <code>val</code> (bất biến) mà vẫn có
+		logic phân nhánh — tốt hơn <code>var</code> khởi tạo bằng chuỗi rỗng.
+	</p>
+
+	<h3 id="threading">14.1. Cái giá của việc làm mọi thứ trong <code>onCreate()</code></h3>
+
+	<Code code={threadingBugCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Phân tích của tôi về <code>{FINAL}/RecipeApp.kt</code> dòng 58–69 — sách không bàn tới mặt này.</p>
+
+	<p>
+		<code>Application.onCreate()</code> chạy trên main thread, <em>trước</em> khi bất kỳ màn hình nào hiện ra. Mọi
+		millisecond ở đây là millisecond người dùng nhìn màn hình trắng. Và ở đây có: một lần tạo/đọc key từ Keystore (đi qua
+		phần cứng, chậm nhất trong nhóm), một lần đọc file XML đã mã hoá, và ở lần chạy đầu là thêm một lần mã hoá + ghi file.
+	</p>
+
+	<table class="cmp">
+		<thead><tr><th>Bước</th><th>Chặn main thread?</th><th>Ghi chú</th></tr></thead>
+		<tbody>
+			<tr><td><code>SecurePrefs(this)</code></td><td><strong>Có</strong></td><td>Keystore + đọc file. Phần đắt nhất.</td></tr>
+			<tr><td><code>hasKey()</code> / <code>getString()</code></td><td><strong>Có</strong></td><td>Đọc file XML đã mã hoá; giải mã từng giá trị.</td></tr>
+			<tr><td><code>saveString()</code></td><td>Một phần</td><td>Mã hoá trên main thread; ghi đĩa nhờ <code>apply()</code> nên ở thread khác.</td></tr>
+			<tr><td><code>RecipeDatabase.getInstance()</code></td><td>Không đáng kể</td><td>Room chỉ dựng builder; file database chỉ mở khi có query đầu tiên.</td></tr>
+		</tbody>
+	</table>
+
+	<p>
+		Với app nhỏ, tổng chi phí này thường vài chục millisecond — không ai thấy. Nhưng cách nghĩ thì nên đúng ngay từ đầu:
+		<strong>mọi thứ trong <code>Application.onCreate()</code> đều là thuế đánh vào thời gian khởi động, và mọi người dùng đều
+		phải trả.</strong> Cách làm tốt hơn là khởi tạo lười (chỉ tạo <code>SecurePrefs</code> khi lần đầu có ai cần) hoặc dùng
+		một DI framework như Hilt để lo việc đó — nhưng sách chưa dạy tới đó, nên project làm cách thẳng nhất, và điều đó hợp
+		lý cho một bài học.
+	</p>
+
+	<h2 id="backup">15. Cái bẫy backup — thứ sẽ làm bạn mất dữ liệu thật</h2>
+
+	<p>
+		Đây là phần <strong>không có trong sách</strong>, nhưng phải có trong bài học này, vì nó là hậu quả trực tiếp của những gì
+		vừa làm và nó xảy ra với app thật.
+	</p>
+
+	<div class="callout mental">
+		<p><strong>Ba sự thật đặt cạnh nhau sẽ thành một lỗi:</strong></p>
+		<ol>
+			<li><code>AndroidManifest.xml</code> của project có <code>android:allowBackup="true"</code> (dòng 7), nên Android tự backup dữ liệu app lên cloud.</li>
+			<li><code>res/xml/data_extraction_rules.xml</code> có tồn tại, nhưng <strong>mọi rule bên trong đều đang bị comment</strong> — tức là không loại trừ gì cả.</li>
+			<li>Master key nằm trong Android Keystore, và <strong>Keystore không bao giờ được backup</strong> — đó chính là điểm mạnh của nó.</li>
+		</ol>
+		<p>
+			Kết quả: người dùng đổi máy, Android khôi phục <code>encrypted_preferences.xml</code> sang máy mới. File đến nơi đầy
+			đủ. Nhưng master key để mở nó thì nằm lại ở máy cũ, vĩnh viễn. App khởi động, cố đọc file, và thất bại.
+		</p>
+	</div>
+
+	<p>
+		Đây không phải suy đoán của tôi. Chính javadoc của <code>EncryptedSharedPreferences</code> ghi cảnh báo này:
+		<em>"The preference file should not be backed up with Auto Backup. When restoring the file it is likely the key used to
+		encrypt it will no longer be present. You should exclude all EncryptedSharedPreferences from backup using backup
+		rules."</em>
+	</p>
+
+	<p class="src">
+		Nguồn: <a href="https://developer.android.com/reference/androidx/security/crypto/EncryptedSharedPreferences">developer.android.com — EncryptedSharedPreferences</a>, mục WARNING. Kiểm tra 28/08/2026.
+	</p>
+
+	<p>Với app Recipe này, hậu quả nối tiếp còn nặng hơn một bậc:</p>
+
+	<ol>
+		<li>File XML khôi phục về máy mới, không giải mã được.</li>
+		<li>Passcode database nằm trong file đó → không lấy ra được.</li>
+		<li>File database cũng được backup, cũng khôi phục về, và nó <em>đã bị mã hoá bằng passcode đó</em>.</li>
+		<li>App không có passcode → không mở được database. <code>hasKey()</code> thất bại → app sinh passcode <em>mới</em> → mở database cũ bằng passcode mới → thất bại.</li>
+	</ol>
+
+	<p>Cách sửa duy nhất được Google khuyến nghị: loại các file này khỏi backup.</p>
+
+	<Code code={backupRulesCode} lang="xml" theme="github-dark" />
+	<p class="src">Phiên bản tôi đề nghị cho <code>{FINAL_ROOT}/app/src/main/res/xml/data_extraction_rules.xml</code> (file này đang tồn tại nhưng mọi rule đều bị comment).</p>
+
+	<div class="callout note">
+		<p><strong>Ba chi tiết về backup rules mà rất dễ làm sai:</strong></p>
+		<ul>
+			<li>
+				<strong>Phải khai cả <code>&lt;cloud-backup&gt;</code> và <code>&lt;device-transfer&gt;</code>.</strong> Mỗi section
+				chỉ áp cho chính nó. Khai thiếu <code>&lt;device-transfer&gt;</code> thì backup lên cloud được loại trừ, nhưng lúc
+				chuyển máy trực tiếp (máy-sang-máy) file vẫn bị copy — và bug quay lại đúng như cũ.
+			</li>
+			<li>
+				<strong><code>&lt;exclude&gt;</code> thắng <code>&lt;include&gt;</code>.</strong> Nên bạn không cần lo về thứ tự
+				khai.
+			</li>
+			<li>
+				<strong>Android 11 trở xuống dùng attribute khác:</strong> <code>android:fullBackupContent</code> trỏ tới file có
+				thẻ <code>&lt;full-backup-content&gt;</code>. App hỗ trợ cả cũ và mới thì phải khai <em>cả hai</em> attribute trong
+				manifest.
+			</li>
+		</ul>
+		<p class="src">Đối chiếu: <a href="https://developer.android.com/identity/data/autobackup">developer.android.com — Back up user data with Auto Backup</a>, kiểm tra 28/08/2026.</p>
+	</div>
+
+	<p class="hint">
+		<strong>Cách phòng thủ thứ hai, nên có song song:</strong> bọc phần khởi tạo <code>SecurePrefs</code> trong
+		<code>try/catch</code>; nếu thất bại thì xoá file và tạo lại từ đầu (người dùng mất preference, nhưng app không crash
+		vòng lặp vô hạn). Cần nói rõ: <strong>cách này không có trong tài liệu chính thức của Google</strong> — Google chỉ khuyến
+		nghị loại khỏi backup. Tôi nêu ra vì nó xử lý được cả những trường hợp key mất vì lý do khác, nhưng bạn nên coi nó là
+		lưới an toàn bổ sung, không phải cách sửa chính.
+	</p>
+
+	<h2 id="ghi-chu-phien-ban">16. Ghi chú phiên bản — chapter này lỗi thời nhiều nhất trong cả sách</h2>
+
+	<p>
+		Sách viết năm 2023. Riêng chapter này, gần như <strong>mọi API bảo mật được dạy đều đã bị deprecated hoặc đổi tên</strong>
+		tính tới tháng 8/2026. Điều đó không làm bài học vô giá trị — ý tưởng (envelope encryption, Keystore, tráo lớp SQLite dưới
+		Room) vẫn đúng nguyên. Nhưng nếu bạn copy code vào project mới hôm nay, bạn sẽ gặp cảnh báo deprecated và lỗi
+		"unresolved reference". Mục này để bạn biết trước.
+	</p>
+
+	<h3 id="ver-security">16.1. <code>androidx.security:security-crypto</code> đã bị khai tử</h3>
+
+	<p>
+		Bản mới nhất là <strong>1.1.0</strong> (30/07/2025), và <strong>toàn bộ API trong library đã bị deprecated ở chính bản
+		stable đó</strong>. Tài liệu Google ghi thẳng: <em>"All APIs in the security-crypto Jetpack library were deprecated in the
+		stable release of version 1.1.0. There won't be any subsequent releases of this library."</em> Release note nêu hướng thay
+		thế: <em>"Deprecated all APIs in favour of existing platform APIs and direct use of Android Keystore."</em>
+	</p>
+
+	<table class="api">
+		<thead><tr><th>Sách dùng</th><th>Trạng thái 08/2026</th><th>Google nói thay bằng</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><code>MasterKeys.getOrCreate(AES256_GCM_SPEC)</code></td>
+				<td>Deprecated từ 1.1.0-alpha01 (10/06/2020) — tức là <strong>đã deprecated trước cả khi sách ra</strong></td>
+				<td>Trước là <code>MasterKey.Builder</code>; nay chính <code>MasterKey</code> cũng deprecated →
+				<code>KeyGenParameterSpec.Builder</code> + <code>javax.crypto.KeyGenerator</code> với AndroidKeyStore</td>
+			</tr>
+			<tr>
+				<td><code>create(fileName, alias, context, ...)</code></td>
+				<td>Overload này deprecated, và javadoc cảnh báo nó <strong>không thread-safe</strong> nếu key chưa được tạo</td>
+				<td>Overload mới: <code>create(context, fileName, masterKey, ...)</code> — <code>context</code> lên đầu</td>
+			</tr>
+			<tr>
+				<td><code>EncryptedSharedPreferences</code></td>
+				<td>Cả class deprecated</td>
+				<td><code>android.content.SharedPreferences</code> + tự mã hoá qua Keystore</td>
+			</tr>
+			<tr>
+				<td><code>EncryptedFile</code></td>
+				<td>Deprecated</td>
+				<td><code>java.io.File</code> + tự mã hoá</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<Code code={masterKeyNewCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Đối chiếu: <a href="https://developer.android.com/jetpack/androidx/releases/security">Security releases</a> và
+		<a href="https://developer.android.com/privacy-and-security/cryptography">Cryptography</a>, kiểm tra 28/08/2026.
+		Đây là bước trung gian — vẫn còn dùng được nhưng cũng đã deprecated.
+	</p>
+
+	<div class="callout note">
+		<p>
+			<strong>Vậy hôm nay nên làm gì?</strong> Nói thật là câu này chưa có câu trả lời gọn, và tôi không muốn giả vờ là có.
+			Google <strong>không phát hành migration guide chính thức</strong> cho <code>security-crypto</code>, và cũng
+			<strong>không nêu lý do kỹ thuật</strong> của việc deprecate — chỉ nói "hãy dùng platform API và Keystore trực tiếp".
+			Trạng thái tài liệu còn tự mâu thuẫn: cùng trang Cryptography, mục "Choose a recommended algorithm" vẫn giới thiệu
+			Security library ở phía trên, còn phía dưới tuyên bố nó đã deprecated.
+		</p>
+		<p>Ba lựa chọn thực tế, theo mức độ công sức:</p>
+		<ul>
+			<li><strong>Vẫn dùng 1.1.0.</strong> Nó chạy được, chỉ là sẽ không có bản mới. Với app nhỏ, đây là lựa chọn hợp lý — cứ dùng và theo dõi.</li>
+			<li><strong>Tự làm bằng Keystore + <code>javax.crypto</code>.</strong> Đúng hướng Google chỉ, nhưng bạn phải tự lo IV, tự lo xoay key, tự lo xử lý lỗi — đúng những phần library đang làm hộ. Dễ tự tạo lỗ hổng.</li>
+			<li><strong>Chỉ mã hoá cái thật cần.</strong> Với token / mật khẩu: nhiều trường hợp không nên lưu, hoặc nên dùng Block Store API mà chính trang Auto Backup của Google gợi ý. Preference thường thì để DataStore, không cần mã hoá.</li>
+		</ul>
+		<p class="src">
+			Tham chiếu phụ: DataStore có nhánh mã hoá từ <code>androidx.datastore:datastore-tink</code> 1.3.0-alpha07 (11/03/2026)
+			với class <code>AeadSerializer</code> — nhưng release notes của DataStore <strong>không</strong> gọi nó là thay thế cho
+			<code>EncryptedSharedPreferences</code>, nên đừng coi đó là con đường chính thức.
+		</p>
+	</div>
+
+	<h3 id="ver-sqlcipher">16.2. SQLCipher đã đổi toạ độ artifact, và có một cái bẫy mới</h3>
+
+	<table class="cmp">
+		<thead><tr><th></th><th>Sách (chapter 11)</th><th>Hiện tại 08/2026</th></tr></thead>
+		<tbody>
+			<tr><td>Artifact</td><td><code>net.zetetic:android-database-sqlcipher:4.4.0</code></td><td><code>net.zetetic:sqlcipher-android:4.18.0</code> (18/08/2026)</td></tr>
+			<tr><td>Trạng thái artifact cũ</td><td>—</td><td><strong>EOL.</strong> Deprecated chính thức 31/08/2023, bản cuối là 4.5.4</td></tr>
+			<tr><td>Package</td><td><code>net.sqlcipher.database.*</code></td><td><code>net.zetetic.database.sqlcipher.*</code></td></tr>
+			<tr><td>Class factory</td><td><code>SupportFactory</code></td><td><code>SupportOpenHelperFactory</code> — <code>SupportFactory</code> <strong>không còn tồn tại</strong></td></tr>
+			<tr><td>Load native library</td><td>Tự động (bên trong <code>SupportHelper</code>)</td><td><strong>Phải tự gọi <code>System.loadLibrary("sqlcipher")</code></strong></td></tr>
+			<tr><td>minSdk</td><td>—</td><td>23, cặp với <code>androidx.sqlite:sqlite:2.7.0</code></td></tr>
+		</tbody>
+	</table>
+
+	<Code code={sqlcipherNewCode} lang="toml" theme="github-dark" />
+	<Code code={sqlcipherNewImportCode} lang="kotlin" theme="github-dark" />
+
+	<div class="callout diff">
+		<p>
+			<strong>Cái bẫy đáng chú ý nhất: <code>loadLibs</code> đã bị bỏ.</strong> Ở bản 4.4.0 mà sách dùng,
+			<code>SupportHelper</code> tự gọi <code>SQLiteDatabase.loadLibs(context)</code> ngay dòng đầu constructor — nên bạn
+			không phải làm gì. Ở bản mới, hàm đó <em>không còn trong source</em>, và README ghi rõ native library
+			<em>"must be loaded explicitly"</em> trước mọi thao tác. Nếu bạn nâng version mà quên dòng
+			<code>System.loadLibrary("sqlcipher")</code>, app sẽ crash bằng <code>UnsatisfiedLinkError</code> — một lỗi trông chẳng
+			liên quan gì tới việc đổi tên class.
+		</p>
+		<p>
+			Lý do đổi tên và bỏ <code>loadLibs</code>: yêu cầu 16KB page size của Google Play buộc phải build lại native library,
+			và <code>loadLibs</code> không tương thích với <code>SplitInstallHelper.loadLibrary</code>.
+		</p>
+		<p>Hai thay đổi API khác cần biết nếu bạn migrate:</p>
+		<ul>
+			<li><code>openOrCreateDatabase()</code> đổi thứ tự tham số — <code>DatabaseErrorHandler</code> chuyển sang vị trí thứ 4, <code>SQLiteDatabaseHook</code> xuống thứ 5.</li>
+			<li><code>SQLiteDatabaseHook.preKey/postKey</code> giờ nhận <code>SQLiteConnection</code> thay vì <code>SQLiteDatabase</code>.</li>
+		</ul>
+		<p class="src">
+			Đối chiếu: <a href="https://www.zetetic.net/sqlcipher/sqlcipher-for-android-migration/">SQLCipher for Android migration guide</a>,
+			<a href="https://github.com/sqlcipher/sqlcipher-android">github.com/sqlcipher/sqlcipher-android</a> và
+			<a href="https://www.zetetic.net/blog/2023/08/31/sqlcipher-4.5.5-release">thông báo deprecate 31/08/2023</a>. Kiểm tra 28/08/2026.
+		</p>
+	</div>
+
+	<h3 id="ver-room">16.3. Room 3 bỏ hẳn <code>openHelperFactory</code></h3>
+
+	<p>
+		Room 2.x mới nhất là <strong>2.8.4</strong> (19/11/2025); Room 3 là artifact khác — <code>androidx.room3:room3-*</code>,
+		bản <strong>3.0.2</strong> (26/08/2026). Điều này ảnh hưởng trực tiếp tới cách mã hoá:
+	</p>
+
+	<ul>
+		<li>
+			<strong>Room 2.x:</strong> <code>.openHelperFactory(...)</code> <em>vẫn dùng được</em> — đúng như sách dạy. Chỉ cần đổi
+			tên class thành <code>SupportOpenHelperFactory</code> và truyền <code>password.toByteArray(Charsets.UTF_8)</code>
+			(hướng dẫn chính thức không còn dùng <code>SQLiteDatabase.getBytes()</code>).
+		</li>
+		<li>
+			<strong>Room 3:</strong> <code>SQLiteDriver</code> là <em>bắt buộc</em>, và <code>SupportSQLite</code> / <code>Cursor</code>
+			đã bị bỏ khỏi API. Không còn <code>openHelperFactory</code> để gọi. Phải dùng <code>setDriver()</code>:
+		</li>
+	</ul>
+
+	<Code code={sqlcipherRoom3Code} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Đối chiếu: <a href="https://developer.android.com/jetpack/androidx/releases/room3">Room 3 releases</a> và README
+		<code>sqlcipher-android</code> (<em>"SQLCipher for Android supports both Room 2 and Room 3 integration"</em>) — hỗ trợ Room 3
+		có từ SQLCipher 4.18.0. Kiểm tra 28/08/2026.
+	</p>
+
+	<p class="hint">
+		<strong>Mốc thời gian giúp bạn định vị:</strong> Room 2.7.0 (09/04/2025) thêm <code>setDriver()</code> cùng với hỗ trợ
+		Kotlin Multiplatform. Room 2.8.0 (10/09/2025) thêm <code>room-sqlite-wrapper</code> + <code>getSupportWrapper()</code> cho
+		code còn dùng nhiều <code>SupportSQLiteDatabase</code> nhưng muốn chuyển sang driver mới. Nên nếu bạn ở Room 2.8+, bạn có
+		cả hai đường và không bị buộc phải viết lại ngay.
+	</p>
+
+	<div class="callout note">
+		<p>
+			<strong>Một điều đáng để ý về vị thế của SQLCipher:</strong> Room <em>không</em> có tính năng mã hoá built-in, và
+			release notes của Room (cả 2.x và 3.x) <strong>không nhắc SQLCipher hay encryption một lần nào</strong>. Tôi cũng không
+			tìm được trang tài liệu nào của Google hướng dẫn Room + SQLCipher — toàn bộ phần tích hợp do Zetetic (nhà làm
+			SQLCipher) cung cấp. Nghĩa là: đây là giải pháp của bên thứ ba, được cộng đồng dùng rộng rãi, nhưng bạn phụ thuộc vào
+			nhịp cập nhật của Zetetic chứ không phải của Google. Đó là một rủi ro cần biết khi chọn, không phải lý do để không chọn.
+		</p>
+	</div>
+
+</article>
+

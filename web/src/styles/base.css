@@ -1,0 +1,146 @@
+/* ==========================================================================
+   base.css — reset nhe, typography goc, focus, scrollbar, reduced motion.
+   Ap dung cho toan bo site. Khong chua rule rieng cua component nao.
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	scroll-behavior: smooth;
+	/* Chua cho header dinh (sticky) khong che tieu de khi nhay anchor tu TOC */
+	scroll-padding-top: calc(var(--header-h) + 1.25rem);
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	font-family: var(--font-sans);
+	font-size: var(--fs-base);
+	line-height: var(--lh-body);
+	color: var(--text);
+	background: var(--bg);
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-family: var(--font-display);
+	line-height: var(--lh-tight);
+	letter-spacing: -0.011em;
+	text-wrap: balance;
+}
+
+p {
+	text-wrap: pretty;
+}
+
+a {
+	color: var(--primary);
+	text-decoration-color: color-mix(in srgb, var(--primary) 40%, transparent);
+	text-underline-offset: 0.2em;
+}
+
+a:hover {
+	text-decoration-color: currentColor;
+}
+
+img,
+svg {
+	max-width: 100%;
+}
+
+code,
+kbd,
+pre,
+samp {
+	font-family: var(--font-mono);
+}
+
+button,
+input,
+select {
+	font-family: inherit;
+	font-size: inherit;
+}
+
+/* Focus nhin thay ro o moi noi — yeu cau toi thieu ve accessibility */
+:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+	border-radius: var(--r-xs);
+}
+
+/* Attribute `hidden` phai thang moi rule display cua component.
+   Ly do cu the: #lesson-status la .chip co san `hidden`, ma .chip dat
+   display: inline-flex — khong co dong nay thi chip "Da hoan thanh" hien
+   ca o bai chua hoc. Script chi bat/tat thuoc tinh hidden, khong sua style. */
+[hidden] {
+	display: none !important;
+}
+
+::selection {
+	background: color-mix(in srgb, var(--primary) 26%, transparent);
+}
+
+/* Chi an outline mac dinh cua browser khi da co :focus-visible thay the */
+:focus:not(:focus-visible) {
+	outline: none;
+}
+
+/* Scrollbar mong, theo theme */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--outline) transparent;
+}
+
+*::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+	background: var(--outline);
+	border-radius: var(--r-full);
+	border: 2px solid transparent;
+	background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+	background: var(--text-3);
+	background-clip: content-box;
+}
+
+/* Chi doc bang screen reader */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.001ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.001ms !important;
+	}
+}

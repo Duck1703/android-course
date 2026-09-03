@@ -1,0 +1,848 @@
+---
+// Quiz + bài tập cho Chương 3.2 — String resource, lớp R, lỗi biên dịch đầu tiên và debug.
+// Phạm vi: đúng mục 8–13 của Chương 3.2, không hỏi ra ngoài phạm vi đó.
+// Kế thừa 6 câu của quiz gộp Ch03Quiz.astro; mỗi câu kế thừa đều được viết lại lời dẫn để đứng độc lập
+// (bỏ mọi cách nhắc tới tài liệu in), rút 4 lựa chọn về 3, và viết lại explain theo chuẩn
+// "nói rõ vì sao hai lựa chọn còn lại sai":
+//   q11 (vì sao đưa chuỗi vào strings.xml) -> câu 1
+//   q12 (lớp R từ đâu ra) -> câu 5. Đã bỏ phần "build lại khi R chưa thấy chuỗi" khỏi explain,
+//     vì câu 6 (viết mới) kiểm đúng phản xạ đó — tránh hai câu cùng một ý.
+//   q8  (lỗi biên dịch khi đặt stringResource trong remember) -> câu 7
+//   q9  (cách sửa) -> câu 9. Đổi trọng tâm từ "cách nào" sang "nguyên tắc chung của cả hai cách hợp lệ",
+//     vì mục 11.5 có cách sửa thứ hai mà câu cũ không tính tới.
+//   q10 (stringResource so với context.getString) -> câu 11. SỬA một chỗ nói chưa chính xác của câu cũ:
+//     câu cũ quy việc "đóng băng" cho bản thân context.getString(). Thật ra getString() gọi trong thân
+//     Composable cũng chạy lại mỗi lần vẽ; chỗ giữ giá trị cũ là remember. Explain mới nói đúng chỗ đó.
+//   q18 (breakpoint hữu ích hơn println) -> câu 15. SỬA một chỗ sai về sự thật: lựa chọn (b) của câu cũ
+//     viết "println không hoạt động trên Android". Thật ra println vẫn đi vào Logcat nhưng dưới thẻ chung
+//     của luồng ra chuẩn nên rất khó lọc. Ở câu mới, câu nói quá đó thành distractor và explain đính chính.
+// Viết mới 9 câu: câu 2 (mục 8 — "đã localize" khác "đã có bản dịch") · câu 3 (mục 9 — app_name do hệ điều
+//   hành đọc qua manifest, không do code Kotlin lấy) · câu 4 (mục 9.1 — qualifier nằm ở tên thư mục, không
+//   phải tên file) · câu 6 (mục 10 — R chưa thấy chuỗi vừa thêm thì build lại) · câu 8 (mục 11.2 — bốn chỗ
+//   IDE báo lỗi ngay lúc đang gõ, và giới hạn của bóng đèn vàng: nó chỉ sửa được cái nó suy ra được) ·
+//   câu 10 (mục 11.4 — getString() định nghĩa trên Context, Activity chỉ thừa hưởng, nên Context nào cũng
+//   gọi được) · câu 12 (mục 11.5 + 12 — muốn state đổi theo ngôn ngữ thì truyền chuỗi vào làm key của
+//   remember, và cái giá phải trả) · câu 13 (mục 13 — lỗi biên dịch tự báo, lỗi lúc chạy thì không ai báo) ·
+//   câu 14 (mục 13.2–13.3 — breakpoint dừng TRƯỚC khi chạy dòng được đánh dấu, nên đúng dòng thứ hai trong
+//   onClick mới thấy được khoảnh khắc hai biến cùng mang một giá trị).
+// Số dòng dưới đây tự mở từng file ra kiểm lại (2026-08-31), không lấy lại từ file khác:
+//   final/app/src/main/java/com/kodeco/chat/MainActivity.kt (wc -l = 79; file KẾT THÚC bằng ký tự xuống dòng
+//     nên editor hiện thêm một dòng trống thứ 80): license 1-32 · package 34 · import 36-48
+//     (13 dòng import, LocalContext 47, stringResource 48)
+//     · class MainActivity 50 · setContent 53 · Column 54 · val context = LocalContext.current 55
+//     · hai remember + context.getString 56-57 · Text(chatOutputText) 58 · OutlinedTextField 60-66
+//     (value 61, onValueChange 62-64, label = stringResource 65) · Button(onClick 68-71: dòng 69
+//     chatOutputText = chatInputText, dòng 70 chatInputText = "") · Text(stringResource send_button) 72
+//     · dòng 73 là dòng trống dư trong bản gốc.
+//   final/app/src/main/res/values/strings.xml (wc -l = 39, editor hiện 40 dòng): license 1-32
+//     · thẻ resources mở 34 · 5 chuỗi 35-39 · thẻ đóng 40.
+//   starter/app/src/main/res/values/strings.xml (wc -l = 36, editor hiện 37 dòng): license 1-33
+//     · thẻ resources mở 35 · đúng 1 chuỗi app_name 36 · thẻ đóng 37.
+//   starter/app/src/main/java/com/kodeco/chat/MainActivity.kt: import 37-47 · @Composable 66 · fun Greeting
+//     67-72 (chuỗi cứng text = "Hello $name!" ở dòng 69) · @Preview 74 · GreetingPreview 76-80.
+//   final/app/src/main/AndroidManifest.xml (wc -l = 60, editor hiện 61 dòng):
+//     android:label="@string/app_name" xuất hiện đúng hai lần — dòng 43 (application) và dòng 51 (activity).
+//   final/app/src/main/res/ có 9 thư mục con: drawable · mipmap-anydpi · mipmap-hdpi · mipmap-mdpi
+//     · mipmap-xhdpi · mipmap-xxhdpi · mipmap-xxxhdpi · values · xml — KHÔNG có layout/.
+// Phân bố đáp án: a 5 câu (3, 6, 11, 13, 15) · b 5 câu (1, 4, 7, 10, 12) · c 5 câu (2, 5, 8, 9, 14).
+// Chống length-bias: đáp án đúng là lựa chọn dài nhất ở 1/15 câu, là lựa chọn ngắn nhất ở 7/15 câu
+//   (đã nới dài một số đáp án đúng vốn ngắn hẳn so với hai distractor).
+// Script gồm 2 phần: chấm MCQ + kiểm tra thứ tự cho bài tập 2 (danh sách #chuoi-order, dòng 588).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		15 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau khi chấm — kể cả ở câu bạn
+		làm đúng, nên đọc hết: chỗ dạy thêm nằm ở phần nói <em>vì sao hai đáp án còn lại sai</em>. Phần lớn đáp án sai ở đây
+		là những chỗ hiểu lệch thật, loại làm người mới mất cả buổi tối, chứ không phải lựa chọn bịa cho dễ loại.
+	</p>
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>
+				1. Vì sao mọi chuỗi chữ hiện trên màn hình nên nằm trong <code>res/values/strings.xml</code> thay vì viết cứng
+				trong code Kotlin?
+			</legend>
+			<label>
+				<input type="radio" name="q1" value="a" /> Để app chạy nhanh hơn: chuỗi trong <code>strings.xml</code> đã được xử
+				lý sẵn lúc build, còn chuỗi viết trong Kotlin phải được dựng lại mỗi lần app chạy tới dòng đó
+			</label>
+			<label>
+				<input type="radio" name="q1" value="b" /> Để sửa một chỗ là đổi được mọi nơi, và để thêm một ngôn ngữ mới chỉ
+				là thêm một file <code>strings.xml</code> nữa, không sửa dòng Kotlin nào
+			</label>
+			<label>
+				<input type="radio" name="q1" value="c" /> Vì Compose không nhận chuỗi viết trực tiếp: mọi chữ hiện trên màn
+				hình đều phải đi qua một ID resource
+			</label>
+			<p class="explain" hidden>
+				Hai lý do gốc là <strong>tái sử dụng</strong> (cùng chữ "Send" ở 4 màn hình, sửa 1 chỗ là xong) và
+				<strong>đa ngôn ngữ</strong> (thêm một thư mục <code>values-vi/</code> là app dịch được, code không đổi một chữ).
+				Đáp án c sai ở chỗ dễ kiểm nhất: phiên bản viết cứng hai chuỗi mặc định ở <strong>Chương 3.2, mục 8</strong> vẫn
+				biên dịch và vẫn chạy tốt. Chính điều đó làm việc rải chuỗi cứng thành một dạng <em>technical debt</em> khó chịu —
+				nó <strong>không báo lỗi</strong>, chỉ hiện sai ngôn ngữ, nên người phát hiện ra là người dùng chứ không phải
+				trình biên dịch. Đáp án a biến chuyện này thành vấn đề hiệu năng, mà nó không phải: khác biệt tốc độ giữa hai cách
+				gần như không đo được, và nếu lý do là tốc độ thì bạn đã có quyền bỏ qua nó trong app nhỏ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				2. Bạn vừa chuyển đủ 4 chuỗi ra <code>strings.xml</code>, nhưng chưa tạo thư mục ngôn ngữ nào và chưa có bản dịch
+				nào. Nói bốn chuỗi đó "đã được localize" là đúng hay sai?
+			</legend>
+			<label>
+				<input type="radio" name="q2" value="a" /> Sai — chỉ gọi là đã localize khi trong project có ít nhất một thư mục
+				ngôn ngữ thứ hai với bản dịch hoàn chỉnh, còn nằm một mình trong <code>values/</code> thì chưa tính
+			</label>
+			<label>
+				<input type="radio" name="q2" value="b" /> Sai — localize là việc của hệ điều hành lúc app chạy: Android chỉ
+				localize một chuỗi khi ngôn ngữ máy khác ngôn ngữ mặc định của app, nên lúc này chưa có gì được localize
+			</label>
+			<label>
+				<input type="radio" name="q2" value="c" /> Đúng — chuỗi đã ở vị trí cho phép được dịch, và đó là nghĩa của từ
+				này; còn bản dịch thì vẫn phải có người viết, đó là việc khác
+			</label>
+			<p class="explain" hidden>
+				Đây là hai chuyện rất hay bị gộp làm một, và tách được chúng thì đọc tài liệu Android không bị lẫn: đưa chuỗi ra
+				<code>strings.xml</code> <strong>không</strong> làm app nói được tiếng Việt, nó chỉ làm app <em>sẵn sàng</em> để
+				được dịch. Bản dịch vẫn phải có người viết. Từ "localized" trong phần lớn tài liệu mang đúng nghĩa thứ hai này —
+				đã ở vị trí cho phép dịch. Đáp án a là cách hiểu tự nhiên nhưng nó gắn từ này vào việc <em>đã có bản dịch</em>,
+				và hệ quả thực tế của việc hiểu vậy là bạn đánh giá thấp công việc vừa làm: cái đáng giá nằm ở chỗ từ giờ thêm
+				tiếng Việt chỉ là <em>thêm một file mới</em>, không sửa một dòng code nào. Đáp án b bịa cho localize một cơ chế
+				lúc chạy: Android không "localize" gì cả, nó chỉ chọn thư mục resource khớp cấu hình hiện tại — mà đó là chuyện
+				của câu 4.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				3. Bản <code>final</code> có 5 chuỗi trong <code>strings.xml</code> (dòng 35–39), nhưng code Kotlin chỉ lấy 4
+				chuỗi. Chuỗi <code>app_name</code> đi đường nào ra tới màn hình?
+			</legend>
+			<label>
+				<input type="radio" name="q3" value="a" /> Hệ điều hành đọc nó qua <code>android:label="@string/app_name"</code>
+				khai trong <code>AndroidManifest.xml</code>, nên nó không cần xuất hiện trong code Kotlin
+			</label>
+			<label>
+				<input type="radio" name="q3" value="b" /> Android quy ước riêng cho tên <code>app_name</code>: chuỗi mang đúng
+				tên đó được nạp tự động lúc app khởi động, nên không cần chỗ nào tham chiếu tới nó
+			</label>
+			<label>
+				<input type="radio" name="q3" value="c" /> Lớp <code>R</code> gán nó làm tên app ngay lúc build, vì đây là một
+				trong vài tên được trình biên dịch resource xử lý riêng
+			</label>
+			<p class="explain" hidden>
+				Mở manifest của bản <code>final</code> ra đếm thì thấy <code>android:label="@string/app_name"</code> xuất hiện
+				đúng <strong>hai lần</strong>: dòng 43 ở thẻ <code>&lt;application&gt;</code> và dòng 51 ở thẻ
+				<code>&lt;activity&gt;</code>. Cú pháp <code>@string/tên</code> là cách XML tham chiếu một resource, tương ứng
+				với <code>R.string.tên</code> ở phía Kotlin — cùng một chuỗi, hai ngôn ngữ khai báo, cùng trỏ về một chỗ. Đáp án
+				b sai vì không có quy ước "nạp theo tên" nào: xoá hai dòng <code>android:label</code> đi thì tên app không còn
+				lấy từ chuỗi đó nữa, dù chuỗi vẫn nằm nguyên trong XML. Việc kéo chuỗi ra màn hình là công của dòng khai trong
+				manifest, không phải của cái tên. Đáp án c gán cho <code>R</code> một việc nó không làm: <code>R</code> chỉ là
+				bảng tra tên sang số (câu 5), nó không quyết định chuỗi nào dùng ở đâu, và <code>app_name</code> đối với trình
+				biên dịch resource chỉ là một chuỗi bình thường.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>4. Bạn muốn thêm bản tiếng Việt cho app. Cách làm đúng là cách nào?</legend>
+			<label>
+				<input type="radio" name="q4" value="a" /> Tạo file <code>res/values/strings-vi.xml</code> đặt cạnh
+				<code>strings.xml</code>, vì Android đọc phần đuôi <code>-vi</code> trong tên file để biết đây là bản tiếng Việt
+			</label>
+			<label>
+				<input type="radio" name="q4" value="b" /> Tạo thư mục <code>res/values-vi/</code> rồi đặt vào đó một file cũng
+				tên <code>strings.xml</code>, giữ nguyên tên từng chuỗi và chỉ đổi nội dung
+			</label>
+			<label>
+				<input type="radio" name="q4" value="c" /> Giữ nguyên một file <code>strings.xml</code> và thêm thuộc tính
+				<code>lang="vi"</code> cho từng thẻ <code>&lt;string&gt;</code> mà bạn có bản dịch
+			</label>
+			<p class="explain" hidden>
+				Phần đuôi <code>-vi</code> gọi là <strong>qualifier</strong>, và chỗ đặt nó là <em>tên thư mục</em> — tên file
+				vẫn là <code>strings.xml</code>, tên từng chuỗi cũng giữ nguyên, chỉ nội dung đổi. Lúc chạy, Android xem cấu hình
+				máy rồi chọn thư mục khớp nhất; chuỗi nào thiếu trong <code>values-vi/</code> thì tự rơi về <code>values/</code>,
+				app không crash. Đáp án a đúng ý tưởng nhưng sai chỗ đặt qualifier, và hậu quả cụ thể hơn bạn tưởng: Android
+				không xét tên file, nên <code>strings-vi.xml</code> chỉ là một file resource thứ hai trong <em>cùng</em> cấu hình
+				mặc định — mọi chuỗi trùng tên với file gốc sẽ thành khai báo trùng và bản build báo lỗi. Đáp án c bịa một thuộc
+				tính không tồn tại; việc chọn theo cấu hình được làm ở tầng thư mục, không ở tầng thẻ. Đó cũng là lý do cùng cơ
+				chế này áp được cho icon theo mật độ điểm ảnh và cho chế độ tối, không riêng chuỗi.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>5. Lớp <code>R</code> trong <code>R.string.send_button</code> từ đâu ra?</legend>
+			<label>
+				<input type="radio" name="q5" value="a" /> Bạn tự viết nó một lần khi lập project, rồi mỗi lần thêm chuỗi vào XML
+				thì thêm một hằng số tương ứng vào đó cho khớp
+			</label>
+			<label>
+				<input type="radio" name="q5" value="b" /> Nó là một class có sẵn trong thư viện Android, đọc thẳng các file
+				trong <code>res/</code> lúc app chạy để tra tên chuỗi ra nội dung
+			</label>
+			<label>
+				<input type="radio" name="q5" value="c" /> Máy tự sinh lại nó mỗi lần build, dựa trên các file trong
+				<code>res/</code>, nên nó không nằm trong code bạn viết và cũng không có trong repo
+			</label>
+			<p class="explain" hidden>
+				"R" là <em>Resource</em>, và nó là một file code do máy sinh: không nằm trong code bạn viết, không có trong repo,
+				không ai commit, không sửa tay. Việc của nó là làm bảng tra giữa <em>tên</em> mà con người đọc được và
+				<em>số nguyên</em> (resource identifier) mà trình biên dịch dùng. Đáp án a là hiểu lầm tốn công nhất trong ba
+				lựa chọn, và nó phá mất đúng cái lợi lớn nhất: vì bảng tra do máy sinh nên gõ sai
+				<code>R.string.send_buton</code> là <em>lỗi biên dịch</em>, đỏ ngay trong IDE; nếu con người phải tự giữ đồng bộ
+				thì gõ sai chỉ còn là lỗi lúc chạy. Đáp án b lẫn hai thời điểm: việc tra tên sang số xảy ra lúc build, tới lúc
+				app chạy thì trong code đã chỉ còn con số. Đó cũng là lý do vừa thêm chuỗi mà <code>R</code> chưa thấy — câu 6.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				6. Bạn vừa thêm <code>&lt;string name="chat_hint"&gt;…&lt;/string&gt;</code> vào <code>strings.xml</code>, nhưng
+				trong Kotlin thì <code>R.string.chat_hint</code> bị gạch đỏ "unresolved reference". Việc đầu tiên nên làm là gì?
+			</legend>
+			<label>
+				<input type="radio" name="q6" value="a" /> Build lại project (hoặc Sync Project with Gradle Files) để
+				<code>R</code> được sinh lại, vì bảng tra chỉ được cập nhật ở một lần build
+			</label>
+			<label>
+				<input type="radio" name="q6" value="b" /> Thêm <code>import com.kodeco.chat.R</code> vào đầu file, vì lớp
+				<code>R</code> nằm ở package gốc nên mọi file dùng nó đều phải import
+			</label>
+			<label>
+				<input type="radio" name="q6" value="c" /> Đổi tên chuỗi thành <code>chatHint</code> cho khớp cách đặt tên biến
+				của Kotlin, vì tên có dấu gạch dưới không thành property hợp lệ được
+			</label>
+			<p class="explain" hidden>
+				Đây là hệ quả trực tiếp của việc <code>R</code> được sinh <em>lúc build</em>: code của bạn đúng hoàn toàn, chỉ là
+				bảng tra chưa được cập nhật theo file XML vừa sửa. Biết phản xạ này tiết kiệm rất nhiều thời gian, vì triệu chứng
+				trông y như một lỗi thật. Đáp án b sai vì <code>MainActivity.kt</code> nằm cùng package
+				<code>com.kodeco.chat</code> với lớp <code>R</code> được sinh ra, nên không cần import — mở file
+				<code>final</code> ra kiểm thì thấy nó dùng <code>R.string</code> ở 4 chỗ mà không có dòng import nào cho
+				<code>R</code>. Đáp án c đảo ngược đúng quy ước: tên chuỗi <em>phải</em> là chữ thường có gạch dưới, và cả 5
+				chuỗi của app đều theo khuôn đó rồi. Ràng buộc thật chỉ là "phải là định danh Kotlin hợp lệ" — gạch dưới hợp lệ,
+				dấu cách và dấu gạch ngang thì không.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				7. Vì sao <code>var chatInputText by remember &#123; mutableStateOf(stringResource(id = R.string.chat_entry_default)) &#125;</code>
+				không biên dịch được, dù dòng này nằm ngay trong <code>Column</code>?
+			</legend>
+			<label>
+				<input type="radio" name="q7" value="a" /> Vì <code>mutableStateOf</code> cần biết kiểu dữ liệu ngay lúc biên
+				dịch, mà <code>stringResource</code> chỉ trả về chuỗi lúc app chạy nên kiểu của state chưa xác định được
+			</label>
+			<label>
+				<input type="radio" name="q7" value="b" /> Vì <code>stringResource</code> là một Composable, còn lambda tính giá
+				trị ban đầu của <code>remember</code> không phải vùng gọi Composable được
+			</label>
+			<label>
+				<input type="radio" name="q7" value="c" /> Vì thứ tự sai: phải khai <code>val context = LocalContext.current</code>
+				trước đã, mọi lời gọi liên quan tới resource đều cần một <code>Context</code> có sẵn trong tầm nhìn
+			</label>
+			<p class="explain" hidden>
+				Thông báo lỗi bắt đầu bằng <em>"Composable calls are not allowed inside the calculation parameter…"</em> — phần
+				đuôi nêu tên hàm <code>remember</code>, và câu chữ chính xác có thể khác chút tuỳ phiên bản Android Studio bạn
+				đang dùng. Chỗ làm người mới bối rối: đoạn code <em>trông như</em> đang ở trong Compose. Nhưng
+				cặp ngoặc của <code>remember</code> không mô tả giao diện — nó là <strong>công thức tính giá trị ban đầu</strong>,
+				và Compose chỉ chạy nó đúng một lần ở lần composition đầu rồi không bao giờ chạy lại. Một Composable bị đông cứng
+				như vậy là điều framework không cho phép, vì Composable phải chạy lại được mỗi khi có gì thay đổi. Quy tắc tự
+				phân biệt: cặp ngoặc này chứa <em>giao diện</em> hay chứa <em>việc cần làm</em>? Đáp án a nghe rất kỹ thuật nhưng
+				sai ở nền: <code>stringResource</code> khai báo trả về <code>String</code>, kiểu xác định rõ lúc biên dịch, và
+				<code>mutableStateOf</code> suy ra kiểu từ đó không có vấn đề gì. Đáp án c lẫn nguyên nhân với cách sửa —
+				<code>stringResource</code> tự lấy Context qua <code>LocalContext</code> nên nó <em>không</em> cần bạn khai biến
+				nào; thêm dòng đó vào mà vẫn để <code>stringResource</code> trong <code>remember</code> thì lỗi y nguyên.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>8. Lúc lỗi ở câu 7 xuất hiện, Android Studio báo cho bạn ở những chỗ nào trong cửa sổ làm việc?</legend>
+			<label>
+				<input type="radio" name="q8" value="a" /> Chỉ ở vạch gạch đỏ dưới dòng code; muốn thấy lỗi ở dạng danh sách thì
+				phải bấm Build một lần, vì panel Problems chỉ được điền sau mỗi lần build
+			</label>
+			<label>
+				<input type="radio" name="q8" value="b" /> Ở vạch gạch đỏ, kèm một bóng đèn vàng — bấm vào là IDE đề xuất sẵn cách
+				sửa, vì nó suy được rằng lời gọi này phải chuyển sang cách lấy chuỗi qua <code>Context</code>
+			</label>
+			<label>
+				<input type="radio" name="q8" value="c" /> Ở bốn chỗ: gạch đỏ tại dòng, hình tròn đỏ kèm số lỗi ở góc trên-phải,
+				panel Problems, và các vạch đỏ nhỏ ở lề phải
+			</label>
+			<p class="explain" hidden>
+				Bốn chỗ đó trả lời bốn câu hỏi khác nhau, nên biết cả bốn là đáng: gạch đỏ nói <em>chỗ nào sai</em> (đưa chuột lên
+				là hiện nội dung lỗi); hình tròn đỏ kèm số ở góc trên-phải trả lời <em>file này còn sạch không</em> trong một cái
+				nhìn; panel Problems cho bạn <em>đọc hết một lượt</em> khi có nhiều lỗi cùng lúc; các vạch nhỏ ở lề phải cho thấy
+				lỗi ở dòng 400 khi bạn đang đứng ở dòng 20 — bấm vào là nhảy tới đó. Cảnh báo (warning) dùng đúng bốn chỗ ấy, chỉ
+				đổi sang màu vàng. Đáp án a sai về thời điểm: cả bốn chỗ đều đến từ việc IDE phân tích code <em>trong lúc bạn
+				gõ</em>, nên bạn thấy lỗi này trước khi build lần nào — chính điều đó làm nó thuộc loại lỗi biên dịch. Đáp án b là
+				kỳ vọng rất hay có nhưng lần này không xảy ra: bóng đèn vàng chỉ sửa hộ được việc nó suy ra được, còn ở đây IDE
+				chỉ biết "chỗ này không được gọi Composable" mà không biết ý bạn là gì, nên nó không đề xuất gì. Ranh giới đáng
+				nhớ, chi tiết ở <strong>Chương 3.2, mục 11.2</strong>: lỗi cú pháp thì IDE sửa hộ được, lỗi thiết kế thì chỉ bạn
+				sửa được.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>9. Hai cách sửa hợp lệ cho lỗi ở câu 7 có chung nguyên tắc gì?</legend>
+			<label>
+				<input type="radio" name="q9" value="a" /> Bỏ <code>remember</code> đi: chuỗi mặc định vốn không cần được nhớ qua
+				các lần vẽ lại, nên giữ nó trong state chỉ làm phát sinh đúng cái lỗi này
+			</label>
+			<label>
+				<input type="radio" name="q9" value="b" /> Đánh dấu <code>@Composable</code> cho chỗ chứa nó, để vùng bị cấm trở
+				thành vùng được phép gọi Composable
+			</label>
+			<label>
+				<input type="radio" name="q9" value="c" /> Lấy giá trị ở <em>ngoài</em> lambda của <code>remember</code> rồi mang
+				vào trong, để trong đó chỉ còn một giá trị đã tính xong
+			</label>
+			<p class="explain" hidden>
+				Cả hai cách sửa đều là một khuôn mẫu: <code>val context = LocalContext.current</code> ở thân
+				<code>Column</code> rồi gọi <code>context.getString(...)</code> bên trong (chính là dòng 55, 56, 57 của bản
+				<code>final</code>), hoặc gọi <code>stringResource</code> ở thân <code>Column</code> lấy ra một biến rồi truyền
+				biến đó vào <code>remember</code>. Lời gọi Composable đứng ở vùng dựng giao diện, còn trong lambda chỉ còn một
+				giá trị đã tính xong. Nhớ nguyên tắc thay vì nhớ mẹo là điều đáng làm nhất ở đây: cùng họ lỗi này còn có
+				<code>painterResource()</code> và <code>MaterialTheme.colorScheme</code>, những thứ không có phiên bản
+				<code>getString()</code> tương ứng để mà thay. Đáp án a đổi hành vi của app chứ không sửa lỗi: bỏ
+				<code>remember</code> thì ô nhập mất chữ ngay ở lần vẽ lại kế tiếp, tức không gõ được ký tự thứ hai. Đáp án b
+				không làm được về mặt kỹ thuật — bạn không đánh dấu <code>@Composable</code> cho tham số của
+				<code>remember</code> được, vì kiểu của tham số đó do chính định nghĩa <code>remember</code> quy định.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				10. Bản <code>final</code> lấy chuỗi bằng <code>context.getString(...)</code>, với <code>context</code> lấy từ
+				<code>LocalContext.current</code>. Sau này bạn cần lấy chuỗi từ trong một class <em>không phải</em> Activity —
+				làm được không?
+			</legend>
+			<label>
+				<input type="radio" name="q10" value="a" /> Không — <code>getString()</code> là method của
+				<code>Activity</code>, nên ở class khác bạn phải nhận chuỗi đã lấy sẵn truyền vào từ ngoài
+			</label>
+			<label>
+				<input type="radio" name="q10" value="b" /> Được — <code>getString()</code> được định nghĩa trên
+				<code>Context</code>, nên <em>bất kỳ</em> Context nào cũng gọi được
+			</label>
+			<label>
+				<input type="radio" name="q10" value="c" /> Được, nhưng chỉ trong hàm có <code>@Composable</code>, vì chỉ ở đó mới
+				lấy được <code>LocalContext.current</code> để có <code>Context</code>
+			</label>
+			<p class="explain" hidden>
+				<code>Context</code> là "lối vào" thông tin toàn cục về môi trường app — qua nó bạn hỏi được app tên gì, resource
+				nằm đâu, file của app lưu chỗ nào. <code>getString()</code> nằm trên chính <code>Context</code>;
+				<code>Activity</code> chỉ <em>thừa hưởng</em> nó, vì một <code>Activity</code> <strong>là</strong> một Context. Hệ
+				quả rất thực dụng: có Context trong tay là lấy được chuỗi, kể cả trong một ViewModel hay một class dữ liệu. Đáp án
+				a đảo ngược quan hệ thừa kế đó, và cái giá của việc hiểu sai là bạn tự bịa thêm việc: truyền hàng loạt chuỗi qua
+				tham số thay vì truyền một Context. Đáp án c lẫn <em>cách lấy</em> Context với <em>quyền gọi</em>
+				<code>getString()</code>: <code>LocalContext.current</code> chỉ là cách lấy Context khi đang ở trong Compose; class
+				thường nhận Context qua tham số, và bản thân <code>@Composable</code> không liên quan gì tới việc gọi được
+				<code>getString()</code> hay không.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				11. Trong bản <code>final</code>, nhãn ô nhập (dòng 65) và chữ nút Send (dòng 72) lấy chuỗi bằng
+				<code>stringResource</code>, còn hai chuỗi mặc định của state (dòng 56, 57) lấy bằng
+				<code>context.getString()</code> đặt trong <code>remember</code>. Khác biệt <em>thật</em> về hành vi giữa hai cách
+				là gì?
+			</legend>
+			<label>
+				<input type="radio" name="q11" value="a" /> <code>stringResource</code> đọc lại resource mỗi lần phần giao diện đó
+				được vẽ lại; chuỗi kia đã được <code>remember</code> cất từ lần tính đầu nên giữ nguyên qua các lần vẽ lại
+			</label>
+			<label>
+				<input type="radio" name="q11" value="b" /> <code>context.getString()</code> đọc chuỗi qua <code>Context</code> đã
+				được tạo lúc app khởi động, nên nó luôn trả về chuỗi theo ngôn ngữ ở thời điểm mở app chứ không theo ngôn ngữ
+				hiện tại của máy
+			</label>
+			<label>
+				<input type="radio" name="q11" value="c" /> Hai cách đọc hai nguồn khác nhau: <code>stringResource</code> xét các
+				thư mục qualifier như <code>values-vi/</code>, còn <code>context.getString()</code> luôn lấy từ
+				<code>values/</code> mặc định
+			</label>
+			<p class="explain" hidden>
+				Rất nhiều tài liệu đặt hai cách này cạnh nhau như hai lựa chọn ngang hàng, kiểu "cái nào cũng ra chuỗi" — mô tả
+				đó bỏ mất đúng cái làm nên khác biệt. Chú ý đặt thủ phạm vào đúng chỗ: thứ giữ lại giá trị cũ là
+				<strong><code>remember</code></strong>, không phải bản thân <code>context.getString()</code> — đặt đúng lời gọi
+				đó trực tiếp trong thân <code>Column</code> thì nó cũng chạy lại mỗi lần vẽ và cũng cho chuỗi mới. Vì vậy đáp án
+				b sai: <code>Context</code> không "đóng băng" ngôn ngữ nào cả, nó đọc theo cấu hình đang có hiệu lực; bằng chứng
+				nằm ngay trong cùng file: nhãn ô nhập và chữ nút Send đọc chuỗi qua cùng một <code>Context</code> đó và vẫn đổi
+				đúng ngôn ngữ mới. Đáp án c
+				bịa ra hai nguồn dữ liệu:
+				cả hai đều đi qua cùng hệ thống resource và cùng luật chọn qualifier. Một chỗ cần nói cho chính xác về kịch bản
+				đổi ngôn ngữ máy: nếu Activity bị <em>huỷ và dựng lại</em> thì <code>remember</code> cũng được khởi tạo mới, nên
+				khi đó cả bốn chuỗi đều đổi và bạn không thấy khác biệt. Khác biệt chỉ lộ ra ở những lần giao diện được vẽ lại
+				<em>mà Activity vẫn còn sống</em> — và đó là lý do nguyên tắc mặc định vẫn là ưu tiên
+				<code>stringResource()</code>, chỉ dùng cách kia khi thật sự bị chặn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				12. Bạn <em>muốn</em> hai chuỗi mặc định của state cũng đổi theo khi người dùng đổi ngôn ngữ. Cách làm đúng — và
+				cái giá phải trả — là gì?
+			</legend>
+			<label>
+				<input type="radio" name="q12" value="a" /> Đổi <code>remember</code> thành <code>rememberSaveable</code>, vì bản
+				có "saveable" đọc lại giá trị theo cấu hình mới mỗi khi Activity được dựng lại; không mất gì cả
+			</label>
+			<label>
+				<input type="radio" name="q12" value="b" /> Truyền chuỗi đó vào <code>remember</code> làm <em>key</em>; đổi lại
+				chữ người dùng đang gõ dở bị xoá về mặc định
+			</label>
+			<label>
+				<input type="radio" name="q12" value="c" /> Bỏ <code>remember</code> và dùng thẳng
+				<code>var chatInputText = stringResource(...)</code>, vì biến thường được tính lại mỗi lần vẽ nên luôn đúng ngôn
+				ngữ; đổi lại code mất một dòng nên khó đọc hơn
+			</label>
+			<p class="explain" hidden>
+				<code>remember(defaultEntry) &#123; mutableStateOf(defaultEntry) &#125;</code> so key của lần dựng này với lần
+				trước; khác nhau thì nó bỏ giá trị cũ và chạy lại lambda. Đổi ngôn ngữ → chuỗi mặc định đổi → key đổi → state
+				được tính lại. Cái giá rất cụ thể và đáng cân nhắc trước khi làm: state được tạo mới nên chữ đang gõ dở mất.
+				Đáp án a hiểu sai việc của <code>rememberSaveable</code> theo hướng ngược hẳn: nó <em>giữ</em> giá trị qua lần
+				Activity bị dựng lại, nên nó làm chuỗi cũ bám dai hơn chứ không mới hơn. Đáp án c thì bỏ mất chính lý do tồn tại
+				của state: không có <code>remember</code>, mỗi lần vẽ lại biến trở về giá trị mặc định, nên gõ một ký tự là chữ
+				biến mất ngay — và <code>var</code> thường cũng không kích hoạt được việc vẽ lại. Ba biến thể (không key, có key,
+				<code>context.getString()</code>) cho ba hành vi khác nhau, không cái nào đúng cho mọi trường hợp.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				13. Đảo thứ tự hai dòng trong <code>onClick</code> làm phần hiển thị luôn trống. Vì sao loại lỗi này khó chịu hơn
+				nhiều so với lỗi <em>"Composable calls are not allowed…"</em> ở câu 7?
+			</legend>
+			<label>
+				<input type="radio" name="q13" value="a" /> Vì không ai báo cho bạn: app vẫn biên dịch, vẫn chạy, Logcat không
+				có dòng lỗi nào — chỉ kết quả là sai, nên bạn phải tự đi tìm bằng breakpoint hoặc log
+			</label>
+			<label>
+				<input type="radio" name="q13" value="b" /> Vì lỗi xảy ra lúc app đang chạy thì luôn làm app dừng đột ngột, nên
+				mỗi lần thử lại bạn mất trạng thái đang có và phải bấm lại từ đầu cả chuỗi thao tác
+			</label>
+			<label>
+				<input type="radio" name="q13" value="c" /> Vì trình biên dịch chỉ kiểm được cú pháp, còn phép gán giữa hai biến
+				cùng kiểu <code>String</code> thì nó không kiểm được — đây là hạn chế riêng của Kotlin mà những ngôn ngữ kiểm kiểu
+				chặt hơn không có
+			</label>
+			<p class="explain" hidden>
+				Đây là ranh giới nền tảng nhất khi học lập trình: <strong>lỗi biên dịch</strong> tự giới thiệu — nó hiện ngay khi
+				bạn gõ, ở đúng dòng gây ra nó, kèm một câu giải thích. <strong>Lỗi lúc chạy</strong> thì không nói gì cả: app mở
+				lên bình thường, nút bấm được, chỉ là kết quả không như bạn nghĩ. Người phát hiện ra thường là người dùng, và họ
+				chỉ mô tả được rằng "bấm nút thì không thấy gì". Đó là lý do debug tồn tại. Đáp án b lẫn một <em>dạng</em> lỗi lúc
+				chạy với toàn bộ loại đó: crash chỉ là một dạng, và chính cái không crash mới là dạng khó tìm hơn — ở đây app
+				không crash lần nào. Đáp án c gán lỗi cho ngôn ngữ: cả hai thứ tự đều là code hợp lệ, gán chuỗi cho chuỗi, nên
+				không hệ thống kiểu nào — của Kotlin hay của ngôn ngữ nào khác — đoán được bạn <em>muốn</em> thứ tự nào. Đây là
+				lỗi logic, không phải lỗi kiểu dữ liệu.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				14. Trong <code>onClick</code> của nút Send có hai dòng: <code>chatOutputText = chatInputText</code> (dòng 69) rồi
+				<code>chatInputText = ""</code> (dòng 70). Đặt breakpoint ở <strong>dòng 70</strong> thì lúc app dừng, hai biến
+				mang giá trị gì?
+			</legend>
+			<label>
+				<input type="radio" name="q14" value="a" /> <code>chatInputText</code> rỗng, <code>chatOutputText</code> giữ chữ
+				bạn vừa gõ — đây là trạng thái sau khi cả hai dòng đã chạy xong
+			</label>
+			<label>
+				<input type="radio" name="q14" value="b" /> <code>chatInputText</code> giữ chữ bạn vừa gõ,
+				<code>chatOutputText</code> vẫn là chuỗi mặc định "Messages will display here"
+			</label>
+			<label>
+				<input type="radio" name="q14" value="c" /> Cả hai cùng mang chữ bạn vừa gõ — ô nhập vẫn còn chữ, phần hiển thị
+				thì đã nhận đúng chữ đó
+			</label>
+			<p class="explain" hidden>
+				Breakpoint dừng app <em>trước khi</em> chạy dòng được đánh dấu, không phải sau. Nên ở dòng 70: dòng 69 đã chạy
+				(chữ đã được chép sang <code>chatOutputText</code>), dòng 70 chưa chạy (ô nhập chưa bị xoá) — đúng khoảnh khắc
+				duy nhất mà cả hai biến cùng mang một giá trị. Chọn dòng nào để dừng vì thế không hề tuỳ ý: đáp án b là trạng
+				thái ở <em>dòng 69</em>, đáp án a là trạng thái sau khi cả khối chạy xong. Cùng một app, ba câu trả lời khác nhau
+				tuỳ chỗ bạn đặt chấm đỏ. Giá trị của bài này là nó cho bạn <em>nhìn thấy</em> một trạng thái trung gian tồn tại
+				thật nhưng quá ngắn để thấy bằng mắt — và từ đó tự chứng minh được vì sao đảo thứ tự hai dòng làm phần hiển thị
+				luôn trống, thay vì phải tin lời cảnh báo.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				15. Bạn nghi một biến đang mang giá trị sai và muốn xem nó. Vì sao breakpoint thường tốt hơn việc chèn một dòng
+				in giá trị ra rồi chạy lại?
+			</legend>
+			<label>
+				<input type="radio" name="q15" value="a" /> Vì app dừng lại ngay tại đó và bạn xem được mọi biến trong phạm vi,
+				không cần đoán trước cần xem cái gì
+			</label>
+			<label>
+				<input type="radio" name="q15" value="b" /> Vì <code>println()</code> không chạy trên Android: nó không được biên
+				dịch vào bản debug, nên dòng in đó không bao giờ tạo ra kết quả nào để bạn đọc
+			</label>
+			<label>
+				<input type="radio" name="q15" value="c" /> Vì mỗi dòng in thêm vào là một lần app phải ghi ra ổ đĩa, đủ để làm
+				lệch thời điểm các sự việc xảy ra và làm lỗi biến mất khi bạn đang tìm nó
+			</label>
+			<p class="explain" hidden>
+				Vòng lặp "đoán cần xem gì → sửa code → build lại → chạy lại → bấm lại đúng chuỗi thao tác" lặp lại mỗi lần bạn
+				đoán sai. Một breakpoint cho bạn <em>toàn bộ</em> trạng thái tại một thời điểm, cộng ba nút Step Over / Step Into
+				/ Resume để đi tiếp, không build lại lần nào. Đáp án b nói quá thành sai: <code>println()</code> vẫn chạy và vẫn
+				hiện ra, chỉ là nó đi vào Logcat dưới thẻ chung của luồng ra chuẩn nên gần như không lọc được giữa hàng nghìn
+				dòng khác — cách đúng trên Android là <code>Log.d("thẻ", "nội dung")</code> với thẻ do bạn đặt. Đáp án c nhận ra
+				đúng một hiện tượng có thật nhưng gán cho sai công cụ: chính <em>breakpoint</em> mới là thứ làm lệch thời gian
+				nhiều nhất, vì nó giữ hẳn luồng chạy lại. Đó cũng là lý do với lỗi phụ thuộc thời gian thì log lại là công cụ hợp
+				hơn. Hai công cụ bổ sung nhau: log cho bạn một chuỗi sự việc trải theo thời gian, breakpoint cho bạn soi sâu tại
+				một điểm.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+	<h2>Bài tập</h2>
+	<p class="intro">
+		Ba bài dưới đây không kiểm tra việc bạn nhớ chữ. Bài 1 buộc bạn <em>mở file thật ra đếm</em> thay vì nhớ lại — kỹ năng
+		dùng suốt đời làm nghề. Bài 2 sắp lại đường đi của một chuỗi từ file XML tới màn hình, vì hiểu đúng thứ tự các bước là
+		điều kiện để đọc được thông báo lỗi khi một bước trong đó hỏng. Bài 3 cho bạn <em>dự đoán trước rồi kiểm bằng
+		breakpoint</em> — cách duy nhất biến debug từ mẹo thành kỹ năng.
+	</p>
+
+	<div class="exercise">
+		<h3>Bài tập 1 — Truy vết cả 5 chuỗi ra tới nơi chúng hiện lên</h3>
+		<p>
+			Mở ba file này trong <code>aaf-materials/03-android-fundamentals/projects/final/app/src/main/</code>:
+			<code>res/values/strings.xml</code>, <code>java/com/kodeco/chat/MainActivity.kt</code> và
+			<code>AndroidManifest.xml</code>. Đừng nhớ lại từ phần đọc — mở ra và đếm:
+		</p>
+		<ol>
+			<li>
+				Trong <code>strings.xml</code>, năm thẻ <code>&lt;string&gt;</code> nằm ở những dòng nào? (Đừng bất ngờ khi hơn 30
+				dòng đầu file không liên quan gì tới chuỗi.)
+			</li>
+			<li>
+				Trong <code>MainActivity.kt</code>, tìm mọi chỗ có <code>R.string</code>. Có bao nhiêu chỗ, ở dòng nào, và chỗ nào
+				dùng <code>stringResource</code> còn chỗ nào dùng <code>context.getString</code>?
+			</li>
+			<li>
+				Đối chiếu hai danh sách: <strong>chuỗi nào có trong XML mà không xuất hiện trong Kotlin?</strong> Rồi mở
+				<code>AndroidManifest.xml</code>, tìm chuỗi đó — nó xuất hiện mấy lần, ở dòng nào, dưới thẻ nào?
+			</li>
+			<li>
+				<strong>Câu bẫy nhỏ, đáng làm:</strong> file <code>MainActivity.kt</code> dùng lớp <code>R</code> ở bốn chỗ. Tìm
+				trong khối <code>import</code> (dòng 36–48) xem có dòng nào import <code>R</code> không. Kết quả nói lên điều gì
+				về nơi lớp <code>R</code> được sinh ra?
+			</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>Câu 1 — năm chuỗi ở dòng 35–39.</strong> Thẻ <code>&lt;resources&gt;</code> mở ở dòng 34, thẻ đóng ở dòng
+				40, và dòng 1–32 là khối comment giấy phép. Đối chiếu với bản <code>starter</code> thì thấy rõ khoảng cách:
+				file đó chỉ có đúng <em>1</em> chuỗi <code>app_name</code> ở dòng 36 (giấy phép 1–33, thẻ mở 35, thẻ đóng 37).
+				Toàn bộ công việc của chương này gói trong khoảng cách 1 chuỗi → 5 chuỗi đó.
+			</p>
+			<p>
+				<strong>Câu 2 — đúng 4 chỗ, chia đều hai cách:</strong>
+			</p>
+			<ul>
+				<li>dòng 56 — <code>context.getString(R.string.chat_entry_default)</code>, trong <code>remember</code>;</li>
+				<li>dòng 57 — <code>context.getString(R.string.chat_display_default)</code>, trong <code>remember</code>;</li>
+				<li>dòng 65 — <code>stringResource(id = R.string.chat_entry_label)</code>, trong <code>label = &#123; ... &#125;</code>
+					của <code>OutlinedTextField</code>;</li>
+				<li>dòng 72 — <code>stringResource(id = R.string.send_button)</code>, trong thân <code>Button</code>.</li>
+			</ul>
+			<p>
+				Nhìn theo vị trí là đọc ra ngay luật: hai chỗ dùng <code>stringResource</code> đều nằm trong cặp ngoặc
+				<em>mô tả giao diện</em>, hai chỗ kia nằm trong lambda <em>tính giá trị</em> của <code>remember</code>. Không phải
+				hai gu viết code — hai hệ quả của một luật duy nhất.
+			</p>
+			<p>
+				<strong>Câu 3 — chuỗi không xuất hiện trong Kotlin là <code>app_name</code>.</strong> Trong
+				<code>AndroidManifest.xml</code> nó xuất hiện <strong>hai lần</strong>, cùng dạng
+				<code>android:label="@string/app_name"</code>: dòng 43 dưới thẻ <code>&lt;application&gt;</code> và dòng 51 dưới
+				thẻ <code>&lt;activity&gt;</code>. Đây là chuỗi duy nhất trong app được chính hệ điều hành đọc, và
+				<code>@string/tên</code> ở phía XML tương ứng với <code>R.string.tên</code> ở phía Kotlin — cùng một chỗ, hai
+				ngôn ngữ khai báo.
+			</p>
+			<p>
+				<strong>Câu 4 — không có dòng import nào cho <code>R</code>.</strong> Mười ba dòng import (36–48) đều là
+				<code>android.*</code> hoặc <code>androidx.*</code>. Lý do: lớp <code>R</code> được sinh vào <em>chính package của
+				app</em> — <code>com.kodeco.chat</code>, đúng package khai ở dòng 34 của file này — nên nó đã ở trong tầm nhìn,
+				không cần import. Chi tiết nhỏ này là bằng chứng trực tiếp cho câu 5 và câu 6 của quiz: <code>R</code> không phải
+				thư viện bạn kéo về, nó là code được sinh ra <em>cho project của bạn</em>, mang tên package của bạn.
+			</p>
+		</details>
+	</div>
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 2 — Sắp lại đường đi của một chuỗi, từ file XML tới màn hình</h3>
+		<p>
+			Sáu việc dưới đây là toàn bộ đường đi của chuỗi <code>send_button</code>, từ lúc bạn gõ nó vào XML tới lúc chữ "Send"
+			hiện trong nút. Mọi việc đều ghi sẵn nó xảy ra <em>lúc bạn ngồi gõ</em>, <em>lúc build</em> hay
+			<em>lúc app chạy</em> — nhưng đừng dựa hẳn vào nhãn: hai việc của bạn <em>không</em> nằm liền nhau, giữa chúng
+			còn một bước nữa. Hãy đánh số 1–6 theo đúng thứ tự, rồi bấm "Kiểm tra thứ tự".
+		</p>
+		<ul class="order-list" id="chuoi-order">
+			<li data-correct="4">
+				<select aria-label="Thứ tự cho bước: Android chọn thư mục values khớp cấu hình">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span>
+					<em>(Lúc app chạy)</em> Android xem ngôn ngữ máy rồi chọn thư mục khớp nhất — <code>values-vi/</code> nếu có,
+					không có thì rơi về <code>values/</code>
+				</span>
+			</li>
+			<li data-correct="1">
+				<select aria-label="Thứ tự cho bước: thêm thẻ string vào strings.xml">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span>
+					<em>(Lúc bạn ngồi gõ)</em> Thêm <code>&lt;string name="send_button"&gt;Send&lt;/string&gt;</code> vào
+					<code>res/values/strings.xml</code>
+				</span>
+			</li>
+			<li data-correct="6">
+				<select aria-label="Thứ tự cho bước: chữ Send hiện lên trong nút">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span><em>(Lúc app chạy)</em> Chữ "Send" hiện lên trong nút trên màn hình</span>
+			</li>
+			<li data-correct="2">
+				<select aria-label="Thứ tự cho bước: trình biên dịch resource cấp ID và sinh lại lớp R">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span>
+					<em>(Lúc build)</em> Chuỗi được cấp một ID dạng số nguyên, và lớp <code>R</code> được sinh lại với một property
+					mới tên <code>send_button</code>
+				</span>
+			</li>
+			<li data-correct="5">
+				<select aria-label="Thứ tự cho bước: stringResource tra ID số ra chuỗi">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span>
+					<em>(Lúc app chạy)</em> <code>stringResource</code> nhận ID số rồi tra ra nội dung chuỗi trong thư mục vừa được
+					chọn
+				</span>
+			</li>
+			<li data-correct="3">
+				<select aria-label="Thứ tự cho bước: gõ R.string trong Kotlin và chọn tên chuỗi từ autocomplete">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+					<option value="6">6</option>
+				</select>
+				<span>
+					<em>(Lúc bạn ngồi gõ)</em> Gõ <code>R.string.</code> trong Kotlin, autocomplete liệt kê tên chuỗi, bạn chọn
+					<code>send_button</code>
+				</span>
+			</li>
+		</ul>
+		<button type="button" id="check-order">Kiểm tra thứ tự</button>
+		<p id="order-result" role="status" aria-live="polite" hidden></p>
+		<details style="margin-top: 1rem;">
+			<summary>Xem đáp án và chỗ dễ sắp sai nhất</summary>
+			<p>
+				Thứ tự đúng: <strong>thêm chuỗi vào XML → build sinh lại <code>R</code> → gõ code chọn tên chuỗi → app chạy, chọn
+				thư mục theo cấu hình → tra ID ra nội dung → chữ hiện lên.</strong>
+			</p>
+			<p>
+				<strong>Chỗ gần như ai cũng sắp sai là hai bước đầu.</strong> Cảm giác tự nhiên là "viết code trước, build sau", nên
+				nhiều người đặt bước gõ <code>R.string.</code> lên trước bước build. Nhưng thứ tự đó không chạy được: property
+				<code>send_button</code> trong <code>R</code> <em>chưa tồn tại</em> cho tới khi có một lần build sinh nó ra — nên
+				autocomplete không thể liệt kê nó, và nếu bạn gõ tay thì IDE gạch đỏ "unresolved reference". Đây chính là hiện
+				tượng ở câu 6 của quiz nhìn từ hướng khác, và cũng là lý do việc đầu tiên nên làm khi gặp nó là build lại chứ
+				không phải đi sửa code.
+			</p>
+			<p>
+				<strong>Chỗ dễ sai thứ hai là ba bước cuối.</strong> Việc chọn thư mục theo cấu hình phải xảy ra
+				<em>trước</em> việc tra nội dung, vì cùng một ID số cho ra hai nội dung khác nhau tuỳ thư mục nào đang được chọn —
+				"Send" ở <code>values/</code>, "Gửi" ở <code>values-vi/</code>. Đặt ngược hai bước này là mất luôn cách giải thích
+				cho việc app đổi ngôn ngữ được mà code không đổi một chữ.
+			</p>
+			<p>
+				<strong>Điều đáng rút ra:</strong> tên chuỗi tồn tại ở <em>hai thời điểm đầu</em> (bạn và máy đều đọc tên), còn từ
+				thời điểm app chạy trở đi thì trong code đã chỉ còn một con số. Nhớ điều này là bạn giải thích được cả ba hệ quả
+				thực dụng của lớp <code>R</code>: vì sao gõ sai tên là lỗi biên dịch chứ không phải lỗi lúc chạy, vì sao
+				autocomplete hoạt động được, và vì sao build lại là cách sửa khi <code>R</code> chưa thấy chuỗi mới.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 3 — Dự đoán trước, rồi dùng breakpoint để kiểm</h3>
+		<p>
+			Bài này bắt bạn <em>viết dự đoán ra giấy trước khi chạy</em>. Đó không phải hình thức: chỉ khi đã cam kết một dự đoán
+			thì việc thấy kết quả khác mới dạy được bạn điều gì. Mở bản <code>final</code>, tới khối
+			<code>Button(onClick = ...)</code> ở <strong>dòng 68–71</strong> — dòng 69 là
+			<code>chatOutputText = chatInputText</code>, dòng 70 là <code>chatInputText = ""</code>.
+		</p>
+		<ol>
+			<li>
+				<strong>Dự đoán trước.</strong> Bạn sẽ gõ chữ <code>xin chao</code> rồi bấm Send. Điền trước giá trị hai biến vào
+				ba tình huống: (a) breakpoint ở dòng 69, (b) breakpoint ở dòng 70, (c) sau khi cả khối đã chạy xong.
+			</li>
+			<li>
+				Đặt breakpoint ở <strong>dòng 70</strong> bằng cách bấm vào số dòng ở lề trái editor — một chấm đỏ xuất hiện. Chạy
+				app bằng <strong>nút hình con bọ</strong>, không phải nút Run. Gõ <code>xin chao</code>, bấm Send, rồi đọc giá trị
+				hai biến trong panel Debug. So với dự đoán (b).
+			</li>
+			<li>
+				Bấm <em>Step Over</em> một lần, đọc lại hai biến. So với dự đoán (c). Bấm <em>Resume</em> cho app chạy tiếp và xem
+				màn hình.
+			</li>
+			<li>
+				Chuyển breakpoint lên <strong>dòng 69</strong>, làm lại y hệt. So với dự đoán (a). Ba lần đọc này khác nhau ở đâu,
+				và vì sao?
+			</li>
+			<li>
+				<strong>Phần khó, và là phần đáng làm nhất:</strong> cố ý <em>đảo thứ tự</em> hai dòng 69 và 70, rồi chạy lại với
+				breakpoint ở dòng thứ hai. Trước khi chạy, hãy dự đoán trước hai biến sẽ mang giá trị gì. Sau đó chạy và đối chiếu.
+				Cuối cùng: sửa lại đúng thứ tự.
+			</li>
+			<li>
+				<strong>Thử nốt cái bẫy này:</strong> giữ nguyên chấm đỏ nhưng chạy app bằng <strong>nút Run</strong> thường. Bấm
+				Send. Hiện tượng là gì, và nó nói gì về quan hệ giữa breakpoint và chế độ debug?
+			</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p><strong>Bước 1–4 — ba lần đọc, ba kết quả khác nhau:</strong></p>
+			<ul>
+				<li>
+					<strong>Breakpoint ở dòng 69:</strong> <code>chatInputText</code> = "xin chao", <code>chatOutputText</code> =
+					"Messages will display here". Cả hai dòng đều chưa chạy.
+				</li>
+				<li>
+					<strong>Breakpoint ở dòng 70:</strong> cả hai biến đều = "xin chao". Dòng 69 đã chạy, dòng 70 thì chưa.
+				</li>
+				<li>
+					<strong>Sau khi chạy xong cả khối:</strong> <code>chatInputText</code> = "" (rỗng),
+					<code>chatOutputText</code> = "xin chao".
+				</li>
+			</ul>
+			<p>
+				Nguyên tắc giải thích cả ba: breakpoint dừng app <strong>trước khi</strong> chạy dòng được đánh dấu. Vì vậy dòng 70
+				là chỗ duy nhất cho bạn thấy khoảnh khắc hai biến cùng mang một giá trị — một trạng thái trung gian tồn tại thật
+				nhưng quá ngắn để thấy bằng mắt. Nếu dự đoán của bạn lệch ở đúng chỗ này thì bạn vừa sửa được một hiểu lầm rất
+				đắt, vì nó làm mọi kết quả debug về sau bị đọc lệch đi một dòng.
+			</p>
+			<p>
+				<strong>Bước 5 — khi đã đảo hai dòng:</strong> code thành <code>chatInputText = ""</code> rồi
+				<code>chatOutputText = chatInputText</code>. Dừng ở dòng thứ hai, bạn thấy <code>chatInputText</code> đã
+				<em>rỗng</em> trong khi <code>chatOutputText</code> vẫn là chuỗi mặc định. Step Over một lần:
+				<code>chatOutputText</code> nhận vào chuỗi rỗng — và đó là toàn bộ nguyên nhân của việc phần hiển thị luôn trống.
+				Bạn vừa <em>nhìn thấy</em> nguyên nhân thay vì tin một lời cảnh báo. Đáng chú ý về mức độ của lỗi này: app không
+				crash, không có lỗi biên dịch, Logcat không báo một dòng lỗi nào — chỉ sai kết quả. Đó là loại lỗi lúc chạy khó chịu nhất, và nó
+				giải thích vì sao debug đáng học sớm.
+			</p>
+			<p>
+				<strong>Bước 6 — chạy bằng nút Run thường:</strong> app hoạt động bình thường và <em>không bao giờ dừng</em>, dù
+				chấm đỏ vẫn nằm đó. Breakpoint chỉ có tác dụng khi app chạy ở chế độ debug, vì chỉ chế độ đó mới gắn bộ máy theo
+				dõi vào app. Đây là chỗ người mới hay tưởng breakpoint bị hỏng, và nó cũng cho thấy vì sao chạy debug chậm hơn chạy
+				thường một chút: bạn đang trả giá cho khả năng dừng lại được.
+			</p>
+			<p>
+				<strong>Rút ra:</strong> giá trị của bài này không nằm ở ba con số bạn đọc được, mà ở việc bạn chuyển từ "code chắc
+				chạy thế này" sang "tôi nhìn thấy nó chạy thế này". Với những lỗi mà trình biên dịch không giúp được gì, đó là khác
+				biệt giữa mò trong bóng tối và làm việc có phương pháp.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	const form = document.getElementById("quiz-form");
+	const scoreEl = document.getElementById("quiz-score");
+
+	form?.addEventListener("submit", (e) => {
+		e.preventDefault();
+		const fieldsets = form.querySelectorAll("fieldset");
+		let correct = 0;
+
+		fieldsets.forEach((fs) => {
+			const answer = fs.getAttribute("data-answer");
+			const name = fs.querySelector("input")?.getAttribute("name");
+			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
+			const explain = fs.querySelector(".explain");
+			explain?.removeAttribute("hidden");
+
+			fs.classList.remove("correct", "incorrect");
+			if (picked && picked.value === answer) {
+				correct++;
+				fs.classList.add("correct");
+			} else {
+				fs.classList.add("incorrect");
+			}
+		});
+
+		if (scoreEl) {
+			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
+			scoreEl.removeAttribute("hidden");
+		}
+	});
+
+	const checkOrderBtn = document.getElementById("check-order");
+	const orderResultEl = document.getElementById("order-result");
+
+	checkOrderBtn?.addEventListener("click", () => {
+		const items = document.querySelectorAll("#chuoi-order li");
+		let correctCount = 0;
+
+		items.forEach((li) => {
+			const correctValue = li.getAttribute("data-correct");
+			const select = li.querySelector("select");
+			const picked = select?.value;
+
+			li.classList.remove("correct", "incorrect");
+			if (picked && picked === correctValue) {
+				correctCount++;
+				li.classList.add("correct");
+			} else {
+				li.classList.add("incorrect");
+			}
+		});
+
+		if (orderResultEl) {
+			orderResultEl.textContent = `Kết quả: ${correctCount}/${items.length} bước đúng vị trí.`;
+			orderResultEl.removeAttribute("hidden");
+		}
+	});
+</script>

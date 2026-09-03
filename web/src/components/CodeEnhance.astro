@@ -1,0 +1,83 @@
+---
+// CodeEnhance — progressive enhancement cho code block.
+//
+// Vi sao lam bang JS thay vi sua markup: trong 22 file lesson/quiz co hon 330
+// cho goi <Code ... />. Boc tay tung cho vua ton cong vua de sai. Script nay
+// chay sau khi trang tai xong, tu boc moi <pre class="astro-code"> vao 1 the
+// .codeblock co thanh tieu de (nhan ngon ngu + nut copy).
+//
+// Neu JS khong chay: code block van hien thi day du, chi thieu nut copy.
+---
+
+<script>
+	const LANG_LABEL: Record<string, string> = {
+		kotlin: "Kotlin",
+		xml: "XML",
+		toml: "TOML",
+		properties: "Properties",
+		bash: "Terminal",
+		json: "JSON",
+		java: "Java",
+		gradle: "Gradle",
+		text: "Text",
+	};
+
+	const COPY_ICON =
+		'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 6.5V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h1.5"/></svg>';
+
+	function enhance(pre: HTMLPreElement) {
+		if (pre.closest(".codeblock")) return;
+
+		const lang = pre.dataset.language || "text";
+		const label = LANG_LABEL[lang] ?? lang.toUpperCase();
+
+		const wrap = document.createElement("div");
+		wrap.className = "codeblock";
+
+		const bar = document.createElement("div");
+		bar.className = "codeblock-bar";
+
+		const langEl = document.createElement("span");
+		langEl.className = "codeblock-lang";
+		langEl.textContent = label;
+
+		const btn = document.createElement("button");
+		btn.type = "button";
+		btn.className = "codeblock-copy";
+		btn.setAttribute("aria-label", `Copy đoạn code ${label}`);
+		btn.innerHTML = `${COPY_ICON}<span class="lbl-copy">Copy</span><span class="lbl-done">Đã copy</span>`;
+
+		btn.addEventListener("click", async () => {
+			const code = pre.querySelector("code")?.textContent ?? pre.textContent ?? "";
+			try {
+				await navigator.clipboard.writeText(code);
+			} catch {
+				// Trinh duyet chan clipboard API (thuong khi mo bang file://):
+				// dung cach cu — tao textarea tam roi execCommand.
+				const ta = document.createElement("textarea");
+				ta.value = code;
+				ta.style.position = "fixed";
+				ta.style.opacity = "0";
+				document.body.appendChild(ta);
+				ta.select();
+				try {
+					document.execCommand("copy");
+				} catch {
+					/* het cach: bo qua, khong lam gi ca */
+				}
+				ta.remove();
+			}
+			btn.classList.add("ok");
+			window.setTimeout(() => btn.classList.remove("ok"), 1600);
+		});
+
+		bar.append(langEl, btn);
+
+		pre.parentNode?.insertBefore(wrap, pre);
+		wrap.append(bar, pre);
+	}
+
+	document
+		.querySelectorAll<HTMLPreElement>(".lesson pre.astro-code, .quiz pre.astro-code")
+		.forEach(enhance);
+</script>

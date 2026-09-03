@@ -1,0 +1,401 @@
+---
+// Lesson Chapter 11 — Advanced Storage (chapter CUỐI CÙNG của sách).
+// Viết lại hoàn toàn ở Task 45 theo chuẩn độ sâu (CLAUDE.md mục A/B).
+// Code trích từ aaf-materials/11-advanced-storage/projects/{starter,final}/ — mọi số dòng đã kiểm bằng Read/grep.
+// Đối chiếu thêm với aaf-materials/10-room-db/projects/final/ để làm rõ cái gì đổi khi thêm mã hoá.
+// Nội dung giải thích tự viết tiếng Việt, diễn giải theo content/book/ch11-advanced-storage.md — không copy nguyên văn sách.
+// [TASK48] Chuong 11.1 — Android có bao nhiêu chỗ để lưu file
+
+import { Code } from "astro:components";
+
+const BOOK = "content/book/ch11-advanced-storage.md";
+
+const dirsCode = `Context.cacheDir
+Context.filesDir`;
+
+const writeFileCode = `val file = File(context.filesDir, "test.txt")
+file.bufferedWriter().use { out ->  out.write("This is a test") }`;
+
+const writeFileSafeCode = `// phien ban toi de nghi: khong chay tren main thread, co xu ly loi
+suspend fun writeNote(context: Context, text: String): Result<Unit> =
+  withContext(Dispatchers.IO) {
+    runCatching {
+      File(context.filesDir, "test.txt")
+        .bufferedWriter()
+        .use { out -> out.write(text) }
+    }
+  }`;
+
+const cacheQuotaCode = `lifecycleScope.launch {
+
+  val storageManager = getSystemService(STORAGE_SERVICE) as StorageManager
+  Timber.e(
+    "Cache Quota: \${
+      storageManager.getCacheQuotaBytes(
+        storageManager.getUuidForPath(
+          context.cacheDir
+        )
+      )
+    }"
+  )
+}`;
+
+const cacheQuotaFixedCode = `// phien ban toi de nghi
+lifecycleScope.launch {
+  // getSystemService khong doi hoi main thread; nhung getCacheQuotaBytes
+  // co the doc dia -> day sang IO
+  val storageManager = getSystemService(Context.STORAGE_SERVICE) as StorageManager
+  val quota = withContext(Dispatchers.IO) {
+    val uuid = storageManager.getUuidForPath(cacheDir)   // trong Activity: cacheDir, khong phai context.cacheDir
+    storageManager.getCacheQuotaBytes(uuid)
+  }
+  Timber.d("Cache quota: %d bytes (~%.1f MB)", quota, quota / 1024f / 1024f)
+}`;
+
+const tempFileCode = `val tempFile = File.createTempFile(fileName, null, context.cacheDir)`;
+
+const externalWriteCode = `val documentFile = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+val textFile = File(documentFile, "test.txt")
+textFile.bufferedWriter().use { out ->  out.write("This is a test") }`;
+
+const externalPrivateCode = `// thu muc rieng cua app tren "the nho" — KHONG can quyen, tu xoa khi go app
+val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+val textFile = File(dir, "test.txt")
+textFile.bufferedWriter().use { out -> out.write("This is a test") }`;
+---
+
+<article class="lesson">
+	<div class="callout goals">
+		<p><strong>Chapter cuối cùng của sách.</strong> Bạn sẽ học được:</p>
+		<ul>
+			<li>Android cho app lưu file ở những nơi nào, nơi nào cần quyền và nơi nào không.</li>
+			<li><code>filesDir</code> / <code>cacheDir</code>, file tạm, và cách xem chúng bằng Device Explorer.</li>
+			<li>Storage Access Framework — cách để người dùng tự chọn file, thay vì app đi xin quyền đọc cả bộ nhớ.</li>
+			<li>Database Explorer: xem và truy vấn database Room ngay khi app đang chạy.</li>
+			<li>Android Keystore là gì, và vì sao khoá nằm ở đó khó lấy hơn khoá nằm trong code.</li>
+			<li><strong>Mã hoá Preferences</strong> bằng <code>EncryptedSharedPreferences</code>.</li>
+			<li><strong>Mã hoá database Room</strong> bằng SQLCipher, kèm cách sinh và lưu passcode.</li>
+		</ul>
+	</div>
+
+	<div class="callout journey">
+		<p><strong>Hành trình starter → final.</strong> Đây là chapter có diff nhỏ nhất cả sách nhưng ý nghĩa lại lớn: chỉ <strong>1 file mới</strong> và <strong>4 file thật sự đổi logic</strong>.</p>
+		<ul>
+			<li><strong>File mới:</strong> <code>data/SecurePrefs.kt</code> (35 dòng code, không tính license header).</li>
+			<li><strong>Đổi logic:</strong> <code>RecipeApp.kt</code> (đổi kiểu <code>prefs</code> + sinh/đọc passcode) · <code>data/database/RecipeDatabase.kt</code> (thêm <code>PASSCODE_KEY</code>, <code>getPassCode()</code>, <code>SupportFactory</code>) · <code>MainActivity.kt</code> (đổi kiểu CompositionLocal) · <code>viewmodels/RecipeViewModel.kt</code> (đổi kiểu tham số constructor).</li>
+			<li><strong>Đổi cấu hình:</strong> <code>gradle/libs.versions.toml</code> + <code>app/build.gradle.kts</code> (thêm 2 thư viện — và <em>nhân đây nâng luôn 5 phiên bản Compose</em>, việc chapter không hề nói).</li>
+			<li><strong>Đổi vô nghĩa:</strong> <code>data/database/IngredientDao.kt</code> chỉ thêm 1 dòng trống ở dòng 45 · <code>ui/recipes/ShowRecipeList.kt</code> thêm <code>import LocalContext</code> ở dòng 58 rồi <strong>không dùng</strong>, và xoá 1 dòng trống. Đừng đi tìm ý nghĩa ở hai file này — không có.</li>
+			<li><strong>Cả nửa đầu chapter không có code nào trong project.</strong> Mọi thứ về <code>filesDir</code>, cache, external storage, SAF chỉ là snippet minh hoạ trong sách; grep toàn bộ <code>projects/</code> cho <code>filesDir</code>, <code>cacheDir</code>, <code>createTempFile</code>, <code>ACTION_CREATE_DOCUMENT</code>, <code>StorageManager</code>, <code>KeyStore</code>, <code>EncryptedFile</code> trả về <strong>0 kết quả</strong>. Bài học này vì thế tự dựng ví dụ chạy được cho nửa đầu.</li>
+		</ul>
+	</div>
+
+	<h2 id="vi-sao">1. Vì sao phải mã hoá dữ liệu đã nằm trong máy?</h2>
+
+	<p>
+		Câu hỏi rất hợp lý: từ Chương 9 và Chương 10, dữ liệu của bạn đã nằm trong <code>data/data/com.kodeco.recipefinder/</code> —
+		một thư mục mà <strong>chỉ app của bạn</strong> đọc được. Android bắt buộc điều đó ở tầng hệ điều hành: mỗi app chạy
+		dưới một user ID Linux riêng, và quyền của thư mục chỉ mở cho user ID đó. Vậy mã hoá thêm để làm gì?
+	</p>
+
+	<p>
+		Vì "chỉ app của bạn đọc được" đúng <em>khi mọi thứ bình thường</em>. Hãy đếm những lúc nó không còn đúng:
+	</p>
+
+	<table class="cmp">
+		<thead>
+			<tr><th>Tình huống</th><th>Kẻ khác lấy được dữ liệu bằng cách nào</th><th>Mã hoá có cứu được không?</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Máy đã <strong>root</strong></td>
+				<td>Quyền root vượt qua toàn bộ phân tách user ID Linux — đọc thẳng file của mọi app</td>
+				<td><strong>Có.</strong> Đọc được file nhưng nội dung là rác, và khoá thì nằm trong Keystore chứ không nằm trong file</td>
+			</tr>
+			<tr>
+				<td>Backup / chuyển máy</td>
+				<td><code>android:allowBackup="true"</code> đưa file của app lên cloud hoặc sang máy mới</td>
+				<td>Một phần — xem mục 28, chỗ này mã hoá lại gây ra một vấn đề <em>mới</em></td>
+			</tr>
+			<tr>
+				<td>Máy mất / bị lấy khi đang mở khoá</td>
+				<td>Cắm máy vào máy tính, dùng ADB hoặc công cụ forensics</td>
+				<td><strong>Có</strong>, nếu khoá được gắn với thiết bị và không xuất ra được</td>
+			</tr>
+			<tr>
+				<td>Bản build <code>debug</code> lọt ra ngoài</td>
+				<td><code>android:debuggable="true"</code> cho phép <code>run-as</code> đọc thư mục riêng của app không cần root</td>
+				<td><strong>Có</strong> — và đây là lý do rất thực tế</td>
+			</tr>
+			<tr>
+				<td>Lỗi lập trình của chính bạn</td>
+				<td>Ghi nhầm dữ liệu nhạy cảm ra external storage, log, hoặc file cache</td>
+				<td>Không. Mã hoá không sửa được lỗi thiết kế</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p class="hint">
+		<strong>Bổ sung (không có trong sách) — hãy nghĩ theo kiểu "tầng phòng thủ".</strong> Sandbox của Android là tầng một.
+		Mã hoá là tầng hai, tồn tại để tầng một sập thì vẫn còn cái gì đó. Đó cũng là lý do đừng kỳ vọng quá nhiều: nếu kẻ tấn công
+		chạy được code <em>với chính danh nghĩa app của bạn</em>, họ gọi được <code>SecurePrefs.getString()</code> y như bạn, và
+		mã hoá không cản được gì. Mã hoá bảo vệ <em>dữ liệu ở trạng thái nghỉ</em> (data at rest), không bảo vệ app đang chạy.
+	</p>
+
+	<p>
+		Sách gói toàn bộ ý này vào một dòng Key Points ("Encryption is key to securely storing your data"). Tôi tách ra dài
+		như trên vì nếu không có bức tranh này, cả chapter chỉ còn là hai lần thêm thư viện và vài lần đổi tên biến —
+		bạn làm được nhưng không biết mình vừa đổi được gì.
+	</p>
+
+	<h2 id="ban-do-luu-tru">2. Bản đồ: Android có bao nhiêu chỗ để lưu file?</h2>
+
+	<p>
+		Sách mở đầu chapter bằng <code>cacheDir</code> và <code>filesDir</code> rồi đi dần ra ngoài. Trước khi đọc từng chỗ,
+		hãy có bản đồ tổng — vì câu hỏi thực tế bạn sẽ gặp không phải "làm sao ghi file" mà là "<em>ghi vào đâu</em>".
+	</p>
+
+	<pre class="tree">Bộ nhớ trong (internal) — chỉ app bạn thấy, KHÔNG cần quyền
+  filesDir            data/data/&lt;package&gt;/files/        → dữ liệu app cần lâu dài
+  cacheDir            data/data/&lt;package&gt;/cache/        → có thể bị hệ thống xoá bất cứ lúc nào
+  databases/          data/data/&lt;package&gt;/databases/    → Room để ở đây
+  shared_prefs/       data/data/&lt;package&gt;/shared_prefs/ → SharedPreferences + EncryptedSharedPreferences
+
+Bộ nhớ ngoài, phần RIÊNG của app — KHÔNG cần quyền, gỡ app là mất
+  getExternalFilesDir(...)   Android/data/&lt;package&gt;/files/...
+
+Bộ nhớ ngoài, phần CHUNG — cần quyền hoặc phải qua SAF
+  Environment.DIRECTORY_DOWNLOADS / PICTURES / MOVIES / DOCUMENTS
+
+File do NGƯỜI DÙNG chọn — không cần quyền, vì chính họ vừa cho phép
+  Storage Access Framework (SAF): người dùng chọn → bạn nhận về một Uri</pre>
+
+	<p>
+		Ba câu hỏi giúp bạn chọn đúng chỗ trong 10 giây:
+	</p>
+
+	<ol>
+		<li><strong>Người dùng có cần thấy file này trong app Files / Thư viện ảnh không?</strong> Không → bộ nhớ trong. Có → external hoặc SAF.</li>
+		<li><strong>Mất file thì app có hỏng không?</strong> Không hỏng, tải lại được → <code>cacheDir</code>. Hỏng → <code>filesDir</code>.</li>
+		<li><strong>Đây có phải file người dùng tự tạo và muốn giữ sau khi gỡ app?</strong> Có → SAF, để chính họ chọn nơi lưu.</li>
+	</ol>
+
+	<p class="notice">
+		<strong>Sách bỏ qua một nhánh quan trọng: <code>getExternalFilesDir()</code> so với <code>getExternalStoragePublicDirectory()</code>.</strong>
+		Sách đặt hai hàm này cạnh nhau như hai cách tương đương ("Each returns a File object") nhưng chúng khác nhau về <em>quyền</em> —
+		khác biệt lớn nhất trong cả mục này. <code>getExternalFilesDir()</code> trả về thư mục riêng của app trên thẻ nhớ:
+		<strong>không cần quyền gì cả</strong>, ở mọi phiên bản Android. <code>getExternalStoragePublicDirectory()</code> trả về
+		thư mục chung: <strong>cần quyền</strong>, và từ Android 10 thì gần như không dùng được nữa vì Scoped Storage. Người mới đọc
+		sách rất dễ chọn hàm thứ hai rồi mất buổi tối đi tìm vì sao code chạy trên emulator mà chết trên máy thật.
+	</p>
+
+	<h2 id="filesdir">3. <code>filesDir</code> và <code>cacheDir</code> — hai dòng code, ba điều cần biết</h2>
+
+	<p>Hai property này lấy từ <code>Context</code>, nên gọi được ở bất cứ đâu có <code>Context</code> — Activity, Application, Service:</p>
+
+	<Code code={dirsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: sách chapter 11, khối code đầu tiên (<code>{BOOK}</code> dòng 15–18).</p>
+
+	<p>Và đây là cách sách ghi một file:</p>
+
+	<Code code={writeFileCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: sách chapter 11 (<code>{BOOK}</code> dòng 22–25). Đoạn này <strong>không có trong project</strong> — grep <code>filesDir</code> toàn bộ <code>projects/</code> trả về 0 kết quả.</p>
+
+	<p>Ba điều đáng nói về hai dòng đó, mà sách không nói:</p>
+
+	<h3 id="use-block">3.1. <code>use &#123; &#125;</code> làm gì và vì sao bắt buộc</h3>
+
+	<p>
+		<code>use</code> là extension function của Kotlin trên mọi <code>Closeable</code>. Nó chạy lambda rồi <strong>gọi
+		<code>close()</code> trong khối <code>finally</code></strong> — nghĩa là file được đóng cả khi lambda ném exception.
+		Nếu bạn viết <code>file.bufferedWriter().write("...")</code> mà không có <code>use</code>, dữ liệu có thể còn nằm trong
+		buffer và <strong>không bao giờ tới đĩa</strong>, vì <code>BufferedWriter</code> chỉ flush khi buffer đầy hoặc khi
+		<code>close()</code>. Đây là loại bug im lặng nhất trong mảng file: code không lỗi, file được tạo, nhưng rỗng.
+	</p>
+
+	<p class="hint">
+		<strong>Bổ sung.</strong> Trong Java bạn viết <code>try (var w = ...) &#123; &#125;</code> — gọi là try-with-resources.
+		Kotlin không có cú pháp đó, thay bằng <code>use</code>. Cùng một ý tưởng: <em>ai mở thì người đó chịu trách nhiệm đóng,
+		và trách nhiệm đó không được phụ thuộc vào việc code có chạy êm hay không.</em>
+	</p>
+
+	<h3 id="io-thread">3.2. Dòng code của sách đang chạy trên main thread</h3>
+
+	<p>
+		Sách nói "If you were to put this in MainActivity and run your app, this file would be generated". Đúng — và cũng đúng
+		là nó đang ghi đĩa <em>trên luồng vẽ giao diện</em>. Với một file 14 byte thì bạn không thấy gì. Với file lớn hơn hoặc
+		đĩa đang bận, bạn được thưởng một cú giật khung hình, hoặc ANR nếu quá 5 giây. Đây chính xác là bài học của chapter 9 về
+		<code>commit()</code> so với <code>apply()</code>, xuất hiện lại ở dạng khác.
+	</p>
+
+	<Code code={writeFileSafeCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Ví dụ tôi tự viết (không có trong sách, không có trong project) để minh hoạ ba thứ sách bỏ: <code>Dispatchers.IO</code>, <code>runCatching</code>, và trả kết quả về cho người gọi biết.</p>
+
+	<p>
+		<code>runCatching</code> quan trọng vì thao tác file <strong>thất bại được</strong> theo những cách bạn không kiểm soát:
+		đĩa đầy, file bị process khác giữ, thiếu quyền, đường dẫn không tồn tại. Sách viết code như thể ghi file luôn thành công.
+		Trong app thật, "hết dung lượng" là tình huống bình thường, không phải ngoại lệ.
+	</p>
+
+	<h3 id="cache-quota">3.3. Đo dung lượng cache còn lại</h3>
+
+	<Code code={cacheQuotaCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: sách chapter 11 (<code>{BOOK}</code> dòng 48–62).</p>
+
+	<p>
+		<code>getCacheQuotaBytes()</code> trả lời một câu hỏi rất cụ thể: <em>hệ thống hứa dành cho cache của app này bao nhiêu
+		byte trước khi bắt đầu xoá?</em> Nó không phải "dung lượng trống của máy". Nếu cache của bạn vượt hạn mức đó, khi máy
+		cần chỗ, app của bạn là đứa bị dọn trước.
+	</p>
+
+	<p>
+		Nó cần một <code>UUID</code> đại diện cho <em>volume</em> chứa đường dẫn — vì một máy có thể có nhiều vùng lưu trữ.
+		<code>getUuidForPath()</code> có sẵn để làm đúng việc đổi <code>File</code> → <code>UUID</code>.
+	</p>
+
+	<div class="callout diff">
+		<p><strong>Đoạn code này của sách có 2 vấn đề.</strong></p>
+		<ul>
+			<li>
+				<strong>Câu giải thích ngay dưới code nói sai.</strong> Sách viết: "Because the storage manager is a system service,
+				you must retrieve this from the main thread." Không có yêu cầu nào như vậy — <code>getSystemService()</code> gọi được
+				từ luồng nào cũng được. Điều <em>thật sự</em> cần cẩn thận thì ngược lại: <code>getCacheQuotaBytes()</code> có thể
+				chạm đĩa nên <strong>nên tránh</strong> main thread. Sách nói xuôi thành ngược.
+			</li>
+			<li>
+				<strong>Code không compile được như in.</strong> Nó dùng <code>context.cacheDir</code> trong khi đang ở
+				<code>lifecycleScope</code> của một Activity — mà Activity <em>chính là</em> một <code>Context</code>, nên không có
+				biến nào tên <code>context</code> ở đó. Phải viết <code>cacheDir</code> (hoặc <code>this.cacheDir</code>).
+				Cùng lỗi này cũng có ở đoạn ghi file phía trên. Dấu hiệu cho thấy snippet được cắt ra từ một chỗ khác chứ không
+				chạy thử trong ngữ cảnh sách đang mô tả.
+			</li>
+		</ul>
+	</div>
+
+	<Code code={cacheQuotaFixedCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Phiên bản tôi sửa lại (không có trong sách): bỏ <code>context.</code>, đẩy phần đọc đĩa sang <code>Dispatchers.IO</code>, và dùng <code>Timber.d</code> thay <code>Timber.e</code> vì đây là thông tin, không phải lỗi.</p>
+
+	<p class="hint">
+		<strong>Chi tiết nhỏ nhưng đáng nhặt:</strong> sách dùng <code>Timber.e</code> (error) để in một con số bình thường.
+		Log level không phải chuyện thẩm mỹ — nhiều team lọc log theo level và bật cảnh báo trên <code>e</code>. Dùng
+		<code>e</code> cho thông tin thường làm nhiễu chính hệ thống báo lỗi của bạn.
+	</p>
+
+	<h2 id="device-explorer">4. Device Explorer — nhìn thấy file bằng mắt</h2>
+
+	<p>
+		<em>View ▸ Tool Windows ▸ Device Explorer</em>. Đây là công cụ quan trọng nhất trong nửa đầu chapter, vì nó biến
+		"file được lưu ở đâu đó" thành một thứ bạn nhìn thấy và mở ra đọc được.
+	</p>
+
+	<p>
+		Sách hướng dẫn bằng ảnh chụp: mở <em>data/data</em>, cuộn tới <em>com.kodeco.recipefinder</em>, thấy <em>test.txt</em>,
+		double-click để mở. Bài học này không có ảnh, nên thay vào đó là <strong>cái bạn đang tìm và vì sao</strong>:
+	</p>
+
+	<table class="api">
+		<thead>
+			<tr><th>Đường dẫn trong Device Explorer</th><th>Bạn thấy gì</th><th>Dùng để kiểm tra điều gì</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>/data/data/com.kodeco.recipefinder/files/</code></td><td>File bạn ghi bằng <code>filesDir</code></td><td>Code ghi file có thật sự chạy chưa</td></tr>
+			<tr><td><code>/data/data/com.kodeco.recipefinder/cache/</code></td><td>File tạm</td><td>Cache có phình to bất thường không</td></tr>
+			<tr><td><code>/data/data/com.kodeco.recipefinder/databases/</code></td><td><code>recipe_database</code>, <code>-shm</code>, <code>-wal</code></td><td>Room đã tạo file chưa, tên file có đúng như bạn nghĩ không</td></tr>
+			<tr><td><code>/data/data/com.kodeco.recipefinder/shared_prefs/</code></td><td><code>encrypted_preferences.xml</code></td><td><strong>Bài kiểm tra cuối chapter:</strong> mở ra xem có đọc được không</td></tr>
+		</tbody>
+	</table>
+
+	<div class="callout note">
+		<p><strong>Bốn điều Device Explorer sẽ làm bạn bối rối, sách không nói:</strong></p>
+		<ul>
+			<li><strong>Trên máy thật, <code>/data/data</code> thường trống hoặc không mở được.</strong> Cần máy đã root, hoặc dùng
+			emulator có Google APIs (không phải Google Play). Với bản build <code>debug</code> bạn vẫn xem được thư mục app của mình
+			bằng <code>adb shell run-as com.kodeco.recipefinder ls files</code>.</li>
+			<li><strong>Device Explorer không tự làm mới.</strong> Ghi file rồi không thấy? Bấm chuột phải ▸ <em>Synchronize</em> trước
+			khi kết luận code sai.</li>
+			<li><strong>Ba file database, không phải một.</strong> <code>recipe_database</code>, <code>-wal</code> (write-ahead log)
+			và <code>-shm</code> (shared memory). Dữ liệu bạn vừa ghi có thể còn nằm trong <code>-wal</code>. Copy database ra ngoài mà
+			bỏ hai file kia là copy một bản thiếu.</li>
+			<li><strong>Tên tool đã đổi qua các bản Android Studio.</strong> Từng là <em>Device File Explorer</em>; các bản gần đây gộp
+			vào panel <em>Device Explorer</em> có hai tab <em>Files</em> và <em>Processes</em>.</li>
+		</ul>
+	</div>
+
+	<h2 id="cache-files">5. File cache — cái tên nói lên hợp đồng</h2>
+
+	<Code code={tempFileCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: sách chapter 11 (<code>{BOOK}</code> dòng 70–72).</p>
+
+	<p>
+		<code>File.createTempFile(prefix, suffix, directory)</code> là hàm của Java, không phải của Android. Nó tạo file với tên
+		<em>duy nhất</em> (thêm số random vào sau prefix), nên hai lần gọi liên tiếp cho hai file khác nhau. Truyền
+		<code>null</code> cho suffix nghĩa là dùng mặc định <code>.tmp</code>.
+	</p>
+
+	<p>
+		Câu quan trọng nhất trong mục này là câu cảnh báo của sách: <strong>hãy kiểm tra file còn tồn tại trước khi dùng lại,
+		vì hệ thống có thể xoá.</strong> Đó không phải lời khuyên phòng xa — đó là <em>hợp đồng</em> của thư mục cache.
+		Bạn đang nói với Android: "chỗ này cứ xoá thoải mái khi cần chỗ". Android sẽ làm đúng như vậy, và không báo trước.
+	</p>
+
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">Cách nghĩ sai</div>
+			<p>Lưu vào cache để "tiết kiệm" chỗ chính, rồi giữ đường dẫn trong biến và dùng lại sau. Chạy tốt lúc test, hỏng ngẫu nhiên trên máy người dùng.</p>
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">Cách nghĩ đúng</div>
+			<p>Cache = "tôi tạo lại được cái này". Mỗi lần dùng: <code>if (!file.exists()) tạoLại()</code>. Không tạo lại được → nó không thuộc cache, hãy để ở <code>filesDir</code>.</p>
+		</div>
+	</div>
+
+	<p class="hint">
+		<strong>Bổ sung.</strong> App của bạn <em>cũng nên</em> tự dọn cache, đừng chờ hệ thống. <code>tempFile.delete()</code> ngay
+		sau khi dùng xong là đủ. Ngoài ra Android còn cho khai <code>android:hasFragileUserData</code> và các API dọn cache theo tuổi
+		file — nhưng cách đơn giản nhất vẫn là xoá cái bạn vừa tạo khi không cần nữa.
+	</p>
+
+	<h2 id="external">6. External storage — nơi sách và Android hiện tại lệch nhau nhiều nhất</h2>
+
+	<p>Android có sẵn tên cho các thư mục quen thuộc, khai trong class <code>Environment</code>:</p>
+
+	<table class="api">
+		<thead><tr><th>Hằng số</th><th>Thư mục</th></tr></thead>
+		<tbody>
+			<tr><td><code>Environment.DIRECTORY_DOWNLOADS</code></td><td>Download</td></tr>
+			<tr><td><code>Environment.DIRECTORY_PICTURES</code></td><td>Pictures</td></tr>
+			<tr><td><code>Environment.DIRECTORY_MOVIES</code></td><td>Movies</td></tr>
+			<tr><td><code>Environment.DIRECTORY_DOCUMENTS</code></td><td>Documents</td></tr>
+		</tbody>
+	</table>
+
+	<p>Sách ghi file vào Documents như sau:</p>
+
+	<Code code={externalWriteCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: sách chapter 11 (<code>{BOOK}</code> dòng 96–100).</p>
+
+	<p>
+		Rồi sách nói thẳng một câu rất đúng và rất quan trọng: <em>"This works well on an emulator, but you can't just access
+		any file on a real device."</em> Hãy dừng ở câu đó một chút, vì nó là bản lề của cả nửa đầu chapter.
+	</p>
+
+	<div class="callout diff">
+		<p><strong>Cần biết rõ hơn sách ở chỗ này: <code>getExternalStoragePublicDirectory()</code> đã bị deprecated từ API 29.</strong></p>
+		<p>
+			Từ Android 10 (API 29), Android bật <strong>Scoped Storage</strong>: app không còn được nhìn thấy toàn bộ bộ nhớ ngoài.
+			Hàm này vẫn còn trong SDK nhưng được đánh dấu deprecated, và đường dẫn nó trả về thường không ghi được. Điều này giải
+			thích chính xác câu "works on emulator but not real device" của sách — nhưng sách không nói <em>tại sao</em>, khiến
+			người học tưởng đây là chuyện quyền hạn thông thường, trong khi thực chất là một thay đổi kiến trúc của Android.
+		</p>
+		<p>Ba lựa chọn thay thế, tuỳ mục đích:</p>
+		<ul>
+			<li><strong>File riêng của app trên thẻ nhớ</strong> → <code>context.getExternalFilesDir(...)</code>. Không quyền, không Scoped Storage, gỡ app là mất.</li>
+			<li><strong>Ảnh / video / nhạc dùng chung</strong> → MediaStore API.</li>
+			<li><strong>File tài liệu do người dùng chọn</strong> → SAF, đúng cái sách dạy ở mục sau.</li>
+		</ul>
+	</div>
+
+	<Code code={externalPrivateCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Ví dụ tôi tự viết cho nhánh <code>getExternalFilesDir()</code> mà sách nhắc tên nhưng không đưa code.</p>
+
+</article>
+

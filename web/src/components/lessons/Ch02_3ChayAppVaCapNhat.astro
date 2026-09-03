@@ -1,0 +1,601 @@
+---
+// Chương 2.3 — Chạy app, cập nhật công cụ, và những gì đã lỗi thời. Task 48 (Phase 7): áp chuẩn Chương 10.
+// Ranh giới tách + hợp đồng đặt tên: docs/CHAPTER_SPLIT_MAP.md
+// Nội dung diễn giải lại bằng tiếng Việt, không copy nguyên văn nguồn.
+// Code trích nguyên văn từ aaf-materials/ theo Quyết định #7 (docs/PROJECT_PLAN.md) — ghi rõ file + dòng ở mục nguon.
+// Đã mở kiểm bằng tay trước khi ghi số dòng:
+//   final/app/src/main/java/com/kodeco/chat/MainActivity.kt — 46 dòng; Greeting("Fuad") ở dòng 25 và dòng 44.
+//   final/app/build.gradle.kts — compileSdk = 34 (dòng 8), minSdk = 30 (dòng 12), targetSdk = 34 (dòng 13),
+//     composeOptions + kotlinCompilerExtensionVersion = "1.5.3" (dòng 42–44), compose-bom 2023.10.00 (dòng 57).
+//   final/build.gradle.kts — AGP 8.2.0 và Kotlin 1.9.10 (dòng 3–4).
+//   final/gradle/wrapper/gradle-wrapper.properties — gradle-8.2-bin.zip, timestamp Thu Oct 12 21:21:56 EDT 2023.
+
+import { Code } from "astro:components";
+
+const BOOK = "content/book/ch02-getting-started-with-android-studio.md";
+const FINAL = "aaf-materials/02-getting-started-with-android-studio/projects/final";
+const SRC = "aaf-materials/02-getting-started-with-android-studio/projects/final/app/src/main/java/com/kodeco/chat";
+
+const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
+  super.onCreate(savedInstanceState)
+  setContent {
+    KodecoChatTheme {
+      // A surface container using the 'background' color from the theme
+      Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+      ) {
+        Greeting("Android")
+       }
+    }
+  }
+}`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Bạn sẽ học được gì trong chương này</strong>
+		<ul>
+			<li>Chuỗi việc <em>thật</em> xảy ra sau khi bạn bấm <strong>Run App</strong>: từ code Kotlin tới file APK, cài lên
+				thiết bị, rồi hệ điều hành mở màn hình đầu tiên.</li>
+			<li>Vì sao lần build đầu tiên lâu hơn hẳn các lần sau, và ba nguyên nhân thật khi build đầu tiên thất bại — không
+				cái nào là "code sai".</li>
+			<li>Phần thực hành duy nhất của Chương 2: đổi <code>Greeting("Android")</code> thành tên bạn — kèm giải thích dòng chữ đó
+				thực sự đi đường nào ra tới màn hình.</li>
+			<li><strong>Live Edit</strong> làm được gì, khác <code>@Preview</code> và <em>Apply Changes</em> ở chỗ nào, và ba
+				loại thay đổi nó <em>không</em> xử lý được.</li>
+			<li>Vì sao nút Run đổi từ tam giác Play sang mũi tên vòng ngay sau lần chạy đầu — câu trả lời nằm luôn ở đây, không
+				hoãn.</li>
+			<li>Hai đường cập nhật khác nhau (Android Studio và Android SDK), hai tab <em>SDK Platforms</em> /
+				<em>SDK Tools</em>, và quan hệ giữa <code>compileSdk</code> với bản SDK bạn đã tải về máy.</li>
+			<li>Vì sao <em>một</em> Android Studio duy nhất build được app cho <em>mọi</em> phiên bản Android — sự thật kỹ thuật
+				giải toả lo lắng lớn nhất khi học bằng công cụ mới hơn project mẫu.</li>
+			<li>Bảng đối chiếu: project mẫu ghim ở cuối 2023, còn hôm nay đã khác những gì.</li>
+		</ul>
+		<p>
+			Đây là chương nhỏ <strong>cuối</strong> của Chương 2. Vì vậy mục 11 không chỉ tổng kết phần vừa đọc: nó gom cả ba
+			chương nhỏ <strong>2.1 → 2.3</strong> thành một danh sách để bạn tự kiểm mình còn nhớ gì, rồi phần cuối trỏ tiếp
+			sang Chương 3.
+		</p>
+	</div>
+	<div class="callout">
+		<strong>Bắc cầu từ Chương 2.2</strong>
+		<p>
+			Hết Chương 2.2 bạn đã có hai thứ: <strong>một chỗ để chạy app</strong> — máy ảo AVD dựng ở mục 5, hoặc điện thoại
+			thật đã bật USB Debugging ở mục 6 — và <strong>một project mà bạn đọc hiểu được từng file</strong>, sau khi mục 7 mở
+			lần lượt <code>MainActivity.kt</code>, <code>AndroidManifest.xml</code>, ba file trong <code>ui/theme/</code>, hai
+			file Gradle, <code>strings.xml</code> và <code>settings.gradle.kts</code>.
+		</p>
+		<p>
+			Nhưng tới giờ bạn vẫn <em>chưa</em> chạy app lần nào. Toàn bộ những gì đã đọc còn là chữ nằm trong editor. Chương
+			2.3 làm ba việc để đóng lại Chương 2: bấm <strong>Run App</strong> và xem chuỗi việc thật xảy ra phía sau, sửa một
+			dòng chữ để app chào chính bạn, rồi học cách giữ cho bộ công cụ không lạc hậu về sau.
+		</p>
+	</div>
+
+	<h2 id="chay-app">8. Chạy app và sửa chữ thấy đổi ngay</h2>
+	<p>
+		Dọc thanh công cụ phía trên Android Studio có một <strong>dropdown mang tên thiết bị</strong>, và ngay bên phải nó là
+		một nút <strong>hình tam giác Play màu xanh</strong>. Nút đó tên chính thức là <strong>Run App</strong>, và đây là nút
+		bạn sẽ bấm nhiều nhất trong cả khoá học.
+	</p>
+	<p>
+		Dropdown để chọn chạy trên thiết bị nào. Tuỳ mục 5 hay mục 6 của Chương 2.2 bạn đã làm, ở đó sẽ hiện tên máy thật hoặc
+		tên AVD. Quy tắc rất thoáng: <strong>chạy trên máy nào cũng được</strong>, miễn có đúng một thiết bị đang được chọn và
+		tên nó hiện ra trên nút dropdown lúc đóng. Không có thiết bị nào được chọn thì nút Run App vẫn bấm được nhưng Android
+		Studio sẽ hỏi lại bạn chọn máy trước.
+	</p>
+	<p>
+		Bấm <strong>Run App</strong>. Android Studio bắt đầu build và cài Kodeco Chat lên thiết bị — bạn theo dõi tiến trình
+		được ở <strong>đáy cửa sổ</strong>, nơi hiện thanh trạng thái và bảng <em>Build</em>. Xong thì app tự mở trên máy, và
+		bạn thấy một dòng chữ duy nhất: "Hello Android!".
+	</p>
+	<div class="callout">
+		<strong>Một lần bấm Run App thật ra là năm việc</strong>
+		<p>
+			Câu "build và cài app" gọn tới mức che mất chuỗi việc phía sau. Biết chuỗi này giúp bạn đọc được thông báo lỗi, vì
+			lỗi luôn ghi rõ nó đứt ở bước nào:
+		</p>
+		<ol class="chain">
+			<li><strong>Gradle chuẩn bị.</strong> Gradle đọc <code>settings.gradle.kts</code> và hai file
+				<code>build.gradle.kts</code> (Chương 2.2, mục 7.4), rồi tải về mọi thư viện được khai trong khối
+				<code>dependencies</code> nếu máy chưa có.</li>
+			<li><strong>Biên dịch.</strong> Code Kotlin của bạn được dịch sang bytecode, rồi chuyển tiếp thành định dạng
+				<em>DEX</em> — dạng mà máy ảo Android thực thi được.</li>
+			<li><strong>Đóng gói.</strong> DEX cộng toàn bộ resource (<code>strings.xml</code>, icon, theme) cộng
+				<code>AndroidManifest.xml</code> được nén thành <strong>một file APK</strong> duy nhất.</li>
+			<li><strong>Ký.</strong> Android từ chối cài app không có chữ ký, nên Android Studio tự ký APK bằng một
+				<em>debug key</em> sinh sẵn trên máy bạn. Đây là lý do bạn chưa phải làm gì về chữ ký ở chương này — Chương 4.3,
+				mục 11 mới nói tới việc ký bản phát hành thật.</li>
+			<li><strong>Cài và mở.</strong> APK được đẩy sang thiết bị qua <code>adb</code> rồi cài. Sau đó hệ điều hành mở
+				<em>đúng</em> Activity nào được đánh dấu là điểm vào trong Manifest — chính thẻ
+				<code>&lt;intent-filter&gt;</code> bạn đã thấy ở Chương 2.2, mục 7.2.</li>
+		</ol>
+	</div>
+	<p class="hint">
+		<strong>Lần đầu build sẽ lâu</strong> — Gradle phải tải toàn bộ thư viện về máy, và với project Chương 2 thì danh sách
+		đó gồm cả bộ Compose thông qua <code>compose-bom</code>. Các lần sau nhanh hơn nhiều vì thư viện đã nằm trong cache trên
+		ổ đĩa và Gradle chỉ dịch lại phần code bạn vừa sửa. Thanh tiến trình đứng im vài phút ở lần đầu là bình thường, không
+		phải treo.
+	</p>
+	<p>
+		Nếu lần build đầu tiên thất bại, hầu như luôn là một trong ba nguyên nhân dưới đây — và <em>không</em> nguyên nhân nào
+		là "code bạn viết sai", vì tới lúc này bạn còn chưa viết dòng code nào:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Nguyên nhân</th><th>Dấu hiệu trong thông báo</th><th>Cách xử lý</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Mạng</strong> — Gradle không tải được thư viện</td>
+				<td>Có chữ <em>could not resolve</em>, <em>connect timed out</em>, hoặc tên một artifact
+					<code>androidx.…</code></td>
+				<td>Kiểm mạng rồi bấm Run lại. Gradle giữ lại phần đã tải xong, nên lần sau nó đi tiếp chứ không bắt đầu lại từ
+					đầu.</td>
+			</tr>
+			<tr>
+				<td><strong>Thiếu bản SDK</strong> mà project khai</td>
+				<td>Có chữ <em>failed to find target</em> hoặc số hiệu API, ví dụ 34</td>
+				<td>Mở cửa sổ Android SDK ở mục 9 và tải đúng bản đó. Android Studio thường hiện luôn một đường link
+					<em>Install missing platform</em> để bấm.</td>
+			</tr>
+			<tr>
+				<td><strong>Thiết bị</strong> — chưa chọn máy, hoặc máy thật chưa cho phép</td>
+				<td>Có chữ <em>no target device found</em>, hoặc thiết bị hiện là <em>unauthorized</em></td>
+				<td>Chọn lại thiết bị trong dropdown. Với máy thật: rút cắm lại cáp và bấm <em>Allow</em> ở hộp thoại xác nhận
+					khoá RSA (Chương 2.2, mục 6).</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Nguyên tắc đọc lỗi build luôn giống nhau: <strong>đọc dòng đầu của thông báo ở đáy cửa sổ, không đọc cả trăm dòng stack
+		trace phía sau</strong>. Gradle thường nói thẳng nó thiếu gì ngay câu đầu, còn phần dưới chỉ là đường đi nội bộ của
+		chính Gradle.
+	</p>
+
+	<h3>Làm nó "của mình": đổi chữ trong <code>MainActivity.kt</code></h3>
+	<p>
+		Đường tới file trong Project navigator: <strong>app ▸ kotlin+java ▸ com.kodeco.chat ▸ MainActivity.kt</strong>. Trước
+		khi mở, một lời trấn an đúng tinh thần của một chương cài đặt: <em>đừng căng thẳng về những gì trong file này</em>. Ở
+		thời điểm này bạn chỉ cần biết đây là code đại diện cho màn hình app đang hiện trên thiết bị. Từng thành phần trong đó
+		sẽ được mổ ra ở các chương sau, và Chương 2.2 mục 7.1 đã đọc trước nó một lượt.
+	</p>
+	<p>Đoạn code cần tìm nằm trong hàm <code>onCreate</code>:</p>
+	<Code code={onCreateCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Việc cần làm gọn đúng một dòng: đổi <code>Greeting("Android")</code> thành tên bạn, để app chào bạn thay vì chào
+		"Android". Đây là <strong>phần thực hành duy nhất</strong> của cả Chương 2 — nhỏ có chủ ý, vì mục tiêu của chương là đi từ
+		"máy chưa có gì" tới "app do mình build đang chạy", chứ không phải học Compose.
+	</p>
+	<div class="callout">
+		<strong>Dòng chữ đó đi đường nào ra tới màn hình</strong>
+		<p>
+			Bạn vừa sửa một tham số chuỗi, nhưng nó đi qua bốn chặng trước khi thành pixel. Nắm chặng này bây giờ giúp Chương 5
+			nhẹ hơn rất nhiều:
+		</p>
+		<ol class="chain">
+			<li><code>Greeting("Fuad")</code> — bạn <em>gọi</em> một hàm và truyền vào một chuỗi.</li>
+			<li><code>fun Greeting(name: String, …)</code> — hàm nhận chuỗi đó vào tham số tên <code>name</code>.</li>
+			<li>Bên trong, nó gọi <code>Text(text = "Hello $name!")</code> — chuỗi được nhúng vào một mẫu câu bằng cú pháp
+				<code>$name</code> của Kotlin, thành <em>"Hello Fuad!"</em>.</li>
+			<li><code>Text</code> là composable có sẵn của Material 3, và nó là thứ thực sự vẽ chữ lên màn hình.</li>
+		</ol>
+		<p>
+			Vậy nên đổi tên trong dấu ngoặc kép chỉ đổi <em>dữ liệu</em>, không đổi giao diện. Muốn đổi cả câu chào — ví dụ thành
+			"Xin chào" — thì phải sửa bên trong hàm <code>Greeting</code>, chỗ chuỗi <code>"Hello $name!"</code>. Đây là lần đầu
+			bạn gặp ranh giới <strong>dữ liệu và giao diện</strong>, ranh giới mà cả Compose xây trên đó.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Hướng dẫn ghi <code>Greeting("Android")</code>, project mẫu ship <code>Greeting("Fuad")</code>.</strong> Đây
+		không phải lỗi: project <code>final</code> là trạng thái <em>sau khi đã làm xong phần thực hành</em>, và người dựng project mẫu đã điền
+		tên mình vào. Nghĩa là bạn đang xem đúng "đáp án" của phần thực hành duy nhất trong Chương 2. Cùng chuỗi đó xuất hiện
+		<em>hai</em> chỗ trong file — dòng 25 trong <code>onCreate</code>, và dòng 44 trong hàm <code>GreetingPreview</code> có
+		gắn <code>@Preview</code>. Xem lại code thật ở Chương 2.2, mục 7.1 để so từng dòng. Điều đáng rút ra: sửa chuỗi ở
+		<code>onCreate</code> thì app đổi nhưng <em>ô preview trong IDE vẫn hiện tên cũ</em>, vì preview gọi
+		<code>Greeting</code> bằng tham số riêng của nó.
+	</p>
+
+	<h3>Live Edit — vì sao chữ đổi mà không cần chạy lại app</h3>
+	<p>
+		Có một hiện tượng có thể làm bạn ngạc nhiên ngay lần đầu: chữ trên thiết bị đổi từ "Android" sang tên bạn
+		<strong>ngay lúc bạn gõ</strong>, không cần bấm chạy lại. Đó là nhờ một tính năng của Compose cộng Android Studio tên
+		<strong>Live Edit</strong>.
+	</p>
+	<p>Nếu bạn không thấy nó đổi, có hai đường:</p>
+	<ol class="chain">
+		<li>Chạy lại app — bấm Run App lần nữa. Cách này luôn đúng và không cần cấu hình gì.</li>
+		<li>Bật Live Edit trong Settings: mở <strong>Settings</strong>, gõ <em>"Live Edit"</em> vào ô tìm kiếm ở góc trên bên
+			trái để nhảy thẳng tới mục đó, rồi tick <strong>"Live Edit"</strong> và <strong>"Push Edits Automatically"</strong>.
+			Ở các bản Android Studio gần đây, hai mục này <strong>đã bật sẵn</strong>, nên phần lớn người học sẽ thấy chúng đã
+			được tick.</li>
+	</ol>
+	<p class="notice">
+		<strong>Đường vào Settings khác nhau theo hệ điều hành.</strong> Hướng dẫn thao tác trong khoá học này viết theo macOS,
+		nơi <em>Settings</em> nằm trong menu <strong>Android Studio</strong>; trên <strong>Windows và Linux</strong> nó là
+		<strong>File ▸ Settings</strong>. Đây là lần thứ hai khác biệt hệ điều hành xuất hiện trong Chương 2 — lần đầu là USB
+		driver ở Chương 2.2, mục 6 — và cũng là lần cuối. Từ Chương 3 trở đi mọi thứ diễn ra bên trong code, nên hệ điều hành
+		không còn tạo khác biệt.
+	</p>
+	<p>
+		Ba tính năng nghe giống nhau nhưng làm ba việc khác nhau, và người mới rất hay lẫn. Bảng dưới đây phân biệt dứt điểm:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Tính năng</th><th>Nó làm gì</th><th>Cần thiết bị?</th><th>Giữ trạng thái app?</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>@Preview</code></td>
+				<td>Vẽ một composable <em>ngay trong IDE</em>, dựa trên hàm preview bạn viết. Đây là hàm
+					<code>GreetingPreview</code> ở dòng 40–46 của file.</td>
+				<td>Không</td>
+				<td>Không có app nào đang chạy để mà giữ</td>
+			</tr>
+			<tr>
+				<td><strong>Live Edit</strong></td>
+				<td>Đẩy thay đổi code <em>vào app đang chạy thật</em> trên thiết bị, không cài lại.</td>
+				<td>Có</td>
+				<td><strong>Có</strong> — bạn đang ở màn hình nào thì vẫn ở đó</td>
+			</tr>
+			<tr>
+				<td><em>Apply Changes</em></td>
+				<td>Cùng họ ý tưởng nhưng ở mức Android chứ không riêng Compose: nạp lại code đã đổi vào app đang chạy, có bản
+					kèm khởi động lại Activity.</td>
+				<td>Có</td>
+				<td>Tuỳ biến thể bạn chọn</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Đây là lý do Compose đổi hẳn cảm giác làm giao diện: vòng lặp "sửa → thấy kết quả" rút từ vài chục giây xuống gần như
+		tức thì. Nhưng Live Edit có giới hạn rõ ràng, và biết trước sẽ tiết kiệm cho bạn nhiều lần bối rối: nó xử lý tốt
+		<strong>thay đổi bên trong thân một hàm composable</strong>, còn ba loại thay đổi sau thì vẫn phải build lại — đổi
+		<em>chữ ký</em> hàm (thêm hay bớt tham số), thêm class hoặc hàm mới, và sửa file Gradle. Chương 5, mục 7 sẽ dùng
+		<code>@Preview</code> làm công cụ chính, nên hãy giữ sự phân biệt này trong đầu.
+	</p>
+	<p>
+		Cuối phần chạy app có một quan sát nhỏ mà rất nhiều người thắc mắc: <strong>nút Run App đã đổi từ tam giác Play xanh
+		thành hình mũi tên vòng (repeat) xanh</strong>. Nó không phải lỗi hiển thị, và câu trả lời không cần hoãn tới chương
+		sau: app đang chạy rồi, nên nút Run chuyển sang nghĩa <em>"build lại và khởi động lại app đang chạy"</em> thay vì
+		<em>"cài mới và mở"</em>. Bên cạnh nó bạn cũng sẽ thấy nút <em>Apply Changes</em> vừa nhắc trong bảng trên. Chọn cái
+		nào thì tuỳ: mũi tên vòng luôn cho trạng thái sạch, còn Apply Changes nhanh hơn nhưng giữ lại trạng thái cũ nên đôi khi
+		che mất một lỗi khởi tạo.
+	</p>
+
+	<h2 id="cap-nhat">9. Cập nhật Android Studio và SDK</h2>
+	<p>
+		Phần cuối của Chương 2 nói về bảo trì công cụ, và nó mở đầu bằng một điều <strong>rất quan trọng với người học năm
+		2026</strong>: các hướng dẫn về giao diện Android Studio trong tài liệu nhập môn thường giả định bản Android mới nhất là
+		<strong>Android 14</strong>, mà giới lập trình gọi theo số hiệu là <strong>API 34</strong>. Bạn đang đọc ở thời điểm đã
+		có nhiều bản mới hơn.
+	</p>
+	<p>Đi kèm là một sự thật kỹ thuật giải toả lo lắng lớn nhất của người mới:</p>
+	<p>
+		<strong>Google đã tách rời phiên bản Android Studio khỏi phiên bản Android.</strong> Nghĩa là một Android Studio duy
+		nhất build được app cho <em>bất kỳ</em> phiên bản hệ điều hành Android, kể cả các bản SDK ra sau này.
+	</p>
+	<p class="hint">
+		<strong>Vì sao điều này quan trọng với bạn:</strong> nó chính là lý do bạn <em>vẫn học được</em> toàn bộ khoá học này
+		bằng một Android Studio đời 2026, dù project mẫu được ghim ở cuối 2023. Bản Studio mới hơn không làm code cũ hết chạy;
+		nó chỉ cần bạn <em>khai</em> đúng bản SDK trong Gradle (Chương 2.2, mục 7.4). Đó cũng là lý do khoá học chọn cách ghi
+		chú chỗ giao diện đã thay đổi, thay vì viết lại kiến thức — kiến thức không đổi, chỉ đường đi trong menu đổi.
+	</p>
+	<h3>Hai đường cập nhật</h3>
+	<p>
+		Có hai thứ khác nhau cần cập nhật, và trộn lẫn hai thứ này là nhầm lẫn phổ biến nhất: <strong>bản thân IDE</strong> và
+		<strong>các bản Android SDK</strong> mà IDE dùng để build. Cập nhật cái này không tự cập nhật cái kia.
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Việc</th><th>Đường đi</th><th>Dùng khi nào</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Cập nhật Android Studio</strong></td>
+				<td>Menu <em>Android Studio</em> ▸ <strong>Check for Updates</strong> (Windows/Linux: <em>Help</em> ▸
+					<strong>Check for Updates</strong>)</td>
+				<td>
+					Studio thường tự nhắc khi có bản mới, nhưng bạn không phải chờ nó nhắc. Hộp thoại cũng cho biết luôn nếu mọi
+					thứ đã ở bản mới nhất.
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Cài/xoá bản Android SDK</strong></td>
+				<td>
+					<em>Settings…</em> ▸ gõ "Android SDK" vào ô tìm kiếm ▸ tới
+					<strong>Appearance &amp; Behavior ▸ System Settings ▸ Android SDK</strong>
+				</td>
+				<td>
+					Khi cần một bản Android <em>mới hơn</em> — hoặc <em>cũ hơn</em>, ví dụ để test app trên máy đời cũ, hoặc để mở
+					một project ghim <code>compileSdk</code> thấp.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>Cửa sổ Android SDK có <strong>hai tab đáng chú ý</strong>, và phân biệt được chúng là phần đáng giá nhất của mục này:</p>
+	<ul>
+		<li>
+			<strong>SDK Platforms</strong> — danh sách các <em>phiên bản Android</em> (API 30, 33, 34…). Tick vào bản muốn cài →
+			<em>Apply</em> → <em>OK</em> ở hộp thoại xác nhận là nó tải về. Đây là thứ bạn cần khi khai một
+			<code>compileSdk</code> mới, hoặc khi muốn tạo một máy ảo chạy bản Android mới.
+		</li>
+		<li>
+			<strong>SDK Tools</strong> — danh sách các <em>công cụ build</em> mà Android Studio và app của bạn dùng: build-tools,
+			platform-tools (chứa <code>adb</code> — chương trình đẩy APK sang thiết bị ở bước 5 của mục 8), emulator, NDK… Cùng
+			cách cài: tick → Apply → OK.
+		</li>
+	</ul>
+	<p class="hint">
+		<strong>Phân biệt nhanh:</strong> <em>Platforms</em> = "Android bản nào" — thứ app <em>chạy trên</em>. <em>Tools</em> =
+		"dụng cụ để build" — thứ <em>tạo ra</em> app. Thiếu một Platform thì bạn không build được cho bản Android đó, nhưng vẫn
+		build được cho bản khác. Thiếu Tools thì không build được gì cả. Đây cũng là lý do nguyên nhân thứ hai trong bảng lỗi
+		build ở mục 8 hay xảy ra: máy bạn có Studio mới nhất nhưng chưa tải bản Platform mà project khai.
+	</p>
+	<p>
+		Còn một quan hệ nên nói thẳng, vì nó nối mục này với file Gradle: con số <code>compileSdk = 34</code> trong
+		<code>app/build.gradle.kts</code> (dòng 8) là một <em>yêu cầu</em>, không phải một lựa chọn tuỳ ý. Nó nói "hãy biên dịch
+		app này bằng bộ API của Android 14". Nếu máy bạn chưa tải Platform 34 trong tab <em>SDK Platforms</em> thì Gradle không
+		có gì để biên dịch cùng, và build đứt ngay. Ngược lại, tải thêm Platform mới hơn <em>không</em> tự động đổi
+		<code>compileSdk</code> — con số đó chỉ đổi khi bạn tự sửa file. Chương 4.2, mục 7 sẽ mổ kỹ ba con số
+		<code>compileSdk</code>, <code>minSdk</code>, <code>targetSdk</code> và hệ quả của từng cái.
+	</p>
+	<h2 id="version">10. Project mẫu ghim bản nào, hôm nay khác gì</h2>
+	<p>
+		Chương 2 là chương <em>già</em> nhanh nhất trong cả khoá học, vì nó nói về giao diện một phần mềm được cập nhật vài
+		tháng một lần. Kiến thức thì còn nguyên giá trị; đường đi trong menu thì đã đổi. Nên toàn bộ khác biệt được gom vào một
+		chỗ như dưới đây, thay vì rải rác từng mục.
+	</p>
+	<p>
+		Trước hết, "cuối 2023" không phải phỏng đoán — nó đọc được từ chính các file cấu hình của project mẫu:
+		<code>com.android.application</code> phiên bản <strong>8.2.0</strong> và <code>org.jetbrains.kotlin.android</code>
+		phiên bản <strong>1.9.10</strong> ở file Gradle gốc; <code>gradle-8.2-bin.zip</code> trong
+		<code>gradle-wrapper.properties</code>, cùng dòng timestamp <em>Thu Oct 12 21:21:56 EDT 2023</em> mà Gradle tự ghi vào
+		đầu file đó. Ba dấu vết trùng khớp, và đó là mốc thời gian để đọc bảng dưới.
+	</p>
+	<table class="cmp">
+		<thead>
+			<tr><th>Chủ đề</th><th>Cuối 2023</th><th>Hôm nay</th><th>Ảnh hưởng tới bạn</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Tên bản Android Studio</td>
+				<td><strong>Hedgehog</strong> — tên động vật kèm số hiệu</td>
+				<td>Google đã bỏ cách đặt tên động vật, chuyển sang số hiệu theo năm kiểu <code>2026.1.x</code>. Tên
+					"Hedgehog" chỉ còn ý nghĩa lịch sử.</td>
+				<td>Không ảnh hưởng nội dung — chỉ khiến bạn không tìm thấy bản tên "Hedgehog" trên trang tải. Tải bản Stable
+					mới nhất.</td>
+			</tr>
+			<tr>
+				<td>Bước <strong>"Enable new UI"</strong></td>
+				<td>Một ô tick phải tự bật trong Settings</td>
+				<td>New UI <strong>đã là mặc định</strong> từ bản Ladybug Feature Drop; ô tick đó không còn tồn tại.</td>
+				<td>Bỏ qua cả bước cấu hình đó. Chi tiết ở Chương 2.1, mục 2.</td>
+			</tr>
+			<tr>
+				<td>Bản Android cao nhất</td>
+				<td><strong>API 34</strong> (Android 14)</td>
+				<td>Đã qua nhiều bản sau đó; danh sách <em>SDK Platforms</em> và System Image của bạn sẽ dài hơn nhiều.</td>
+				<td>Theo <em>quy tắc</em> "chọn API cao nhất đang có", đừng theo <em>con số</em>. Riêng
+					<code>compileSdk</code> và <code>targetSdk</code> trong project mẫu vẫn là 34 và vẫn build được.</td>
+			</tr>
+			<tr>
+				<td>Máy ảo mẫu</td>
+				<td><strong>Pixel 7 Pro</strong> trong bước Select Hardware</td>
+				<td>Có thể không còn trong danh sách mặc định.</td>
+				<td>Chọn Pixel đời gần nhất — mọi chương của khoá học chỉ cần một máy ảo cỡ điện thoại.</td>
+			</tr>
+			<tr>
+				<td>Đường vào Settings</td>
+				<td>Menu <em>Android Studio ▸ Settings</em> (macOS)</td>
+				<td>Không đổi trên macOS; trên Windows và Linux là <strong>File ▸ Settings</strong>.</td>
+				<td>Xuất hiện 2 lần trong Chương 2: Live Edit (mục 8) và Android SDK (mục 9).</td>
+			</tr>
+			<tr>
+				<td>Tạo AVD</td>
+				<td>Wizard 3 bước rời: Hardware → System Image → Summary</td>
+				<td>Device Manager đã được gộp và làm lại giao diện.</td>
+				<td>Ba <em>quyết định</em> bạn phải đưa ra vẫn y nguyên: máy nào → Android bản nào → xác nhận. Chương 2.2,
+					mục 5 mô tả theo quyết định chứ không theo nút bấm, nên vẫn dùng được.</td>
+			</tr>
+			<tr>
+				<td>Bộ build của project mẫu</td>
+				<td>AGP <code>8.2.0</code> · Kotlin <code>1.9.10</code> · Gradle <code>8.2</code></td>
+				<td>Cả ba đã lên nhiều bản. Android Studio mới sẽ đề nghị bạn nâng AGP khi mở project.</td>
+				<td>Không bắt buộc nâng để học. Nếu Studio quá mới không mở nổi AGP 8.2 thì nâng theo đúng đề nghị của nó,
+					code Kotlin không phải sửa.</td>
+			</tr>
+			<tr>
+				<td>Compose compiler</td>
+				<td>Khai riêng trong khối <code>composeOptions</code> với
+					<code>kotlinCompilerExtensionVersion = "1.5.3"</code></td>
+				<td>Từ Kotlin 2.0, Compose compiler đi kèm chính Kotlin và được bật bằng plugin
+					<code>org.jetbrains.kotlin.plugin.compose</code>.</td>
+				<td>Project mẫu vẫn build. Nhưng project <em>mới</em> bạn tự tạo hôm nay sẽ không có khối
+					<code>composeOptions</code> nào — đừng đi tìm nó. Xem
+					<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>.</td>
+			</tr>
+			<tr>
+				<td>Bản Compose</td>
+				<td><code>compose-bom</code> phiên bản <code>2023.10.00</code></td>
+				<td>BOM đã có nhiều bản mới hơn, kèm thêm composable mới.</td>
+				<td>Mọi composable dùng trong khoá học (<code>Surface</code>, <code>Text</code>, <code>Column</code>,
+					<code>LazyColumn</code>) đều còn nguyên trong bản mới.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		<strong>Những gì không đổi</strong> — và đây mới là phần đáng nhớ: khái niệm Activity, Manifest, Gradle, AVD, USB
+		Debugging, Live Edit, <code>@Preview</code>, cùng toàn bộ code Kotlin và Compose đã đọc ở Chương 2.2, mục 7. Chín hàng
+		trong bảng trên đều là <em>tên gọi</em>, <em>số hiệu</em> và <em>đường đi trong menu</em>; không hàng nào nói rằng một
+		khái niệm đã sai. Đó chính là lý do project mẫu cuối 2023 vẫn dùng để học được vào 2026.
+	</p>
+	<div class="callout">
+		<strong>Tổng kết Chương 2.3</strong>
+		<ul>
+			<li><strong>Một lần bấm Run App là năm việc:</strong> Gradle chuẩn bị và tải thư viện → biên dịch Kotlin sang DEX →
+				đóng gói thành APK → ký bằng debug key → cài qua <code>adb</code> rồi mở Activity được khai là điểm vào trong
+				Manifest. Lỗi build luôn ghi rõ nó đứt ở bước nào.</li>
+			<li><strong>Lần build đầu lâu là bình thường</strong>, và ba nguyên nhân thất bại thật sự là mạng, thiếu bản SDK,
+				hoặc thiết bị chưa sẵn sàng — không phải code. Đọc dòng đầu của thông báo, đừng đọc stack trace.</li>
+			<li><strong>Phần thực hành duy nhất của Chương 2:</strong> đổi <code>Greeting("Android")</code> thành tên bạn. Chuỗi đó đi
+				qua bốn chặng: tham số → <code>name</code> → <code>"Hello $name!"</code> → composable <code>Text</code>. Đổi
+				chuỗi là đổi <em>dữ liệu</em>, không đổi giao diện.</li>
+			<li><strong>Ba tính năng dễ lẫn:</strong> <code>@Preview</code> vẽ trong IDE, không cần thiết bị · <strong>Live
+				Edit</strong> đẩy code vào app đang chạy và giữ nguyên trạng thái · <em>Apply Changes</em> làm việc tương tự ở
+				mức Android. Live Edit không xử lý được: đổi chữ ký hàm, thêm class, sửa Gradle.</li>
+			<li><strong>Nút Run đổi hình</strong> thành mũi tên vòng vì app đã chạy — nó chuyển nghĩa sang "build lại và khởi
+				động lại", không phải "cài mới".</li>
+			<li><strong>Hai đường cập nhật độc lập:</strong> <em>Check for Updates</em> cho IDE, và cửa sổ Android SDK cho các
+				bản Android. Trong đó <em>SDK Platforms</em> = "Android bản nào" (app chạy trên), <em>SDK Tools</em> = "dụng cụ
+				để build" (tạo ra app).</li>
+			<li><strong>Google đã tách Android Studio khỏi phiên bản Android</strong> — một IDE build được cho mọi bản Android,
+				kể cả bản ra sau. Đây là lý do project mẫu cuối 2023 vẫn học được bằng Studio 2026, miễn bạn khai đúng
+				<code>compileSdk</code>.</li>
+			<li><strong>Chín điểm đã đổi so với cuối 2023</strong> (mục 10) đều là tên gọi, số hiệu và đường đi trong menu —
+				không khái niệm nào bị sai.</li>
+		</ul>
+	</div>
+
+	<h2 id="key-points">11. Tổng kết cả Chương 2 (2.1 → 2.3)</h2>
+	<p>
+		Dựng môi trường làm việc thường là bước đầu tiên và quan trọng nhất khi bước vào một công nghệ mới — và bạn vừa làm
+		xong. Phần dưới đây tổng kết <strong>cả ba chương nhỏ</strong>: 2.1 (cài Android Studio và tạo project), 2.2 (máy ảo,
+		máy thật, và đọc từng file của project), 2.3 (chạy app, sửa chữ, cập nhật công cụ). Đọc lại danh sách này là cách nhanh
+		nhất để tự kiểm mình còn nhớ gì trước khi sang Chương 3.
+	</p>
+	<ol class="keypoints">
+		<li>
+			<strong>Tải và cài Android Studio.</strong> Kèm một điều giải thích được nhiều thứ về sau: nó là IDE dựng trên
+			<em>IntelliJ Platform</em> của JetBrains (Chương 2.1, mục 1) — nên nhiều phím tắt và menu thực ra là của JetBrains,
+			không phải của Android. Và ba nhánh phiên bản Stable / Beta / Canary có mục đích khác nhau; người mới học chọn
+			Stable.
+		</li>
+		<li>
+			<strong>Tạo project mới cho app đầu tiên.</strong> Với 6 ô thông tin đã được giải thích từng cái ở Chương 2.1, mục
+			3, trong đó <code>Package name</code> là danh tính vĩnh viễn của app và <code>Minimum SDK</code> là ngưỡng tương
+			thích — hai ô này sai thì sửa về sau rất mệt.
+		</li>
+		<li>
+			<strong>Dựng máy ảo (AVD) và cấu hình máy thật để lập trình.</strong> Ba quyết định khi tạo AVD: máy nào → Android
+			bản nào → xác nhận. Và bạn biết vì sao Android tắt sẵn USB Debugging: nó là lỗ hổng bảo mật có thật, có chủ ý, chỉ
+			mở khi cần (Chương 2.2, mục 6).
+		</li>
+		<li>
+			<strong>Đọc hiểu toàn bộ project vừa sinh ra.</strong> Chương 2.2, mục 7 mở lần lượt 4 file Kotlin và các file cấu
+			hình: <code>MainActivity.kt</code>, ba file trong <code>ui/theme/</code>, <code>AndroidManifest.xml</code>, hai file
+			Gradle, <code>strings.xml</code>, <code>settings.gradle.kts</code>. Đây là lúc project nhỏ nhất và dễ hiểu toàn bộ
+			nhất — về sau nó sẽ phình lên nhiều lần.
+		</li>
+		<li>
+			<strong>Đổi chữ trên màn hình để app chào chính bạn.</strong> Cụ thể là tham số <code>name</code> của composable
+			<code>Greeting</code>, và chữ đổi ngay nhờ Live Edit — vòng lặp "sửa → thấy" mà Chương 5 sẽ khai thác triệt để.
+		</li>
+		<li>
+			<strong>Cập nhật Android Studio và các SDK/tool nó dựa vào.</strong> Kèm sự thật quan trọng nhất của mục 9: Google
+			đã tách Android Studio khỏi phiên bản Android, nên một IDE duy nhất build được cho mọi bản Android.
+		</li>
+		<li>
+			<strong>Đọc được chỗ nào đã lỗi thời và chỗ nào chưa.</strong> Chương 2 có 9 điểm lệch giữa hướng dẫn cuối 2023 và
+			hôm nay (mục 10), cộng một điểm lệch nằm ngay trong chính project mẫu: phần hướng dẫn tạo project yêu cầu
+			<strong>Minimum SDK = API 28</strong>, còn code mẫu ship <code>minSdk = 30</code>. Biết trước hai loại lệch này là
+			kỹ năng thật, không phải chi tiết vụn.
+		</li>
+	</ol>
+	<p>
+		App hiện tại chỉ hiện một dòng chữ, nhưng bạn đã có đủ ba thứ cần cho mọi chương còn lại: <strong>công cụ chạy
+		được</strong>, <strong>một thiết bị để test</strong>, và <strong>một project hiểu được từng file</strong>. Nếu Chương
+		2.2, mục 7 có cảm giác hơi nhiều thì không cần nhớ hết ngay — quay lại đọc nó sau Chương 3, 4 và 5, mỗi lần sẽ hiểu thêm
+		một tầng.
+	</p>
+	<p>
+		<strong>Tiếp theo — Chương 3:</strong> Chương 2 cố tình để lại ba câu hỏi chưa trả lời, và Chương 3 mở đúng câu đầu
+		tiên. Bạn sẽ học <strong>Activity</strong> thực chất là gì và vì sao mọi màn hình Android đều phải khai trong Manifest;
+		hàm <code>onCreate()</code> chạy khi nào và khi nào <em>không</em> chạy; <strong>string resource</strong> cùng lớp
+		<code>R</code> — vì sao chuỗi văn bản không nên nằm trong code Kotlin; <strong>Intent</strong> như một "việc sẽ làm"
+		dưới dạng object; <strong>permission</strong> và cách app xin quyền; rồi cách <strong>debug</strong> — chạy app theo một
+		cách khác để nhìn thấy bên trong lúc nó đang chạy. Hai câu còn lại tới sau: file <code>build.gradle.kts</code> và
+		Version Catalog ở <strong>Chương 4</strong>, còn <code>setContent</code>, <code>@Composable</code>,
+		<code>Surface</code>, <code>Modifier</code> ở <strong>Chương 5</strong>.
+	</p>
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Bốn chỗ dưới đây là nơi tài liệu nhập môn Android trên mạng dễ dẫn bạn đi lệch, hoặc nơi chính project mẫu không khớp
+		với hướng dẫn của nó. Đọc trước để khỏi mất một buổi tối đi tìm lỗi không tồn tại.
+	</p>
+	<p class="notice">
+		<strong>1. Khối <code>composeOptions</code> không còn cần ở project mới.</strong> Project mẫu Chương 2 khai
+		<code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code> trong
+		<code>app/build.gradle.kts</code>, và rất nhiều hướng dẫn Compose viết trước 2024 cũng bắt bạn thêm khối đó rồi tự tay
+		tra bảng "Kotlin bản nào đi với Compose compiler bản nào". Từ Kotlin 2.0, Compose compiler được phát hành cùng chính
+		Kotlin, và bạn bật nó bằng plugin <code>org.jetbrains.kotlin.plugin.compose</code> — không còn số version riêng nào để
+		tra. Hệ quả: project mẫu vẫn build bình thường, nhưng nếu bạn tạo project mới hôm nay rồi đi tìm khối
+		<code>composeOptions</code> để so sánh thì sẽ không thấy, và <em>đừng</em> thêm nó vào. Đây là một trong những chỗ lỗi
+		thời nhanh nhất của toàn bộ hệ sinh thái Compose.
+	</p>
+	<p class="notice">
+		<strong>2. Bước "Enable new UI" đã biến mất, và hai bên đã đổi vai.</strong> Tài liệu cài đặt viết quanh 2023 thường
+		bắt đầu bằng một bước cấu hình: vào Settings ▸ <em>Appearance &amp; Behavior</em> ▸ <em>New UI</em> rồi tick
+		<em>Enable new UI</em>, vì ảnh chụp màn hình trong tài liệu đều theo giao diện mới. Từ bản Ladybug Feature Drop, New UI
+		<strong>đã là mặc định</strong> và ô tick đó không tồn tại nữa. Ngược lại, ai muốn giao diện cũ (Classic UI) thì bây giờ
+		phải <em>cài thêm plugin</em> từ JetBrains Marketplace — tức hai bên đã hoán vị hoàn toàn. Bạn bỏ qua bước này và đi
+		thẳng sang tạo project (Chương 2.1, mục 2).
+	</p>
+	<p class="notice">
+		<strong>3. Hướng dẫn nói Minimum SDK = API 28, nhưng code mẫu ship <code>minSdk = 30</code>.</strong> Phần hướng dẫn
+		tạo project yêu cầu chọn <em>Minimum SDK = API 28 ("Pie", Android 9.0)</em> và nói rằng mọi app trong khoá dùng mức này.
+		Mở file thật thì <code>app/build.gradle.kts</code> của project Chương 2 khai <code>minSdk = 30</code> (Android 11) — và
+		con số 30 xuất hiện ở <strong>cả 10 project</strong> có file build trong bộ project mẫu, nên đây không phải một lần gõ
+		sai. Hệ quả thực tế gần như bằng không: cả 28 và 30 đều chạy được toàn bộ code trong khoá học. Nhưng nếu bạn tự tạo
+		project theo đúng hướng dẫn rồi mở project mẫu ra so, bạn sẽ thấy hai con số khác nhau và tưởng mình làm sai. Bạn không
+		làm sai — hãy giữ nguyên con số nào cũng được và đi tiếp.
+	</p>
+	<p class="notice">
+		<strong>4. Live Edit "không hoạt động" thường là do loại thay đổi, không phải do cấu hình.</strong> Khi chữ trên thiết
+		bị không đổi theo lúc gõ, phản xạ đầu tiên của nhiều người là vào Settings tick lại hai ô Live Edit và <em>Push Edits
+		Automatically</em>. Nhưng nếu hai ô đó đã bật sẵn — mặc định ở các bản gần đây — thì nguyên nhân thật nằm ở chỗ khác:
+		Live Edit chỉ nạp lại được <em>thân</em> một hàm composable. Vừa thêm một tham số vào <code>Greeting</code>, vừa tạo một
+		hàm hay class mới, hay vừa sửa file Gradle thì phải build lại, và không có thông báo lỗi nào nói cho bạn biết điều đó.
+		Thêm một chỗ hay làm người ta lệch: sửa chuỗi trong <code>onCreate</code> mà ô <code>@Preview</code> trong IDE vẫn hiện
+		tên cũ — vì hàm preview truyền tham số riêng của nó, hoàn toàn độc lập với <code>onCreate</code>.
+	</p>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 228–256 (chạy app: dropdown thiết bị, nút Run App, theo
+			dõi tiến trình ở đáy cửa sổ) · dòng 258–263 (đường tới <code>MainActivity.kt</code> trong Project navigator và lời
+			trấn an "đừng căng thẳng về file này") · dòng 265–282 (đoạn <code>onCreate</code> được trích, giữ nguyên cả phần thụt
+			lề hơi lệch của giáo trình gốc, và yêu cầu đổi <code>Greeting()</code> thành tên bạn) · dòng 287–301 (Live Edit và hai ô
+			<em>Live Edit</em> / <em>Push Edits Automatically</em>) · dòng 294 (ghi chú riêng cho Windows: <em>File ▸
+			Settings</em>) · dòng 303–305 (chạy lại app; ghi chú nút Run đã đổi từ tam giác Play sang mũi tên vòng) · dòng
+			312–313 (giả định Android 14 / API 34; Google đã tách Android Studio khỏi phiên bản Android) · dòng 315–319 (hai
+			đường cập nhật: <em>Check for Updates</em> và <em>Settings…</em> ▸ Android SDK) · dòng 321–336 (hai tab
+			<em>SDK Platforms</em> và <em>SDK Tools</em>, cách tick → Apply → OK) · dòng 340–346 (5 điểm chốt lại của cả chương) ·
+			dòng 348–350 (phần "đi tiếp từ đây"). Giáo trình gốc yêu cầu <em>Minimum SDK = API 28</em> ở dòng 89 — số dòng dùng
+			cho cạm bẫy số 3. Toàn bộ ảnh chụp màn hình gốc (<code>img34–45.png</code>) không được copy sang khoá học vì bản
+			quyền; nội dung các ảnh đó đã được diễn giải thành chữ, bảng và danh sách trong các mục 8–10.
+		</li>
+		<li>
+			<strong>Code thật đã đối chiếu:</strong> <code>{SRC}/MainActivity.kt</code> — 46 dòng; hàm <code>onCreate</code>
+			(dòng 16–29) với <code>Greeting("Fuad")</code> ở dòng 25, hàm <code>Greeting</code> (dòng 32–38) chứa
+			<code>Text(text = "Hello $name!")</code>, hàm <code>GreetingPreview</code> có <code>@Preview</code> (dòng 40–46) với
+			<code>Greeting("Fuad")</code> lần thứ hai ở dòng 44 · <code>{FINAL}/app/build.gradle.kts</code> —
+			<code>compileSdk = 34</code> (dòng 8), <code>minSdk = 30</code> (dòng 12), <code>targetSdk = 34</code> (dòng 13),
+			khối <code>composeOptions</code> với <code>kotlinCompilerExtensionVersion = "1.5.3"</code> (dòng 42–44),
+			<code>compose-bom</code> phiên bản <code>2023.10.00</code> (dòng 57) · <code>{FINAL}/build.gradle.kts</code> — AGP
+			<code>8.2.0</code> và Kotlin <code>1.9.10</code> (dòng 3–4) · <code>{FINAL}/gradle/wrapper/gradle-wrapper.properties</code>
+			— <code>gradle-8.2-bin.zip</code> và timestamp <em>Thu Oct 12 21:21:56 EDT 2023</em> (dòng 1 và 4).
+		</li>
+		<li>
+			<strong>Phần bổ sung ngoài giáo trình:</strong> chuỗi năm bước phía sau một lần bấm Run App (Gradle → biên dịch DEX →
+			đóng gói APK → ký debug key → cài qua <code>adb</code>) · bảng ba nguyên nhân thật khi build đầu tiên thất bại và
+			cách đọc thông báo lỗi · bốn chặng dòng chữ đi từ tham số tới pixel · bảng phân biệt <code>@Preview</code> / Live Edit
+			/ <em>Apply Changes</em> cùng ba loại thay đổi Live Edit không xử lý được · câu trả lời cho hiện tượng nút Run đổi
+			hình (giáo trình gốc hoãn câu này sang chương sau) · quan hệ giữa <code>compileSdk</code> và tab <em>SDK Platforms</em> · cột "Hôm
+			nay" của bảng đối chiếu ở mục 10, dựng bằng cách đọc file cấu hình thật cộng đối chiếu tài liệu AndroidX và JetBrains ·
+			bốn cạm bẫy ở mục cuối.
+		</li>
+	</ul>
+</section>

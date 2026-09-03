@@ -1,0 +1,425 @@
+---
+// Chương 1.1 — Android là gì, chọn Kotlin, và security sandbox.
+// Task 48: tách từ Ch01WelcomeToAndroidKotlin.astro (nguyên khối 10.029 từ) theo docs/CHAPTER_SPLIT_MAP.md.
+// Phần giải thích tự viết tiếng Việt, diễn giải từ content/book/ch01-welcome-to-android-kotlin.md — không copy nguyên văn.
+// Chương 1 KHÔNG có project (4 file .keep rỗng 0 byte), nên code minh hoạ lấy từ
+//   aaf-materials/08-networking/projects/final/app/src/main/AndroidManifest.xml (ví dụ permission duy nhất của cả khoá học).
+// Mọi số dòng trích dẫn trong bài đã mở file thật để kiểm.
+
+import { Code } from "astro:components";
+
+const BOOK = "content/book/ch01-welcome-to-android-kotlin.md";
+
+const CH01 = "aaf-materials/01-welcome-to-android-and-kotlin/projects";
+
+const CH08 = "aaf-materials/08-networking/projects/final/app/src/main";
+
+const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
+
+  <uses-permission android:name="android.permission.INTERNET" />
+  <application
+    android:allowBackup="true"
+    ...
+    android:name=".RecipeApp"
+    android:theme="@style/Theme.RecipeFinder"
+    tools:targetApi="31">`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Bạn sẽ học được gì trong chương này</strong>
+		<ul>
+			<li>Vì sao framework Android <em>bắt buộc</em> phải khổng lồ — và vì sao bạn không cần biết hết nó mới viết được app.</li>
+			<li>Chiến lược học duy nhất khả thi với một framework cỡ này, và vì sao cảm giác ngợp là bình thường.</li>
+			<li>Bốn lựa chọn công nghệ để làm app Android, và năm lý do khoá học này chọn <strong>Kotlin</strong>.</li>
+			<li><strong>Security sandbox</strong>: mỗi app sống trong một vùng cô lập — đây là gốc rễ của mọi chuyện về quyền (permission) sau này.</li>
+			<li>Vì sao hiểu sandbox làm cho <code>AndroidManifest.xml</code> và <code>Intent</code> thôi trông rườm rà vô nghĩa.</li>
+			<li>Chỗ <em>duy nhất</em> trong cả khoá học thực sự xin quyền hệ thống, và vì sao nó xuất hiện đúng ở chương đó.</li>
+		</ul>
+		<p>
+			Ba chương nhỏ tiếp theo dạy phần còn lại của Chương 1, để bạn biết trước lộ trình:
+			<strong>Chương 1.2</strong> — bốn <strong>app component</strong> (Activity, Service, Content Provider, Broadcast
+			Receiver), mỗi cái làm gì, loại nào thực sự được dùng trong 11 project của khoá học, rồi
+			<strong>Intent</strong> và <strong>Content Resolver</strong> — cách các component gọi nhau, kể cả gọi sang app
+			khác. <strong>Chương 1.3</strong> — đọc được file <code>AndroidManifest.xml</code> thật dòng nào ra dòng nào, và
+			<strong>app resources</strong> là gì, kèm một chuỗi tham chiếu resource 3 tầng lần theo trong code thật.
+			<strong>Chương 1.4</strong> — <strong>Gradle</strong> làm gì trong bức tranh tổng thể, bốn con số trong build file
+			định vị project vào năm nào, và bản đồ toàn bộ 11 chương phía trước.
+		</p>
+	</div>
+
+	<div class="callout">
+		<strong>Chương 1 làm gì trong cả khoá học:</strong> đây là chương <em>mở màn</em> — nó không xây app nào, không có
+		bước nào để làm theo. Nhiệm vụ duy nhất của nó là <strong>vẽ bản đồ</strong>: một Android app gồm những mảnh gì, các
+		mảnh nói chuyện với nhau ra sao, và cái gì ghép chúng thành một file cài được.
+		<br /><br />
+		Nó <strong>chưa</strong> làm gì cả: chưa cài Android Studio (Chương 2), chưa viết một dòng Kotlin nào, chưa dựng giao
+		diện (Chương 5). Nhưng gần như mọi khái niệm bạn gặp ở đây sẽ quay lại — Activity ở Chương 3, Gradle ở Chương 4,
+		Compose ở Chương 5, permission ở Chương 8, lưu dữ liệu ở Chương 9–11. Vì vậy chương này đáng đọc chậm.
+	</div>
+
+	<div class="callout journey">
+		<strong>Chương 1 không có project — và khoá học xử lý chuyện đó thế nào</strong>
+		<p>
+			Mọi chương khác đều đi kèm project <code>starter</code> (điểm bắt đầu) và <code>final</code> (đáp án). Chương 1
+			thì <strong>không</strong>. Đã mở thư mục thật để kiểm: cả 4 file trong thư mục chương 1 đều là file
+			<code>.keep</code> <strong>rỗng 0 byte</strong> — tức chỉ tồn tại để Git giữ lại thư mục trống, không có một dòng code
+			nào.
+		</p>
+		<pre class="tree">01-welcome-to-android-and-kotlin/
+├── assets/.keep                 ← 0 byte
+└── projects/
+    ├── starter/.keep            ← 0 byte
+    ├── final/.keep              ← 0 byte
+    └── challenge/.keep          ← 0 byte</pre>
+		<p>Nên chương này làm hai việc thay thế, và nói rõ mỗi lần làm:</p>
+		<ul>
+			<li>
+				Với phần lý thuyết: đi hết tám khối kiến thức nền của chương, <strong>giải thích lại</strong> bằng tiếng Việt
+				kèm mô hình tư duy (mental model) cho từng khái niệm.
+			</li>
+			<li>
+				Với phần code: mượn project <strong>Kodeco Chat</strong> của <strong>Chương 2</strong> làm ví dụ minh hoạ. Đây là
+				<em>tham chiếu tới trước</em> (forward reference) — chương luôn ghi rõ code đến từ chương khác, không giả vờ
+				Chương 1 có project.
+			</li>
+		</ul>
+		<p>
+			Đổi lại, việc mở code thật cho phép làm một thứ lý thuyết suông không làm được: mỗi câu trừu tượng đều được chỉ tận
+			vị trí nó xuất hiện trong file. Và ở vài chỗ, code thật <strong>không khớp</strong> với lý thuyết thường được dạy —
+			những chỗ đó được ghi thành nội dung dạy ở mục <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>, không âm thầm
+			sửa cho khớp.
+		</p>
+	</div>
+
+	<h2 id="android-khong-lo">1. Vì sao Android trông khổng lồ — và vì sao bạn không cần biết hết</h2>
+	<p>
+		Chuyện không bắt đầu bằng một định nghĩa kỹ thuật, mà bằng một mốc thời gian: <strong>năm 2023 là tròn 50 năm</strong>
+		kể từ cuộc gọi điện thoại di động đầu tiên. Từ đó tới nay, điện thoại đã đi rất xa khỏi cái vai trò ban đầu — những cục
+		máy hình viên gạch chỉ để gọi điện.
+	</p>
+	<p>
+		Hai con số giúp bạn cảm nhận quy mô: khoảng <strong>90% dân số thế giới</strong> có smartphone, và mỗi chiếc
+		đều mang trong nó một bộ app mà chủ máy tự chọn cài — hoặc đã có sẵn từ lúc mua. Muốn cài app, người dùng thường vào
+		<strong>app store</strong>; những cửa hàng như Google Play cho truy cập <strong>hàng triệu app</strong>, từ game đơn giản
+		tới app học tập, app quản lý cá nhân, app ngân hàng. Tình trạng đó gói được bằng một câu rất đời thường: thế giới ngập
+		app đến mức người ta nói "cái gì cũng có app cho việc đó".
+	</p>
+
+	<h3>Từ quan sát đó suy ra một kết luận về kỹ thuật</h3>
+	<p>
+		Đây là chỗ câu chuyện chuyển sang "lý do kỹ thuật", và nó là ý quan trọng nhất của cả phần mở đầu. Lập luận đi như sau:
+	</p>
+	<ol class="chain">
+		<li>
+			App phải làm được <em>rất nhiều loại việc khác nhau</em>, và phải dùng được mọi tính năng hữu ích của một chiếc
+			smartphone — <strong>geolocation</strong> (định vị), <strong>audio</strong>, <strong>video</strong>,
+			hoặc đơn giản là <strong>truy cập internet</strong>.
+		</li>
+		<li>
+			Vậy thì một framework phát triển di động phải <strong>lớn cỡ nào</strong> mới đỡ được hết những thứ đó? Chỉ có một
+			câu trả lời: <em>nó buộc phải khổng lồ</em>.
+		</li>
+		<li>
+			Và cần cảnh báo trước: <strong>Android còn lớn hơn mức đó nữa</strong>, vì nó chứa thêm rất nhiều
+			phần thuộc loại <em>"developer quality of life"</em> — những tiện ích giúp lập trình viên đỡ khổ.
+		</li>
+		<li>
+			Hệ quả: framework lớn tới mức <strong>ngay cả người đã làm Android nhiều năm cũng có lúc thấy ngợp</strong>.
+		</li>
+	</ol>
+	<p class="hint">
+		<strong>Bổ sung — "framework" nghĩa là gì:</strong> framework (khung nền) là bộ code có sẵn do nhà cung cấp nền tảng viết,
+		bạn gọi vào để dùng chứ không phải viết lại. Ví dụ: bạn không tự viết code vẽ chữ lên màn hình hay tự viết code đọc GPS —
+		Android đã có sẵn, bạn chỉ gọi. Cái giá của việc "có sẵn mọi thứ" chính là kích thước: có sẵn càng nhiều thì càng nhiều
+		thứ để học.
+	</p>
+
+	<h3>Câu trấn an — và vì sao nó là một lời khuyên chiến lược, không phải lời động viên suông</h3>
+	<p>
+		Đọc tới đây dễ hoảng, nên phải nói ngay: <strong>đừng để những gì vừa đọc làm bạn sợ</strong>. Lý do rất cụ thể — một
+		trong những điểm tốt nhất của Android là <strong>bạn không cần biết hết framework mới viết được app đúng cách và dễ bảo
+		trì</strong>.
+	</p>
+	<p>
+		Chiến lược đúng là <strong>học tới đâu cần tới đó</strong> ("learn it as you need it"), và nó có hai lợi ích: cách
+		đó <em>tốn ít thời gian hơn nhiều</em>, và — nói thẳng — <em>tốt hơn cho sức khoẻ của bạn</em>.
+	</p>
+	<div class="callout">
+		<strong>Mô hình tư duy cho cả khoá học</strong>
+		<p>
+			Câu trên nhìn như một lời động viên, nhưng thực ra nó quyết định <em>cách bạn nên đọc 10 chương còn lại</em>. Android
+			có hàng nghìn class. Nếu bạn cố học theo kiểu "đọc hết tài liệu rồi mới làm", bạn sẽ không bao giờ tới được lúc làm.
+		</p>
+		<p>Cách đọc mà lời khuyên này ngụ ý:</p>
+		<ul>
+			<li>
+				Gặp một class/API lạ → hiểu <strong>nó giải quyết vấn đề gì</strong> và <strong>tại sao xuất hiện ở đây</strong>,
+				không cần học hết mọi tham số của nó.
+			</li>
+			<li>
+				Thấy một mục nói "bạn sẽ học ở chương sau" → tin nó và đi tiếp. Thứ tự các chương là cố ý; nhảy trước thường tốn
+				thời gian hơn.
+			</li>
+			<li>
+				Cảm giác ngợp là <strong>bình thường</strong>, và không riêng gì bạn — lập trình viên Android nhiều năm kinh nghiệm
+				cũng có lúc như vậy. Nó không phải dấu hiệu bạn không phù hợp với nghề này.
+			</li>
+		</ul>
+	</div>
+
+	<h2 id="chon-kotlin">2. Chọn công nghệ: Kotlin, Java, hay Flutter / React Native?</h2>
+	<p>
+		Trước khi nói về cấu tạo app, phải trả lời một câu hỏi thực tế: <em>viết app Android bằng cái gì?</em> Có
+		<strong>nhiều đường</strong>, chia thành hai nhóm rõ rệt.
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Hướng</th><th>Là gì</th><th>Đánh giá</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Ngôn ngữ native</strong></td>
+				<td><strong>Java</strong> hoặc <strong>Kotlin</strong> — ngôn ngữ được nền tảng Android hỗ trợ trực tiếp.</td>
+				<td>
+					Một chi tiết rất đáng nhớ: <strong>bản thân framework Android là hỗn hợp của cả hai</strong> ngôn ngữ.
+					Nghĩa là bạn sẽ gặp cả code Java lẫn Kotlin bên trong nền tảng.
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Framework bên ngoài</strong></td>
+				<td><strong>React Native</strong>, <strong>Flutter</strong>.</td>
+				<td>
+					Lợi thế: một số phần của việc phát triển app <em>đã được làm sẵn cho bạn</em>, và bạn phát triển cho
+					<strong>Android và iOS cùng lúc</strong>. Nhưng <em>thường có trade-off</em> (đánh đổi) — cụ thể là
+					<strong>hiệu năng app giảm</strong> hoặc <strong>không có sẵn một số API</strong>.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		<strong>Bổ sung — "native" và "API" nghĩa là gì:</strong> <em>native</em> (bản địa) nghĩa là chạy trực tiếp trên nền tảng,
+		không qua tầng trung gian nào. <em>API</em> (Application Programming Interface) là "cửa" mà hệ thống mở ra cho code của
+		bạn gọi vào — ví dụ "cửa" để đọc vị trí GPS, "cửa" để chụp ảnh. Câu "thiếu API availability" nghĩa là: khi Android
+		ra một tính năng mới, framework bên ngoài phải chờ được cập nhật mới dùng được tính năng đó; code native thì dùng được ngay.
+	</p>
+
+	<h3>Vì sao chọn Kotlin — 5 lý do, không phải một</h3>
+	<p>
+		Khoá học này dùng <strong>Kotlin</strong>. Nhưng không chốt suông — có hẳn một chuỗi lý do. Tách ra thành từng ý để thấy
+		đủ:
+	</p>
+	<ol class="chain">
+		<li>
+			<strong>Google khuyến nghị chính thức từ năm 2019.</strong> Đây là lý do có sức nặng thực tế nhất: tài liệu chính thức,
+			thư viện mới, ví dụ mẫu của Google từ đó tới nay đều ưu tiên Kotlin.
+		</li>
+		<li>
+			<strong>Là ngôn ngữ hiện đại và mạnh</strong>, hấp thu nhiều tính năng từ <em>cả hai</em> trường phái:
+			<strong>object-oriented</strong> (lập trình hướng đối tượng) và <strong>functional</strong> (lập trình hàm).
+		</li>
+		<li>
+			<strong>Vui khi dùng, và "vừa khít với Android như một chiếc găng tay"</strong> — cách so sánh này được dùng rất
+			nhiều, và nó đúng: nhiều API Android trông gọn hẳn khi viết bằng Kotlin.
+		</li>
+		<li>
+			<strong>Được hỗ trợ native</strong>, và đây là một chuỗi nhân quả: hỗ trợ native →
+			<em>ít vấn đề tương thích hơn</em> → <strong>hỗ trợ API tốt hơn và hiệu năng tốt hơn</strong>.
+		</li>
+		<li>
+			<strong>Tính năng multiplatform đã phát triển đủ mạnh</strong> để cạnh tranh với các giải pháp hybrid (lai) cho Android
+			và iOS. Nghĩa là: cái lợi thế "làm 2 nền tảng cùng lúc" của Flutter/React Native không còn là độc quyền của họ.
+		</li>
+	</ol>
+	<div class="callout">
+		<strong>Điểm đáng chú ý về cấu trúc lập luận</strong>
+		<p>
+			Lý do số 4 và số 5 đáng để ý vì chúng <em>đánh trực tiếp vào hai trade-off</em> vừa nêu ở bảng trên. Framework bên
+			ngoài đánh đổi hiệu năng và API — thì lý do 4 nói native không có hai vấn đề đó. Framework bên ngoài được lợi ở chỗ
+			làm 2 nền tảng cùng lúc — thì lý do 5 nói Kotlin Multiplatform giờ cũng làm được.
+		</p>
+		<p>
+			Nói cách khác: đây không phải danh sách ưu điểm ngẫu nhiên, mà là một lập luận có bố cục. Nhận ra bố cục đó giúp bạn
+			nhớ nó lâu hơn là học vẹt 5 gạch đầu dòng.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Chương 1 không dạy cú pháp Kotlin.</strong> Cả chương không có một dòng code Kotlin nào — chỉ có đúng một đoạn
+		XML (ở Chương 1.3). Kotlin ở đây xuất hiện thuần với vai trò <em>một quyết định công nghệ</em>. Bạn chưa cần biết
+		<code>val</code>, <code>fun</code> hay <code>class</code> là gì để đọc hết chương này.
+	</p>
+	<h2 id="security-sandbox">3. Security sandbox: chuyện gì xảy ra trong app, ở lại trong app</h2>
+	<p>
+		Trước khi bắt đầu xây app, hiểu đại ý cách app Android hoạt động sẽ hữu ích — để sau này bạn nối được các mảnh lại với
+		nhau khi tự viết app của mình. Và điều đầu tiên cần nói không phải giao diện, không phải code — mà là
+		<strong>bảo mật</strong>.
+	</p>
+	<p>
+		Nguyên tắc: <strong>mỗi app sống trong security sandbox riêng của nó</strong>. Có một câu rất dễ nhớ để gói lại —
+		<em>"chuyện gì xảy ra trong app thì ở lại trong app"</em>. Nguyên tắc này có hai chiều, và cả hai đều quan trọng:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Chiều</th><th>Nội dung</th><th>Ai quyết định</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Từ ngoài nhìn vào</strong></td>
+				<td>
+					<strong>Không app nào khác biết được chuyện gì đang diễn ra bên trong app của bạn.</strong>
+				</td>
+				<td>
+					<strong>Chính app của bạn</strong> — trừ khi app tự cho phép, người ngoài không thấy gì.
+				</td>
+			</tr>
+			<tr>
+				<td><strong>Từ trong nhìn ra</strong></td>
+				<td>
+					App của bạn <strong>không truy cập được</strong> những phần cụ thể của hệ thống: app khác, file cụ thể, hay thông
+					tin thiết bị.
+				</td>
+				<td>
+					<strong>Hệ thống Android</strong> — trừ khi hệ thống cho phép, app của bạn bị chặn.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		<strong>Bổ sung — "sandbox" nghĩa là gì:</strong> dịch sát là "hố cát" — chỗ chơi có thành bao quanh, cát không tràn ra
+		ngoài. Trong bảo mật máy tính, sandbox nghĩa là một vùng chạy bị cô lập: chương trình bên trong làm gì cũng không ảnh
+		hưởng tới bên ngoài vùng đó. Android tạo một sandbox cho <em>từng app</em>.
+	</p>
+
+	<h3>Mô hình tư duy: mỗi app là một căn hộ trong toà nhà</h3>
+	<p>
+		Cách dễ nhất để giữ khái niệm này: hình dung điện thoại là một <strong>toà nhà chung cư</strong>, mỗi app là một
+		<strong>căn hộ riêng có khoá</strong>.
+	</p>
+	<ul>
+		<li>
+			Bạn ở trong căn hộ của mình, làm gì cũng được. Người ở căn hộ bên cạnh <strong>không nhìn thấy</strong> — trừ khi bạn
+			mở cửa mời họ vào. Đó là chiều thứ nhất.
+		</li>
+		<li>
+			Nhưng bạn cũng <strong>không tự tiện</strong> vào căn hộ khác, không tự tiện vào phòng máy hay phòng điện của toà nhà.
+			Muốn vào thì phải xin <strong>ban quản lý</strong> — và ban quản lý ở đây là hệ điều hành Android. Đó là chiều thứ hai.
+		</li>
+	</ul>
+	<p>
+		Mô hình này giải thích luôn một chuyện bạn gặp hằng ngày mà có thể chưa nối được: <strong>vì sao app cứ phải xin quyền</strong>.
+		Khi một app hỏi "cho phép truy cập máy ảnh?", nó chính đang xin ban quản lý mở một cánh cửa cụ thể ra khỏi sandbox của nó.
+	</p>
+
+	<h3>Vì sao mục này được đặt ngay đầu, trước cả phần giới thiệu component</h3>
+	<p>
+		Vị trí của security sandbox là một quyết định trình bày đáng chú ý: nó đứng <strong>trước</strong> cả phần giới thiệu
+		component. Lý do là sandbox là <em>tiền đề</em> để hai chương nhỏ sau có nghĩa:
+	</p>
+	<ol class="chain">
+		<li>
+			Vì app bị cô lập, hệ thống <strong>phải biết trước</strong> app có những thành phần nào và muốn làm gì. Đó là lý do tồn
+			tại của file <strong>Manifest</strong> (Chương 1.3, mục 6) — bản khai báo mà app đưa cho hệ thống đọc.
+		</li>
+		<li>
+			Vì app không tự cầm tay gọi app khác được, mọi giao tiếp phải <strong>đi qua hệ thống</strong>. Đó là lý do tồn tại của
+			<strong>Intent</strong> (Chương 1.2, mục 5) — bạn gửi yêu cầu cho hệ thống, hệ thống mới mở component giúp bạn.
+		</li>
+	</ol>
+	<p>
+		Nói cách khác: nếu bạn hiểu sandbox, bạn sẽ không thấy Manifest và Intent là hai thứ rườm rà vô nghĩa. Chúng là hệ quả
+		trực tiếp của việc mọi app đều bị khoá trong hộp riêng.
+	</p>
+
+	<h3>Nguyên tắc này biến thành code ở đâu</h3>
+	<p>
+		Manifest cũng là chỗ khai báo quyền (xem Chương 1.3, mục 6). Nhưng trong <strong>toàn bộ 11 project</strong> của khoá
+		học, chỉ có <strong>đúng một</strong> chỗ thực sự xin quyền hệ thống — và nó ở Chương 8:
+	</p>
+	<Code code={permissionCode} lang="xml" theme="github-dark" />
+	<p>
+		Dòng <code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code> chính là app nói với hệ thống:
+		<em>"tôi cần một cánh cửa ra internet"</em>. Chương 8 là chương gọi mạng để lấy dữ liệu công thức nấu ăn, nên nó là
+		chương đầu tiên cần bước ra khỏi sandbox thật sự.
+	</p>
+	<p class="hint">
+		<strong>Điểm đáng chú ý:</strong> để ý là app <em>khai báo</em> quyền internet trong manifest, chứ không hiện hộp thoại
+		hỏi bạn. Android chia quyền thành nhiều mức; internet thuộc loại chỉ cần khai báo là được cấp, còn máy ảnh hay vị trí thì
+		phải hỏi người dùng lúc chạy. Chương 1 chưa phân biệt hai loại này — nhưng biết trước thì bạn không bị bối rối khi thấy
+		"khai quyền" mà không thấy hộp thoại nào.
+	</p>
+
+	<div class="callout">
+		<strong>Tổng kết Chương 1.1</strong>
+		<ul>
+			<li><strong>Framework Android khổng lồ là chuyện bắt buộc</strong>, không phải lỗi thiết kế: app phải chạm tới định vị,
+				âm thanh, video, mạng… nên bộ code nền phải đỡ được hết. Cộng thêm phần tiện ích cho lập trình viên, nó lớn tới mức
+				người làm nhiều năm cũng có lúc ngợp.</li>
+			<li><strong>Chiến lược học duy nhất khả thi: "học tới đâu cần tới đó".</strong> Gặp API lạ thì hiểu nó giải quyết vấn đề
+				gì và vì sao xuất hiện ở đây, không học hết mọi tham số. Thấy hẹn "chương sau" thì tin và đi tiếp.</li>
+			<li><strong>Bốn đường làm app Android</strong>, chia hai nhóm: native (Java, Kotlin) và framework bên ngoài (React
+				Native, Flutter). Nhóm sau được lợi làm 2 nền tảng cùng lúc nhưng đánh đổi hiệu năng và độ sẵn có của API.</li>
+			<li><strong>Năm lý do chọn Kotlin:</strong> Google khuyến nghị chính thức từ 2019 · ngôn ngữ hiện đại, có cả OOP và
+				functional · vừa khít với Android · hỗ trợ native nên ít lỗi tương thích, API và hiệu năng tốt hơn · multiplatform đã
+				đủ mạnh để cạnh tranh hybrid. Hai lý do cuối trả lời trực tiếp hai trade-off của nhóm framework bên ngoài.</li>
+			<li><strong>Security sandbox có hai chiều:</strong> ngoài không nhìn được vào (app bạn quyết định) và trong không ra được
+				(hệ thống quyết định). Mô hình căn hộ + ban quản lý giữ được cả hai chiều.</li>
+			<li><strong>Sandbox là gốc rễ của Manifest và Intent.</strong> App bị cô lập nên hệ thống phải đọc được bản khai báo
+				(Manifest), và mọi lời gọi component phải đi qua hệ thống (Intent).</li>
+			<li><strong>Chương 1 không có project và không có code Kotlin</strong> — nó vẽ bản đồ. Code minh hoạ mượn từ Chương 2,
+				luôn ghi rõ nguồn.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Tiếp theo — Chương 1.2:</strong> bạn đã biết mỗi app bị khoá trong sandbox riêng. Giờ tới câu hỏi kế tiếp: bên
+		trong cái hộp đó, app được ghép từ những mảnh gì? Chương 1.2 giới thiệu <strong>bốn app component</strong> — Activity,
+		Service, Content Provider, Broadcast Receiver — mỗi cái làm gì, loại nào thực sự được dùng trong 11 project của khoá
+		học, rồi <strong>Intent</strong>: cơ chế để các component gọi nhau qua hệ thống, kể cả gọi sang app của người khác.
+	</p>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Hai chỗ dưới đây là nơi tài liệu bạn đọc trên mạng dễ dẫn bạn đi lệch. Đọc trước để khỏi mất thời gian đi tìm thứ không
+		tồn tại.
+	</p>
+	<p class="notice">
+		<strong>1. "Chương mở đầu dạy Kotlin thuần trên Kotlin Playground" — không đúng.</strong> Có mô tả cho rằng chương mở đầu
+		không kèm project vì nó dạy cú pháp Kotlin trên <em>Kotlin Playground</em> (trang web chạy thử code Kotlin ngay trên
+		trình duyệt). Đã kiểm lại toàn bộ 137 dòng nội dung gốc của chương: <strong>không có</strong> phần nào dạy cú pháp Kotlin
+		và <strong>không hề nhắc</strong> Kotlin Playground (tìm chữ "playground" cho ra 0 kết quả). Lý do thật đơn giản hơn: đây
+		là chương <em>tổng quan bằng văn bản</em>, không có phần thực hành nào nên không cần project. Điều này quan trọng với bạn
+		vì nếu tin mô tả kia, bạn sẽ đi tìm bài tập Kotlin không tồn tại và tưởng mình bỏ sót một phần.
+	</p>
+	<p class="notice">
+		<strong>2. Đừng chờ hộp thoại xin quyền khi khai <code>INTERNET</code>.</strong> Rất nhiều hướng dẫn nói chung chung rằng
+		"app phải xin quyền người dùng mới truy cập được tài nguyên hệ thống", làm người mới tưởng mọi quyền đều hiện hộp thoại.
+		Thực tế Android chia quyền thành nhiều mức: <em>normal permission</em> như <code>INTERNET</code> chỉ cần khai trong
+		manifest là hệ thống cấp luôn lúc cài, không hỏi gì; còn <em>dangerous / runtime permission</em> như máy ảnh, micro, vị
+		trí thì <strong>phải</strong> hỏi người dùng lúc chạy bằng code. Nếu bạn khai <code>INTERNET</code> rồi ngồi chờ hộp
+		thoại xuất hiện để test, bạn sẽ chờ mãi. Chương 1 chưa phân biệt hai loại này, nên ghi ở đây trước.
+	</p>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 11–15 (bối cảnh 50 năm điện thoại di động, quy mô app
+			store) · dòng 17 (vì sao framework buộc phải khổng lồ) · dòng 21 ("learn it as you need it") · dòng 23–25 (bốn lựa
+			chọn công nghệ và năm lý do chọn Kotlin) · dòng 27–29 (security sandbox hai chiều) · dòng 86 (manifest khai báo
+			quyền).
+		</li>
+		<li>
+			<strong>Code thật đã đối chiếu:</strong> <code>{CH01}/</code> — đã đo dung lượng từng file, cả 4 file
+			<code>.keep</code> đều 0 byte, xác nhận chương 1 không có project ·
+			<code>{CH08}/AndroidManifest.xml</code> (dòng 1–16; dòng <strong>5</strong> là dòng
+			<code>uses-permission</code> duy nhất của cả khoá học) · đã tìm <code>uses-permission</code> trên
+			<code>AndroidManifest.xml</code> của cả 11 project để xác nhận tính duy nhất đó.
+		</li>
+		<li>
+			<strong>Phần bổ sung ngoài giáo trình:</strong> giải thích khái niệm "framework", "native", "API", "sandbox" cho người
+			mới · mô hình tư duy căn hộ – ban quản lý · phân tích bố cục lập luận 5 lý do chọn Kotlin · lý do sandbox được đặt
+			trước phần component · phân biệt normal permission và runtime permission · đính chính mô tả "chương mở đầu dạy Kotlin
+			Playground".
+		</li>
+	</ul>
+</section>
+
