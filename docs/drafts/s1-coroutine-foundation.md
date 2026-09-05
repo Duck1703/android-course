@@ -24,10 +24,10 @@
 >
 > **Ngân sách nhấn mạnh:** bài có đúng **năm điều cốt lõi** (xem "Tóm tắt"); mọi chi tiết khác được
 > cố tình hạ xuống mức *nhận biết* hoặc chuyển vào mục nội bộ. **4 callout** (mô hình coroutine ·
-> `suspend` không chọn thread · scope là chủ sở hữu · quy tắc main-safety) và **6 checkpoint** —
+> `suspend` không chọn thread · scope là chủ sở hữu · quy tắc main-safety) và **7 checkpoint** —
 > đúng hạn mức ≤4 callout của template. Mọi điểm chính xác khác (dispatcher chọn theo bản chất việc,
-> giới hạn của phép ví Flow, so sánh Flow ↔ StateFlow) viết thành **văn xuôi/bảng**, không thành
-> callout, để bốn hộp trên không bị loãng.
+> giới hạn của phép ví Flow, so sánh Flow ↔ StateFlow, `collect` xong khi nào) viết thành
+> **văn xuôi/bảng**, không thành callout, để bốn hộp trên không bị loãng.
 
 ---
 
@@ -37,15 +37,17 @@
 
 - Giải thích được **coroutine là gì** ở mức người mới, và nói được vì sao **coroutine không phải
   thread** — kèm điều gì xảy ra với thread khi một coroutine "chờ".
-- Đọc được từ khoá `suspend` và nói đúng nó **cho phép điều gì** — cũng như hai điều nó **không**
-  làm: không tự chọn thread, không tự nghĩa là "chậm".
+- Đọc được từ khoá `suspend` và nói đúng nó **cho phép điều gì** — cũng như hai điều nó **không** làm:
+  không tự chọn thread/dispatcher, không tự nghĩa là "chậm" — và nói được ai mới thật sự đổi ngữ cảnh
+  chạy.
 - Chỉ ra được **ai làm chủ** một coroutine khi đọc `viewModelScope.launch { }`,
   `rememberCoroutineScope()` hay `LaunchedEffect(key) { }`, và vì sao câu hỏi "ai làm chủ" quan
   trọng hơn câu hỏi "chạy ở thread nào".
 - Chọn được đúng dispatcher cho ba loại việc (giao diện · việc chặn thread · tính toán nặng), và
   giải thích được `withContext(...)` làm gì mà không phóng đại.
 - Đọc được `Flow<T>`, `collect { }` và `StateFlow<UiState>`, nói được **StateFlow thêm ý gì** so với
-  một Flow thường.
+  một Flow thường, và nói đúng **`collect` xong việc khi nào** (một Flow có thể kết thúc; một dòng
+  trạng thái thì không).
 - Nhìn một đoạn code ViewModel 12–15 dòng và **chú thích được mọi khái niệm coroutine/Flow** trong
   đó, dù chưa học ViewModel.
 
@@ -96,10 +98,10 @@ Từ đây có hai từ cần phân biệt cho thật rõ, vì cả bài dựa v
 | Kiểu chờ | Chuyện gì xảy ra với thread |
 |---|---|
 | **Chặn** (blocking) | Thread *bị chiếm* trong lúc chờ. Nó không làm được việc gì khác, kể cả khi việc nó đang chờ chẳng cần CPU (chờ mạng trả lời chẳng hạn). |
-| **Tạm dừng** (suspending) | Công việc *tự dừng lại ở một điểm cho phép*, **trả thread lại** cho bên điều phối, rồi được tiếp tục sau. Trong lúc đó thread rảnh để chạy việc khác. |
+| **Tạm dừng** (suspending) | Công việc *tự dừng lại ở một điểm cho phép* và **không chặn thread**; trong lúc đó runtime được tự do dùng thread cho việc khác, rồi công việc được tiếp tục sau. |
 
 Chú ý sự khác biệt nằm ở đâu: **cả hai đều "chờ"** — nhưng "chặn" giữ chặt chỗ chạy, còn "tạm dừng"
-nhả chỗ chạy ra. Toàn bộ giá trị của coroutine nằm ở cột thứ hai.
+**không** giữ chỗ chạy. Toàn bộ giá trị của coroutine nằm ở cột thứ hai.
 
 > **Mô hình trực quan — coroutine là gì**
 >
@@ -134,7 +136,7 @@ dừng ở thread này rồi tiếp tục ở thread khác — nó **không bị
 | Câu hỏi | Thread | Coroutine |
 |---|---|---|
 | Nó là gì? | Chỗ chạy do hệ thống cấp | Công việc được xếp để chạy nhờ thread |
-| Khi phải "chờ" thì sao? | Thread bị chiếm — không làm được việc khác | Tạm dừng, **nhả thread ra**, rồi tiếp tục sau |
+| Khi phải "chờ" thì sao? | Thread bị chiếm — không làm được việc khác | Tạm dừng — **không chặn thread**; rồi tiếp tục sau |
 | Có gắn cứng chỗ chạy không? | Nó *chính là* chỗ chạy | Không — dừng ở thread này, tiếp ở thread khác được |
 | Bao nhiêu thì gọi là nhiều? | Vài nghìn đã là nhiều (mỗi thread cần vài MB bộ nhớ riêng) | Hàng chục nghìn vẫn bình thường |
 
@@ -177,18 +179,25 @@ suspend fun loadProfile(): Profile
 Đây là *chữ ký* hàm (phần thân bỏ đi vì chưa cần). Đọc đúng nghĩa của từ khoá: **"hàm này *được phép*
 tạm dừng ở các điểm tạm dừng bên trong nó, rồi tiếp tục sau."** Hết. Đó là toàn bộ ý nghĩa của nó.
 
-> **Ghi chú quan trọng — `suspend` KHÔNG có nghĩa "chạy ở thread nền"**
+> **Ghi chú quan trọng — `suspend` KHÔNG có nghĩa "chạy ở thread nền", và cũng không chọn dispatcher**
 >
 > Đây là điểm chính xác quan trọng nhất của cả bài, nên nói thẳng cả hai chiều:
 >
-> - `suspend` **không** tự chuyển hàm sang thread khác. Một hàm `suspend` chạy trong **ngữ cảnh của
->   coroutine đã gọi nó** — trừ khi bên trong nó (hoặc một thư viện nó dùng) chủ động đổi chỗ chạy.
+> - `suspend` **không** tự chuyển hàm sang thread nền và **không** tự chọn dispatcher. Một hàm
+>   `suspend` chạy trong **ngữ cảnh coroutine mà nó được gọi từ đó** — trừ khi chính hàm đó, hoặc một
+>   API mà nó gọi bên trong, **chủ động đổi ngữ cảnh** (thường là bằng `withContext(...)` — Phần 8).
 > - `suspend` **không** có nghĩa "hàm này chậm". Một hàm `suspend` có thể trả về ngay lập tức. Từ
 >   khoá này nói về *khả năng tạm dừng*, không nói về thời gian.
 >
-> Cách nhớ theo *trách nhiệm* — đây là cách nhìn bạn sẽ dùng lại suốt khoá:
-> **`suspend` nghĩa là "người gọi quyết định việc này chạy ở đâu"**; nếu chính hàm đó muốn tự quyết
-> định chỗ chạy, nó phải nói ra bằng `withContext(...)` (Phần 8).
+> Cách nhớ theo *trách nhiệm* — và phải đọc cả hai nửa, vì thiếu nửa nào cũng thành sai:
+>
+> - **Người gọi chọn coroutine/ngữ cảnh mà nó gọi từ đó.**
+> - **Hàm được gọi không tự động nhảy sang thread khác — nhưng phần cài đặt bên trong nó *được phép*
+>   đổi ngữ cảnh khi việc của nó cần.**
+>
+> Nói cách khác: người gọi **không** nắm quyền tuyệt đối về chỗ chạy, và cũng không cần nắm. Rất nhiều
+> hàm `suspend` của thư viện đã tự lo phần đó bên trong nên **gọi được an toàn từ main thread** — đó là
+> chuyện tốt, và là lý do đừng bọc `Dispatchers.IO` quanh chúng (Phần 9).
 
 ### Ví dụ nhỏ nhất: `delay`
 
@@ -200,15 +209,15 @@ suspend fun waitThenGreet() {
 ```
 
 `delay(1000)` chờ 1000 milisecond (1 giây). Nó là hàm `suspend`, và nó làm **đúng** việc mà Phần 1
-gọi là "tạm dừng": coroutine dừng lại tại dòng đó, **nhả thread ra**, và một giây sau nó được tiếp
-tục ở dòng `println`.
+gọi là "tạm dừng": coroutine dừng lại tại dòng đó **mà không chặn thread**, và một giây sau nó được
+tiếp tục ở dòng `println`.
 
 Đối chiếu với hàm chờ kiểu cũ của Java, `Thread.sleep(1000)`:
 
 | Câu hỏi | `delay(1000)` | `Thread.sleep(1000)` |
 |---|---|---|
 | Ai dừng lại? | **Coroutine** dừng | **Thread** bị chặn |
-| Thread trong lúc đó | Rảnh — chạy được việc khác | Bị chiếm, không làm gì cả |
+| Thread trong lúc đó | **Không bị chặn** — runtime dùng được cho việc khác | Bị chiếm, không làm gì cả |
 | Gọi ở đâu được? | Trong coroutine / hàm `suspend` | Ở đâu cũng gọi được — kể cả chỗ không nên |
 
 Vì cả hai đều "làm cho code dừng 1 giây", rất dễ tưởng chúng thay thế được cho nhau. Chúng không.
@@ -218,11 +227,13 @@ giao diện** — bạn vừa tạo ra hiện tượng treo mà cả bài này �
 > **Tự kiểm tra 2.** `suspend fun loadImage()` — câu nào đúng?
 >
 > 1. Hàm này chắc chắn chạy ở thread nền. 2. Hàm này được phép tạm dừng rồi tiếp tục.
-> 3. Hàm này chắc chắn chậm. 4. Nếu không có gì đổi chỗ chạy, hàm này chạy trong ngữ cảnh của
-> coroutine đã gọi nó.
+> 3. Hàm này chắc chắn chậm. 4. Nếu không có gì đổi ngữ cảnh, hàm này chạy trong ngữ cảnh coroutine mà
+> nó được gọi từ đó. 5. Phần cài đặt bên trong hàm này *có thể* tự đổi ngữ cảnh nếu việc của nó cần.
 >
-> *(Đáp án: 2 và 4. Dòng 1 là hiểu lầm phổ biến nhất về `suspend`; dòng 3 nhầm "được phép dừng" với
-> "mất nhiều thời gian".)*
+> *(Đáp án: 2, 4 và 5. Dòng 1 là hiểu lầm phổ biến nhất về `suspend`; dòng 3 nhầm "được phép dừng" với
+> "mất nhiều thời gian". Chú ý 4 và 5 phải đi cùng nhau: `suspend` không tự chọn thread, nhưng điều đó
+> **không** có nghĩa "người gọi nắm quyền tuyệt đối" — hàm được gọi vẫn có thể đổi ngữ cảnh bên trong,
+> và các thư viện tốt thường làm đúng việc đó.)*
 
 ---
 
@@ -326,8 +337,8 @@ Một điểm chính xác nhỏ, để chặn trước một hiểu lầm rất 
 "thread nền"**. Trên Android, coroutine khởi động trong `viewModelScope` mặc định bắt đầu chạy trên
 **main thread**. Nghe ngược, nhưng không hề mâu thuẫn: chạy *bắt đầu* trên main thread là chuyện tốt
 (bạn cập nhật state giao diện ở đó được), và nếu bên trong có hàm `suspend` nào tạm dừng để chờ, thì
-main thread **được nhả ra** trong lúc chờ chứ không bị chặn. Cái làm treo giao diện không phải chữ
-`launch`, mà là **một việc chặn thread hoặc tính toán nặng đặt sai chỗ** (Phần 7–9).
+main thread **không bị chặn** trong lúc chờ. Cái làm treo giao diện không phải chữ `launch`, mà là
+**một việc chặn thread hoặc tính toán nặng đặt sai chỗ** (Phần 7–9).
 
 **`rememberCoroutineScope()`** — mức nhận diện.
 
@@ -428,8 +439,14 @@ Nhờ vậy `readLegacyFile` viết được bằng expression body (`=`) và tr
 
 Và đây là chỗ trả nợ Phần 3, bằng đúng một cặp câu:
 
-- `suspend` (một mình) = **"người gọi quyết định việc này chạy ở đâu"**.
-- `suspend` + `withContext(...)` bên trong = **"tôi tự bảo đảm phần này chạy ở đúng chỗ nó cần"**.
+- `suspend` (một mình) = **"tôi được phép tạm dừng; tôi không tự nhảy sang thread khác"** — nên hàm
+  chạy trong ngữ cảnh nó được gọi từ đó.
+- `suspend` + `withContext(...)` bên trong = **"tôi tự bảo đảm phần này chạy ở đúng chỗ nó cần"** —
+  người gọi không phải biết, và cũng không cần biết.
+
+Chú ý cả hai vế cùng lúc, vì đây là chỗ dễ suy diễn quá đà: `suspend` **không** có nghĩa "chỗ chạy
+hoàn toàn do người gọi định". Người gọi định *ngữ cảnh mà nó gọi từ đó*; còn hàm được gọi vẫn có
+quyền — và thường có trách nhiệm — đổi ngữ cảnh bên trong nếu việc của nó đòi.
 
 Cách viết chuẩn hiện nay cho một hàm cần đổi chỗ chạy là cách thứ hai: **hàm `suspend` dùng
 `withContext`**, chứ không phải hàm `suspend` tự khởi động thêm một coroutine mới. Trộn hai cách —
@@ -464,9 +481,9 @@ quen chọn dispatcher theo cảm giác thay vì theo bản chất công việc.
 
 > **Tự kiểm tra 5.** Vì sao `delay(1000)` chờ được mà không "chặn" như `Thread.sleep(1000)`?
 >
-> *(Đáp án: `delay` tạm dừng **coroutine** và nhả thread ra — thread rảnh để chạy việc khác trong 1
-> giây đó. `Thread.sleep` chặn **thread**: thread bị chiếm và không làm gì cả. Cùng là "chờ 1 giây",
-> khác nhau ở chỗ ai bị giữ lại.)*
+> *(Đáp án: `delay` tạm dừng **coroutine** mà **không chặn thread** — trong 1 giây đó runtime được tự
+> do dùng thread cho việc khác. `Thread.sleep` chặn **thread**: thread bị chiếm và không làm gì cả.
+> Cùng là "chờ 1 giây", khác nhau ở chỗ ai bị giữ lại.)*
 
 ---
 
@@ -522,10 +539,33 @@ Một điều quan trọng nối lại Phần 4: **`collect` là một hàm `sus
 một coroutine. Đó là lý do trong code thật bạn luôn thấy `collect` nằm bên trong `launch { }` hoặc
 `LaunchedEffect { }`, không bao giờ đứng trơ trong một hàm thường.
 
-Kèm một hệ quả nhỏ nhưng gây bug thật, nói gọn ở mức nhận biết: với một dòng trạng thái (Phần 11),
-`collect` **chờ mãi** — nó không "chạy xong". Nghĩa là dòng code viết *sau* `collect` trong **cùng
-một** coroutine sẽ không bao giờ chạy tới. Cần lắng nghe hai dòng thì mở hai coroutine, đừng nối
-tiếp hai `collect`. Cơ chế đầy đủ: **W1**.
+### `collect` có "chạy xong" không? — có, tuỳ dòng giá trị
+
+Đây là chỗ rất dễ rút ra một quy tắc sai, nên nói rõ ngay: **`collect` không phải cứ chạy là chạy
+mãi.** Một Flow hoàn toàn có thể phát vài giá trị rồi **kết thúc** — và khi dòng giá trị kết thúc thì
+`collect` trả về, code viết sau nó chạy bình thường.
+
+```kotlin
+// Hình dạng một Flow có điểm dừng: phát 3 giá trị rồi hết.
+// Cách *tạo* Flow (flow { } và emit) là nội dung W1 — ở đây chỉ cần nhìn hình dạng.
+flow {
+    emit(1)
+    emit(2)
+    emit(3)
+}
+```
+
+Gọi `collect` trên dòng giá trị đó thì lambda được chạy ba lần, sau đó `collect` **xong việc** và
+coroutine đi tiếp xuống dòng dưới.
+
+Cái *thật sự* chạy mãi là dòng **trạng thái** — `StateFlow` ở Phần 11. Một dòng trạng thái mô tả
+"trạng thái hiện tại của một thứ đang tồn tại", nên nó không có khái niệm "hết trạng thái": việc nhận
+một `StateFlow` theo cách thông thường **không tự kết thúc**. Hệ quả thực dụng, gây bug thật: dòng code
+viết *sau* một `collect` trên `StateFlow`, trong **cùng một** coroutine, sẽ không chạy tới. Cần lắng
+nghe hai dòng trạng thái thì mở hai coroutine, đừng nối tiếp hai `collect`.
+
+Rút một câu cho gọn: **"`collect` chạy tới khi nào" là tính chất của *dòng giá trị*, không phải tính
+chất của chữ `collect`.** Cơ chế đầy đủ (Flow kết thúc thế nào, huỷ ra sao): **W1**.
 
 **Cố tình không dạy ở đây:** toàn bộ họ toán tử của Flow (`map`, `filter` trên Flow, `combine`,
 `flatMapLatest`, `debounce`, `catch`, `retry`…), và cả phân biệt cold/hot. Ở bài này bạn chỉ cần
@@ -552,13 +592,21 @@ So sánh gọn đúng một dòng mỗi bên:
 - `Flow` = **các giá trị theo thời gian**.
 - `StateFlow` = **trạng thái hiện tại + các cập nhật theo thời gian**.
 
-Ba điều `StateFlow` thêm vào, ở mức bạn cần:
+Hai điều `StateFlow` thêm vào, ở mức bạn cần:
 
 1. **Luôn có một giá trị hiện tại.** Không có chuyện "chưa có gì cả" — vì vậy khi tạo ra một
    `StateFlow` bắt buộc phải cho nó một giá trị khởi đầu.
-2. **Ai vừa bắt đầu lắng nghe cũng nhận ngay giá trị hiện tại**, không phải chờ lần cập nhật kế tiếp.
-3. **Cập nhật được gộp lại (conflation).** Gán lại đúng giá trị đang có thì không có thông báo nào
-   được phát đi — hợp lý, vì "trạng thái không đổi" thì không có gì để cập nhật.
+2. **Ai vừa bắt đầu lắng nghe cũng nhận ngay giá trị hiện tại**, không phải chờ lần cập nhật kế tiếp;
+   rồi nhận tiếp các cập nhật sau đó.
+
+Kèm một tính chất chỉ cần *nhận biết*, không phải mục tiêu học của bài: vì đây là *trạng thái* chứ
+không phải chuỗi sự kiện, gán lại đúng giá trị đang có thì người lắng nghe không nhận thêm thông báo
+nào. Thuật ngữ và các hệ quả của hành vi này thuộc **W1**.
+
+Nối lại Phần 10 cho trọn: một dòng trạng thái **không có điểm kết thúc tự nhiên** — nó mô tả "hiện giờ
+thế nào", nên việc nhận nó theo cách thông thường không tự xong. Đó là lý do `collect` trên một
+`StateFlow` trong code thật trông như chạy mãi; nhưng đúng như Phần 10 đã nói, đó là tính chất của
+*dòng trạng thái*, không phải của chữ `collect`.
 
 Và đúng một điều `StateFlow` **không** làm, vì đây là câu folklore hay gặp nhất: **`StateFlow` không
 tự "biết vòng đời" của màn hình.** Nó không tự dừng khi màn hình bị ẩn. Việc lắng nghe *theo vòng đời*
@@ -583,6 +631,13 @@ chúng.
 > *(Đáp án: có **trạng thái hiện tại** — luôn tồn tại một giá trị đọc được ngay, và người mới lắng
 > nghe nhận được nó lập tức. Một `Flow` thường chỉ mô tả "giá trị sẽ đến", không hứa có giá trị nào
 > sẵn.)*
+
+> **Tự kiểm tra 7.** Đúng hay sai: *"`collect` bao giờ cũng chạy mãi mãi."*
+>
+> *(Sai. Một Flow có thể phát vài giá trị rồi kết thúc — lúc đó `collect` xong việc và code sau nó chạy
+> bình thường. Riêng một dòng **trạng thái** như `StateFlow` thì không có điểm kết thúc tự nhiên, nên
+> việc nhận nó theo cách thông thường không tự xong — và đó là tính chất của dòng trạng thái, không
+> phải của chữ `collect`.)*
 
 ---
 
@@ -667,29 +722,41 @@ sâu) **không** thuộc bài này — chúng có nơi dạy riêng ở giai đo
 
 **1. Đọc `suspend` thành "chạy ở thread nền".** Đây là hiểu lầm số một, và nó sinh ra mọi hiểu lầm
 còn lại. `suspend` chỉ nói *"hàm này được phép tạm dừng rồi tiếp tục"*. Nó không chuyển thread, không
-tạo thread, không hứa gì về tốc độ. Muốn đổi chỗ chạy thì phải viết ra — bằng `withContext(...)`.
+tạo thread, không chọn dispatcher, không hứa gì về tốc độ. Việc đổi chỗ chạy phải được **viết ra ở đâu
+đó** — trong chính hàm đó, hoặc trong thư viện nó gọi — chứ không đi kèm từ khoá `suspend`.
 
-**2. Đọc "coroutine" thành "thread".** Thread là *chỗ chạy*; coroutine là *công việc chạy nhờ thread*.
+**2. Suy diễn ngược lại: "vậy chỗ chạy hoàn toàn do người gọi định".** Cũng sai. Người gọi định
+*ngữ cảnh mà nó gọi từ đó*; hàm được gọi vẫn có thể — và với việc chặn thread thì *nên* — tự đổi ngữ
+cảnh bên trong. Rất nhiều hàm `suspend` của thư viện làm đúng vậy, nên chúng gọi được an toàn từ main
+thread.
+
+**3. Đọc "coroutine" thành "thread".** Thread là *chỗ chạy*; coroutine là *công việc chạy nhờ thread*.
 Một thread chạy được nhiều coroutine; một coroutine dừng ở thread này rồi tiếp ở thread khác được.
 Hệ quả của việc lẫn hai thứ: bạn sẽ đi tìm câu trả lời "coroutine của tôi là thread nào" thay vì hai
 câu hỏi đúng — *ai làm chủ nó* và *nó được xếp chạy ở đâu*.
 
-**3. Bọc `withContext(Dispatchers.IO)` quanh mọi lời gọi trông có vẻ chậm.** "Trông chậm" không phải
+**4. Bọc `withContext(Dispatchers.IO)` quanh mọi lời gọi trông có vẻ chậm.** "Trông chậm" không phải
 tiêu chí. Tiêu chí là: *việc này có thật sự chặn thread / tính toán nặng không*, và *thư viện đã tự lo
 chưa*. Bọc thêm `IO` quanh một hàm `suspend` đã main-safe không giúp gì, mà còn che mất những chỗ
 thật sự cần nhìn.
 
-**4. Dùng `Thread.sleep` trong coroutine như thể nó là `delay`.** `delay` tạm dừng **coroutine** và
-nhả thread; `Thread.sleep` chặn **thread**. Trong một coroutine đang ở main thread, `Thread.sleep`
-chặn đúng thread vẽ giao diện. Hai hàm cùng "chờ 1 giây" nhưng khác nhau ở chỗ căn bản nhất.
+**5. Dùng `Thread.sleep` trong coroutine như thể nó là `delay`.** `delay` tạm dừng **coroutine** mà
+không chặn thread; `Thread.sleep` chặn **thread**. Trong một coroutine đang ở main thread,
+`Thread.sleep` chặn đúng thread vẽ giao diện. Hai hàm cùng "chờ 1 giây" nhưng khác nhau ở chỗ căn bản
+nhất.
 
-**5. Khởi động việc mà không nghĩ ai làm chủ.** Một coroutine không có người chủ có nghĩa sẽ chạy
+**6. Khởi động việc mà không nghĩ ai làm chủ.** Một coroutine không có người chủ có nghĩa sẽ chạy
 tiếp sau khi màn hình đã đóng, ghi vào state không còn ai đọc, và không ai huỷ nó hộ bạn. Trước khi
 viết `launch`, luôn trả lời được: *"khi ai biến mất thì việc này nên biến mất?"*
 
-**6. Tin rằng `StateFlow` tự "biết vòng đời".** Nó không. `StateFlow` cho bạn *trạng thái hiện tại +
+**7. Tin rằng `StateFlow` tự "biết vòng đời".** Nó không. `StateFlow` cho bạn *trạng thái hiện tại +
 cập nhật*; việc **lắng nghe theo vòng đời** của màn hình là một công cụ riêng, học ở bài **S4**. Câu
 "StateFlow là Flow có sẵn lifecycle awareness" là cách nói gọn gây nhầm — đừng mang nó theo.
+
+**8. Tin rằng `collect` bao giờ cũng chạy mãi.** Không đúng như một quy tắc chung: một Flow có thể phát
+vài giá trị rồi kết thúc, và khi đó `collect` xong việc, code sau nó chạy bình thường. Cái không tự kết
+thúc là dòng **trạng thái** (`StateFlow`) — vì trạng thái thì luôn "đang là", không có điểm hết. Nhớ
+theo hướng này: *"chạy tới khi nào" là tính chất của dòng giá trị, không phải của chữ `collect`.*
 
 ---
 
@@ -698,16 +765,18 @@ cập nhật*; việc **lắng nghe theo vòng đời** của màn hình là m�
 Năm điều cần giữ lại — nếu chỉ nhớ được năm dòng, hãy là năm dòng này:
 
 1. **Coroutine là công việc có thể tạm dừng rồi tiếp tục — nó không phải thread.** Khi nó tạm dừng,
-   thread được nhả ra để chạy việc khác.
-2. **`suspend` cho *phép* tạm dừng; nó không chọn thread.** Không có `withContext`, hàm `suspend`
-   chạy trong ngữ cảnh của người gọi.
+   thread **không bị chặn**, nên runtime dùng được thread cho việc khác.
+2. **`suspend` cho *phép* tạm dừng; nó không chọn thread và không chọn dispatcher.** Hàm `suspend` chạy
+   trong ngữ cảnh nó được gọi từ đó, **trừ khi** chính nó hoặc một API nó gọi đổi ngữ cảnh — nên cũng
+   đừng nói "chỗ chạy do người gọi định hết".
 3. **Mỗi coroutine thuộc về một scope — một người chủ có vòng đời.** `viewModelScope` (ViewModel làm
    chủ), `LaunchedEffect` (Compose làm chủ). Người chủ biến mất thì việc bị huỷ.
 4. **Dispatcher quyết định việc được xếp chạy ở đâu — chỉ đổi khi cần.** `Main` cho giao diện, `IO`
    cho việc chặn thread, `Default` cho tính toán nặng. Chọn theo *bản chất công việc*, không theo tên
    việc.
 5. **`Flow` = giá trị theo thời gian; `StateFlow` = trạng thái hiện tại + cập nhật.** `collect` là
-   hàm `suspend`, nên nó luôn nằm trong một coroutine.
+   hàm `suspend`, nên nó luôn nằm trong một coroutine — và nó *xong việc* khi dòng giá trị kết thúc
+   (một dòng trạng thái thì không có điểm kết thúc tự nhiên).
 
 Ba dòng phụ, dùng khi đọc code:
 
@@ -715,7 +784,8 @@ Ba dòng phụ, dùng khi đọc code:
    bạn vẫn là một mạch liên tục, không bị bỏ rơi.
 7. Hàm `suspend` nên **gọi được an toàn từ main thread**; lớp nào làm việc chặn thì lớp đó tự chuyển
    việc đi, không đẩy trách nhiệm cho người gọi.
-8. `delay` nhả thread, `Thread.sleep` chặn thread — luôn chọn `delay` trong coroutine.
+8. `delay` tạm dừng coroutine **mà không chặn thread**; `Thread.sleep` chặn thread — trong coroutine
+   luôn chọn `delay`.
 
 ---
 
@@ -755,16 +825,17 @@ suspend fun readThemeFromDisk(): String =           // ⑥
   công việc bị huỷ tự động khi ViewModel bị dọn đi. Khối `{ }` là **lambda đuôi** (F1). Coroutine này
   bắt đầu chạy trên main thread — và đó không phải vấn đề, xem ⑦.
 - **③ ④** Hai lời gọi `suspend`, **chạy lần lượt**: mỗi lời gọi có thể tạm dừng để chờ, và trong lúc
-  chờ **thread được nhả ra**. Vì cả hai nằm trong cùng một coroutine, ④ chỉ chạy khi ③ đã xong.
+  chờ **thread không bị chặn**. Vì cả hai nằm trong cùng một coroutine, ④ chỉ chạy khi ③ đã xong.
 - **⑤** Không thuộc S1 — đây là chỗ S4 dạy.
 - **⑥** Hàm `suspend` có expression body (F1). Bản thân từ khoá `suspend` **không** nói hàm này chạy ở
   đâu…
 - **⑦** …chỗ chạy được nói ra ở đây: `withContext(Dispatchers.IO)` chuyển **khối `{ }`** sang dispatcher
   `IO`, và khi khối xong thì việc chạy tiếp **trở về ngữ cảnh của người gọi** (ở ② là main thread). Đây
   là ví dụ cụ thể cho toàn bộ mô hình của bài: ② *bắt đầu* trên main thread, nhưng phần thật sự chặn
-  thread đã được đưa sang `IO`, nên giao diện không bị treo.
+  thread đã được đưa sang `IO`, nên giao diện không bị treo. Chú ý **ai** làm việc đó: chính hàm ⑥ tự
+  đổi ngữ cảnh bên trong — người gọi ở ② không phải biết, và cũng không cần biết.
 - **⑧** Lý do `withContext` tồn tại ở ví dụ này: `blockingReadFile` **chặn thread** — nó không phải hàm
-  `suspend`. Nếu ⑧ đã là một hàm `suspend` main-safe của thư viện, thì ⑦ là lớp dư (Cạm bẫy 3).
+  `suspend`. Nếu ⑧ đã là một hàm `suspend` main-safe của thư viện, thì ⑦ là lớp dư (Cạm bẫy 4).
 
 **Tự chấm:** bạn nói được ① ② ③ ⑦ ⑧ mà không phải tra lại → bài này đã xong việc của nó. Câu duy nhất
 được phép trả lời "chưa học" là ⑤.
@@ -798,18 +869,18 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 | "`suspend` lan truyền lên trên theo chuỗi tới khi có ai mở coroutine" | Ch08 mục 4.1 (dòng 516–519) | Phần 4 — port gọn |
 | **"`suspend` không có nghĩa chạy ở background; chạy thread nào là do dispatcher"** | Ch08 mục 4.1 (dòng 521–526) | Phần 3 — **điểm chính xác trung tâm của S1**, nâng từ `hint` lên callout |
 | `viewModelScope` huỷ tự động khi ViewModel bị dọn + mặc định bắt đầu ở main thread | Ch08 mục 4.2 (dòng 543–551) | Phần 6 — giữ **hai kết luận**, bỏ phần đọc source (xem B) |
-| "Thoạt nghe ngược": `launch` trên main thread mà không treo, vì lời gọi `suspend` nhả thread | Ch08 mục 4.2 (dòng 552–559) | Phần 6 — port thành đoạn chặn hiểu lầm "viewModelScope = nền" |
-| Cơ chế "tạm dừng = lưu chỗ đang dở, trả thread lại, sau đó được đánh thức và tiếp tục" | Ch08 mục 16 (dòng 1320–1346, bước 2–5) | Phần 1 + Phần 3 — port **cơ chế**, bỏ phần Retrofit/OkHttp/Moshi (xem B) |
+| "Thoạt nghe ngược": `launch` trên main thread mà không treo, vì lời gọi `suspend` không chặn thread | Ch08 mục 4.2 (dòng 552–559) | Phần 6 — port thành đoạn chặn hiểu lầm "viewModelScope = nền" |
+| Cơ chế "tạm dừng = lưu chỗ đang dở, không chặn thread, sau đó được đánh thức và tiếp tục" | Ch08 mục 16 (dòng 1320–1346, bước 2–5) | Phần 1 + Phần 3 — port **cơ chế**, bỏ phần Retrofit/OkHttp/Moshi (xem B) |
 | **"Đừng suy rộng: 'không cần withContext' chỉ đúng với thư viện đã hỗ trợ `suspend`"** | Ch08 mục 16 (dòng 1352–1358) | Phần 9 — thành **quy tắc quyết định main-safety**, nâng thành callout |
 | "Đừng chọn dispatcher theo tên việc": `Default` cho lời gọi mạng là thói quen sai | Ch08 mục 19.1 (dòng 1639–1648) | Phần 7 — giữ **quy tắc**, bỏ phần phê phán code mẫu (xem B) |
-| **`suspend` = "người gọi quyết định chạy ở đâu"; `launch` = "tôi tự quyết định"** | Ch10.3 mục 13.3 (dòng 481–489) | Phần 3 + Phần 8 — **precision phải bảo toàn**, dùng làm cách nhớ chính |
+| **`suspend` = "người gọi quyết định chạy ở đâu"; `launch` = "tôi tự quyết định"** | Ch10.3 mục 13.3 (dòng 481–489) | Phần 3 + Phần 8 — precision đáng bảo toàn, nhưng **đã tinh chỉnh sư phạm** (xem "Chỉnh sửa đợt S1B", điểm 1): nửa "người gọi quyết định" quá tuyệt đối, S1 dùng bản hai nửa (người gọi chọn ngữ cảnh nó gọi từ đó · hàm được gọi vẫn có thể tự đổi ngữ cảnh bên trong) |
 | "Chuẩn hiện nay: hàm `suspend` chỉ dùng `withContext(...)`, để người gọi quyết định vòng đời coroutine" | Ch10.3 Cạm bẫy (dòng 619–622) | Phần 8 — port nguyên ý |
 | `withContext(Dispatchers.IO)` = "chạy phần này trên IO, đảm bảo không ở main thread" | Ch10.3 mục 13.1 (dòng 406–408) | Phần 8 — port, nhưng ví dụ đổi sang **một hàm chặn thread thật** (xem "Editorial open questions" 1) |
 | StateFlow là "dòng chảy giá trị mà nơi khác đăng ký lắng nghe; `.value` đổi thì người lắng nghe nhận giá trị mới" | Ch10.3 mục 13.1 (dòng 417–425) | Phần 10–11 — mô hình trực quan cho Flow/StateFlow |
 | Bảng đối chiếu `suspend` (một giá trị) ↔ `Flow` (nhiều giá trị theo thời gian) | Ch06 mục 11.1 (dòng 1281–1300) | Phần 10 — port **hai hàng đầu**; hàng StateFlow bị sửa (xem D) |
-| Ba điểm cụ thể của StateFlow: luôn có giá trị hiện tại · chỉ giữ một giá trị (conflation) · chia sẻ được | Ch06 mục 11.1 khối "Bổ sung" | Phần 11 — port hai điểm đầu; điểm "chia sẻ được" hạ xuống W1 |
+| Ba điểm cụ thể của StateFlow: luôn có giá trị hiện tại · chỉ giữ một giá trị (conflation) · chia sẻ được | Ch06 mục 11.1 khối "Bổ sung" | Phần 11 — port **điểm 1** thành hai mục tiêu (có giá trị hiện tại · người mới lắng nghe nhận ngay); **hành vi** của điểm 2 giữ ở mức nhận biết một câu nhưng **bỏ thuật ngữ "conflation"** ra khỏi bài (xem B); điểm "chia sẻ được" hạ xuống W1 |
 | "`collect` là hàm `suspend` nên bắt buộc nằm trong coroutine" | Ch08 mục 5.2 (dòng 705–709) | Phần 10 — port nguyên |
-| "`collect` không bao giờ chạy xong ⇒ code sau `collect` trong cùng `launch` không chạy" | Ch08 mục 5.2 (dòng 717–724) | Phần 10 — port ở mức **nhận biết, 2 câu**; cơ chế đầy đủ để W1 |
+| "`collect` không bao giờ chạy xong ⇒ code sau `collect` trong cùng `launch` không chạy" | Ch08 mục 5.2 (dòng 717–724) | Phần 10 — port **có sửa** (xem "Chỉnh sửa đợt S1B", điểm 2): phát biểu gốc chỉ đúng cho `StateFlow`; S1 dạy quy tắc chung trước (Flow **có thể** kết thúc ⇒ `collect` xong việc), rồi mới nêu ca dòng trạng thái + hệ quả hai coroutine |
 | `LaunchedEffect` khởi động coroutine khi vào composition, tự huỷ khi bị gỡ | Ch08 mục 5.2 (dòng 710–715) | Phần 13 — **dùng bản chính xác hơn của C4**, không dùng bản Ch08 (xem D) |
 | Bốn điều chính xác về thời điểm `LaunchedEffect` chạy + phản-folklore "`Unit` chạy đúng một lần mãi mãi" | Ch05 mục 18 (dòng 2602–2621) | Phần 13 — **trỏ về, không lặp lại**; S1 chỉ thêm phần "khối đó là coroutine, Compose làm chủ" |
 
@@ -836,6 +907,8 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 | Drift #6/#7 trên code mẫu (`suspend` + `launch` dư; `Default` cho lời gọi mạng) ở mức phê phán từng hàm | Ch08 mục 19.1 (dòng 1615–1648) | **W1/W2** — S1 chỉ lấy quy tắc, không lấy phần đối chiếu |
 | Khuôn bốn bước của hàm ViewModel (IO → repository → convert → state) | Ch10.3 mục 13.1 (dòng 402–416) | **S5 / R3** — S1 chỉ lấy bước "chuyển sang IO" |
 | `async`/`await`, `Deferred`, channels, backpressure, `callbackFlow`, toán tử Flow, cold vs hot, cancellation, `CoroutineExceptionHandler`, `supervisorScope`, `lifecycleScope` chi tiết, test coroutine, mutex | *(chưa có trong khoá)* | **W1** — danh sách loại trừ cứng của S1 |
+| **Thuật ngữ "conflation"** + hệ quả của nó (`Any.equals`, vì sao nên dùng giá trị bất biến cho state) | *(chưa có trong khoá; hành vi được nhắc 1 câu ở Ch06 mục 11.1)* | **W1** — S1 chỉ mô tả *hành vi* một câu, không đặt tên thuật ngữ (chốt ở đợt S1B, điểm 3) |
+| **Cách Flow kết thúc / bị huỷ**: `flow { }` + `emit` ở mức dạy, toán tử kết thúc, quan hệ giữa hoàn tất và cancellation | *(chưa có trong khoá)* | **W1** — S1 chỉ cho *xem hình dạng* một Flow hữu hạn ở mức nhận biết, có dán nhãn |
 
 ### C. Trùng lặp — không dùng làm nguồn thứ hai
 
@@ -888,6 +961,41 @@ S2/S3 (nếu có `LaunchedEffect`) · **S4** (`viewModelScope`, `StateFlow`, `co
 collection, `stateIn`) · **S5** (hàm `suspend` ở tầng dữ liệu) · **N1/N2** · **W1** (chiều sâu) ·
 **W2/W3** · **D1/D2** · **R2/R3/R4** · **X1/X2**.
 
+### G. Chỉnh sửa đợt S1B — hiệu đính độ chính xác
+
+> Đợt sửa có phạm vi hẹp trên chính file này, sau khi draft đầu được duyệt. Không đổi cấu trúc bài,
+> không cắt nội dung, không đụng file nào khác.
+
+1. **Mô hình thực thi của `suspend`.** Bản đầu dùng cách nhớ *"`suspend` = người gọi quyết định việc này
+   chạy ở đâu"* (kế thừa cách diễn đạt của Ch10.3 mục 13.3). Phát biểu đó **quá tuyệt đối**: nó ngụ ý
+   người gọi nắm quyền độc quyền về ngữ cảnh chạy, trong khi hàm được gọi hoàn toàn có thể — và với việc
+   chặn thread thì *nên* — tự đổi ngữ cảnh bên trong; rất nhiều hàm `suspend` của thư viện đã main-safe
+   đúng theo cách đó. Bản hiện tại dùng mô hình hai nửa: **`suspend` không chọn thread/dispatcher; hàm
+   chạy trong ngữ cảnh nó được gọi từ đó, trừ khi chính nó hoặc một API nó gọi chủ động đổi ngữ cảnh.**
+   Sửa tại: Phần 3 (callout + Tự kiểm tra 2), Phần 8 (cặp câu trả nợ), Cạm bẫy 1 và **Cạm bẫy 2 (mới —
+   chặn chính hướng suy diễn ngược)**, Tóm tắt 2, mục tiêu bài, lời giải ⑦ ở "Luyện tập". Ch10.3 vẫn là
+   nguồn sư phạm hợp lệ cho cặp `suspend` ↔ `launch` (ai sở hữu vòng đời coroutine); chỉ nửa "chạy ở
+   đâu" bị tinh chỉnh. **Không** dạy `CoroutineContext` để đổi lấy sự chính xác này.
+2. **Mô hình kết thúc của `collect`.** Bản đầu chỉ nói ca `StateFlow` ("`collect` chờ mãi") và vì thế dễ
+   bị đọc thành quy tắc chung *"collect vốn dĩ vô tận"* — sai với Flow nói chung. Bản hiện tại dạy theo
+   thứ tự đúng: **một Flow có thể phát vài giá trị rồi kết thúc ⇒ `collect` xong việc**, kèm hình dạng
+   một Flow hữu hạn ở mức nhận biết; **sau đó** mới nêu dòng trạng thái không có điểm kết thúc tự nhiên,
+   và hệ quả "hai `collect` nối tiếp trong một coroutine" vẫn được giữ. Thêm **Tự kiểm tra 7** và
+   **Cạm bẫy 8**. Nguồn Ch08 mục 5.2 được đánh dấu "port có sửa" trong bảng A.
+3. **Thuật ngữ "conflation".** Rút khỏi bài học: mục 3 trong danh sách "StateFlow thêm gì" bị hạ xuống
+   một câu mô tả *hành vi* (gán lại đúng giá trị đang có thì không có thông báo mới) và thuật ngữ chuyển
+   sang bảng B → **W1**. Lý do: nó đang trông như mục tiêu học thứ ba của Phần 11, cạnh tranh với hai
+   điều thật sự cần (có trạng thái hiện tại · người mới lắng nghe nhận ngay).
+4. **Cách nói về thread khi tạm dừng.** Mọi chỗ viết "nhả thread ra / trả thread lại" được đổi thành
+   **"không chặn thread"** (+ "runtime được tự do dùng thread cho việc khác" ở chỗ cần nói thêm), để
+   không ngụ ý một cơ chế bàn giao thread cụ thể giữa các coroutine. Sửa tại: bảng Phần 1, bảng Phần 2,
+   giải thích `delay` ở Phần 3, bảng `delay` ↔ `Thread.sleep`, Phần 6 (`viewModelScope`), Tự kiểm tra 5,
+   Cạm bẫy 5, Tóm tắt 1 và 8, lời giải ③④, và hai hàng trong bảng A.
+5. **Không đổi:** coroutine ≠ thread · chặn ↔ tạm dừng · `launch` mức nhận diện · scope = sở hữu/vòng
+   đời · `viewModelScope`/`rememberCoroutineScope` mức nhận diện · mối nối `LaunchedEffect`–C4 ·
+   Main/IO/Default · ví dụ `withContext` với hàm chặn thread · quy tắc main-safety · mô hình Flow ·
+   phần chuẩn bị cho S4 · ranh giới W1 · payoff F1/F2 · bài đọc cuối. Không câu nào bị cắt vì thời lượng.
+
 ---
 
 ## Editorial open questions
@@ -931,26 +1039,32 @@ collection, `stateIn`) · **S5** (hàm `suspend` ở tầng dữ liệu) · **N1
 | `blockingReadFile("theme.txt")` | Gọi hàm + tham số chuỗi: **F1**; "hàm chặn thread" được dán nhãn tại chỗ |
 | `delay(1000)`, `println(...)` *(ở Phần 3)* | `delay`: **S1 Phần 3** (dán nhãn là hàm `suspend`); `println`: **F1** |
 | `Thread.sleep(1000)` *(ở Phần 3)* | Dán nhãn "hàm chặn thread của Java", **chỉ để đối chiếu** — không dạy API Java |
-| `messages.collect { message -> ... }` *(ở Phần 10)* | `collect`: **S1 Phần 10**; lambda có tham số đặt tên `->`: **F1** |
+| `messages.collect { message -> ... }` *(ở Phần 10)* | `collect`: **S1 Phần 10**; lambda có tham số đặt tên `->`: **S1 nhắc lại F1** |
+| `flow { emit(1) … }` *(ở Phần 10, thêm ở đợt S1B)* | **Nhận biết có dán nhãn**: khối code ghi rõ "cách *tạo* Flow là nội dung W1 — ở đây chỉ cần nhìn hình dạng". Tồn tại **chỉ** để chứng minh một Flow có thể kết thúc; không có bài tập, không có checkpoint nào yêu cầu tự viết `flow { }`. |
 
 **Danh sách loại trừ đã xác minh** — trong toàn bộ phần "Bài học", các API sau **không được dạy và
 không xuất hiện trong bất kỳ đoạn code nào**: `async`, `await`, `Deferred`, `SupervisorJob`,
-`supervisorScope`, `coroutineScope { }`, `runBlocking`, `flow { }`, `emit`, các toán tử Flow
-(`map`/`filter` trên Flow, `combine`, `flatMapLatest`, `debounce`, `catch`, `retry`), `MutableStateFlow`,
-`asStateFlow`, `update { }`, `SharingStarted`, `SharedFlow`, `stateIn`, `callbackFlow`, `Channel`,
-`collectAsState`, `collectAsStateWithLifecycle`, `repeatOnLifecycle`, `lifecycleScope`, `GlobalScope`,
-`cancel()`, `isActive`, `try/catch` quanh coroutine, `CoroutineExceptionHandler`, `CoroutineContext`,
-toán tử `+` ghép context, `Dispatchers.Unconfined`, `Dispatchers.Main.immediate`.
+`supervisorScope`, `coroutineScope { }`, `runBlocking`, các toán tử Flow (`map`/`filter` trên Flow,
+`combine`, `flatMapLatest`, `debounce`, `catch`, `retry`), `MutableStateFlow`, `asStateFlow`,
+`update { }`, `SharingStarted`, `SharedFlow`, `stateIn`, `callbackFlow`, `Channel`, `collectAsState`,
+`collectAsStateWithLifecycle`, `repeatOnLifecycle`, `lifecycleScope`, `GlobalScope`, `cancel()`,
+`isActive`, `try/catch` quanh coroutine, `CoroutineExceptionHandler`, `CoroutineContext`, toán tử `+`
+ghép context, `Dispatchers.Unconfined`, `Dispatchers.Main.immediate`.
 
-Một số tên trong danh sách trên **có xuất hiện đúng một lần dưới dạng chữ**, luôn nằm trong câu
+**Một ngoại lệ có chủ ý, mở ở đợt S1B:** `flow { }` và `emit` **có** xuất hiện trong đúng một khối code
+(Phần 10) ở mức *nhận biết có dán nhãn*, vì không có hình dạng cụ thể thì câu "một Flow có thể kết thúc"
+chỉ là lời nói. Chúng **không** trở thành mục tiêu học: không dạy cách tạo Flow, không có bài tập nào
+đòi viết `flow { }`, và W1 vẫn là nơi dạy chúng (xem bảng B).
+
+Một số tên trong danh sách loại trừ **có xuất hiện đúng một lần dưới dạng chữ**, luôn nằm trong câu
 "cố tình không dạy ở đây / thuộc W1" kèm đích cụ thể — đó là *chủ ý*: người học cần biết ranh giới của
 bài, và cần biết thứ mình sẽ gặp trên mạng có nơi dạy đàng hoàng. Cụ thể: `async`/`await`/`Deferred`
 (Phần 5 → W1) · `SupervisorJob`/`CoroutineContext` (Phần 7 → W1) · các toán tử Flow (Phần 10 → W1) ·
 `MutableStateFlow`/`update { }`/`SharingStarted`/`SharedFlow` (Phần 11 → W1) · `stateIn` (Phần 11 →
 S4) · `GlobalScope` (Phần 6, kèm lý do không dùng) · `Job` (Phần 5, mức nhận diện). Ngoài ra
-`Thread.sleep` xuất hiện **chỉ để đối chiếu** với `delay` (Phần 3, Cạm bẫy 4, Tóm tắt 8), và
+`Thread.sleep` xuất hiện **chỉ để đối chiếu** với `delay` (Phần 3, Cạm bẫy 5, Tóm tắt 8), và
 `Retrofit`/`Room`/`repository` chỉ xuất hiện dưới dạng **tên kèm nhãn "sẽ học ở bài nào"**, không có
-code.
+code. Thuật ngữ **"conflation"** đã được rút khỏi bài ở đợt S1B — chỉ còn *hành vi*, không còn tên.
 
 **Cú pháp Kotlin ngoài F1/F2 xuất hiện trong bài** — đúng **hai** chỗ, cả hai đều được gloss một câu
 có nhãn: (1) dấu `:` nghĩa "là một" khi khai `class ... : ViewModel()` — Phần 12; (2) giá trị của khối
