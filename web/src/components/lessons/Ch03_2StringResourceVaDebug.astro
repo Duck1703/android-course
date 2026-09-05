@@ -1,52 +1,51 @@
 ---
-// Chương 3.2 — String resource, lớp R, lỗi biên dịch đầu tiên và debug. Task 48 (Phase 7): áp chuẩn Chương 10.
+// Chương 3.2 (lesson ID tương lai A10 + A11) — String resource, lớp R, lỗi biên dịch và debug.
 // Ranh giới tách + hợp đồng đặt tên: docs/CHAPTER_SPLIT_MAP.md
 // Nội dung diễn giải lại bằng tiếng Việt, không copy nguyên văn nguồn.
 // Code trích nguyên văn từ aaf-materials/ theo Quyết định #7 — ghi rõ file + dòng ở mục nguon.
-// Số dòng đã kiểm bằng cách mở từng file thật và đếm (2026-08-31):
-//   final/app/src/main/java/com/kodeco/chat/MainActivity.kt = 80 dòng · license 1-32 · package 34
-//     · import 36-48 (LocalContext ở 47, stringResource ở 48) · class MainActivity 50-78
-//     · 55 val context = LocalContext.current · 56-57 hai remember + context.getString(...)
-//     · 58 Text(text = chatOutputText) · 60-66 OutlinedTextField (label stringResource ở 65)
-//     · 68-71 Button onClick: 69 gán chatOutputText, 70 chatInputText = "" (dòng đặt breakpoint)
-//     · 72 Text(text = stringResource(id = R.string.send_button)) · 73 dòng trống dư
-//   final/app/src/main/res/values/strings.xml = 40 dòng · license 1-32 · resources 34
-//     · 5 string 35-39 · thẻ đóng 40
-//   starter/app/src/main/res/values/strings.xml = 37 dòng · license 1-33 · resources 35
-//     · đúng 1 string app_name ở 36 · thẻ đóng 37
-//   final/app/src/main/AndroidManifest.xml = 61 dòng · license 1-33 · <manifest 35-36 (2 xmlns,
-//     KHÔNG có thuộc tính package) · <application 38-47 với android:label="@string/app_name" ở dòng 43
-//     · <activity 48-52 với android:label="@string/app_name" ở dòng 51 · <intent-filter> 53-57
-//     — dùng cho đường dây app_name ở mục 9.
-//   Chương 3 không có res/layout/ — toàn bộ giao diện làm bằng Compose.
-//   grep Timber trong aaf-materials/08-networking/projects/final/app/src/main/java/ → 13 kết quả ở 5 file
-//     (RecipeApp.kt dòng 38-39 + 45-47 plant(Timber.DebugTree()), viewmodels/RecipeViewModel.kt dòng 47
-//     + 107 + 125, ui/RecipeDetails.kt dòng 81 + 129, ui/widgets/BookmarkCard.kt dòng 64 + 90,
-//     ui/widgets/RecipeCard.kt dòng 56 + 75) — dùng cho câu về Logcat ở mục 13.4.
-//   Đối chiếu lại 2026-08-31 cho mục 12-13: import LocalContext dòng 47, import stringResource dòng 48,
-//     LocalContext.current dòng 55, hai remember 56-57, label stringResource dòng 65, khối onClick 68-71
-//     (dòng 70 = chatInputText = ""), Text send_button dòng 72, dòng 73 trống dư.
-//     Manifest final: android:label="@string/app_name" ở dòng 43 (application) và 51 (activity).
-//   secondFixCode là ví dụ do khoá học tự viết (không có trong project mẫu) — ghi rõ ở mục nguon.
+//
+// ⚠️ SPLIT-READY (lần sửa 2026-09) — bài này là HAI đơn vị học trong MỘT route sống:
+//   • ĐƠN VỊ 1 (tương lai A10 — "String resource & lớp R") = mục 8–12
+//     + "Tổng kết đơn vị 1" + cạm bẫy 1–2.
+//   • ĐƠN VỊ 2 (tương lai A11 — "Đọc lỗi & debug") = mục 13–15
+//     + "Tổng kết Chương 3.2" + cạm bẫy 3.
+//   Ranh giới tách chính xác: đánh dấu bằng comment <!-- SPLIT BOUNDARY --> ngay trước
+//   <h2 id="debug">. Mọi thứ từ đầu file tới hết "Tổng kết đơn vị 1" (trừ cạm bẫy 3,
+//   phần tổng kết chung, khối Nguồn và các đoạn code chỉ dùng bởi mục 13–15) thuộc A10;
+//   mọi thứ từ <h2 id="debug"> tới hết mục 15 thuộc A11. Khi migrate: copy từng đơn vị
+//   nguyên khối sang file lesson mới (quiz tách theo đúng ranh giới này) — không phải
+//   viết lại đoạn nào. Route sống hiện tại PHẢI giữ nguyên toàn bộ nội dung cho tới khi
+//   split thật sự diễn ra (plan: IMP-032, SPLIT_MAP replace — docs/COURSE_REDESIGN_IMPLEMENTATION_PLAN.md §10.1).
+//
+// Lần sửa 2026-09 (CONTENT BATCH 03 — chuẩn hoá theo docs/COURSE_CONTENT_STANDARD.md):
+//   • Rút từ ~11.200 từ (~56 phút) về ~3.700 từ (~25 phút) cho toàn route; mỗi đơn vị ≤30 phút.
+//   • Cắt sâu: plurals (giữ 1 câu trong hint), bảng "đọc theo chiều dọc", chuẩn đặt tên
+//     (giữ 1 câu), phân tích "vì sao R sinh lúc build" (giữ), phần Context abstract class
+//     (giữ 1 câu), nút Step Into (giữ trong hint), Timber (giữ 2 câu forward-ref).
+//   • Forward-ref đổi sang ngôn ngữ chủ đề: "phần State & kiến trúc", "phần Dữ liệu cục bộ",
+//     "phần Mạng" — bỏ "Chương 6.2 / 8.1 / 8.3 / 8.4 / 9.3".
+//   • Số mục 8–15 liên tục với 3.1 (1–7), 3.3 (19–25), 3.4 (26–31).
+// Số dòng aaf-materials đã kiểm lại bằng lệnh thật (2026-09-05):
+//   final/app/src/main/java/com/kodeco/chat/MainActivity.kt = 79/80 dòng: license 1–32 ·
+//     package 34 · import 36–48 (LocalContext 47, stringResource 48) · class 50–78 ·
+//     55 val context · 56–57 hai remember context.getString · 58 Text · 60–66 OutlinedTextField
+//     (label 65) · 68–71 Button onClick (69 gán, 70 = chatInputText = "") · 72 chữ nút · 73 trống dư.
+//   final/res/values/strings.xml = 39/40 dòng: resources 34 · 5 string 35–39 · đóng 40.
+//   starter/res/values/strings.xml = 36/37 dòng: resources 35 · 1 string 36 · đóng 37.
+//   final/AndroidManifest.xml = 60/61 dòng: android:label="@string/app_name" ở 43 (<application>)
+//     và 51 (<activity>). grep Timber trong 08-networking .../java → 13 kết quả, plant ở RecipeApp.kt:47.
 
 import { Code } from "astro:components";
 
 const BOOK = "content/book/ch03-android-fundamentals.md";
-
 const AAF = "aaf-materials/03-android-fundamentals/projects";
-
 const KT_FINAL = `${AAF}/final/app/src/main/java/com/kodeco/chat/MainActivity.kt`;
-
 const STRINGS_FINAL = `${AAF}/final/app/src/main/res/values/strings.xml`;
-
 const STRINGS_START = `${AAF}/starter/app/src/main/res/values/strings.xml`;
-
 const MANIFEST_FINAL = `${AAF}/final/app/src/main/AndroidManifest.xml`;
-
 const stringsStartCode = `<resources>
     <string name="app_name">Kodeco Chat</string>
 </resources>`;
-
 const stringsFinalCode = `<resources>
     <string name="app_name">Kodeco Chat</string>
     <string name="chat_display_default">Messages will display here</string>
@@ -54,33 +53,24 @@ const stringsFinalCode = `<resources>
     <string name="send_button">Send</string>
     <string name="chat_entry_label">Enter Chat Text</string>
 </resources>`;
-
 const hardcodedStateCode = `var chatInputText by remember { mutableStateOf("Type your text here") }
 var chatOutputText by remember { mutableStateOf("Press Send to update this text")}`;
-
 const brokenStringResourceCode = `// KHÔNG BIÊN DỊCH ĐƯỢC — đây là một lỗi rất hay gặp, để nguyên ở đây để bạn học cách đọc thông báo lỗi
 var chatInputText by remember { mutableStateOf(stringResource(id = R.string.send_button)) }`;
-
 const contextGetStringCode = `val context = LocalContext.current
 var chatInputText by remember { mutableStateOf(context.getString(R.string.chat_entry_default)) }
 var chatOutputText by remember { mutableStateOf(context.getString(R.string.chat_display_default)) }`;
-
 const labelCode = `label = { Text(text = stringResource(id = R.string.chat_entry_label)) }`;
-
 const buttonTextCode = `Text(text = stringResource(id = R.string.send_button))`;
-
 const breakpointCode = `Button(onClick = {
   chatOutputText = chatInputText
   chatInputText = ""          // ← đặt breakpoint ở dòng này
 }) {`;
-
 const qualifierTreeCode = `res/
 ├── values/strings.xml          <string name="send_button">Send</string>
 ├── values-vi/strings.xml       <string name="send_button">Gửi</string>
 └── values-ja/strings.xml       <string name="send_button">送信</string>`;
-
-// Hai đoạn dưới đây là ví dụ minh hoạ do khoá học tự viết (không có trong project mẫu),
-// dùng để giải thích cơ chế qualifier và plurals cho người mới — ghi rõ ở mục nguon.
+// Hai đoạn dưới đây là ví dụ minh hoạ do khoá học tự viết (không có trong project mẫu) — ghi rõ ở mục nguon.
 const stringsViCode = `<!-- res/values-vi/strings.xml -->
 <resources>
     <string name="app_name">Kodeco Chat</string>
@@ -89,20 +79,11 @@ const stringsViCode = `<!-- res/values-vi/strings.xml -->
     <string name="send_button">Gửi</string>
     <string name="chat_entry_label">Nhập nội dung chat</string>
 </resources>`;
-
-const pluralsCode = `<plurals name="message_count">
-    <item quantity="one">%d message</item>
-    <item quantity="other">%d messages</item>
-</plurals>`;
-
-// Cách sửa thứ hai (hợp lệ, không có trong project mẫu) — khoá học tự viết, ghi rõ ở mục nguon.
 const secondFixCode = `val defaultEntry = stringResource(id = R.string.chat_entry_default)
 val defaultDisplay = stringResource(id = R.string.chat_display_default)
 var chatInputText by remember { mutableStateOf(defaultEntry) }
 var chatOutputText by remember { mutableStateOf(defaultDisplay) }`;
-
 const rememberKeyCode = `var chatInputText by remember(defaultEntry) { mutableStateOf(defaultEntry) }`;
-
 const logcatCode = `Button(onClick = {
   Log.d("MainActivity", "truoc khi gan: out=$chatOutputText in=$chatInputText")
   chatOutputText = chatInputText
@@ -115,187 +96,137 @@ const logcatCode = `Button(onClick = {
 	<div class="callout goals">
 		<strong>Bạn sẽ học được gì trong chương này</strong>
 		<ul>
-			<li>Vì sao mọi chuỗi chữ hiện trên màn hình đều phải <em>ra khỏi</em> code Kotlin, và <strong>technical debt</strong>
-				(nợ kỹ thuật) nghĩa là gì rất cụ thể trong trường hợp này.</li>
-			<li>File <code>strings.xml</code> trước và sau: từ 1 chuỗi lên 5 chuỗi, mỗi chuỗi hiện ở đúng chỗ nào trên màn
-				hình, và chuỗi nào được chính hệ điều hành đọc chứ không phải code của bạn.</li>
-			<li>Cơ chế <strong>qualifier</strong> (<code>values-vi/</code>, <code>values-ja/</code>) làm app đổi ngôn ngữ
-				<em>mà không sửa một dòng Kotlin nào</em> — và cùng cơ chế đó áp cho icon, chế độ tối, kích thước màn hình.</li>
-			<li>Lớp <code>R</code> do máy tự sinh mỗi lần build: nó thật ra là cái gì, và ba hệ quả thực dụng bạn dùng hằng
-				ngày, kể cả cách sửa khi <code>R</code> "chưa thấy" chuỗi bạn vừa thêm.</li>
+			<li><em>Đơn vị 1 — String resource &amp; lớp R (mục 8–12, tương lai A10):</em> vì sao mọi chuỗi hiện trên màn
+				hình đều phải <em>ra khỏi</em> code Kotlin và <strong>technical debt</strong> (nợ kỹ thuật) nghĩa là gì rất
+				cụ thể trong trường hợp này.</li>
+			<li>File <code>strings.xml</code> trước và sau: từ 1 chuỗi lên 5 chuỗi, chuỗi nào do code của bạn đọc và chuỗi
+				nào do chính hệ điều hành đọc; cơ chế <strong>qualifier</strong> (<code>values-vi/</code>) làm app đổi
+				ngôn ngữ mà không sửa một dòng Kotlin nào.</li>
+			<li>Lớp <code>R</code> do máy tự sinh mỗi lần build: nó là cái gì, ba hệ quả thực dụng dùng hằng ngày, kể cả
+				cách sửa khi <code>R</code> "chưa thấy" chuỗi bạn vừa thêm.</li>
 			<li>Lỗi biên dịch đầu tiên của khoá học — <em>"Composable calls are not allowed inside the calculation
-				parameter…"</em> — vì sao nó xảy ra, <strong>bốn nơi</strong> Android Studio báo lỗi cho bạn, và cách sửa bằng
-				<code>LocalContext.current</code> + <code>getString()</code>.</li>
-			<li><code>Context</code> là gì, <code>LocalContext</code> đến từ đâu, và một quy tắc tự phân biệt vùng được gọi
-				Composable với vùng không được — không cần học thuộc.</li>
-			<li>Hai cách lấy chuỗi trong Compose, bảng so sánh từng tiêu chí, và một khác biệt <em>thật</em> giữa chúng mà
-				phần lớn tài liệu trình bày như hai lựa chọn ngang nhau.</li>
-			<li>Một cách sửa <em>thứ hai</em> cũng hợp lệ mà hướng dẫn thông thường không nhắc — và vì sao biết cả hai thì
-				bạn hiểu luật Compose chứ không chỉ học thuộc một mẹo.</li>
-			<li>Debug ở mức nền: phân biệt lỗi biên dịch với lỗi lúc chạy, nút hình con bọ, cách đặt <strong>breakpoint</strong>,
-				và vì sao đúng cái dòng được chọn trong bài tập lại dạy bạn nhiều nhất.</li>
-			<li>Công cụ debug thứ hai — <strong>Logcat</strong> và <code>Log.d()</code> — dùng khi bạn <em>chưa biết</em> lỗi nằm
+				parameter…"</em> — vì sao nó xảy ra, <strong>bốn nơi</strong> Android Studio báo lỗi cho bạn, và hai cách
+				sửa hợp lệ.</li>
+			<li><em>Đơn vị 2 — Đọc lỗi &amp; debug (mục 13–15, tương lai A11):</em> phân biệt lỗi biên dịch với lỗi lúc
+				chạy, nút hình con bọ, cách đặt <strong>breakpoint</strong> và đọc giá trị biến lúc app đang dừng.</li>
+			<li>Công cụ thứ hai — <strong>Logcat</strong> và <code>Log.d()</code> — dùng khi bạn <em>chưa biết</em> lỗi nằm
 				ở đâu, cùng nguyên tắc chọn giữa nó và breakpoint.</li>
 		</ul>
 		<p>
-			Hai chương nhỏ còn lại của Chương 3, để bạn biết trước lộ trình: <strong>Chương 3.3</strong> — các loại resource
-			khác ngoài chuỗi, file <code>AndroidManifest.xml</code> và từng thẻ trong đó, vì sao app mở được nhờ
-			<code>&lt;intent-filter&gt;</code>, <code>Intent</code> là gì, permission khai ở đâu (kèm một cái bẫy tên thẻ rất
-			hay gặp), và <code>Service</code> chạy việc khi người dùng không nhìn. <strong>Chương 3.4</strong> — hai hệ
-			theme song song trong cùng một project, chuỗi việc đầy đủ khi bạn bấm nút Send, bảng đối chiếu toàn bộ Chương 3
-			với code thật, và những gì đã thay đổi so với thời điểm project mẫu được ghim.
+			Chương này là <strong>hai đơn vị học gói trong một route</strong> (sẽ được tách thành hai bài riêng về sau):
+			đơn vị 1 lo "chuỗi nằm ở đâu", đơn vị 2 lo "nhìn thấy code đang chạy". Nửa sau chuyển từ lỗi thấy được ngay
+			khi gõ sang lỗi chỉ thấy khi app đang chạy — tức là debug.
 		</p>
 	</div>
 	<div class="callout">
 		<strong>Chương 3.1 để lại gì cho chương này</strong>
 		<p>
 			Hết Chương 3.1 bạn đã có một app chat chạy được: một <code>Column</code> xếp dọc ba thành phần — một
-			<code>Text</code> hiển thị tin nhắn, một <code>OutlinedTextField</code> để gõ, một <code>Button</code> tên Send;
-			hai biến state <code>chatInputText</code> và <code>chatOutputText</code> giữ chữ; bấm Send thì chữ trong ô nhập
-			nhảy lên trên và ô nhập được xoá trắng. Về mặt <em>hoạt động</em>, app đã xong.
+			<code>Text</code> hiển thị tin nhắn, một <code>OutlinedTextField</code> để gõ, một <code>Button</code> tên
+			Send; hai biến state <code>chatInputText</code> và <code>chatOutputText</code> giữ chữ; bấm Send thì chữ
+			trong ô nhập nhảy lên trên và ô nhập được xoá trắng. Về mặt <em>hoạt động</em>, app đã xong.
 		</p>
 		<p>
 			Nhưng nhìn lại code thì mọi chữ hiện trên màn hình vẫn nằm <strong>viết cứng ngay trong Kotlin</strong>:
-			<code>"Type your text here"</code>, <code>"Press Send to update this text"</code>, <code>"Label"</code>,
-			<code>"Send"</code>. Bốn chuỗi, bốn chỗ khác nhau trong cùng một file — và đó là con số của một app mới chỉ có
-			một màn hình với ba thành phần. Chương này làm hai việc nối nhau: đưa toàn bộ số chữ đó ra một file riêng để app
-			dịch được sang ngôn ngữ khác, và — đúng lúc bạn thử làm việc đó — gặp lỗi biên dịch đầu tiên, rồi học cách
-			<em>đọc</em> lỗi thay vì đoán. Nửa sau của chương chuyển từ "lỗi thấy được ngay khi gõ" sang "lỗi chỉ thấy khi
-			app đang chạy", tức là debug.
-		</p>
-		<p>
-			Đường đi của chương này vì thế có một nhịp đáng để ý trước khi bắt đầu: bạn sẽ <em>làm sai một lần có chủ ý</em>.
-			Đoạn code ở mục 11 không biên dịch được, và điều đó là cố ý — vì cái lỗi ấy nói ra một luật nền tảng của Compose
-			mà đọc lý thuyết suông thì rất khó nhớ. Nếu bạn gõ theo và thấy Android Studio gạch đỏ, bạn đang đi đúng đường.
+			<code>"Type your text here"</code>, <code>"Press Send to update this text"</code>, <code>"Send"</code>. Và
+			còn một điều từ Chương 3.1 để lại: bạn đã biết ranh giới Kotlin ↔ Compose nằm ở dấu <code>&#123;</code> của
+			<code>setContent</code> (Chương 3.1, mục 2) — chương này sẽ cho bạn gặp đúng lỗi biên dịch sinh ra từ chỗ đó.
+			Bạn sẽ <em>làm sai một lần có chủ ý</em>: đoạn code ở mục 11 không biên dịch được, và điều đó là cố ý, vì cái
+			lỗi ấy nói ra một luật nền tảng của Compose. Nếu bạn gõ theo và thấy Android Studio gạch đỏ, bạn đang đi
+			đúng đường.
 		</p>
 	</div>
+
 	<h2 id="tai-sao-strings">8. Vì sao chuỗi văn bản không nên nằm trong code Kotlin</h2>
 	<p>
-		Chữ hiện trên màn hình là một trong những thành phần quan trọng nhất của bất kỳ app nào — quan trọng đến mức đáng
-		dành hẳn một chương nhỏ cho nó. Lập luận mở đầu rất đơn giản: app của bạn đang dùng nhãn tiếng Anh, nhưng đó không
-		có nghĩa tiếng Anh là ngôn ngữ duy nhất app <em>hỗ trợ được</em>. Hỗ trợ nhiều ngôn ngữ nghĩa là người không đọc
-		được tiếng Anh vẫn dùng được app — và bạn nên tính đến việc đó ngay từ bây giờ nếu định đưa app lên Google Play
-		Store.
+		Chữ hiện trên màn hình là một trong những thành phần quan trọng nhất của bất kỳ app nào — quan trọng đến mức
+		đáng dành hẳn một mục cho nó. Lập luận mở đầu rất đơn giản: app của bạn đang dùng nhãn tiếng Anh, nhưng đó
+		không có nghĩa tiếng Anh là ngôn ngữ duy nhất app <em>hỗ trợ được</em>. Hỗ trợ nhiều ngôn ngữ nghĩa là người
+		không đọc được tiếng Anh vẫn dùng được app — và bạn nên tính đến việc đó ngay từ bây giờ nếu định đưa app lên
+		Google Play Store.
 	</p>
 	<p>
-		Nói rộng hơn một chút để bạn thấy vì sao đây không phải chi tiết phụ: làm chủ được chuyện "chuỗi nằm ở đâu, lấy ra
-		bằng cách nào" là một trong những kỹ năng bạn dùng đi dùng lại suốt sự nghiệp Android, ở mọi app, mọi quy mô. Nó
-		không phải kỹ thuật hào nhoáng, nhưng nó là loại kỷ luật quyết định một codebase dễ sống hay khó sống sau hai năm.
-	</p>
-	<p>
-		Ở Chương 3.1, mục 6.2, bạn viết cứng chuỗi ngay trong code — hai giá trị mặc định của hai biến state trông như thế
-		này:
+		Ở Chương 3.1, mục 5.2, bạn viết cứng chuỗi ngay trong code — hai giá trị mặc định của hai biến state trông như
+		thế này:
 	</p>
 	<Code code={hardcodedStateCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Cách này chạy tốt nếu bạn chỉ nhắm người dùng nói tiếng Anh. Câu hỏi đặt ra: vậy làm sao hỗ trợ thêm một, hai, hay
-		cả chục ngôn ngữ khác? Không lẽ mỗi ngôn ngữ một bản app riêng, mỗi bản sửa lại từng dòng Kotlin? Câu trả lời là
-		<strong>String resource</strong> — chuỗi được rút ra khỏi code, đặt vào một file dữ liệu riêng, rồi code chỉ tham
-		chiếu tới <em>tên</em> của chuỗi.
+		Cách này chạy tốt nếu bạn chỉ nhắm người dùng nói tiếng Anh. Câu hỏi đặt ra: vậy làm sao hỗ trợ thêm một, hai,
+		hay cả chục ngôn ngữ khác? Không lẽ mỗi ngôn ngữ một bản app riêng, mỗi bản sửa lại từng dòng Kotlin? Hãy tưởng
+		tượng kịch bản đó đi đến đâu: bạn có bản tiếng Anh và bản tiếng Việt, hai file <code>MainActivity.kt</code>
+		khác nhau ở đúng bốn chuỗi. Tuần sau bạn sửa một lỗi trong logic nút Send — bạn phải sửa hai lần. Thêm tiếng
+		Nhật là ba lần. Chỉ cần một lần bạn quên một bản, hai bản app bắt đầu <em>lệch hành vi</em> — và lỗi đó cực khó
+		phát hiện, vì mỗi bản chạy đúng khi đứng riêng.
 	</p>
 	<p>
-		Hãy thử tưởng tượng kịch bản "một bản app cho mỗi ngôn ngữ" đi đến đâu, vì nó cho thấy vấn đề rõ hơn mọi lời giải
-		thích trừu tượng. Bạn có bản tiếng Anh và bản tiếng Việt, hai file <code>MainActivity.kt</code> khác nhau ở đúng
-		bốn chuỗi. Tuần sau bạn sửa một lỗi trong logic nút Send. Bạn phải sửa hai lần, ở hai file gần như giống nhau. Thêm
-		tiếng Nhật là ba lần. Chỉ cần một lần bạn quên một bản, hai bản app bắt đầu <em>lệch hành vi</em> — và lỗi đó cực
-		khó phát hiện, vì mỗi bản chạy đúng khi đứng riêng. String resource xoá bỏ toàn bộ nhánh vấn đề này: chỉ có
-		<em>một</em> bản code, nhiều bản dữ liệu.
+		Câu trả lời là <strong>String resource</strong> — chuỗi được rút ra khỏi code, đặt vào một file dữ liệu riêng,
+		rồi code chỉ tham chiếu tới <em>tên</em> của chuỗi. Chỉ có <em>một</em> bản code, nhiều bản dữ liệu. Vấn đề mà
+		nó xoá bỏ có tên riêng, và đáng nhớ tên: rải chuỗi khắp app là một dạng <strong>technical debt</strong> (nợ kỹ
+		thuật) — thuộc loại tệ nhất trong các loại nợ kỹ thuật. Nợ kỹ thuật là phần công việc <em>phát sinh thêm về
+		sau</em>, vì hôm nay bạn chọn cách dễ làm trước mắt thay vì cách đúng. Hình dung như vay tiền: hôm nay tiết kiệm
+		được 30 giây gõ, nhưng ba tháng sau phải trả bằng cả buổi chiều đi tìm và sửa.
 	</p>
 	<p>
-		Vấn đề này có tên riêng, và đáng nhớ tên: rải chuỗi khắp app là một dạng <strong>technical debt</strong> (nợ kỹ
-		thuật) — thuộc loại tệ nhất trong các loại nợ kỹ thuật. Nợ kỹ thuật là phần công việc <em>phát sinh thêm về sau</em>,
-		vì hôm nay bạn chọn cách dễ làm trước mắt thay vì cách đúng. Hình dung như vay tiền: hôm nay tiết kiệm được 30 giây
-		gõ, nhưng ba tháng sau phải trả bằng cả buổi chiều đi tìm và sửa. Hệ quả thực dụng rất rõ: dùng
-		<code>strings.xml</code> <em>ngay từ đầu</em> tốt hơn nhiều so với việc thêm vào sau khi project đã xong, vì lúc đó
-		bạn phải mò lại từng chuỗi cứng ở rất nhiều nơi, và chỉ cần bỏ sót một chỗ là app hiện lẫn hai ngôn ngữ.
-	</p>
-	<p>
-		Chỗ khiến nợ kỹ thuật loại này đặc biệt khó chịu: nó <em>không báo lỗi</em>. Một chuỗi cứng bị bỏ sót vẫn biên dịch
-		bình thường, vẫn chạy bình thường, chỉ là nó hiện sai ngôn ngữ. Trình biên dịch không có cách nào biết
+		Chỗ khiến nợ kỹ thuật loại này đặc biệt khó chịu: nó <em>không báo lỗi</em>. Một chuỗi cứng bị bỏ sót vẫn biên
+		dịch bình thường, vẫn chạy bình thường, chỉ là nó hiện sai ngôn ngữ. Trình biên dịch không có cách nào biết
 		<code>"Send"</code> là một chuỗi cần dịch chứ không phải một khoá kỹ thuật nào đó. Nghĩa là người duy nhất phát
-		hiện ra thiếu sót sẽ là người dùng — hoặc chính bạn, sau khi đã gửi bản dịch cho người khác và họ trả lại bảo "sao
-		vẫn còn chữ tiếng Anh trên nút".
+		hiện ra thiếu sót sẽ là người dùng — hoặc chính bạn, sau khi đã gửi bản dịch cho người khác và họ trả lại bảo
+		"sao vẫn còn chữ tiếng Anh trên nút". Vì vậy dùng <code>strings.xml</code> <em>ngay từ đầu</em> rẻ hơn nhiều so
+		với việc thêm vào sau khi project đã xong.
 	</p>
 	<p class="hint">
-		<strong>Ba lợi ích nữa mà bạn sẽ gặp trong công việc thật:</strong> (1) trùng lặp — cùng một chữ "Send" xuất hiện ở
-		4 màn hình, sửa 1 chỗ là xong thay vì tìm 4 chỗ; (2) chuỗi có số lượng — Android có cơ chế <em>plurals</em> để
-		"1 tin nhắn" / "5 tin nhắn" ra đúng ngữ pháp từng ngôn ngữ, việc bạn không thể làm được bằng cách nối chuỗi tay;
-		(3) người dịch không cần đọc code — bạn gửi cho họ đúng một file XML, họ gửi lại một file XML, không ai chạm vào
-		Kotlin và không ai có cơ hội làm hỏng logic.
+		<strong>Ba lợi ích nữa mà bạn sẽ gặp trong công việc thật:</strong> (1) trùng lặp — cùng một chữ "Send" xuất
+		hiện ở 4 màn hình, sửa 1 chỗ là xong thay vì tìm 4 chỗ; (2) chuỗi có số lượng — Android có cơ chế
+		<em>plurals</em> để "1 tin nhắn" / "5 tin nhắn" ra đúng ngữ pháp từng ngôn ngữ, việc bạn không thể làm được bằng
+		cách nối chuỗi tay; (3) người dịch không cần đọc code — bạn gửi cho họ đúng một file XML, họ gửi lại một file
+		XML, không ai chạm vào Kotlin và không ai có cơ hội làm hỏng logic.
 	</p>
 	<p>
-		Điểm (2) đáng mở ra thêm một chút, vì nó là ví dụ rõ nhất cho câu "hệ thống resource làm được việc mà nối chuỗi tay
-		không làm được". Tiếng Anh có hai dạng số (một / nhiều), tiếng Việt không phân biệt, tiếng Nga có ba dạng theo quy
-		tắc khá phức tạp. Nếu bạn nối chuỗi bằng tay thì phải tự viết luật ngữ pháp cho từng ngôn ngữ. Android cho bạn khai
-		báo sẵn từng dạng, rồi tự chọn dạng đúng theo con số và theo ngôn ngữ:
-	</p>
-	<Code code={pluralsCode} lang="xml" theme="github-dark" />
-	<p>
-		App chat của Chương 3 chưa dùng <code>&lt;plurals&gt;</code> — nó chỉ có năm chuỗi đơn giản. Đoạn trên là ví dụ do
-		khoá học thêm vào để bạn biết cơ chế tồn tại, vì đây chính là loại tính năng làm cho câu "đưa chuỗi ra file XML"
-		không chỉ là chuyện sắp xếp cho gọn.
-	</p>
-	<p>
-		Có một điểm dễ bị hiểu ngược, nên nói rõ ngay: đưa chuỗi ra <code>strings.xml</code> <strong>không</strong> tự động
-		làm app nói được tiếng Việt. Nó chỉ làm app <em>sẵn sàng</em> để được dịch. Bản dịch vẫn phải có người viết. Nhưng
-		khác biệt là ở chỗ: nếu hôm nay bạn làm đúng, việc thêm tiếng Việt sau này là <em>thêm một file mới</em> — không
-		phải sửa một dòng code nào đã có.
-	</p>
-	<p>
-		Từ chuyên môn cho việc này là <strong>localize</strong> (bản địa hoá). Khi chuỗi đã ra khỏi code và được lấy qua ID
-		resource, người ta nói chuỗi đó "đã được localize" — không phải vì nó đã có bản dịch, mà vì nó đã <em>ở vị trí cho
-		phép</em> được dịch. Phân biệt hai chuyện này giúp bạn đọc tài liệu Android không bị lẫn: phần lớn tài liệu dùng
-		chữ "localized" theo nghĩa thứ hai.
+		Có một điểm dễ bị hiểu ngược, nên nói rõ ngay: đưa chuỗi ra <code>strings.xml</code> <strong>không</strong> tự
+		động làm app nói được tiếng Việt. Nó chỉ làm app <em>sẵn sàng</em> để được dịch. Từ chuyên môn cho việc này là
+		<strong>localize</strong> (bản địa hoá): khi chuỗi đã ra khỏi code và được lấy qua ID resource, người ta nói
+		chuỗi đó "đã được localize" — không phải vì nó đã có bản dịch, mà vì nó đã <em>ở vị trí cho phép</em> được dịch.
+		Phân biệt hai chuyện này giúp bạn đọc tài liệu Android không bị lẫn.
 	</p>
 
 	<h2 id="strings-xml">9. File strings.xml — trước và sau</h2>
 	<p>
-		Trong Project navigator của Android Studio, mở <code>res/values</code> → <code>strings.xml</code>. Đây là chỗ Android
-		quy ước để lưu <em>toàn bộ</em> chuỗi của app, và nó tồn tại sẵn trong mọi project mới ngay từ lúc sinh ra — bạn
-		không phải tạo gì. Bản <code>starter</code> của Chương 3 chỉ có đúng 1 chuỗi:
+		Trong Project navigator của Android Studio, mở <code>res/values</code> → <code>strings.xml</code>. Đây là chỗ
+		Android quy ước để lưu <em>toàn bộ</em> chuỗi của app, và nó tồn tại sẵn trong mọi project mới ngay từ lúc sinh
+		ra — bạn không phải tạo gì. Bản <code>starter</code> của Chương 3 chỉ có đúng 1 chuỗi:
 	</p>
 	<Code code={stringsStartCode} lang="xml" theme="github-dark" />
 	<p>
-		Một lưu ý nhỏ khi bạn mở file thật để đối chiếu: cả bản <code>starter</code> và bản <code>final</code> đều mở đầu
-		bằng một khối comment giấy phép dài, nên số dòng thật không khớp với đoạn code gọn ở trên. Bản <code>starter</code>
-		dài 37 dòng: giấy phép chiếm dòng 1–33, thẻ <code>&lt;resources&gt;</code> ở dòng 35, chuỗi duy nhất ở dòng 36, thẻ
-		đóng ở dòng 37. Chi tiết này không quan trọng về mặt kiến thức, nhưng nó tránh cho bạn cảm giác "mình mở sai file"
-		khi thấy 33 dòng đầu không có gì liên quan tới chuỗi.
-	</p>
-	<p>
-		Đọc cú pháp một lần cho rõ: thẻ ngoài cùng <code>&lt;resources&gt;</code> bao mọi thứ. Mỗi chuỗi là một thẻ
-		<code>&lt;string&gt;</code> có thuộc tính <code>name</code> — <em>tên</em> bạn sẽ gọi từ code — còn nội dung nằm
-		giữa thẻ mở và thẻ đóng. Tên phải là chữ thường, không dấu, dùng dấu gạch dưới thay khoảng trắng, và
+		Một lưu ý nhỏ khi bạn mở file thật để đối chiếu: cả hai bản đều mở đầu bằng một khối comment giấy phép dài, nên
+		số dòng thật không khớp với đoạn code gọn ở trên — bản <code>starter</code> có chuỗi duy nhất ở dòng 36, phần
+		trước đó là giấy phép. Chi tiết này không quan trọng về kiến thức, nhưng nó tránh cho bạn cảm giác "mình mở sai
+		file". Đọc cú pháp một lần cho rõ: thẻ ngoài cùng <code>&lt;resources&gt;</code> bao mọi thứ; mỗi chuỗi là một
+		thẻ <code>&lt;string&gt;</code> có thuộc tính <code>name</code> — <em>tên</em> bạn sẽ gọi từ code — còn nội dung
+		nằm giữa thẻ mở và thẻ đóng. Tên phải là chữ thường, không dấu, dùng dấu gạch dưới thay khoảng trắng, và
 		<strong>không được trùng nhau</strong> trong cùng một file.
 	</p>
 	<p>
 		Vì sao tên phải theo đúng khuôn đó, chứ không phải chỉ là quy ước cho đẹp: cái tên này sẽ trở thành một
 		<em>property trong code Kotlin</em> (bạn sẽ thấy ở mục 10), nên nó phải là một định danh hợp lệ của Kotlin. Dấu
 		cách, dấu gạch ngang, chữ có dấu tiếng Việt đều không dùng được trong tên biến, nên chúng cũng không dùng được ở
-		đây. Đây là ví dụ đầu tiên trong khoá học về chuyện một quy ước "chỉ là văn bản XML" thật ra bị ràng buộc bởi ngôn
-		ngữ lập trình ở phía bên kia.
+		đây. Chuỗi duy nhất có sẵn là <code>app_name</code>, và nó đáng chú ý vì một lý do: bạn sẽ không bao giờ gọi nó
+		từ Kotlin. Nó được đọc bởi chính hệ điều hành, thông qua một dòng trong <code>AndroidManifest.xml</code> — đó
+		là lý do tên app hiện đúng dưới icon ở màn hình chính. Nói chính xác hơn cho bạn thấy đường dây: trong manifest
+		của bản <code>final</code>, chuỗi này được tham chiếu <em>hai lần</em> — một lần ở thẻ
+		<code>&lt;application&gt;</code> (dòng 43) và một lần nữa ở thẻ <code>&lt;activity&gt;</code> (dòng 51), cả hai
+		đều viết là <code>android:label="@string/app_name"</code>. Cú pháp <code>@string/tên</code> chính là cách XML
+		tham chiếu tới một resource, tương ứng với <code>R.string.tên</code> ở phía Kotlin. Chi tiết về manifest là nội
+		dung <strong>Chương 3.3, mục 20</strong>.
 	</p>
 	<p>
-		Chuỗi duy nhất có sẵn là <code>app_name</code>, và nó đáng chú ý vì một lý do: bạn sẽ không bao giờ gọi nó từ Kotlin.
-		Nó được đọc bởi chính hệ điều hành, thông qua một dòng trong <code>AndroidManifest.xml</code>. Đó là lý do tên app
-		hiện đúng dưới icon ở màn hình chính — chi tiết ở <strong>Chương 3.3, mục 15</strong>.
-	</p>
-	<p>
-		Nói chính xác hơn cho bạn thấy đường dây: trong manifest của bản <code>final</code>, chuỗi này được tham chiếu
-		<em>hai lần</em> — một lần ở thẻ <code>&lt;application&gt;</code> (dòng 43) và một lần nữa ở thẻ
-		<code>&lt;activity&gt;</code> (dòng 51), cả hai đều viết là <code>android:label="@string/app_name"</code>. Cú pháp
-		<code>@string/tên</code> chính là cách XML tham chiếu tới một resource, tương ứng với <code>R.string.tên</code> ở
-		phía Kotlin. Cùng một chuỗi, hai ngôn ngữ khai báo khác nhau, cùng trỏ về một chỗ.
-	</p>
-	<p>
-		App chat cần thêm 4 chuỗi nữa. Bản <code>final</code> đầy đủ như sau — 5 chuỗi, tương ứng dòng 35 tới 39 của file
-		thật (file dài 40 dòng, giấy phép chiếm dòng 1–32):
+		App chat cần thêm 4 chuỗi nữa. Bản <code>final</code> đầy đủ như sau — 5 chuỗi, tương ứng dòng 35 tới 39 của
+		file thật:
 	</p>
 	<Code code={stringsFinalCode} lang="xml" theme="github-dark" />
 	<table class="api">
 		<thead><tr><th>Tên chuỗi</th><th>Dùng ở đâu</th><th>Nội dung</th></tr></thead>
 		<tbody>
-			<tr><td><code>app_name</code></td><td>Tên app dưới icon và trên thanh tiêu đề</td><td>"Kodeco Chat" — được tham chiếu từ <code>AndroidManifest.xml</code> qua <code>@string/app_name</code>, xem <strong>Chương 3.3, mục 15</strong>.</td></tr>
+			<tr><td><code>app_name</code></td><td>Tên app dưới icon và trên thanh tiêu đề</td><td>"Kodeco Chat" — được tham chiếu từ <code>AndroidManifest.xml</code> qua <code>@string/app_name</code>.</td></tr>
 			<tr><td><code>chat_display_default</code></td><td>Chữ mặc định ở <code>Text</code> phía trên, trước khi có tin nhắn nào</td><td>"Messages will display here"</td></tr>
 			<tr><td><code>chat_entry_default</code></td><td>Giá trị ban đầu của ô nhập</td><td>"Type your text here"</td></tr>
 			<tr><td><code>send_button</code></td><td>Chữ trong nút</td><td>"Send"</td></tr>
@@ -303,43 +234,34 @@ const logcatCode = `Button(onClick = {
 		</tbody>
 	</table>
 	<p>
-		Bảng trên đáng đọc theo chiều dọc một lượt, vì nó cho thấy một điều về cấu trúc: trong 5 chuỗi thì <em>4</em> chuỗi
-		được code Kotlin của bạn lấy ra, còn <em>1</em> chuỗi (<code>app_name</code>) do hệ điều hành lấy. Và trong 4 chuỗi
-		kia, 2 chuỗi được lấy bằng cách này, 2 chuỗi bằng cách khác — đó chính là chủ đề của mục 12. Một file 5 dòng mà đã
-		đủ ba con đường khác nhau để lấy chuỗi ra.
+		Bảng trên cho thấy một điều về cấu trúc: trong 5 chuỗi thì <em>4</em> chuỗi được code Kotlin của bạn lấy ra, còn
+		<em>1</em> chuỗi (<code>app_name</code>) do hệ điều hành lấy. Chú ý cách đặt tên: bốn chuỗi mới đều mở đầu bằng
+		ngữ cảnh nơi chúng xuất hiện (<code>chat_</code>) hoặc bằng vai trò (<code>send_button</code>) — chuẩn đặt tên
+		phổ biến trong thực tế là <em>từ chung tới riêng</em> (<code>&lt;màn hình&gt;_&lt;thành phần&gt;_&lt;vai
+		trò&gt;</code>), để khi file có 300 chuỗi thì cái tên vẫn cho biết ngay nó thuộc màn hình nào và làm gì, và các
+		chuỗi cùng một màn hình nằm cạnh nhau trong autocomplete.
 	</p>
 	<p>
-		Chú ý cách đặt tên: bốn chuỗi mới đều mở đầu bằng ngữ cảnh nơi chúng xuất hiện (<code>chat_</code>) hoặc bằng vai
-		trò (<code>send_button</code>). Đây là một quy ước nhỏ nhưng cứu bạn về sau: khi file có 300 chuỗi, cái tên
-		<code>chat_entry_label</code> cho bạn biết ngay nó thuộc màn hình nào và làm gì, còn cái tên <code>label1</code> thì
-		không.
-	</p>
-	<p>
-		Chuẩn đặt tên phổ biến trong thực tế là <em>từ chung tới riêng</em>: <code>&lt;màn hình&gt;_&lt;thành
-		phần&gt;_&lt;vai trò&gt;</code>. Với app này thì <code>chat_entry_label</code> đọc ra ngay là "màn hình chat, phần
-		nhập liệu, nhãn". Lợi ích không chỉ là dễ đọc: vì tên được sắp theo thứ tự chữ cái trong autocomplete, mọi chuỗi
-		cùng một màn hình sẽ nằm cạnh nhau. Gõ <code>R.string.chat_</code> là thấy đủ nhóm.
-	</p>
-	<p>
-		Hai giá trị mặc định của state cũng đáng để ý một chi tiết: chuỗi mặc định cho phần hiển thị trong app chạy thật là
-		<code>"Messages will display here"</code>, khác với chuỗi <code>"Press Send to update this text"</code> bạn thấy ở
-		bước viết cứng trong Chương 3.1. Nếu bạn gõ theo từng bước rồi thấy chữ trên màn hình đổi, đó là lý do — và đây là
-		một trong những chỗ dễ làm người mới tưởng mình làm sai, nên nó được ghi lại ở
+		Hai giá trị mặc định của state cũng đáng để ý một chi tiết: chuỗi mặc định cho phần hiển thị trong app chạy thật
+		là <code>"Messages will display here"</code>, khác với chuỗi <code>"Press Send to update this text"</code> bạn
+		thấy ở bước viết cứng trong Chương 3.1. Nếu bạn gõ theo từng bước rồi thấy chữ trên màn hình đổi, đó là lý do —
+		và đây là một trong những chỗ dễ làm người mới tưởng mình làm sai, nên nó được ghi lại ở
 		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>.
 	</p>
 	<h3 id="da-ngon-ngu">9.1. Đa ngôn ngữ hoạt động ra sao</h3>
 	<p>
-		Cách thêm một ngôn ngữ nghe đơn giản đến mức khó tin: bạn <em>copy file</em> và thay nội dung bằng bản dịch. Không
-		sửa code. Không thêm thư viện. Nhưng chính vì nó đơn giản nên phần cơ chế phía sau thường bị bỏ qua — và đó lại là
-		lý do tồn tại của cả hệ thống resource, nên nói rõ ở đây:
+		Cách thêm một ngôn ngữ nghe đơn giản đến mức khó tin: bạn <em>copy file</em> và thay nội dung bằng bản dịch.
+		Không sửa code. Không thêm thư viện. Nhưng chính vì nó đơn giản nên phần cơ chế phía sau thường bị bỏ qua — và
+		đó lại là lý do tồn tại của cả hệ thống resource:
 	</p>
 	<pre class="tree">{qualifierTreeCode}</pre>
 	<p>
-		Phần đuôi <code>-vi</code>, <code>-ja</code> gọi là <strong>qualifier</strong> (định tố). Lúc app chạy, Android xem
-		ngôn ngữ hệ thống của máy rồi tự chọn thư mục khớp nhất; không có thư mục khớp thì rơi về <code>values/</code> mặc
-		định. Nghĩa là bạn không bắt buộc phải dịch <em>hết</em> mọi chuỗi cho mọi ngôn ngữ: chuỗi nào thiếu trong
-		<code>values-vi/</code> sẽ tự lấy bản tiếng Anh, app vẫn chạy, không crash. Và điều quan trọng nhất: code Kotlin của
-		bạn <em>không đổi một chữ nào</em> — vẫn là <code>R.string.send_button</code> ở cả ba trường hợp.
+		Phần đuôi <code>-vi</code>, <code>-ja</code> gọi là <strong>qualifier</strong> (định tố). Lúc app chạy, Android
+		xem ngôn ngữ hệ thống của máy rồi tự chọn thư mục khớp nhất; không có thư mục khớp thì rơi về
+		<code>values/</code> mặc định. Nghĩa là bạn không bắt buộc phải dịch <em>hết</em> mọi chuỗi cho mọi ngôn ngữ:
+		chuỗi nào thiếu trong <code>values-vi/</code> sẽ tự lấy bản tiếng Anh, app vẫn chạy, không crash. Và điều quan
+		trọng nhất: code Kotlin của bạn <em>không đổi một chữ nào</em> — vẫn là <code>R.string.send_button</code> ở cả
+		ba trường hợp.
 	</p>
 	<p>
 		Để cụ thể hoá, đây là bản tiếng Việt đầy đủ của app chat nếu bạn muốn tự thử — tạo thư mục
@@ -347,63 +269,47 @@ const logcatCode = `Button(onClick = {
 	</p>
 	<Code code={stringsViCode} lang="xml" theme="github-dark" />
 	<p>
-		Chú ý ba điều trong đoạn trên. Thứ nhất: <em>tên</em> chuỗi không đổi, chỉ nội dung đổi — nếu bạn đổi tên thì code
-		không tìm được. Thứ hai: tên file vẫn là <code>strings.xml</code>, không phải <code>strings-vi.xml</code>; qualifier
-		nằm ở <em>tên thư mục</em>, không phải tên file. Thứ ba: <code>app_name</code> ở đây giữ nguyên "Kodeco Chat" vì đó
-		là tên riêng của sản phẩm — tên thương hiệu thường không dịch, và đây là quyết định của bạn chứ không phải quy tắc
-		kỹ thuật.
+		Chú ý ba điều trong đoạn trên. Thứ nhất: <em>tên</em> chuỗi không đổi, chỉ nội dung đổi — nếu bạn đổi tên thì
+		code không tìm được. Thứ hai: tên file vẫn là <code>strings.xml</code>, không phải <code>strings-vi.xml</code>;
+		qualifier nằm ở <em>tên thư mục</em>, không phải tên file. Thứ ba: <code>app_name</code> ở đây giữ nguyên
+		"Kodeco Chat" vì đó là tên riêng của sản phẩm — tên thương hiệu thường không dịch, và đây là quyết định của bạn
+		chứ không phải quy tắc kỹ thuật.
 	</p>
 	<p>
-		Muốn thử mà không cần đổi ngôn ngữ cả máy: trong Android Studio, khung xem trước có ô chọn locale, và trên máy ảo
-		thì Settings → System → Languages là chỗ đổi. Sau khi đổi, app sẽ được dựng lại và bạn thấy các chuỗi tiếng Việt
-		hiện ra — <em>trừ</em> hai chuỗi mặc định của state nếu app đang mở, vì lý do sẽ nói rõ ở mục 12.
-	</p>
-	<p>
-		Cơ chế này giải thích luôn một điều bạn có thể đã thấy mà không hiểu: khi người dùng vào Settings của máy đổi ngôn
-		ngữ, Android <em>huỷ và dựng lại</em> Activity của bạn để nó có cơ hội đọc lại resource theo ngôn ngữ mới. Đó gọi là
-		một <em>configuration change</em> (thay đổi cấu hình), và nó cũng xảy ra khi quay ngang màn hình. Chi tiết này sẽ
-		quan trọng ở <strong>mục 12</strong> dưới đây, khi ta so sánh hai cách lấy chuỗi.
-	</p>
-	<p>
-		Nối lại với những gì Chương 3.1 đã dạy: ở <strong>Chương 3.1, mục 4</strong> bạn đã thấy bảng bốn tình huống mà
-		<code>onCreate()</code> chạy lại, trong đó có "xoay ngang màn hình". Đổi ngôn ngữ là <em>cùng loại</em> sự kiện đó.
-		Nghĩa là bạn đã biết cơ chế này rồi, chỉ chưa biết nó cũng chính là cơ chế làm app đổi ngôn ngữ được. Một cơ chế,
-		hai ứng dụng khác nhau — đây là kiểu liên kết đáng tự tìm khi học Android, vì hệ thống này tái sử dụng ý tưởng rất
-		nhiều.
+		Cơ chế này giải thích luôn một điều bạn có thể đã thấy mà không hiểu: khi người dùng vào Settings của máy đổi
+		ngôn ngữ, Android <em>huỷ và dựng lại</em> Activity của bạn để nó có cơ hội đọc lại resource theo ngôn ngữ mới.
+		Đó gọi là một <em>configuration change</em> (thay đổi cấu hình) — đúng loại sự kiện bạn đã thấy trong bảng bốn
+		tình huống ở Chương 3.1, mục 3, nơi một ví dụ là xoay ngang màn hình. Một cơ chế, hai ứng dụng khác nhau — hệ
+		thống này tái sử dụng ý tưởng rất nhiều.
 	</p>
 	<p class="hint">
-		Cùng cơ chế qualifier này áp cho mọi loại resource, không riêng chuỗi: <code>drawable-hdpi/</code> cho mật độ điểm
-		ảnh, <code>values-night/</code> cho chế độ tối, <code>values-sw600dp/</code> cho màn hình rộng như tablet. Trong
-		chính project Chương 3 bạn đã thấy nó ở dạng thật: các thư mục <code>mipmap-hdpi</code> →
-		<code>mipmap-xxxhdpi</code> chứa cùng một icon app ở nhiều độ phân giải, và Android tự chọn cái vừa với màn hình
-		máy. Danh sách đầy đủ các loại resource có trong project được liệt kê ở <strong>Chương 3.3, mục 14</strong>.
-	</p>
-	<p>
-		Một điều đáng biết về thư mục <code>res/</code> của project này: nó <strong>không có</strong> thư mục
-		<code>layout/</code>. Đó không phải thiếu sót — mà là hệ quả trực tiếp của việc toàn bộ giao diện được viết bằng
-		Compose trong Kotlin. Nếu bạn từng đọc tutorial Android cũ và quen với việc "mở <code>res/layout/</code> để sửa giao
-		diện", thì ở đây không có gì để mở. Giao diện nằm trong <code>MainActivity.kt</code>.
+		Cùng cơ chế qualifier này áp cho mọi loại resource, không riêng chuỗi: <code>drawable-hdpi/</code> cho mật độ
+		điểm ảnh, <code>values-night/</code> cho chế độ tối, <code>values-sw600dp/</code> cho màn hình rộng như tablet.
+		Trong chính project Chương 3 bạn đã thấy nó ở dạng thật: các thư mục <code>mipmap-hdpi</code> →
+		<code>mipmap-xxxhdpi</code> chứa cùng một icon app ở nhiều độ phân giải, và Android tự chọn cái vừa với màn
+		hình máy. Danh sách đầy đủ các loại resource có trong project được liệt kê ở <strong>Chương 3.3, mục 19</strong>.
 	</p>
 
 	<h2 id="lop-r">10. Lớp R — cầu nối giữa XML và Kotlin</h2>
 	<p>
-		Bạn đã gặp chữ "R" một lần rồi, ở Chương 3.1, mục 7.1 — trong đoạn code kiểu cũ
+		Bạn đã gặp chữ "R" một lần rồi, ở Chương 3.1, mục 6.1 — trong đoạn code kiểu cũ
 		<code>findViewById(R.id.chat_output_text_view)</code>. Giờ là lúc nói rõ nó là gì. "R" là viết tắt của
 		<strong>Resource</strong>, và Android dùng các file resource để lưu những thứ như chuỗi và ảnh; ở thời kỳ trước
 		Compose, file layout XML cũng là một loại resource.
 	</p>
 	<p>
 		Cách hoạt động, nói theo đúng bản chất: <code>id</code> mà bạn truyền cho <code>stringResource</code> là một
-		<em>số nguyên</em> — gọi là <strong>resource identifier</strong>. Nhưng bạn không cần biết con số đó là bao nhiêu;
-		bạn để Android tra hộ qua lớp <code>R</code>. Mỗi chuỗi trong <code>strings.xml</code> được cấp một ID vào
-		<strong>lúc build</strong>, không phải lúc bạn gõ code, và cũng không phải lúc app chạy.
+		<em>số nguyên</em> — gọi là <strong>resource identifier</strong>. Nhưng bạn không cần biết con số đó là bao
+		nhiêu; bạn để Android tra hộ qua lớp <code>R</code>. Mỗi chuỗi trong <code>strings.xml</code> được cấp một ID
+		vào <strong>lúc build</strong>, không phải lúc bạn gõ code, và cũng không phải lúc app chạy.
 	</p>
 	<p>
-		Diễn giải rõ hơn cho người mới, vì đây là chỗ rất hay bị hiểu mơ hồ: <code>R</code> là <strong>một file code do máy
-		tự sinh mỗi lần build</strong>. Nó không nằm trong code bạn viết, không có trong repo, không ai commit nó, và bạn
-		không bao giờ sửa nó bằng tay. Nội dung của nó đại khái là "chuỗi <code>send_button</code> = số 2131623938". Trình
-		biên dịch làm việc với số vì số nhanh và gọn; con người làm việc với tên vì tên đọc được. <code>R</code> chính là
-		bảng tra giữa hai thế giới đó, và nó được sinh lại mỗi lần bạn build để luôn khớp với nội dung file XML hiện tại.
+		Diễn giải rõ hơn cho người mới, vì đây là chỗ rất hay bị hiểu mơ hồ: <code>R</code> là <strong>một file code do
+		máy tự sinh mỗi lần build</strong>. Nó không nằm trong code bạn viết, không có trong repo, không ai commit nó,
+		và bạn không bao giờ sửa nó bằng tay. Nội dung của nó đại khái là "chuỗi <code>send_button</code> = số
+		2131623938". Trình biên dịch làm việc với số vì số nhanh và gọn; con người làm việc với tên vì tên đọc được.
+		<code>R</code> chính là bảng tra giữa hai thế giới đó, và nó được sinh lại mỗi lần bạn build để luôn khớp với
+		nội dung file XML hiện tại.
 	</p>
 	<table class="api">
 		<thead><tr><th>Bạn viết</th><th>Nghĩa</th></tr></thead>
@@ -416,69 +322,63 @@ const logcatCode = `Button(onClick = {
 	</table>
 	<p>
 		Nhìn bảng trên thì thấy quy luật: <code>R</code> có một tầng cho mỗi <em>loại</em> resource
-		(<code>string</code>, <code>drawable</code>, <code>style</code>, <code>id</code>, <code>color</code>...), rồi dưới
-		mỗi tầng là tên cụ thể. Nhớ quy luật này là đủ để tự đoán được đường dẫn cho bất kỳ resource nào bạn gặp về sau.
-	</p>
-	<p>
-		Ba hệ quả thực dụng của việc <code>R</code> được sinh lúc build — cả ba đều là thứ bạn dùng hằng ngày:
+		(<code>string</code>, <code>drawable</code>, <code>style</code>, <code>id</code>, <code>color</code>...), rồi
+		dưới mỗi tầng là tên cụ thể. Nhớ quy luật này là đủ để tự đoán được đường dẫn cho bất kỳ resource nào bạn gặp
+		về sau. Ba hệ quả thực dụng của việc <code>R</code> được sinh lúc build — cả ba đều là thứ bạn dùng hằng ngày:
 	</p>
 	<ul>
-		<li><strong>Gõ sai tên chuỗi là lỗi biên dịch, không phải lỗi lúc chạy.</strong> <code>R.string.send_buton</code> sẽ
-			đỏ ngay trong IDE, trước cả khi app được build xong. Đây là ưu điểm lớn so với việc viết chuỗi cứng: với chuỗi
-			cứng, gõ sai chữ thì trình biên dịch không có cách nào biết — nó chỉ thấy một chuỗi hợp lệ, và bạn phát hiện ra
-			khi app đã lên tay người dùng.</li>
-		<li><strong>Autocomplete hoạt động.</strong> Thao tác cụ thể: gõ <code>R</code> rồi dấu <code>.</code>, Android Studio
-			liệt kê các nhóm resource; chọn <em>string</em>, gõ tiếp dấu <code>.</code> là ra danh sách mọi chuỗi trong
-			<code>strings.xml</code> — rồi chọn <code>chat_entry_label</code>. Nghĩa là bạn gần như không cần nhớ tên chuỗi:
-			cứ gõ <code>R.string.</code> rồi đọc danh sách.</li>
+		<li><strong>Gõ sai tên chuỗi là lỗi biên dịch, không phải lỗi lúc chạy.</strong> <code>R.string.send_buton</code>
+			sẽ đỏ ngay trong IDE, trước cả khi app được build xong. Đây là ưu điểm lớn so với việc viết chuỗi cứng: với
+			chuỗi cứng, gõ sai chữ thì trình biên dịch không có cách nào biết — nó chỉ thấy một chuỗi hợp lệ, và bạn phát
+			hiện ra khi app đã lên tay người dùng.</li>
+		<li><strong>Autocomplete hoạt động.</strong> Thao tác cụ thể: gõ <code>R</code> rồi dấu <code>.</code>, Android
+			Studio liệt kê các nhóm resource; chọn <em>string</em>, gõ tiếp dấu <code>.</code> là ra danh sách mọi chuỗi
+			trong <code>strings.xml</code>. Nghĩa là bạn gần như không cần nhớ tên chuỗi: cứ gõ
+			<code>R.string.</code> rồi đọc danh sách.</li>
 		<li><strong>Vừa thêm chuỗi mà <code>R</code> chưa thấy</strong> thì thường chỉ cần build lại project (hoặc
-			<em>Sync Project with Gradle Files</em>) để <code>R</code> được sinh lại. Đây là một trong những lỗi làm người mới
-			mất nhiều thời gian nhất một cách vô ích: code đúng hoàn toàn, chỉ là bảng tra chưa được cập nhật. Nếu
-			<code>R.string.tên_mới</code> đỏ mà bạn chắc chắn đã thêm chuỗi vào XML, hãy build lại trước khi đi tìm nguyên
-			nhân khác.</li>
+			<em>Sync Project with Gradle Files</em>) để <code>R</code> được sinh lại. Đây là một trong những lỗi làm người
+			mới mất nhiều thời gian nhất một cách vô ích: code đúng hoàn toàn, chỉ là bảng tra chưa được cập nhật. Nếu
+			<code>R.string.tên_mới</code> đỏ mà bạn chắc chắn đã thêm chuỗi vào XML, hãy build lại trước khi đi tìm
+			nguyên nhân khác.</li>
 	</ul>
 	<p>
-		Còn một chi tiết đáng biết trước khi sang mục sau: <code>stringResource</code> là một <em>method của Compose UI</em>
-		— nó nạp một chuỗi từ file resource XML, nhận đúng một tham số tên <code>id</code>. Nó không phải hàm của Kotlin,
-		cũng không phải hàm của Android nói chung; nó thuộc riêng Compose. Chi tiết "nó thuộc Compose" nghe như thông tin
-		phân loại vô hại, nhưng nó chính là nguyên nhân của lỗi biên dịch ở mục ngay sau đây. Đừng quên phải thêm
-		<code>import androidx.compose.ui.res.stringResource</code> — trong file <code>final</code> nó nằm ở dòng 48, dòng
-		import cuối cùng.
+		Còn một chi tiết đáng biết trước khi sang mục sau: <code>stringResource</code> là một <em>method của Compose
+		UI</em> — nó nạp một chuỗi từ file resource XML, nhận đúng một tham số tên <code>id</code>. Nó không phải hàm của
+		Kotlin, cũng không phải hàm của Android nói chung; nó thuộc riêng Compose. Chi tiết "nó thuộc Compose" nghe như
+		thông tin phân loại vô hại, nhưng nó chính là nguyên nhân của lỗi biên dịch ở mục ngay sau đây. Đừng quên phải
+		thêm <code>import androidx.compose.ui.res.stringResource</code> — trong file <code>final</code> nó nằm ở dòng
+		48, dòng import cuối cùng.
 	</p>
+
 	<h2 id="loi-bien-dich">11. Lỗi biên dịch đầu tiên — và cách đọc nó</h2>
 	<p>
-		Đây là đoạn dạy học hay nhất của cả Chương 3, và cũng là đoạn dễ bị đọc vội nhất. Bạn vừa đổi thành công hai chỗ sang
-		<code>stringResource</code>: nhãn của ô nhập (<code>label</code>) và chữ trong nút. Cả hai chạy tốt. Vậy còn hai
-		chuỗi mặc định của hai biến state thì sao — chúng cũng là chữ hiện trên màn hình, cũng cần dịch được. Thử làm y như
-		vậy:
+		Bạn vừa đổi thành công hai chỗ sang <code>stringResource</code>: nhãn của ô nhập (<code>label</code>) và chữ
+		trong nút. Cả hai chạy tốt. Vậy còn hai chuỗi mặc định của hai biến state thì sao — chúng cũng là chữ hiện trên
+		màn hình, cũng cần dịch được. Thử làm y như vậy:
 	</p>
 	<Code code={brokenStringResourceCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Android Studio gạch đỏ ngay dưới <code>stringResource</code>. Đưa chuột lên chỗ đỏ, thông báo lỗi hiện ra:
 		<em>"Composable calls are not allowed inside the calculation parameter of inline fun &lt;T&gt; remember..."</em> —
-		tạm dịch: không được gọi Composable trong tham số tính toán của <code>remember</code>.
-	</p>
-	<p>
-		Đừng vội sửa. Một lỗi biên dịch được đọc kỹ dạy nhiều hơn mười dòng code chạy đúng, và lỗi này đặc biệt đáng đọc vì
-		nó nói ra một luật nền tảng của Compose mà bạn sẽ gặp lại rất nhiều lần.
+		tạm dịch: không được gọi Composable trong tham số tính toán của <code>remember</code>. Đừng vội sửa. Một lỗi
+		biên dịch được đọc kỹ dạy nhiều hơn mười dòng code chạy đúng, và lỗi này đặc biệt đáng đọc vì nó nói ra một luật
+		nền tảng của Compose mà bạn sẽ gặp lại rất nhiều lần.
 	</p>
 	<h3 id="tai-sao-loi">11.1. Vì sao lỗi — giải thích cho người mới</h3>
 	<p>
-		Lý do gốc nằm ở chỗ đã nói ở <strong>Chương 3.1, mục 3.1</strong>: <strong><code>stringResource()</code> tự nó là
-		một Composable function</strong>, nên chỉ gọi được từ trong một Composable function khác. Nó không phải hàm Kotlin
-		bình thường trả về chuỗi — nó là một mảnh của hệ thống Compose.
+		Lý do gốc nằm ở chỗ đã nói ở <strong>Chương 3.1, mục 2</strong>: <strong><code>stringResource()</code> tự nó là
+		một Composable function</strong>, nên chỉ gọi được từ trong một Composable function khác. Nó không phải hàm
+		Kotlin bình thường trả về chuỗi — nó là một mảnh của hệ thống Compose.
 	</p>
 	<p>
-		Vậy tại sao <code>remember &#123; ... &#125;</code> lại không tính là "trong Composable", trong khi rõ ràng nó đang
-		nằm giữa một <code>Column</code>? Vì lambda bạn truyền cho <code>remember</code> không phải là giao diện — nó là
-		<strong>công thức tính giá trị ban đầu</strong>, và Compose <em>chỉ chạy nó một lần duy nhất</em> ở lần composition
-		đầu tiên, rồi không bao giờ chạy lại. Compose không cho phép đặt Composable vào đó, vì Composable là thứ phải chạy
-		lại được mỗi khi có gì đó thay đổi — ví dụ khi người dùng đổi ngôn ngữ máy, mọi <code>stringResource</code> phải đọc
-		lại chuỗi mới. Một Composable chỉ chạy đúng một lần rồi bị "đông cứng" là một hứa hẹn framework không giữ được, nên
-		nó chặn ngay từ khi biên dịch thay vì để bạn phát hiện ra sau.
-	</p>
-	<p>
-		Nói cách khác, lỗi này không phải Compose khó tính vô cớ. Nó là framework từ chối cho bạn viết một thứ <em>trông
+		Vậy tại sao <code>remember &#123; ... &#125;</code> lại không tính là "trong Composable", trong khi rõ ràng nó
+		đang nằm giữa một <code>Column</code>? Vì lambda bạn truyền cho <code>remember</code> không phải là giao diện —
+		nó là <strong>công thức tính giá trị ban đầu</strong>, và Compose <em>chỉ chạy nó một lần duy nhất</em> ở lần
+		composition đầu tiên, rồi không bao giờ chạy lại. Compose không cho phép đặt Composable vào đó, vì Composable là
+		thứ phải chạy lại được mỗi khi có gì đó thay đổi — ví dụ khi người dùng đổi ngôn ngữ máy, mọi
+		<code>stringResource</code> phải đọc lại chuỗi mới. Một Composable chỉ chạy đúng một lần rồi bị "đông cứng" là
+		một hứa hẹn framework không giữ được, nên nó chặn ngay từ khi biên dịch thay vì để bạn phát hiện ra sau. Nói
+		cách khác, lỗi này không phải Compose khó tính vô cớ — nó là framework từ chối cho bạn viết một thứ <em>trông
 		như</em> hoạt động nhưng sẽ sai âm thầm về sau. Thà đỏ hôm nay hơn là sai lặng lẽ vào năm sau.
 	</p>
 	<div class="ba">
@@ -487,7 +387,6 @@ const logcatCode = `Button(onClick = {
 			<ul>
 				<li>Lambda tính giá trị của <code>remember &#123; ... &#125;</code></li>
 				<li>Trong <code>onClick = &#123; ... &#125;</code> và các callback sự kiện khác</li>
-				<li>Trong <code>LaunchedEffect &#123; ... &#125;</code> (gặp ở <strong>Chương 8.1, mục 5.2</strong>)</li>
 				<li>Trong hàm Kotlin thường không có <code>@Composable</code></li>
 			</ul>
 		</div>
@@ -503,152 +402,126 @@ const logcatCode = `Button(onClick = {
 	</div>
 	<p class="hint">
 		<strong>Cách tự phân biệt mà không cần học thuộc:</strong> hỏi "cặp ngoặc này chứa <em>giao diện</em> hay chứa
-		<em>việc cần làm</em>?". Chứa giao diện (label, content, thân Column) → được gọi Composable. Chứa việc cần làm (tính
-		giá trị, xử lý click, gọi API) → không được. Quy tắc này đúng trong hầu hết trường hợp bạn gặp, và nó cũng giải thích
-		vì sao <code>label = &#123; Text(...) &#125;</code> hợp lệ trong khi <code>remember &#123; ... &#125;</code> thì
-		không: cả hai đều là cặp ngoặc, nhưng một cái mô tả <em>cái gì hiện ra</em>, cái kia mô tả <em>tính thế nào</em>.
+		<em>việc cần làm</em>?". Chứa giao diện (label, content, thân Column) → được gọi Composable. Chứa việc cần làm
+		(tính giá trị, xử lý click, gọi API) → không được. Quy tắc này đúng trong hầu hết trường hợp bạn gặp, và nó
+		cũng giải thích vì sao <code>label = &#123; Text(...) &#125;</code> hợp lệ trong khi
+		<code>remember &#123; ... &#125;</code> thì không: cả hai đều là cặp ngoặc, nhưng một cái mô tả <em>cái gì hiện
+		ra</em>, cái kia mô tả <em>tính thế nào</em>.
 	</p>
 	<h3 id="doc-loi-ide">11.2. Bốn nơi Android Studio báo lỗi cho bạn</h3>
 	<p>
-		Dịp này cũng là dịp tốt nhất để học 4 chỗ hiển thị lỗi trong IDE — kiến thức nhỏ nhưng dùng mỗi ngày, và nếu không
-		ai chỉ thì bạn có thể dùng Android Studio cả năm mà chỉ biết một chỗ:
+		Dịp này cũng là dịp tốt nhất để học 4 chỗ hiển thị lỗi trong IDE — kiến thức nhỏ nhưng dùng mỗi ngày, và nếu
+		không ai chỉ thì bạn có thể dùng Android Studio cả năm mà chỉ biết một chỗ:
 	</p>
 	<ol class="chain">
 		<li><strong>Ngay tại dòng code:</strong> đưa chuột lên chỗ gạch đỏ, nội dung lỗi hiện ra. Đây là loại phản hồi tức
 			thì hữu ích nhất khi bạn vừa gõ sai — bạn biết ngay, ở đúng chỗ, không phải chờ build.</li>
-		<li><strong>Góc trên-phải editor:</strong> một hình tròn đỏ có dấu chấm than, kèm con số — số lỗi trong file (trong
-			trường hợp này là "1"). Với <em>cảnh báo</em> (warning: nên sửa nhưng vẫn biên dịch được) thì là tam giác vàng kèm
-			số. Chỗ này trả lời câu hỏi "file này còn sạch không" trong một cái nhìn.</li>
+		<li><strong>Góc trên-phải editor:</strong> một hình tròn đỏ có dấu chấm than, kèm con số — số lỗi trong file
+			(trong trường hợp này là "1"). Với <em>cảnh báo</em> (warning: nên sửa nhưng vẫn biên dịch được) thì là tam
+			giác vàng kèm số. Chỗ này trả lời câu hỏi "file này còn sạch không" trong một cái nhìn.</li>
 		<li><strong>Panel Problems:</strong> bấm vào dấu chấm than đó, panel <em>Problems</em> mở ra ở dưới, liệt kê lỗi ở
 			dạng danh sách. Hữu ích khi có nhiều lỗi cùng lúc: bạn đọc hết một lượt thay vì đi tìm từng chỗ đỏ.</li>
-		<li><strong>Lề phải editor:</strong> các vạch đỏ nhỏ ở mép phải (chỗ scroll bar), mỗi vạch là một lỗi, đặt đúng vị
-			trí tương ứng trong file — bấm vào là nhảy tới đó. Cảnh báo là vạch vàng. Chỗ này quan trọng với file dài: lỗi ở
-			dòng 400 vẫn nhìn thấy được khi bạn đang ở dòng 20.</li>
+		<li><strong>Lề phải editor:</strong> các vạch đỏ nhỏ ở mép phải (chỗ scroll bar), mỗi vạch là một lỗi, đặt đúng
+			vị trí tương ứng trong file — bấm vào là nhảy tới đó. Cảnh báo là vạch vàng. Chỗ này quan trọng với file dài:
+			lỗi ở dòng 400 vẫn nhìn thấy được khi bạn đang ở dòng 20.</li>
 	</ol>
 	<p>
 		Một điều nên nhớ ngay từ bây giờ: đôi khi Android Studio đưa được gợi ý và tự sửa hộ bạn — cái bóng đèn vàng nổi
 		lên, bấm là xong. Nhưng <strong>lần này thì không</strong>. IDE chỉ biết "chỗ này không được gọi Composable"; nó
-		không biết ý bạn muốn gì, nên không thể đề xuất cách sửa. Đây là ranh giới đáng biết giữa lỗi cú pháp (IDE sửa được)
-		và lỗi thiết kế (chỉ bạn sửa được).
+		không biết ý bạn muốn gì, nên không thể đề xuất cách sửa. Đây là ranh giới đáng biết giữa lỗi cú pháp (IDE sửa
+		được) và lỗi thiết kế (chỉ bạn sửa được).
 	</p>
 	<h3 id="cach-sua">11.3. Cách sửa: <code>LocalContext.current</code> + <code>getString()</code></h3>
 	<Code code={contextGetStringCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Có 2 thay đổi: thêm <code>val context = LocalContext.current</code> <em>trước</em> các khai báo biến, và đổi 2 dòng
-		<code>remember</code> sang dùng <code>context.getString(...)</code>. Nhớ thêm import cho
-		<code>LocalContext</code> — trong file <code>final</code> nó ở dòng 47. Ba dòng này chính là dòng 55, 56, 57 của bản
-		<code>final</code>, đúng thứ tự đó.
+		Có 2 thay đổi: thêm <code>val context = LocalContext.current</code> <em>trước</em> các khai báo biến, và đổi 2
+		dòng <code>remember</code> sang dùng <code>context.getString(...)</code>. Nhớ thêm import cho
+		<code>LocalContext</code> — trong file <code>final</code> nó ở dòng 47. Ba dòng này chính là dòng 55, 56, 57 của
+		bản <code>final</code>, đúng thứ tự đó.
 	</p>
 	<p>
 		Vì sao cách này hợp lệ? Vì công việc được chia làm hai nửa, mỗi nửa ở đúng vùng của nó:
-	</p>
-	<ol class="chain">
-		<li><code>LocalContext.current</code> — <em>là</em> một lời gọi Composable, và nó nằm trực tiếp trong
-			<code>Column</code>, tức trong vùng Composable. Hợp lệ.</li>
-		<li><code>context.getString(...)</code> — chỉ là một hàm Kotlin thường trên object <code>Context</code>,
-			<strong>không</strong> phải Composable. Nên đặt trong lambda của <code>remember</code> hoàn toàn được.</li>
-	</ol>
-	<p>
-		Nói cách khác: bạn lấy <code>Context</code> ra <em>ở ngoài</em> vùng bị cấm, rồi mang nó <em>vào trong</em> để dùng.
-		Đây là một khuôn mẫu bạn sẽ dùng lại rất nhiều trong Compose — không riêng với chuỗi. Mỗi khi trình biên dịch nói
-		"không được gọi Composable ở đây", câu hỏi đúng để tự hỏi là: <em>giá trị này lấy được ở bên ngoài rồi truyền vào
-		không?</em> Thường là được, và đó là cách sửa.
-	</p>
-	<p>
-		Chú ý thứ tự dòng: <code>val context = ...</code> phải đứng <em>trước</em> hai dòng <code>remember</code>, vì Kotlin
-		đọc code từ trên xuống — biến chưa khai báo thì chưa dùng được. Đảo thứ tự là lại một lỗi biên dịch khác, lần này là
+		<code>LocalContext.current</code> <em>là</em> một lời gọi Composable, và nó nằm trực tiếp trong
+		<code>Column</code>, tức trong vùng Composable — hợp lệ. Còn <code>context.getString(...)</code> chỉ là một hàm
+		Kotlin thường trên object <code>Context</code>, <strong>không</strong> phải Composable, nên đặt trong lambda của
+		<code>remember</code> hoàn toàn được. Nói cách khác: bạn lấy <code>Context</code> ra <em>ở ngoài</em> vùng bị
+		cấm, rồi mang nó <em>vào trong</em> để dùng — một khuôn mẫu bạn sẽ dùng lại rất nhiều trong Compose, không riêng
+		với chuỗi. Mỗi khi trình biên dịch nói "không được gọi Composable ở đây", câu hỏi đúng để tự hỏi là:
+		<em>giá trị này lấy được ở bên ngoài rồi truyền vào không?</em> Thường là được, và đó là cách sửa. Chú ý thứ tự
+		dòng: <code>val context = ...</code> phải đứng <em>trước</em> hai dòng <code>remember</code>, vì Kotlin đọc code
+		từ trên xuống — biến chưa khai báo thì chưa dùng được; đảo thứ tự là lại một lỗi biên dịch khác, lần này là
 		"unresolved reference: context".
 	</p>
 	<h3 id="context">11.4. <code>Context</code> là gì</h3>
 	<p>
-		Định nghĩa cần nắm: trong Android, <em>Context</em> là "lối vào" thông tin toàn cục về môi trường ứng dụng — qua nó
-		bạn hỏi được app tên gì, resource ở đâu, file của app lưu chỗ nào, và rất nhiều thứ khác. Bạn sẽ thường xuyên cần
-		tham chiếu tới một Context, ở gần như mọi chương sau. Còn <code>getString()</code> là method cho phép lấy chuỗi theo
-		ID trong lớp <code>R</code>. Điểm chốt: <code>MainActivity</code> của bạn <em>là</em> một Context, và
-		<code>LocalContext.current</code> chính là cách Compose đưa nó cho bạn.
-	</p>
-	<p>
-		Hai chi tiết về <code>Context</code> mà tài liệu phổ thông rất hay nói không chính xác, và cả hai đều có ích khi bạn
-		đi xa hơn — chúng được ghi đầy đủ ở <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>. Bản chất ngắn gọn:
-		<code>Context</code> là một <strong>abstract class</strong>, không phải interface theo nghĩa từ khoá Kotlin/Java; và
-		<code>getString()</code> được định nghĩa trên chính <code>Context</code> chứ không phải trên <code>Activity</code>
-		— <code>Activity</code> chỉ <em>thừa hưởng</em> nó. Hệ quả thực tế của điểm thứ hai đáng giá: <em>bất kỳ</em> Context
-		nào cũng gọi được <code>getString()</code>, kể cả trong một class không phải Activity. Bạn sẽ cần đúng điều này khi
-		lấy chuỗi từ bên trong một ViewModel hoặc một class dữ liệu ở các chương sau.
+		Định nghĩa cần nắm: trong Android, <em>Context</em> là "lối vào" thông tin toàn cục về môi trường ứng dụng — qua
+		nó bạn hỏi được app tên gì, resource ở đâu, file của app lưu chỗ nào. Bạn sẽ thường xuyên cần tham chiếu tới một
+		Context, ở gần như mọi chương sau. <code>getString()</code> là method cho phép lấy chuỗi theo ID trong lớp
+		<code>R</code>, và nó được định nghĩa trên chính <code>Context</code> (mà <code>Context</code> là một
+		<em>abstract class</em> — lớp trừu tượng, không tạo object trực tiếp được — chứ không phải interface) —
+		<code>Activity</code> chỉ <em>thừa hưởng</em> nó. Hệ quả thực tế đáng giá: <em>bất kỳ</em> Context nào cũng gọi
+		được <code>getString()</code>, kể cả trong một class không phải Activity — bạn sẽ cần đúng điều này khi lấy
+		chuỗi từ bên trong một ViewModel ở phần State &amp; kiến trúc. Điểm chốt: <code>MainActivity</code> của bạn
+		<em>là</em> một Context, và <code>LocalContext.current</code> chính là cách Compose đưa nó cho bạn.
 	</p>
 	<p class="hint">
 		<strong>Bổ sung — <code>LocalContext</code> đến từ đâu?</strong> Nó là một <em>CompositionLocal</em>: một giá trị
-		được "rót" từ trên xuống toàn bộ cây Compose, để mọi Composable ở dưới lấy ra bằng <code>.current</code> mà không
-		cần truyền tham số qua từng tầng. Hình dung như hệ thống điện trong nhà: bạn không kéo dây từ trạm biến áp tới từng
-		bóng đèn, bạn chỉ cắm vào ổ gần nhất. Ở đây giá trị được rót vào chính là <code>MainActivity</code> (vì Activity
-		<em>là</em> một Context) — Compose tự làm việc đó cho bạn, không cần khai báo gì. Bạn sẽ gặp lại đúng cơ chế này ở
-		<strong>Chương 8.4, mục 20</strong>, khi <code>NavHostController</code> được rót xuống bằng
-		<code>compositionLocalOf</code>, và ở <strong>Chương 9.3, mục 9</strong> với <code>Prefs</code> — lần đó bạn sẽ tự
-		tay viết một CompositionLocal.
+		được "rót" từ trên xuống toàn bộ cây Compose, để mọi Composable ở dưới lấy ra bằng <code>.current</code> mà
+		không cần truyền tham số qua từng tầng. Hình dung như hệ thống điện trong nhà: bạn không kéo dây từ trạm biến áp
+		tới từng bóng đèn, bạn chỉ cắm vào ổ gần nhất. Ở đây giá trị được rót vào chính là <code>MainActivity</code>
+		(vì Activity <em>là</em> một Context) — Compose tự làm việc đó cho bạn, không cần khai báo gì. Cơ chế
+		CompositionLocal này là nội dung của phần State &amp; kiến trúc; ở đây chỉ cần hiểu vai trò của nó.
 	</p>
 	<h3 id="cach-sua-2">11.5. Còn một cách sửa nữa — và vì sao nên biết cả hai</h3>
 	<p>
-		Hướng dẫn thông thường dừng ở cách sửa bằng <code>LocalContext.current</code> và đi tiếp. Nhưng nếu bạn đã hiểu
-		<em>lý do</em> lỗi xảy ra thì bạn tự suy ra được cách sửa thứ hai, và cách thứ hai này còn gần với tinh thần Compose
-		hơn: gọi <code>stringResource()</code> ở <em>ngoài</em> <code>remember</code>, lấy kết quả vào một biến thường, rồi
-		truyền biến đó vào trong.
+		Nếu bạn đã hiểu <em>lý do</em> lỗi xảy ra thì bạn tự suy ra được cách sửa thứ hai: gọi
+		<code>stringResource()</code> ở <em>ngoài</em> <code>remember</code>, lấy kết quả vào một biến thường, rồi truyền
+		biến đó vào trong:
 	</p>
 	<Code code={secondFixCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Đoạn này biên dịch được, và lý do hợp lệ giống hệt lý do ở mục 11.3: cả hai lời gọi
-		<code>stringResource</code> giờ nằm trực tiếp trong thân <code>Column</code> — vùng được phép gọi Composable — còn
-		trong lambda của <code>remember</code> chỉ còn một biến đã tính xong. Cùng một nguyên tắc "lấy ở ngoài, dùng ở
-		trong", chỉ khác chỗ bạn chọn để đứng.
+		<code>stringResource</code> giờ nằm trực tiếp trong thân <code>Column</code> — vùng được phép gọi Composable —
+		còn trong lambda của <code>remember</code> chỉ còn một biến đã tính xong. Cùng một nguyên tắc "lấy ở ngoài, dùng
+		ở trong", chỉ khác chỗ bạn chọn để đứng.
 	</p>
 	<p>
 		Vậy hai cách khác nhau ở đâu? Ở chỗ ai đọc lại chuỗi khi cấu hình thiết bị thay đổi. Với cách thứ hai,
-		<code>defaultEntry</code> là kết quả của một lời gọi Composable, nên khi người dùng đổi ngôn ngữ máy, giao diện được
-		dựng lại và <code>defaultEntry</code> nhận giá trị mới. Nhưng <code>remember</code> thì vẫn đang giữ giá trị
-		<em>cũ</em> mà nó đã cất từ lần dựng đầu tiên, vì lambda tính giá trị ban đầu không chạy lại. Nghĩa là biến mới có
-		chữ mới, còn state vẫn giữ chữ cũ — đúng cùng một hạn chế của cách thứ nhất, chỉ khác là lần này nó lộ ra rõ hơn.
-	</p>
-	<p>
-		Muốn state cũng đổi theo thì phải nói với <code>remember</code> rằng "nếu giá trị này đổi thì tính lại", bằng cách
-		truyền nó vào làm <em>key</em>:
+		<code>defaultEntry</code> là kết quả của một lời gọi Composable, nên khi người dùng đổi ngôn ngữ máy, giao diện
+		được dựng lại và <code>defaultEntry</code> nhận giá trị mới. Nhưng <code>remember</code> thì vẫn đang giữ giá trị
+		<em>cũ</em> mà nó đã cất từ lần dựng đầu tiên, vì lambda tính giá trị ban đầu không chạy lại. Muốn state cũng đổi
+		theo thì phải nói với <code>remember</code> rằng "nếu giá trị này đổi thì tính lại", bằng cách truyền nó vào làm
+		<em>key</em>:
 	</p>
 	<Code code={rememberKeyCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Với dạng có key, <code>remember</code> so sánh key của lần dựng này với lần trước; khác nhau thì nó bỏ giá trị cũ và
-		chạy lại lambda. Đổi ngôn ngữ máy → chuỗi mặc định đổi → key đổi → state được tính lại theo ngôn ngữ mới. Cái giá
-		phải trả cũng rõ: chữ người dùng đang gõ dở trong ô nhập bị xoá về mặc định, vì state được tạo mới. Ba biến thể —
-		không key, có key, và <code>context.getString()</code> — cho ba hành vi khác nhau, và không có biến thể nào "đúng"
-		cho mọi trường hợp.
-	</p>
-	<p>
-		Lý do đáng bỏ công đọc hết ba biến thể: nếu bạn chỉ học thuộc một mẹo (<em>"gặp lỗi này thì thay bằng
-		<code>LocalContext.current</code>"</em>) thì lần sau gặp một Composable khác cũng bị chặn trong
-		<code>remember</code> — chẳng hạn <code>painterResource()</code> để nạp ảnh, hay
+		Với dạng có key, <code>remember</code> so sánh key của lần dựng này với lần trước; khác nhau thì nó bỏ giá trị
+		cũ và chạy lại lambda. Đổi ngôn ngữ máy → chuỗi mặc định đổi → key đổi → state được tính lại theo ngôn ngữ mới.
+		Cái giá phải trả cũng rõ: chữ người dùng đang gõ dở trong ô nhập bị xoá về mặc định, vì state được tạo mới. Ba
+		biến thể — không key, có key, và <code>context.getString()</code> — cho ba hành vi khác nhau, và không có biến
+		thể nào "đúng" cho mọi trường hợp. Lý do đáng bỏ công đọc hết ba biến thể: nếu bạn chỉ học thuộc một mẹo
+		(<em>"gặp lỗi này thì thay bằng <code>LocalContext.current</code>"</em>) thì lần sau gặp một Composable khác cũng
+		bị chặn trong <code>remember</code> — chẳng hạn <code>painterResource()</code> để nạp ảnh, hay
 		<code>MaterialTheme.colorScheme</code> để lấy màu — bạn lại bế tắc, vì những thứ đó không có phiên bản
-		<code>getString()</code> tương ứng. Còn nếu bạn hiểu luật ("lời gọi Composable phải nằm ở vùng dựng giao diện, giá
-		trị thì mang vào được"), bạn tự sửa được cả họ lỗi đó bằng đúng một cách nghĩ.
+		<code>getString()</code> tương ứng. Còn nếu bạn hiểu luật ("lời gọi Composable phải nằm ở vùng dựng giao diện,
+		giá trị thì mang vào được"), bạn tự sửa được cả họ lỗi đó bằng đúng một cách nghĩ.
 	</p>
 
 	<h2 id="hai-cach-lay-chuoi">12. Hai cách lấy chuỗi — chọn cái nào</h2>
 	<p>
-		Sau khi sửa xong, có một chuyện đáng dừng lại một nhịp để nhận ra: app này dùng <em>cả hai</em> cách lấy chuỗi, ở hai
-		vị trí khác nhau, trong cùng một file, cách nhau vài dòng. Đó không phải sự thiếu nhất quán — mỗi vị trí bị ràng buộc
-		bởi luật khác nhau, và đọc ra được lý do là bạn đã hiểu phần cốt lõi của mục này.
-	</p>
-	<p>
-		Bản <code>final</code> có đúng hai chỗ dùng <code>stringResource</code>. Chỗ thứ nhất là nhãn của ô nhập:
+		Sau khi sửa xong, có một chuyện đáng dừng lại một nhịp để nhận ra: app này dùng <em>cả hai</em> cách lấy chuỗi,
+		ở hai vị trí khác nhau, trong cùng một file. Đó không phải sự thiếu nhất quán — mỗi vị trí bị ràng buộc bởi luật
+		khác nhau. Bản <code>final</code> có đúng hai chỗ dùng <code>stringResource</code>:
 	</p>
 	<Code code={labelCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Chỗ thứ hai là chữ nằm trong nút Send:
-	</p>
 	<Code code={buttonTextCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Cả hai đều nằm bên trong một cặp ngoặc <em>mô tả giao diện</em> — <code>label = &#123; ... &#125;</code> của
-		<code>OutlinedTextField</code> và thân của <code>Button</code>. Đúng theo quy tắc tự phân biệt ở mục 11.1: chứa giao
-		diện thì gọi Composable được. Còn hai chuỗi mặc định của state thì nằm trong lambda tính giá trị của
-		<code>remember</code> — vùng chứa <em>việc cần làm</em> — nên chúng phải đi đường <code>context.getString()</code>.
-		Nhìn theo cách đó thì hai cách lấy chuỗi trong cùng một file không phải hai gu viết code, mà là hai hệ quả của một
-		luật duy nhất.
+		<code>OutlinedTextField</code> và thân của <code>Button</code>. Đúng theo quy tắc tự phân biệt ở mục 11.1: chứa
+		giao diện thì gọi Composable được. Còn hai chuỗi mặc định của state thì nằm trong lambda tính giá trị của
+		<code>remember</code> — vùng chứa <em>việc cần làm</em> — nên chúng phải đi đường
+		<code>context.getString()</code>. Nhìn theo cách đó thì hai cách lấy chuỗi trong cùng một file không phải hai gu
+		viết code, mà là hai hệ quả của một luật duy nhất.
 	</p>
 	<table class="cmp">
 		<thead><tr><th></th><th><code>stringResource(id = ...)</code></th><th><code>context.getString(...)</code></th></tr></thead>
@@ -662,36 +535,67 @@ const logcatCode = `Button(onClick = {
 	</table>
 	<p class="hint">
 		<strong>Quy tắc nhớ:</strong> ưu tiên <code>stringResource()</code> ở mọi nơi trong Compose. Chỉ dùng
-		<code>context.getString()</code> khi bị chặn — tức khi bạn đang ở ngoài vùng Composable. Lý do của thứ tự ưu tiên
-		này nằm ở hàng thứ tư của bảng, và nó là hàng quan trọng nhất.
+		<code>context.getString()</code> khi bị chặn — tức khi bạn đang ở ngoài vùng Composable. Lý do của thứ tự ưu
+		tiên này nằm ở hàng thứ tư của bảng, và nó là hàng quan trọng nhất.
 	</p>
 	<p>
-		Hàng "đổi ngôn ngữ lúc đang chạy" đáng mở ra kỹ, vì đây là khác biệt <em>thật</em> giữa hai cách, không phải chi tiết
-		học thuật. Hình dung một người dùng đang mở app chat, rồi chuyển sang Settings đổi ngôn ngữ máy từ English sang tiếng
-		Việt, rồi quay lại app. Android huỷ và dựng lại Activity (đúng cơ chế configuration change ở mục 9.1), giao diện được
-		vẽ lại từ đầu. Kết quả: nhãn ô nhập và chữ trên nút <strong>đổi</strong> sang tiếng Việt, vì hai chỗ đó gọi
-		<code>stringResource</code> mỗi lần vẽ. Còn hai chuỗi mặc định của state thì <strong>không đổi</strong>, vì chúng đã
-		được cất trong <code>remember</code> ở lần tính đầu tiên. Một màn hình, một app, hai hành vi khác nhau — và người
-		dùng chỉ thấy "app dịch nửa vời".
+		Hàng "đổi ngôn ngữ lúc đang chạy" đáng mở ra, vì đây là khác biệt <em>thật</em> giữa hai cách, không phải chi
+		tiết học thuật. Hình dung một người dùng đang mở app chat, rồi chuyển sang Settings đổi ngôn ngữ máy từ English
+		sang tiếng Việt, rồi quay lại app. Android huỷ và dựng lại Activity (đúng cơ chế configuration change ở mục
+		9.1), giao diện được vẽ lại từ đầu. Kết quả: nhãn ô nhập và chữ trên nút <strong>đổi</strong> sang tiếng Việt,
+		vì hai chỗ đó gọi <code>stringResource</code> mỗi lần vẽ. Còn hai chuỗi mặc định của state thì
+		<strong>không đổi</strong>, vì chúng đã được cất trong <code>remember</code> ở lần tính đầu tiên. Một màn hình,
+		một app, hai hành vi khác nhau — và người dùng chỉ thấy "app dịch nửa vời". Đây là một sự <strong>đánh
+		đổi</strong>: bạn được phép lấy chuỗi ở ngoài vùng Composable, đổi lại chuỗi đó mất khả năng tự cập nhật. Rất
+		nhiều tài liệu trình bày hai cách này như hai lựa chọn ngang hàng — mô tả đó bỏ mất đúng cái làm nên khác biệt,
+		nên nó được ghi lại đầy đủ ở <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>.
 	</p>
 	<p>
-		Điểm cần rút ra không phải "cách nào cũng được". Đây là một sự <strong>đánh đổi</strong>: bạn được phép lấy chuỗi ở
-		ngoài vùng Composable, đổi lại chuỗi đó mất khả năng tự cập nhật. Rất nhiều tài liệu trình bày hai cách này như hai
-		lựa chọn ngang hàng, kiểu "dùng cái nào cũng ra chuỗi" — mô tả đó bỏ mất đúng cái làm nên khác biệt. Vì nó là chỗ dễ
-		chọn sai nhất trong cả chương nhỏ này, nó được ghi lại đầy đủ ở
-		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>.
+		Và để công bằng với app chat: ở đây hạn chế đó gần như vô hại. Hai chuỗi mặc định chỉ hiện đúng lúc app mới mở,
+		người dùng gõ một câu là chúng bị thay ngay. Đây là ví dụ tốt cho một thói quen nên giữ: nhận ra một điểm yếu kỹ
+		thuật <em>không</em> đồng nghĩa với việc phải sửa nó ngay. Biết nó tồn tại, đánh giá tác động thật trong app của
+		mình, rồi quyết định — đó mới là cách làm việc của người có kinh nghiệm.
 	</p>
-	<p>
-		Và để công bằng với app chat: ở đây hạn chế đó gần như vô hại. Hai chuỗi mặc định chỉ hiện đúng lúc app mới mở, người
-		dùng gõ một câu là chúng bị thay ngay. Đây là ví dụ tốt cho một thói quen nên giữ: nhận ra một điểm yếu kỹ thuật
-		<em>không</em> đồng nghĩa với việc phải sửa nó ngay. Biết nó tồn tại, đánh giá tác động thật trong app của mình, rồi
-		quyết định — đó mới là cách làm việc của người có kinh nghiệm.
-	</p>
+
+	<div class="callout">
+		<strong>Tổng kết đơn vị 1 — String resource &amp; lớp R (mục 8–12)</strong>
+		<ul>
+			<li><strong>Chuỗi phải ra khỏi Kotlin.</strong> Rải chuỗi cứng khắp app là <em>technical debt</em> không báo
+				lỗi; <code>strings.xml</code> ngay từ đầu rẻ hơn sửa lại sau. Đưa chuỗi ra file là "đã localize" — sẵn sàng
+				dịch, chưa phải đã có bản dịch.</li>
+			<li><strong>Qualifier</strong> (<code>values-vi/</code>) làm app đổi ngôn ngữ mà không sửa một dòng Kotlin:
+				tên chuỗi không đổi, qualifier nằm ở <em>tên thư mục</em>; chuỗi thiếu thì tự rơi về <code>values/</code>.
+				Đổi ngôn ngữ là một <em>configuration change</em> — Android huỷ và dựng lại Activity.</li>
+			<li><strong>Lớp <code>R</code></strong> là file code do máy sinh lại mỗi lần build, bảng tra giữa <em>tên</em>
+				chuỗi và <em>số</em> ID. Ba hệ quả: gõ sai tên là lỗi biên dịch · autocomplete hoạt động · vừa thêm chuỗi mà
+				<code>R</code> chưa thấy thì build lại là xong.</li>
+			<li><strong>Lỗi biên dịch đầu tiên</strong> — <em>"Composable calls are not allowed inside the calculation
+				parameter"</em> — xảy ra vì <code>stringResource()</code> là một Composable, còn lambda của
+				<code>remember</code> là công thức tính giá trị ban đầu, chỉ chạy một lần. Quy tắc tự phân biệt: cặp ngoặc
+				chứa <em>giao diện</em> thì gọi được, chứa <em>việc cần làm</em> thì không.</li>
+			<li><strong>Hai cách sửa</strong> đều theo một nguyên tắc: lấy giá trị ở vùng được phép, mang vào vùng bị cấm —
+				qua <code>LocalContext.current</code> + <code>getString()</code>, hoặc gọi <code>stringResource</code>
+				ngoài <code>remember</code> rồi truyền biến vào.</li>
+			<li><strong>Hai cách lấy chuỗi không tương đương:</strong> <code>stringResource()</code> tự đọc lại khi cấu
+				hình đổi; <code>context.getString()</code> trong <code>remember</code> thì không. Ưu tiên
+				<code>stringResource()</code>, chỉ dùng cách kia khi bị chặn.</li>
+		</ul>
+		<p>
+			<em>Kiểm tra nhanh trước khi sang phần debug:</em> (1) vì sao
+			<code>remember &#123; stringResource(...) &#125;</code> không biên dịch được? (2) chuỗi nào trong 5 chuỗi
+			không được code Kotlin lấy ra, và ai lấy nó? (3) bạn vừa thêm một chuỗi mới vào XML mà
+			<code>R.string.tên_mới</code> bị gạch đỏ — việc đầu tiên nên làm là gì?
+		</p>
+	</div>
+
+	<!-- ⛔ SPLIT BOUNDARY — mọi thứ phía trên = ĐƠN VỊ 1 (tương lai A10). Mọi thứ phía dưới = ĐƠN VỊ 2 (tương lai A11). -->
+
 	<h2 id="debug">13. Debug: chạy app theo cách khác để nhìn thấy bên trong</h2>
 	<p>
-		Nửa đầu chương này bạn đã gặp một lỗi và sửa được nó. Nhưng loại lỗi đó là loại <em>dễ</em>: nó hiện ngay khi bạn gõ,
-		ở đúng dòng gây ra nó, kèm một câu giải thích. Còn loại lỗi thứ hai thì không tự giới thiệu — app vẫn build, vẫn
-		chạy, chỉ làm sai. Phân biệt hai loại này là phân biệt nền tảng nhất khi học lập trình, nên nó đáng một bảng riêng:
+		Nửa đầu chương này bạn đã gặp một lỗi và sửa được nó. Nhưng loại lỗi đó là loại <em>dễ</em>: nó hiện ngay khi
+		bạn gõ, ở đúng dòng gây ra nó, kèm một câu giải thích. Còn loại lỗi thứ hai thì không tự giới thiệu — app vẫn
+		build, vẫn chạy, chỉ làm sai. Phân biệt hai loại này là phân biệt nền tảng nhất khi học lập trình, nên nó đáng
+		một bảng riêng:
 	</p>
 	<table class="cmp">
 		<thead><tr><th></th><th>Lỗi biên dịch (compile time)</th><th>Lỗi lúc chạy (run time)</th></tr></thead>
@@ -703,63 +607,51 @@ const logcatCode = `Button(onClick = {
 		</tbody>
 	</table>
 	<p>
-		Hàng thứ hai của bảng là hàng đáng sợ nhất, và cũng là lý do tồn tại của cả mục này. Với lỗi biên dịch, bạn có một
-		trợ lý ngồi cạnh chỉ vào đúng chỗ sai. Với lỗi lúc chạy, không ai nói gì cả: app mở lên bình thường, nút bấm được,
-		chỉ là kết quả không như bạn nghĩ. Người phát hiện ra thường là người dùng, và họ không mô tả được lỗi bằng ngôn ngữ
-		kỹ thuật — họ chỉ nói "bấm nút thì không thấy gì".
+		Hàng thứ hai của bảng là hàng đáng sợ nhất, và cũng là lý do tồn tại của cả mục này. Với lỗi biên dịch, bạn có
+		một trợ lý ngồi cạnh chỉ vào đúng chỗ sai. Với lỗi lúc chạy, không ai nói gì cả: app mở lên bình thường, nút bấm
+		được, chỉ là kết quả không như bạn nghĩ. Người phát hiện ra thường là người dùng, và họ không mô tả được lỗi
+		bằng ngôn ngữ kỹ thuật — họ chỉ nói "bấm nút thì không thấy gì".
 	</p>
 	<p>
-		Có một điều bạn có thể đã trải nghiệm mà chưa để ý: nhiều lần bạn còn không cần bấm Run, vì Android Studio tự cập
-		nhật app đang chạy khi bạn sửa code. Rất tiện, nhưng nó tạo ra một ảo giác: cảm giác rằng "thấy app chạy" là đủ để
-		biết code đúng. Không đủ. Chạy app chỉ cho bạn thấy <em>kết quả cuối cùng</em>; nó không cho bạn thấy các bước ở
-		giữa, và lỗi lúc chạy gần như luôn nằm ở các bước ở giữa. Muốn nhìn vào giữa thì phải chạy app ở chế độ
-		<strong>debug</strong>.
-	</p>
-	<p>
-		Nói cho gọn về sự khác biệt giữa hai chế độ: chạy thường là bạn xem một bộ phim đã dựng xong; debug là bạn được
-		quyền bấm tạm dừng ở bất kỳ khung hình nào và soi từng thứ trong khung đó. Cùng một app, cùng một đoạn code, khác
-		nhau ở chỗ bạn có quyền dừng lại hay không.
+		Có một điều bạn có thể đã trải nghiệm mà chưa để ý: nhiều lần bạn còn không cần bấm Run, vì Android Studio tự
+		cập nhật app đang chạy khi bạn sửa code. Rất tiện, nhưng nó tạo ra một ảo giác: cảm giác rằng "thấy app chạy" là
+		đủ để biết code đúng. Không đủ. Chạy app chỉ cho bạn thấy <em>kết quả cuối cùng</em>; nó không cho bạn thấy các
+		bước ở giữa, và lỗi lúc chạy gần như luôn nằm ở các bước ở giữa. Muốn nhìn vào giữa thì phải chạy app ở chế độ
+		<strong>debug</strong>. Nói cho gọn về sự khác biệt giữa hai chế độ: chạy thường là bạn xem một bộ phim đã dựng
+		xong; debug là bạn được quyền bấm tạm dừng ở bất kỳ khung hình nào và soi từng thứ trong khung đó.
 	</p>
 	<h3 id="nut-debug">13.1. Nút hình con bọ</h3>
 	<p>
-		Bên phải nút "run app" trên thanh công cụ là một nút hình con bọ nhỏ (bug). Bấm nút đó: app vẫn build và chạy như
-		thường — bạn không mất gì so với chạy bình thường — nhưng lần này nó chạy ở <strong>chế độ debug</strong>, và mọi lỗi
-		phát sinh lúc chạy sẽ hiện trong panel Debug ở dưới cùng Android Studio.
-	</p>
-	<p>
-		Hai điều nên biết ngay để khỏi thắc mắc về sau. Thứ nhất, tên "bug" (con bọ) không phải hình ảnh cho vui: nó là từ
-		lâu đời nhất trong nghề để gọi một lỗi phần mềm, và <em>debug</em> nghĩa là "gỡ bọ" — đi tìm và bắt lỗi. Thứ hai,
-		chạy ở chế độ debug thường chậm hơn chạy thường một chút, vì hệ thống phải cài thêm bộ máy theo dõi vào app. Với app
-		chat ba thành phần thì bạn không cảm nhận được, nhưng đó là lý do bạn không nên debug mọi lúc: dùng nó khi cần nhìn
-		vào bên trong, còn lại thì chạy thường.
+		Bên phải nút "run app" trên thanh công cụ là một nút hình con bọ nhỏ (bug). Bấm nút đó: app vẫn build và chạy
+		như thường — bạn không mất gì so với chạy bình thường — nhưng lần này nó chạy ở <strong>chế độ debug</strong>,
+		và mọi lỗi phát sinh lúc chạy sẽ hiện trong panel Debug ở dưới cùng Android Studio. Tên "bug" (con bọ) không
+		phải hình ảnh cho vui: nó là từ lâu đời nhất trong nghề để gọi một lỗi phần mềm, và <em>debug</em> nghĩa là "gỡ
+		bọ". Chạy ở chế độ debug thường chậm hơn chạy thường một chút, vì hệ thống phải cài thêm bộ máy theo dõi vào app
+		— với app chat ba thành phần thì bạn không cảm nhận được, nhưng đó là lý do bạn không nên debug mọi lúc.
 	</p>
 	<h3 id="breakpoint">13.2. Breakpoint — dừng app lại giữa dòng code</h3>
 	<p>
-		Công cụ chính của chế độ debug là <strong>breakpoint</strong> (điểm dừng): một dấu bạn đặt lên một dòng code để yêu
-		cầu Android Studio <em>tạm dừng</em> việc thực thi ngay khi chạy tới dòng đó. Trong lúc app đang dừng, bạn xem được
-		giá trị của các biến tại đúng thời điểm ấy — và nhiều thứ nữa, như chuỗi các hàm đã gọi để đi tới đây.
-	</p>
-	<p>
-		Chỗ đáng đặt breakpoint đầu tiên trong app chat là dòng <code>chatInputText = ""</code> bên trong
-		<code>onClick</code> của nút Send:
+		Công cụ chính của chế độ debug là <strong>breakpoint</strong> (điểm dừng): một dấu bạn đặt lên một dòng code để
+		yêu cầu Android Studio <em>tạm dừng</em> việc thực thi ngay khi chạy tới dòng đó. Trong lúc app đang dừng, bạn
+		xem được giá trị của các biến tại đúng thời điểm ấy. Chỗ đáng đặt breakpoint đầu tiên trong app chat là dòng
+		<code>chatInputText = ""</code> bên trong <code>onClick</code> của nút Send:
 	</p>
 	<Code code={breakpointCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Cách làm: bấm vào <em>số dòng</em> ở lề trái editor — một chấm đỏ xuất hiện trên số dòng đó. Sau đó chạy app bằng nút
-		con bọ, gõ <code>Hello 👋🏽</code> vào ô nhập và bấm Send. Android Studio dừng lại, tô sáng đúng dòng có breakpoint,
-		và hiển thị giá trị các biến còn trong phạm vi (scope) tại thời điểm dừng.
-	</p>
-	<p>
-		Vài chi tiết thực dụng mà lần đầu làm bạn sẽ thắc mắc. App <em>trông như bị treo</em> khi đang dừng ở breakpoint —
-		bấm gì cũng không phản hồi; đó là bình thường, vì luồng chạy giao diện đang bị giữ lại. Muốn app đi tiếp thì bấm
-		Resume. Bấm lại vào chấm đỏ là bỏ breakpoint. Và breakpoint chỉ có tác dụng khi bạn chạy bằng nút con bọ: chạy bằng
-		nút Run thường thì chấm đỏ vẫn ở đó nhưng app không bao giờ dừng — đây là chỗ người mới hay tưởng breakpoint hỏng.
+		Cách làm: bấm vào <em>số dòng</em> ở lề trái editor — một chấm đỏ xuất hiện trên số dòng đó. Sau đó chạy app bằng
+		nút con bọ, gõ <code>Hello 👋🏽</code> vào ô nhập và bấm Send. Android Studio dừng lại, tô sáng đúng dòng có
+		breakpoint, và hiển thị giá trị các biến còn trong phạm vi (scope) tại thời điểm dừng. Vài chi tiết thực dụng mà
+		lần đầu làm bạn sẽ thắc mắc: app <em>trông như bị treo</em> khi đang dừng — bấm gì cũng không phản hồi; đó là
+		bình thường, vì luồng chạy giao diện đang bị giữ lại. Muốn app đi tiếp thì bấm Resume. Bấm lại vào chấm đỏ là bỏ
+		breakpoint. Và breakpoint chỉ có tác dụng khi bạn chạy bằng nút con bọ: chạy bằng nút Run thường thì chấm đỏ vẫn
+		ở đó nhưng app không bao giờ dừng — đây là chỗ người mới hay tưởng breakpoint hỏng.
 	</p>
 	<h3 id="tai-sao-dong-nay">13.3. Vì sao đặt breakpoint đúng ở dòng đó — và nó dạy bạn điều gì</h3>
 	<p>
-		Việc chọn dòng nào để dừng không hề tuỳ ý, và đây là phần giá trị nhất của bài tập này. Breakpoint được đặt ở dòng
-		<em>thứ hai</em> trong <code>onClick</code>, nghĩa là app dừng lại <strong>sau khi</strong> dòng thứ nhất đã chạy và
-		<strong>trước khi</strong> dòng thứ hai chạy. Đó chính là khoảnh khắc duy nhất mà cả hai biến cùng mang một giá trị:
+		Việc chọn dòng nào để dừng không hề tuỳ ý, và đây là phần giá trị nhất của bài tập này. Breakpoint được đặt ở
+		dòng <em>thứ hai</em> trong <code>onClick</code>, nghĩa là app dừng lại <strong>sau khi</strong> dòng thứ nhất đã
+		chạy và <strong>trước khi</strong> dòng thứ hai chạy. Đó chính là khoảnh khắc duy nhất mà cả hai biến cùng mang
+		một giá trị:
 	</p>
 	<table class="cmp">
 		<thead><tr><th>Thời điểm</th><th><code>chatInputText</code></th><th><code>chatOutputText</code></th></tr></thead>
@@ -770,239 +662,220 @@ const logcatCode = `Button(onClick = {
 		</tbody>
 	</table>
 	<p>
-		Nhìn bảng này bạn thấy được thứ mà bình thường không thể thấy: <strong>thứ tự</strong> hai dòng code đó là thứ tự có
-		thật, xảy ra tuần tự, và giữa chúng có một trạng thái trung gian tồn tại thật trong khoảng thời gian rất ngắn. Đây là
-		kỹ năng nền của debug — không đoán "code chắc chạy thế này", mà <em>nhìn</em> nó chạy.
-	</p>
-	<p>
-		Nối lại với một cái bẫy đã gặp: ở Chương 3.1 bạn đã biết rằng đảo thứ tự hai dòng trong <code>onClick</code> làm phần
-		hiển thị luôn trống. Hồi đó đó là một lời cảnh báo bạn phải tin. Giờ thì bạn có công cụ để tự chứng minh: đặt
-		breakpoint ở dòng thứ hai, xem giá trị hai biến, rồi thử đảo hai dòng và làm lại y hệt. Lần thứ hai bạn sẽ thấy
-		<code>chatInputText</code> đã rỗng <em>trước khi</em> nó được sao sang <code>chatOutputText</code> — nguyên nhân hiện
-		ra bằng mắt, không cần ai giải thích. Chuyển từ "được bảo là vậy" sang "tự nhìn thấy là vậy" chính là khác biệt lớn
-		nhất mà debug mang lại cho người mới học.
+		Nhìn bảng này bạn thấy được thứ mà bình thường không thể thấy: <strong>thứ tự</strong> hai dòng code đó là thứ tự
+		có thật, xảy ra tuần tự, và giữa chúng có một trạng thái trung gian tồn tại thật trong khoảng thời gian rất
+		ngắn. Đây là kỹ năng nền của debug — không đoán "code chắc chạy thế này", mà <em>nhìn</em> nó chạy. Nó cũng nối
+		lại với một cái bẫy đã gặp: ở Chương 3.1 bạn đã biết rằng đảo thứ tự hai dòng trong <code>onClick</code> làm
+		phần hiển thị luôn trống. Hồi đó đó là một lời cảnh báo bạn phải tin. Giờ thì bạn có công cụ để tự chứng minh:
+		đặt breakpoint ở dòng thứ hai, xem giá trị hai biến, rồi thử đảo hai dòng và làm lại y hệt. Lần thứ hai bạn sẽ
+		thấy <code>chatInputText</code> đã rỗng <em>trước khi</em> nó được sao sang <code>chatOutputText</code> — nguyên
+		nhân hiện ra bằng mắt, không cần ai giải thích. Chuyển từ "được bảo là vậy" sang "tự nhìn thấy là vậy" chính là
+		khác biệt lớn nhất mà debug mang lại cho người mới học.
 	</p>
 	<p class="hint">
-		<strong>Bổ sung — 3 nút bạn sẽ dùng khi đang dừng ở breakpoint:</strong> <em>Step Over</em> (chạy đúng dòng hiện tại
-		rồi dừng ở dòng kế), <em>Step Into</em> (đi vào trong hàm đang được gọi ở dòng này, để xem bên trong nó làm gì),
-		<em>Resume</em> (cho app chạy tiếp bình thường tới breakpoint kế tiếp, hoặc tới hết). Với người mới, 90% thời gian chỉ
-		cần Step Over và Resume: Step Over cho bạn đi từng dòng để xem giá trị đổi ra sao, Resume để thoát ra khi đã xem
-		xong. Step Into chỉ cần khi bạn nghi lỗi nằm trong một hàm mình tự viết.
+		<strong>Bổ sung — 3 nút bạn sẽ dùng khi đang dừng ở breakpoint:</strong> <em>Step Over</em> (chạy đúng dòng hiện
+		tại rồi dừng ở dòng kế), <em>Step Into</em> (đi vào trong hàm đang được gọi ở dòng này, để xem bên trong nó làm
+		gì), <em>Resume</em> (cho app chạy tiếp bình thường tới breakpoint kế tiếp, hoặc tới hết). Với người mới, 90%
+		thời gian chỉ cần Step Over và Resume: Step Over cho bạn đi từng dòng để xem giá trị đổi ra sao, Resume để thoát
+		ra khi đã xem xong. Step Into chỉ cần khi bạn nghi lỗi nằm trong một hàm mình tự viết.
 	</p>
 	<h3 id="logcat">13.4. Logcat và <code>Log.d()</code> — công cụ thứ hai, dùng khi chưa biết lỗi ở đâu</h3>
 	<p>
-		Breakpoint rất mạnh, nhưng nó có một điều kiện: bạn phải <em>biết trước</em> nên dừng ở dòng nào. Nhiều lúc bạn không
-		biết — app crash mà không rõ vì sao, hoặc một giá trị sai xuất hiện mà bạn không đoán được nó bị làm sai ở đâu. Cho
-		tình huống đó có công cụ thứ hai: <strong>Logcat</strong>, một panel trong Android Studio hiện toàn bộ dòng ghi chú
-		(log) mà app và cả hệ điều hành phát ra trong lúc chạy, kèm mọi <em>stack trace</em> khi app crash. Stack trace là
-		danh sách các hàm đã gọi nhau dẫn tới chỗ crash, đọc từ dưới lên — nó cho bạn biết lỗi xảy ra ở đâu mà không cần đặt
-		một breakpoint nào.
+		Breakpoint rất mạnh, nhưng nó có một điều kiện: bạn phải <em>biết trước</em> nên dừng ở dòng nào. Nhiều lúc bạn
+		không biết — app crash mà không rõ vì sao, hoặc một giá trị sai xuất hiện mà bạn không đoán được nó bị làm sai ở
+		đâu. Cho tình huống đó có công cụ thứ hai: <strong>Logcat</strong>, một panel trong Android Studio hiện toàn bộ
+		dòng ghi chú (log) mà app và cả hệ điều hành phát ra trong lúc chạy, kèm mọi <em>stack trace</em> khi app crash.
+		Stack trace là danh sách các hàm đã gọi nhau dẫn tới chỗ crash, đọc từ dưới lên — nó cho bạn biết lỗi xảy ra ở
+		đâu mà không cần đặt một breakpoint nào.
 	</p>
 	<p>
 		Cách tự ghi log là một hàm rất đơn giản: <code>Log.d("thẻ", "nội dung")</code>. Chữ <code>d</code> là
 		<em>debug</em>; ngoài ra còn <code>Log.i()</code> cho thông tin, <code>Log.w()</code> cho cảnh báo,
-		<code>Log.e()</code> cho lỗi — cùng cơ chế, chỉ khác mức độ và màu hiển thị. Tham số đầu là <em>thẻ</em> (tag), một
-		chuỗi tuỳ bạn đặt để lọc trong Logcat khi có quá nhiều dòng. Áp vào app chat thì trông như sau:
+		<code>Log.e()</code> cho lỗi — cùng cơ chế, chỉ khác mức độ và màu hiển thị. Tham số đầu là <em>thẻ</em> (tag),
+		một chuỗi tuỳ bạn đặt để lọc trong Logcat khi có quá nhiều dòng. Áp vào app chat thì trông như sau:
 	</p>
 	<Code code={logcatCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Chạy app rồi bấm Send, bạn thấy hai dòng lần lượt hiện trong Logcat với đúng giá trị của hai biến trước và sau khi
-		gán — cùng thông tin mà breakpoint cho bạn ở mục 13.2, nhưng lấy được <em>mà không cần dừng app</em>. Đó là khác biệt
-		đáng nhớ giữa hai công cụ: breakpoint cho bạn xem sâu tại một điểm; log cho bạn xem một chuỗi sự việc trải theo thời
-		gian. Với những lỗi chỉ xảy ra sau hàng chục bước bấm, hoặc lỗi liên quan tới thời gian và tốc độ, log gần như là cách
-		duy nhất, vì việc dừng app lại đã làm thay đổi chính cái bạn muốn quan sát.
+		Chạy app rồi bấm Send, bạn thấy hai dòng lần lượt hiện trong Logcat với đúng giá trị của hai biến trước và sau
+		khi gán — cùng thông tin mà breakpoint cho bạn ở mục 13.2, nhưng lấy được <em>mà không cần dừng app</em>. Đó là
+		khác biệt đáng nhớ giữa hai công cụ: breakpoint cho bạn xem sâu tại một điểm; log cho bạn xem một chuỗi sự việc
+		trải theo thời gian. Với những lỗi chỉ xảy ra sau hàng chục bước bấm, hoặc lỗi liên quan tới thời gian và tốc độ,
+		log gần như là cách duy nhất, vì việc dừng app lại đã làm thay đổi chính cái bạn muốn quan sát.
 	</p>
 	<p>
-		Nguyên tắc chọn công cụ, gọn trong một câu: <strong>breakpoint dùng khi bạn <em>biết</em> nên xem chỗ nào; Logcat dùng
-		khi bạn <em>chưa biết</em> lỗi ở đâu.</strong> Trong thực tế người ta thường dùng Logcat trước để khoanh vùng, rồi mới
-		đặt breakpoint vào vùng đã khoanh.
+		Bạn sẽ gặp lại chuyện ghi log ở dạng chuyên nghiệp hơn về sau: phần Mạng của khoá học chuyển sang dùng thư viện
+		<code>Timber</code> để ghi log ra Logcat thay vì gọi <code>Log</code> trực tiếp — trong app của phần đó có 13 lời
+		gọi Timber trải ở 5 file. Ưu điểm của Timber là nó tự điền thẻ theo tên class và tự tắt log ở bản phát hành, nên
+		bạn không vô tình để lộ thông tin nội bộ cho người dùng thật. Ý tưởng thì vẫn là ý tưởng bạn vừa học ở đây.
 	</p>
+
+	<h2 id="chon-cong-cu">14. Chọn công cụ nào — và phạm vi của mục này</h2>
 	<p>
-		Một điều nên biết trước khi bạn tự hình thành thói quen: rải <code>Log.d()</code> khắp code để <em>thay cho</em>
-		breakpoint là thói quen xấu, và nó là thói quen mà rất nhiều hướng dẫn cũ vô tình dạy. Lý do và cách tránh nằm ở
-		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>.
-	</p>
-	<p>
-		Bạn sẽ gặp lại chuyện ghi log ở dạng chuyên nghiệp hơn về sau: từ <strong>Chương 8.3, mục 13</strong> trở đi, project
-		chuyển sang dùng thư viện <code>Timber</code> để ghi log ra Logcat thay vì gọi <code>Log</code> trực tiếp — trong app
-		của Chương 8 có 13 lời gọi Timber trải ở 5 file. Ưu điểm của Timber là nó tự điền thẻ theo tên class và tự tắt log ở
-		bản phát hành, nên bạn không vô tình để lộ thông tin nội bộ cho người dùng thật. Ý tưởng thì vẫn là ý tưởng bạn vừa
-		học ở đây.
+		Nguyên tắc chọn công cụ, gọn trong một câu: <strong>breakpoint dùng khi bạn <em>biết</em> nên xem chỗ nào; Logcat
+		dùng khi bạn <em>chưa biết</em> lỗi ở đâu.</strong> Trong thực tế người ta thường dùng Logcat trước để khoanh
+		vùng, rồi mới đặt breakpoint vào vùng đã khoanh. Còn một điều nên biết trước khi bạn tự hình thành thói quen: rải
+		<code>Log.d()</code> khắp code để <em>thay cho</em> breakpoint là thói quen xấu, và nó là thói quen mà rất nhiều
+		hướng dẫn cũ vô tình dạy — lý do và cách tránh nằm ở <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>.
 	</p>
 	<div class="callout note">
 		<p>
 			Cần nói rõ phạm vi: chương này chỉ đụng vào phần <em>cơ bản nhất</em> của debug — chạy ở chế độ debug, đặt một
-			breakpoint, xem giá trị biến, đọc log. Debug thực thụ còn nhiều hơn thế: breakpoint có điều kiện (chỉ dừng khi một
-			biểu thức đúng), xem cây Composable đang hiển thị bằng Layout Inspector, đo hiệu năng, bắt lỗi rò rỉ bộ nhớ, phân
-			tích crash từ máy người dùng thật. Đó là một chuyên đề riêng, đủ để viết cả một tài liệu dày.
+			breakpoint, xem giá trị biến, đọc log. Debug thực thụ còn nhiều hơn thế: breakpoint có điều kiện (chỉ dừng khi
+			một biểu thức đúng), xem cây giao diện bằng Layout Inspector, đo hiệu năng, bắt lỗi rò rỉ bộ nhớ, phân tích
+			crash từ máy người dùng thật. Đó là một chuyên đề riêng, đủ để viết cả một tài liệu dày.
 		</p>
 		<p>
-			Và một nhận xét đáng ghim lại từ bây giờ, vì nó định hình cách bạn phân bổ thời gian học: làm nghề lâu, bạn sẽ dành
-			<strong>nhiều thời gian debug hơn thời gian viết code mới</strong>. Người mới thường coi debug là việc phụ, chỉ làm
-			khi bí; thực tế thì nó là phần lớn công việc thường ngày của một lập trình viên. Đầu tư sớm vào kỹ năng này lời hơn
-			đầu tư vào việc học thêm một API.
+			Và một nhận xét đáng ghim lại từ bây giờ, vì nó định hình cách bạn phân bổ thời gian học: làm nghề lâu, bạn sẽ
+			dành <strong>nhiều thời gian debug hơn thời gian viết code mới</strong>. Người mới thường coi debug là việc
+			phụ, chỉ làm khi bí; thực tế thì nó là phần lớn công việc thường ngày của một lập trình viên. Đầu tư sớm vào
+			kỹ năng này lời hơn đầu tư vào việc học thêm một API.
 		</p>
 	</div>
-	<div class="callout">
-		<strong>Tổng kết Chương 3.2</strong>
-		<ul>
-			<li><strong>Chuỗi phải ra khỏi Kotlin.</strong> Rải chuỗi cứng khắp app là một dạng <em>technical debt</em> thuộc
-				loại tệ nhất, vì nó không báo lỗi: app vẫn biên dịch, vẫn chạy, chỉ hiện sai ngôn ngữ. Dùng
-				<code>strings.xml</code> ngay từ đầu rẻ hơn nhiều so với sửa lại sau.</li>
-			<li><strong><code>strings.xml</code>:</strong> bản starter có 1 chuỗi, bản final có 5 — <code>app_name</code>,
-				<code>chat_display_default</code>, <code>chat_entry_default</code>, <code>send_button</code>,
-				<code>chat_entry_label</code>. Trong đó <code>app_name</code> do chính hệ điều hành đọc qua
-				<code>android:label="@string/app_name"</code> trong manifest, không phải code Kotlin của bạn.</li>
-			<li><strong>Qualifier</strong> (<code>values-vi/</code>, <code>values-ja/</code>) làm app đổi ngôn ngữ mà không sửa
-				một dòng Kotlin: tên chuỗi không đổi, chỉ nội dung đổi; qualifier nằm ở <em>tên thư mục</em>, không phải tên
-				file; chuỗi thiếu thì tự rơi về <code>values/</code>. Cùng cơ chế áp cho icon theo mật độ điểm ảnh, chế độ tối,
-				kích thước màn hình.</li>
-			<li><strong>Lớp <code>R</code></strong> là file code do máy sinh lại mỗi lần build, làm bảng tra giữa <em>tên</em>
-				chuỗi và <em>số</em> ID. Ba hệ quả: gõ sai tên là lỗi biên dịch (không phải lỗi lúc chạy) · autocomplete hoạt
-				động · vừa thêm chuỗi mà <code>R</code> chưa thấy thì build lại là xong.</li>
-			<li><strong>Lỗi biên dịch đầu tiên</strong> — <em>"Composable calls are not allowed inside the calculation
-				parameter"</em> — xảy ra vì <code>stringResource()</code> là một Composable, còn lambda của
-				<code>remember</code> là công thức tính giá trị ban đầu, chỉ chạy một lần. Quy tắc tự phân biệt: cặp ngoặc chứa
-				<em>giao diện</em> thì gọi được, chứa <em>việc cần làm</em> thì không.</li>
-			<li><strong>Bốn nơi IDE báo lỗi:</strong> gạch đỏ tại dòng · hình tròn đỏ kèm số ở góc trên-phải · panel Problems ·
-				vạch đỏ ở lề phải. Lần này bóng đèn vàng không sửa hộ được, vì đây là lỗi thiết kế chứ không phải lỗi cú pháp.</li>
-			<li><strong>Ba cách sửa hợp lệ:</strong> <code>LocalContext.current</code> + <code>getString()</code> (cách project
-				dùng, dòng 55–57) · gọi <code>stringResource</code> ngoài <code>remember</code> rồi truyền biến vào ·
-				thêm biến đó làm <em>key</em> của <code>remember</code> để state tính lại khi ngôn ngữ đổi. Ba hành vi khác
-				nhau, không cái nào đúng cho mọi trường hợp.</li>
-			<li><strong><code>Context</code></strong> là lối vào thông tin toàn cục của môi trường app; <code>Activity</code>
-				<em>là</em> một Context; <code>LocalContext</code> là một CompositionLocal rót Context xuống cả cây Compose.
-				<code>getString()</code> thuộc <code>Context</code>, nên bất kỳ Context nào cũng gọi được.</li>
-			<li><strong>Hai cách lấy chuỗi</strong> không tương đương: <code>stringResource()</code> tự đọc lại khi cấu hình
-				đổi, <code>context.getString()</code> trong <code>remember</code> thì không. Ưu tiên
-				<code>stringResource()</code>, chỉ dùng cách kia khi ở ngoài vùng Composable.</li>
-			<li><strong>Debug:</strong> lỗi biên dịch tự báo, lỗi lúc chạy thì không. Nút con bọ chạy app ở chế độ debug;
-				breakpoint dừng app lại để xem giá trị biến — đặt ở dòng thứ hai trong <code>onClick</code> để thấy khoảnh khắc
-				hai biến cùng giá trị. Logcat và <code>Log.d()</code> dùng khi chưa biết lỗi ở đâu.</li>
-		</ul>
-	</div>
+
+	<h2 id="tong-ket">15. Tổng kết Chương 3.2 (hai đơn vị)</h2>
+	<ul>
+		<li><strong>Chuỗi phải ra khỏi Kotlin</strong> (đơn vị 1): rải chuỗi cứng là <em>technical debt</em> không báo
+			lỗi; <code>strings.xml</code> bản final có 5 chuỗi, trong đó <code>app_name</code> do chính hệ điều hành đọc qua
+			<code>android:label="@string/app_name"</code> trong manifest, không phải code Kotlin của bạn.</li>
+		<li><strong>Qualifier</strong> làm app đổi ngôn ngữ mà không sửa một dòng Kotlin; đổi ngôn ngữ là một
+			<em>configuration change</em> — cùng cơ chế với xoay máy.</li>
+		<li><strong>Lớp <code>R</code></strong> là file code do máy sinh lại mỗi lần build, bảng tra giữa tên chuỗi và số
+			ID; gõ sai tên là lỗi biên dịch, <code>R</code> chưa thấy chuỗi mới thì build lại là xong.</li>
+		<li><strong>Lỗi biên dịch đầu tiên</strong> xảy ra vì <code>stringResource()</code> là một Composable, còn lambda
+			của <code>remember</code> là công thức tính giá trị ban đầu chỉ chạy một lần. Cặp ngoặc chứa <em>giao diện</em>
+			thì gọi được Composable, chứa <em>việc cần làm</em> thì không.</li>
+		<li><strong><code>Context</code></strong> là lối vào thông tin toàn cục của môi trường app; <code>Activity</code>
+			<em>là</em> một Context; <code>LocalContext</code> là một CompositionLocal rót Context xuống cả cây Compose.</li>
+		<li><strong>Hai cách lấy chuỗi không tương đương:</strong> <code>stringResource()</code> tự đọc lại khi cấu hình
+			đổi, <code>context.getString()</code> trong <code>remember</code> thì không. Ưu tiên
+			<code>stringResource()</code>, chỉ dùng cách kia khi bị chặn.</li>
+		<li><strong>Debug</strong> (đơn vị 2): lỗi biên dịch tự báo, lỗi lúc chạy thì không. Nút con bọ chạy app ở chế độ
+			debug; breakpoint dừng app lại để xem giá trị biến — đặt ở dòng thứ hai trong <code>onClick</code> để thấy
+			khoảnh khắc hai biến cùng giá trị; Step Over đi từng dòng, Resume chạy tiếp.</li>
+		<li><strong>Logcat và <code>Log.d()</code></strong> dùng khi chưa biết lỗi ở đâu; breakpoint dùng khi đã biết nên
+			xem chỗ nào. Log là để ghi chuỗi sự việc theo thời gian, breakpoint là để soi sâu tại một điểm — chúng bổ
+			sung nhau, không thay nhau.</li>
+	</ul>
 	<p>
-		<strong>Tiếp theo — Chương 3.3:</strong> <code>AndroidManifest.xml</code>, Intent, permission và Service. Chuỗi chỉ là
-		<em>một</em> loại resource, nên chương sau mở rộng ra các loại còn lại, rồi đi vào file khai báo quan trọng nhất của
-		một app Android: cái file nói cho hệ điều hành biết app tên gì, mở bằng màn hình nào, xin những quyền gì. Bạn sẽ thấy
-		vì sao app xuất hiện được trong danh sách ứng dụng nhờ một thẻ <code>&lt;intent-filter&gt;</code>,
-		<code>Intent</code> là gì và nó khác cách chuyển màn hình mà các chương sau dùng ở đâu, permission khai ở đâu kèm một
-		cái bẫy tên thẻ rất hay gặp, và <code>Service</code> chạy việc khi người dùng không nhìn vào app.
+		<strong>Tiếp theo — Chương 3.3:</strong> <code>AndroidManifest.xml</code>, Intent, permission và Service. Chuỗi
+		chỉ là <em>một</em> loại resource, nên chương sau mở rộng ra các loại còn lại, rồi đi vào file khai báo quan
+		trọng nhất của một app Android: cái file nói cho hệ điều hành biết app tên gì, mở bằng màn hình nào, xin những
+		quyền gì. Bạn sẽ thấy vì sao app xuất hiện được trong danh sách ứng dụng nhờ một thẻ
+		<code>&lt;intent-filter&gt;</code>, <code>Intent</code> là gì, permission khai ở đâu kèm một cái bẫy tên thẻ rất
+		hay gặp, và <code>Service</code> chạy việc khi người dùng không nhìn vào app.
 	</p>
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
-		Ba chỗ dưới đây là nơi người mới mất nhiều thời gian nhất trong phạm vi chương nhỏ này. Cái thứ nhất là một luật của
-		Compose bị hiểu sai thành "lỗi vô cớ". Cái thứ hai là chỗ tài liệu phổ thông trình bày hai lựa chọn như thể chúng
-		tương đương, trong khi hành vi khác nhau. Cái thứ ba là một thói quen mà hướng dẫn cũ dạy nhưng nghề thật không dùng.
+		Ba chỗ dưới đây là nơi người mới mất nhiều thời gian nhất trong phạm vi chương nhỏ này. Hai cái đầu thuộc đơn vị
+		1 — một luật của Compose bị hiểu sai thành "lỗi vô cớ", và một chỗ tài liệu phổ thông trình bày hai lựa chọn như
+		thể chúng tương đương. Cái thứ ba thuộc đơn vị 2 — một thói quen mà hướng dẫn cũ dạy nhưng nghề thật không dùng.
 	</p>
 	<p class="notice">
-		<strong>1. <code>stringResource()</code> không gọi được trong <code>remember &#123; ... &#125;</code> — và đó không
-		phải lỗi của bạn.</strong> Đây là chỗ dừng lại lâu nhất của rất nhiều người mới, vì thông báo lỗi
-		<em>"Composable calls are not allowed inside the calculation parameter of inline fun &lt;T&gt; remember..."</em> nghe
-		như một lời từ chối không lý do. Lý do có thật và đáng nhớ: <code>stringResource()</code> tự nó là một Composable
-		function, còn lambda bạn truyền cho <code>remember</code> <em>không</em> phải vùng dựng giao diện — nó là công thức
-		tính giá trị ban đầu, và Compose chỉ chạy nó đúng một lần ở lần composition đầu tiên rồi không bao giờ chạy lại. Đặt
-		một Composable vào đó nghĩa là hứa với framework một điều nó không giữ được: Composable phải chạy lại được mỗi khi có
-		gì thay đổi. Nên trình biên dịch chặn ngay, thay vì để bạn phát hiện ra sáu tháng sau khi app dịch nửa vời. Cách nhận
-		ra trước khi gõ: hỏi "cặp ngoặc này chứa <em>giao diện</em> hay chứa <em>việc cần làm</em>?" — chứa việc cần làm
-		(<code>remember</code>, <code>onClick</code>, <code>LaunchedEffect</code>, hàm Kotlin thường) thì không gọi Composable
-		được. Và đừng học thuộc mẹo "thay bằng <code>LocalContext.current</code>": họ lỗi này còn gồm
+		<strong>1. <code>stringResource()</code> không gọi được trong <code>remember &#123; ... &#125;</code> — và đó
+		không phải lỗi của bạn.</strong> Đây là chỗ dừng lại lâu nhất của rất nhiều người mới, vì thông báo lỗi
+		<em>"Composable calls are not allowed inside the calculation parameter of inline fun &lt;T&gt; remember..."</em>
+		nghe như một lời từ chối không lý do. Lý do có thật và đáng nhớ: <code>stringResource()</code> tự nó là một
+		Composable function, còn lambda bạn truyền cho <code>remember</code> <em>không</em> phải vùng dựng giao diện — nó
+		là công thức tính giá trị ban đầu, và Compose chỉ chạy nó đúng một lần ở lần composition đầu tiên rồi không bao
+		giờ chạy lại. Đặt một Composable vào đó nghĩa là hứa với framework một điều nó không giữ được: Composable phải
+		chạy lại được mỗi khi có gì thay đổi. Nên trình biên dịch chặn ngay, thay vì để bạn phát hiện ra sáu tháng sau
+		khi app dịch nửa vời. Cách nhận ra trước khi gõ: hỏi "cặp ngoặc này chứa <em>giao diện</em> hay chứa <em>việc cần
+		làm</em>?" — chứa việc cần làm (<code>remember</code>, <code>onClick</code>, hàm Kotlin thường) thì không gọi
+		Composable được. Và đừng học thuộc mẹo "thay bằng <code>LocalContext.current</code>": họ lỗi này còn gồm
 		<code>painterResource()</code>, <code>MaterialTheme.colorScheme</code> và nhiều thứ khác không có phiên bản
 		<code>getString()</code> tương đương. Hiểu luật thì sửa được cả họ; học mẹo thì chỉ sửa được một ca.
 	</p>
 	<p class="notice">
 		<strong>2. Hai cách lấy chuỗi <em>không</em> tương đương — chọn sai là app không đổi ngôn ngữ khi người dùng đổi
-		locale.</strong> Phần lớn tài liệu đặt <code>stringResource(id = ...)</code> và <code>context.getString(...)</code>
-		cạnh nhau như hai lựa chọn ngang hàng, kiểu "cái nào cũng ra chuỗi, tuỳ chỗ mà dùng". Mô tả đó bỏ mất đúng cái làm nên
-		khác biệt. Kịch bản kiểm được ngay trên app chat: người dùng đang mở app, sang Settings đổi ngôn ngữ máy, quay lại.
-		Android huỷ và dựng lại Activity, nên nhãn ô nhập (dòng 65) và chữ nút Send (dòng 72) <strong>đổi</strong> sang ngôn
-		ngữ mới vì chúng gọi <code>stringResource</code> mỗi lần vẽ. Nhưng hai chuỗi mặc định của state (dòng 56, 57)
-		<strong>không đổi</strong>, vì <code>context.getString()</code> đã tính xong một lần và kết quả bị
-		<code>remember</code> cất lại. Người dùng thấy một màn hình dịch nửa vời, và không có lỗi nào để bạn đi tìm. Cách
-		chữa khi bạn <em>cần</em> chuỗi trong state cũng đổi theo: truyền chuỗi đó vào làm key của <code>remember</code>
-		(mục 11.5) — đổi lại chữ người dùng đang gõ dở sẽ bị xoá về mặc định. Nói cách khác đây là một đánh đổi phải chọn có ý
-		thức, không phải hai gu viết code. Nguyên tắc mặc định: ưu tiên <code>stringResource()</code>, chỉ dùng
-		<code>context.getString()</code> khi thật sự bị chặn.
+		locale.</strong> Phần lớn tài liệu đặt <code>stringResource(id = ...)</code> và
+		<code>context.getString(...)</code> cạnh nhau như hai lựa chọn ngang hàng, kiểu "cái nào cũng ra chuỗi, tuỳ chỗ
+		mà dùng". Mô tả đó bỏ mất đúng cái làm nên khác biệt. Kịch bản kiểm được ngay trên app chat: người dùng đang mở
+		app, sang Settings đổi ngôn ngữ máy, quay lại. Android huỷ và dựng lại Activity, nên nhãn ô nhập (dòng 65) và
+		chữ nút Send (dòng 72) <strong>đổi</strong> sang ngôn ngữ mới vì chúng gọi <code>stringResource</code> mỗi lần
+		vẽ. Nhưng hai chuỗi mặc định của state (dòng 56, 57) <strong>không đổi</strong>, vì
+		<code>context.getString()</code> đã tính xong một lần và kết quả bị <code>remember</code> cất lại. Người dùng
+		thấy một màn hình dịch nửa vời, và không có lỗi nào để bạn đi tìm. Cách chữa khi bạn <em>cần</em> chuỗi trong
+		state cũng đổi theo: truyền chuỗi đó vào làm key của <code>remember</code> (mục 11.5) — đổi lại chữ người dùng
+		đang gõ dở sẽ bị xoá về mặc định. Nói cách khác đây là một đánh đổi phải chọn có ý thức, không phải hai gu viết
+		code. Nguyên tắc mặc định: ưu tiên <code>stringResource()</code>, chỉ dùng <code>context.getString()</code> khi
+		thật sự bị chặn.
 	</p>
 	<p class="notice">
 		<strong>3. Rải <code>println</code> khắp code thay cho breakpoint — thói quen xấu mà hướng dẫn cũ hay dạy.</strong>
-		Rất nhiều tutorial nhập môn dạy cách tìm lỗi bằng <code>println()</code>: chèn một dòng in giá trị biến vào chỗ nghi
-		vấn, chạy lại, đọc kết quả, xong thì xoá dòng đó đi. Cách này có vẻ nhanh, nhưng nó có ba vấn đề thật. Thứ nhất, trên
-		Android <code>println()</code> gần như vô dụng — nó không đi vào Logcat theo cách bạn lọc được, đúng cách là
-		<code>Log.d("thẻ", "nội dung")</code> hoặc Timber (mục 13.4). Thứ hai, mỗi lần muốn xem một biến khác là bạn phải sửa
-		code, build lại, chạy lại, bấm lại đúng chuỗi thao tác — trong khi một breakpoint cho bạn xem <em>mọi</em> biến trong
-		phạm vi cùng lúc, không cần build lại lần nào. Thứ ba, dòng log tạm rất hay bị bỏ quên trong code và trôi vào bản phát
-		hành, làm lộ dữ liệu nội bộ ra Logcat của máy người dùng. Đặt lại cho đúng: <em>log</em> là để ghi lại một chuỗi sự
-		việc trải theo thời gian (và nên là log có chủ đích, không phải log tạm), còn <em>breakpoint</em> là để soi sâu tại
-		một điểm. Chúng bổ sung nhau, không thay nhau. Ai bỏ hẳn breakpoint để rải log là đang tự làm việc chậm hơn nhiều lần
-		mà không biết.
+		Rất nhiều tutorial nhập môn dạy cách tìm lỗi bằng <code>println()</code>: chèn một dòng in giá trị biến vào chỗ
+		nghi vấn, chạy lại, đọc kết quả, xong thì xoá dòng đó đi. Cách này có vẻ nhanh, nhưng nó có ba vấn đề thật. Thứ
+		nhất, trên Android <code>println()</code> gần như vô dụng — nó không đi vào Logcat theo cách bạn lọc được, đúng
+		cách là <code>Log.d("thẻ", "nội dung")</code> hoặc Timber (mục 13.4). Thứ hai, mỗi lần muốn xem một biến khác là
+		bạn phải sửa code, build lại, chạy lại, bấm lại đúng chuỗi thao tác — trong khi một breakpoint cho bạn xem
+		<em>mọi</em> biến trong phạm vi cùng lúc, không cần build lại lần nào. Thứ ba, dòng log tạm rất hay bị bỏ quên
+		trong code và trôi vào bản phát hành, làm lộ dữ liệu nội bộ ra Logcat của máy người dùng. Đặt lại cho đúng:
+		<em>log</em> là để ghi lại một chuỗi sự việc trải theo thời gian (và nên là log có chủ đích, không phải log tạm),
+		còn <em>breakpoint</em> là để soi sâu tại một điểm. Chúng bổ sung nhau, không thay nhau. Ai bỏ hẳn breakpoint để
+		rải log là đang tự làm việc chậm hơn nhiều lần mà không biết.
 	</p>
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<ul>
 		<li>
 			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 193–203 (mục "Managing Strings in Your App": vì sao
-			chuỗi quan trọng, hỗ trợ nhiều ngôn ngữ, Google Play Store, câu trả lời là String resource) · dòng 205–227 (mở
-			<code>res/values/strings.xml</code>, nội dung 1 chuỗi của bản starter, lý do dùng <code>strings.xml</code> ngay từ
-			đầu và cách thêm ngôn ngữ bằng cách copy file, nội dung 5 chuỗi của bản final) · dòng 229–255 (đổi
-			<code>label</code> sang <code>stringResource</code>, nhắc lại "R" là Resource, định nghĩa
-			<code>stringResource</code> là method của Compose UI nhận một tham số <code>id</code> là resource identifier dạng
-			số nguyên, cách autocomplete <code>R.</code> → <code>string</code> → tên chuỗi, đổi chữ trong nút) · dòng 257–265
-			(chạy lại app, chuỗi đã <em>localized</em>, thử đổi chuỗi mặc định của state và bị gạch đỏ) · dòng 270–275 (bốn nơi
-			Android Studio báo lỗi: gạch đỏ tại dòng, hình tròn đỏ kèm số lỗi ở góc trên-phải và tam giác vàng cho cảnh báo,
-			panel Problems, vạch đỏ ở lề phải; kèm ghi chú IDE lần này không đề xuất được cách sửa) · dòng 277–293 (cách sửa
-			hai bước: thêm <code>val context = LocalContext.current</code> trước các khai báo biến kèm import, đổi hai dòng
+			chuỗi quan trọng, hỗ trợ nhiều ngôn ngữ, Google Play Store, câu trả lời là String resource) · dòng 205–227
+			(mở <code>res/values/strings.xml</code>, nội dung 1 chuỗi của bản starter, lý do dùng
+			<code>strings.xml</code> ngay từ đầu và cách thêm ngôn ngữ bằng cách copy file, nội dung 5 chuỗi của bản
+			final) · dòng 229–255 (đổi <code>label</code> sang <code>stringResource</code>, nhắc lại "R" là Resource,
+			định nghĩa <code>stringResource</code> là method của Compose UI nhận một tham số <code>id</code> là resource
+			identifier dạng số nguyên, cách autocomplete <code>R.</code> → <code>string</code> → tên chuỗi, đổi chữ trong
+			nút) · dòng 257–265 (chạy lại app, chuỗi đã <em>localized</em>, thử đổi chuỗi mặc định của state và bị gạch
+			đỏ) · dòng 270–275 (bốn nơi Android Studio báo lỗi: gạch đỏ tại dòng, hình tròn đỏ kèm số lỗi ở góc
+			trên-phải và tam giác vàng cho cảnh báo, panel Problems, vạch đỏ ở lề phải; kèm ghi chú IDE lần này không đề
+			xuất được cách sửa) · dòng 277–293 (cách sửa hai bước: thêm
+			<code>val context = LocalContext.current</code> trước các khai báo biến kèm import, đổi hai dòng
 			<code>remember</code> sang <code>context.getString(...)</code>; định nghĩa <code>Context</code>, vai trò
-			<code>LocalContext.current</code>, <code>getString()</code> tham chiếu lớp <code>R</code>, chuỗi được cấp ID lúc
-			build) · dòng 295 (liên kết tài liệu chính thức về string resource, có nhắc string array và plurals) · dòng 297–303
-			(technical debt: định nghĩa và câu "rải chuỗi khắp app là một trong những loại nợ kỹ thuật tệ nhất") · dòng 305–320
-			(mục "Debugging": phân biệt lỗi biên dịch với lỗi lúc chạy, nút hình con bọ, chế độ debug và panel Debug, định
-			nghĩa breakpoint, đặt breakpoint tại dòng <code>chatInputText = ""</code> trong <code>onClick</code>, gõ
-			"Hello 👋🏽" rồi bấm Send, app dừng và hiện giá trị biến còn trong scope) · dòng 409 (nhận xét làm nghề lâu sẽ
-			debug nhiều hơn viết code mới, kèm gợi ý tài liệu chuyên sâu về debug). Ảnh minh hoạ trong giáo trình gốc:
-			<code>img49.png</code>, <code>img50.png</code> (autocomplete của <code>R.</code>), <code>img51.png</code> (gạch đỏ
-			dưới <code>stringResource</code>), <code>img52.png</code> (nút con bọ), <code>img53.png</code> (chấm đỏ trên số
-			dòng), <code>img54.png</code> (giá trị biến lúc dừng) — khoá học này diễn giải lại bằng chữ và bảng, không kèm ảnh.
+			<code>LocalContext.current</code>, <code>getString()</code> tham chiếu lớp <code>R</code>, chuỗi được cấp ID
+			lúc build) · dòng 295 (liên kết tài liệu chính thức về string resource, có nhắc string array và plurals) ·
+			dòng 297–303 (technical debt: định nghĩa và câu "rải chuỗi khắp app là một trong những loại nợ kỹ thuật tệ
+			nhất") · dòng 305–320 (mục "Debugging": phân biệt lỗi biên dịch với lỗi lúc chạy, nút hình con bọ, chế độ
+			debug và panel Debug, định nghĩa breakpoint, đặt breakpoint tại dòng <code>chatInputText = ""</code> trong
+			<code>onClick</code>, gõ "Hello 👋🏽" rồi bấm Send, app dừng và hiện giá trị biến còn trong scope) · dòng 409
+			(nhận xét làm nghề lâu sẽ debug nhiều hơn viết code mới, kèm gợi ý tài liệu chuyên sâu về debug). Ảnh minh
+			hoạ trong giáo trình gốc: <code>img49.png</code>, <code>img50.png</code> (autocomplete của
+			<code>R.</code>), <code>img51.png</code> (gạch đỏ dưới <code>stringResource</code>), <code>img52.png</code>
+			(nút con bọ), <code>img53.png</code> (chấm đỏ trên số dòng), <code>img54.png</code> (giá trị biến lúc dừng)
+			— khoá học này diễn giải lại bằng chữ và bảng, không kèm ảnh.
 		</li>
 		<li>
 			<strong>Code thật đã đối chiếu:</strong> <code>{STRINGS_START}</code> — tổng 37 dòng: header license dòng 1–33 ·
-			<code>&lt;resources&gt;</code> dòng 35 · đúng 1 chuỗi <code>app_name</code> dòng 36 · thẻ đóng dòng 37 (đoạn code ở
-			mục 9). <code>{STRINGS_FINAL}</code> — tổng 40 dòng: header license dòng 1–32 · <code>&lt;resources&gt;</code>
-			dòng 34 · 5 chuỗi dòng 35–39 · thẻ đóng dòng 40 (đoạn code và bảng ở mục 9). <code>{KT_FINAL}</code> — tổng 80
-			dòng: import <code>LocalContext</code> dòng 47 và import <code>stringResource</code> dòng 48 (mục 10 và 11.3) ·
-			<code>val context = LocalContext.current</code> dòng 55 · hai <code>remember</code> với
-			<code>context.getString(...)</code> dòng 56–57 (mục 11.3 và bảng ở mục 12) · nhãn
-			<code>stringResource(id = R.string.chat_entry_label)</code> trong <code>OutlinedTextField</code> dòng 65 (mục 12) ·
-			khối <code>Button(onClick = ...)</code> dòng 68–71, trong đó dòng 70 là <code>chatInputText = ""</code> — dòng đặt
-			breakpoint (mục 13.2) · <code>Text(text = stringResource(id = R.string.send_button))</code> dòng 72 (mục 12) ·
-			dòng 73 là một dòng trống dư trong bản gốc. <code>{MANIFEST_FINAL}</code> — tổng 61 dòng: thẻ
-			<code>&lt;manifest&gt;</code> dòng 35–36 · <code>android:label="@string/app_name"</code> xuất hiện hai lần, ở thẻ
-			<code>&lt;application&gt;</code> dòng 43 và thẻ <code>&lt;activity&gt;</code> dòng 51 (đường dây
-			<code>app_name</code> ở mục 9). Cấu trúc <code>res/</code> bản final kiểm trực tiếp: 9 thư mục con
-			(<code>drawable</code>, sáu <code>mipmap-*</code>, <code>values</code>, <code>xml</code>), không có
-			<code>layout/</code> (mục 9.1). Số lời gọi Timber ở mục 13.4 lấy từ
-			<code>aaf-materials/08-networking/projects/final/app/src/main/java/</code> — 13 kết quả ở 5 file
-			(<code>RecipeApp.kt</code>, <code>viewmodels/RecipeViewModel.kt</code>, <code>ui/RecipeDetails.kt</code>,
+			<code>&lt;resources&gt;</code> dòng 35 · đúng 1 chuỗi <code>app_name</code> dòng 36 · thẻ đóng dòng 37 (đoạn
+			code ở mục 9). <code>{STRINGS_FINAL}</code> — tổng 40 dòng: header license dòng 1–32 ·
+			<code>&lt;resources&gt;</code> dòng 34 · 5 chuỗi dòng 35–39 · thẻ đóng dòng 40 (đoạn code và bảng ở mục 9).
+			<code>{KT_FINAL}</code> — tổng 80 dòng: import <code>LocalContext</code> dòng 47 và import
+			<code>stringResource</code> dòng 48 (mục 10 và 11.3) · <code>val context = LocalContext.current</code> dòng
+			55 · hai <code>remember</code> với <code>context.getString(...)</code> dòng 56–57 (mục 11.3 và bảng ở mục 12) ·
+			nhãn <code>stringResource(id = R.string.chat_entry_label)</code> trong <code>OutlinedTextField</code> dòng 65
+			(mục 12) · khối <code>Button(onClick = ...)</code> dòng 68–71, trong đó dòng 70 là
+			<code>chatInputText = ""</code> — dòng đặt breakpoint (mục 13.2) ·
+			<code>Text(text = stringResource(id = R.string.send_button))</code> dòng 72 (mục 12) · dòng 73 là một dòng
+			trống dư trong bản gốc. <code>{MANIFEST_FINAL}</code> — tổng 61 dòng:
+			<code>android:label="@string/app_name"</code> xuất hiện hai lần, ở thẻ <code>&lt;application&gt;</code> dòng
+			43 và thẻ <code>&lt;activity&gt;</code> dòng 51 (đường dây <code>app_name</code> ở mục 9). Số lời gọi Timber ở
+			mục 13.4 lấy từ <code>aaf-materials/08-networking/projects/final/app/src/main/java/</code> — 13 kết quả ở 5
+			file (<code>RecipeApp.kt</code>, <code>viewmodels/RecipeViewModel.kt</code>, <code>ui/RecipeDetails.kt</code>,
 			<code>ui/widgets/BookmarkCard.kt</code>, <code>ui/widgets/RecipeCard.kt</code>).
 		</li>
 		<li>
-			<strong>Phần bổ sung ngoài giáo trình:</strong> kịch bản "một bản app cho mỗi ngôn ngữ" và hai bản app lệch hành vi
-			ở mục 8 · ba lợi ích thực tế của <code>strings.xml</code> (trùng lặp, plurals, người dịch không đọc code) cùng ví
-			dụ <code>&lt;plurals&gt;</code> — app chat không dùng plurals, đoạn XML đó do khoá học tự viết · phân biệt
-			"đã localize" với "đã có bản dịch" ở mục 8 · giải thích cú pháp <code>&lt;resources&gt;</code>/
-			<code>&lt;string&gt;</code> và lý do tên chuỗi phải là định danh Kotlin hợp lệ ở mục 9 · bảng 5 chuỗi kèm cột "dùng
-			ở đâu" và nhận xét 4 chuỗi do Kotlin lấy / 1 chuỗi do hệ điều hành lấy · chuẩn đặt tên "từ chung tới riêng" ·
-			cây thư mục qualifier và bản dịch <code>res/values-vi/strings.xml</code> đầy đủ (do khoá học tự viết, không có
-			trong project mẫu) · nối qualifier với configuration change đã học ở Chương 3.1 và với các thư mục
-			<code>mipmap-*</code> thật · giải thích lớp <code>R</code> là file sinh lúc build cùng bảng bốn dạng
-			<code>R.string</code>/<code>R.drawable</code>/<code>R.style</code>/<code>R.id</code> và ba hệ quả thực dụng · bảng
-			hai vùng được/không được gọi Composable cùng quy tắc "giao diện hay việc cần làm" · giải thích
-			<code>LocalContext</code> là CompositionLocal kèm liên kết tới Chương 8.4 và Chương 9.3 · đính chính
-			<code>Context</code> là abstract class chứ không phải interface, và <code>getString()</code> thuộc
-			<code>Context</code> chứ không phải riêng <code>Activity</code> · cách sửa thứ hai và biến thể
-			<code>remember(key)</code> ở mục 11.5 · phân tích bảng ba thời điểm giá trị biến quanh breakpoint ở mục 13.3 ·
-			ba nút Step Over / Step Into / Resume · toàn bộ mục 13.4 về Logcat, <code>Log.d()</code> và stack trace · cả ba
-			mục của phần Cạm bẫy &amp; tài liệu lỗi thời.
+			<strong>Phần bổ sung ngoài giáo trình:</strong> kịch bản "một bản app cho mỗi ngôn ngữ" và hai bản app lệch
+			hành vi ở mục 8 · ba lợi ích thực tế của <code>strings.xml</code> (trùng lặp, plurals, người dịch không đọc
+			code) — app chat không dùng plurals, chỉ nêu cơ chế trong hint · phân biệt "đã localize" với "đã có bản dịch"
+			ở mục 8 · giải thích cú pháp <code>&lt;resources&gt;</code>/<code>&lt;string&gt;</code> và lý do tên chuỗi
+			phải là định danh Kotlin hợp lệ ở mục 9 · bảng 5 chuỗi kèm cột "dùng ở đâu" · chuẩn đặt tên "từ chung tới
+			riêng" · cây thư mục qualifier và bản dịch <code>res/values-vi/strings.xml</code> đầy đủ (do khoá học tự
+			viết, không có trong project mẫu) · nối qualifier với configuration change đã học ở Chương 3.1 và với các
+			thư mục <code>mipmap-*</code> thật · giải thích lớp <code>R</code> là file sinh lúc build cùng bảng bốn dạng
+			<code>R.string</code>/<code>R.drawable</code>/<code>R.style</code>/<code>R.id</code> và ba hệ quả thực dụng ·
+			bảng hai vùng được/không được gọi Composable cùng quy tắc "giao diện hay việc cần làm" · giải thích
+			<code>LocalContext</code> là CompositionLocal · đính chính <code>Context</code> là abstract class chứ không
+			phải interface, và <code>getString()</code> thuộc <code>Context</code> chứ không phải riêng
+			<code>Activity</code> · cách sửa thứ hai và biến thể <code>remember(key)</code> ở mục 11.5 · phân tích bảng
+			ba thời điểm giá trị biến quanh breakpoint ở mục 13.3 · ba nút Step Over / Step Into / Resume · toàn bộ mục
+			13.4 về Logcat, <code>Log.d()</code> và stack trace · cả ba mục của phần Cạm bẫy &amp; tài liệu lỗi thời.
 		</li>
 	</ul>
 </section>
-

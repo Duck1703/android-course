@@ -1,54 +1,37 @@
 ---
-// Chương 3.1 — Activity, onCreate() và giao diện đầu tiên. Task 48 (Phase 7): áp chuẩn Chương 10.
+// Chương 3.1 (lesson ID tương lai A9) — Activity, onCreate() và giao diện đầu tiên.
 // Ranh giới tách + hợp đồng đặt tên: docs/CHAPTER_SPLIT_MAP.md
 // Nội dung diễn giải lại bằng tiếng Việt, không copy nguyên văn nguồn.
 // Code trích nguyên văn từ aaf-materials/ theo Quyết định #7 — ghi rõ file + dòng ở mục nguon.
 //
-// Đã tự mở file đếm lại từng số dòng, không lấy theo bản tách máy móc cũ:
-//   starter/MainActivity.kt = 80 dòng — license 1–33 · package 35 · import 37–47 ·
-//     class MainActivity 49–64 · Greeting 66–72 · GreetingPreview 74–80.
-//   final/MainActivity.kt  = 80 dòng — license 1–32 · package 34 · import 36–48 ·
-//     class MainActivity 50–78, có một dòng trống dư ở dòng 73.
-// Đã sửa 2 số dòng SAI của bản tách cũ: {KT_START} ghi "50–82" → đúng là 49–80;
-//   header license bản starter là 33 dòng (chỉ bản final mới là 32 dòng).
-//
-// Đã kiểm bằng lệnh thật:
-//   grep "@Preview" trong final/app/                          → 0 kết quả
-//   find -type d -name layout trong aaf-materials/            → 0 thư mục
-//   grep "KodecoChatTheme" trong final/app/src/main/java/     → đúng 1 kết quả (Theme.kt dòng 74)
-//   grep "KodecoChatTheme" trong starter/app/src/main/java/   → dòng 47, 53, 77
-//   ls res/ bản final                                         → 9 thư mục con, không có layout/
-//
-// Đã sửa tham chiếu chéo sai của bản tách cũ: đưa state ra ViewModel là Chương 6.2 (không phải 7);
-//   state hoisting là Chương 6.1, mục 5; navigation bằng NavHost là Chương 8 (07-advanced-architecture
-//   không có NavHost nào — đã grep).
-//
-// Task 48 — kiểm lại lần nữa trên file thật trước khi viết mục nguon:
-//   wc -l starter/MainActivity.kt = 79 (file không có newline cuối → dòng cuối là 80)
-//   wc -l final/MainActivity.kt   = 79 (tương tự) · final/Theme.kt = 102 · final/build.gradle.kts = 102
-//   sed final/build.gradle.kts    → buildFeatures 73–75, composeOptions 76–78, namespace dòng 41
-//   ls final/app/src/main/res/    → drawable, mipmap-anydpi, mipmap-hdpi/mdpi/xhdpi/xxhdpi/xxxhdpi,
-//                                   values, xml (9 thư mục, không có layout/)
-//   awk số dòng final/MainActivity.kt → context 55, state 56–57, Text 58, OutlinedTextField 60–66
-//                                       (label stringResource ở 65), Button 68–71, chữ nút 72,
-//                                       dòng trống dư 73, đóng class 78
-//
-// Bộ xương Task 48 đã áp: đúng 1 callout mục tiêu ở đầu file · số mục giữ 1–7 · gom attribution về mục nguon
-//   (7 thẻ <p class="src"> của bản tách cũ đã bị xoá, số dòng chuyển hết vào nguon) ·
-//   mục cam-bay gom 4 bẫy: onCreate() chạy lại khi xoay máy · OutlinedTextField thiếu onValueChange ·
-//   thứ tự 2 dòng onClick · res/ không có layout/.
-// Đã kiểm sau khi viết: prose 9.397 từ · @astrojs/compiler transform + node --check → OK, 0 diagnostics ·
-//   giọng văn đã quét sạch mọi cách nhắc tới nguồn tài liệu in (chỉ mục nguon được phép nêu) ·
-//   22 id duy nhất, không trùng · mọi const đều được dùng.
+// Lần sửa 2026-09 (CONTENT BATCH 03 — chuẩn hoá theo docs/COURSE_CONTENT_STANDARD.md):
+//   • Rút từ ~9.900 từ (~49 phút) về ~3.900 từ (~22 phút) — giữ nguyên mọi khái niệm được quiz
+//     Ch03_1Quiz kiểm: ba vai trò Activity, bảng 4 tình huống onCreate(), setContent là ranh giới
+//     Kotlin↔Compose, Column, vòng lặp phản ứng, `by remember` + getValue/setValue, cặp
+//     value/onValueChange, thứ tự 2 dòng onClick, xoay máy mất state, Fragment & XML thời cũ.
+//   • Cắt sâu: phân tích plugin biên dịch Compose (giữ 2 câu), bảng import 4 nhóm (giữ 1 câu),
+//     dòng trống dư dòng 73, ButterKnife/synthetics/View Binding (giữ 1 câu nhận biết),
+//     lifecycle ngoài onCreate, bảng 5 cột hai thời kỳ (giữ bảng 4 dòng gọn).
+//   • Forward-ref đổi sang ngôn ngữ chủ đề: "phần Nền tảng Kotlin", "phần Jetpack Compose",
+//     "phần State & kiến trúc", "phần Điều hướng", "phần Dữ liệu cục bộ" — bỏ "Chương 4.x/5.x/6.x…".
+//   • Số mục: 1–7 (liên tục với 3.2 = 8–18, 3.3 = 19–25, 3.4 = 26–31).
+//   • Kotlin JIT gloss tối thiểu (class :, override, fun, Bundle?, super, setContent, by, lambda đuôi)
+//     — KHÔNG dạy sâu, F1/F2 (phần Nền tảng Kotlin) sẽ dạy đầy đủ về sau.
+// Số dòng aaf-materials đã kiểm lại bằng lệnh thật (2026-09-05):
+//   starter/MainActivity.kt = 79 dòng theo wc (không có newline cuối → dòng cuối là 80);
+//   license 1–33 · package 35 · import 37–47 · class 49–64 · Greeting 66–72 · Preview 74–80.
+//   final/MainActivity.kt = 79/80 dòng: license 1–32 · package 34 · import 36–48 ·
+//   class 50–78 · val context 55 · 2 state 56–57 · Text 58 · OutlinedTextField 60–66 (label 65) ·
+//   Button 68–71 · chữ nút 72 · dòng trống dư 73. Theme.kt 102 dòng (fun KodecoChatTheme 74,
+//   SideEffect 91–95). build.gradle.kts: buildFeatures 73–75, composeOptions 76–78.
+//   grep "@Preview" final/app/ → 0 · grep "KodecoChatTheme" final/app/src/main/java → 1 (Theme.kt:74)
+//   res/ final = 9 thư mục, không có layout/.
 
 import { Code } from "astro:components";
 
-const BOOK = "content/book/ch03-android-fundamentals.md";
 const AAF = "aaf-materials/03-android-fundamentals/projects";
 const KT_FINAL = `${AAF}/final/app/src/main/java/com/kodeco/chat/MainActivity.kt`;
 const KT_START = `${AAF}/starter/app/src/main/java/com/kodeco/chat/MainActivity.kt`;
-const THEME_KT = `${AAF}/final/app/src/main/java/com/kodeco/chat/ui/theme/Theme.kt`;
-const BUILD_APP = `${AAF}/final/app/build.gradle.kts`;
 const starterActivityCode = `class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -110,184 +93,94 @@ const finalActivityCode = `class MainActivity : ComponentActivity() {
     }
   }
 }`;
-
-const finalImportsCode = `import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource`;
-const onCreateSkeletonCode = `class MainActivity : ComponentActivity() {   // 1
-  override fun onCreate(savedInstanceState: Bundle?) {   // 2
-    super.onCreate(savedInstanceState)                   // 3
-    setContent {                                         // 4
+const onCreateSkeletonCode = `class MainActivity : ComponentActivity() {        // 1
+  override fun onCreate(savedInstanceState: Bundle?) { // 2
+    super.onCreate(savedInstanceState)                 // 3
+    setContent {                                       // 4
       // ... giao diện Compose nằm ở đây
     }
   }
 }`;
-
-const findViewByIdCode = `chatOutputTextView = findViewById(R.id.chat_output_text_view)`;
-
 const onClickOrderCode = `chatOutputText = chatInputText   // 1. sao chữ vừa gõ lên phần hiển thị
 chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
-
-const resTreeCode = `app/src/main/res/
-├── drawable/                 ic_launcher_background.xml, ic_launcher_foreground.xml
-├── mipmap-anydpi/            ic_launcher.xml, ic_launcher_round.xml
-├── mipmap-hdpi/ ... xxxhdpi/  icon dạng ảnh PNG theo từng mật độ điểm ảnh
-├── values/                   colors.xml, strings.xml, themes.xml
-└── xml/                      backup_rules.xml, data_extraction_rules.xml
-
-(KHÔNG có res/layout/ — vì toàn bộ giao diện đã viết bằng Compose trong Kotlin)`;
 ---
 <section class="lesson">
 	<div class="callout goals">
 		<strong>Bạn sẽ học được gì trong chương này</strong>
 		<ul>
-			<li><strong>Activity</strong> thật sự là gì — và vì sao nói "Activity là giao diện" là hiểu sai; ba vai trò cụ
+			<li><strong>Activity</strong> thật sự là gì — vì sao nói "Activity là giao diện" là hiểu sai, và ba vai trò cụ
 				thể của nó trong quan hệ giữa app của bạn và hệ điều hành Android.</li>
-			<li>Đọc hiểu <em>từng dòng</em> của <code>MainActivity.kt</code> mà Android Studio tự sinh ra: bốn dòng cốt lõi
-				mà <em>mọi</em> Activity Compose đều có, và ranh giới vô hình giữa vùng "code Kotlin thường" và vùng
-				"Compose" — ranh giới đó nằm ở dấu ngoặc nào.</li>
-			<li><code>onCreate()</code> chạy lúc nào và <em>không</em> chạy lúc nào — bảng bốn tình huống thực tế, cùng lý
-				do vì sao xoay ngang máy làm mất tin nhắn bạn vừa gõ.</li>
-			<li>Viết lại toàn bộ giao diện thành một app chat nhỏ: <code>Column</code>, hai biến <em>state</em> với
+			<li>Đọc hiểu bốn dòng cốt lõi mà <em>mọi</em> Activity Compose đều có, và ranh giới vô hình giữa "đất Kotlin
+				thường" và "đất Compose" — ranh giới đó nằm ở dấu ngoặc nào.</li>
+			<li><code>onCreate()</code> chạy lúc nào và <em>không</em> chạy lúc nào — bốn tình huống thực tế, cùng lý do
+				vì sao xoay ngang máy làm mất tin nhắn bạn vừa gõ.</li>
+			<li>Thay toàn bộ giao diện thành một app chat nhỏ: <code>Column</code>, hai biến state với
 				<code>by remember &#123; mutableStateOf(...) &#125;</code>, <code>OutlinedTextField</code>,
-				<code>Button</code> — và giải thích từng tham số chứ không chỉ dán code.</li>
-			<li>Vòng lặp phản ứng (<em>reactive</em>) của Compose: vì sao gán một biến là đủ để chữ trên màn hình đổi theo,
-				không cần gọi hàm cập nhật nào.</li>
-			<li>Android <em>ngày xưa</em> làm giao diện thế nào — XML layout, <code>findViewById</code>, Fragment, View —
-				và vì sao bạn vẫn cần nhận ra chúng dù sẽ không viết chúng.</li>
-			<li>Bốn cái bẫy cụ thể mà người mới hay mất buổi tối vì nó, gom ở mục
-				<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a> cuối chương.</li>
+				<code>Button</code> — và giải thích được từng tham số.</li>
+			<li>Vòng lặp phản ứng (<em>reactive</em>) của Compose: vì sao gán một biến là đủ để chữ trên màn hình đổi theo.</li>
+			<li>Nhận ra Android thời trước Compose (XML layout, <code>findViewById</code>, Fragment, View) khi gặp code cũ —
+				dù bạn sẽ không viết chúng.</li>
 		</ul>
 		<p>
-			Ba chương nhỏ tiếp theo dạy phần còn lại của Chương 3, để bạn biết trước lộ trình:
-			<strong>Chương 3.2</strong> — đưa mọi chuỗi văn bản ra khỏi code Kotlin vào <code>strings.xml</code>, lớp
-			<code>R</code> hoạt động ra sao, gặp <em>lỗi biên dịch đầu tiên</em> và học cách đọc nó, rồi chạy app ở chế độ
-			debug với breakpoint để nhìn thấy giá trị biến ngay lúc code đang chạy. <strong>Chương 3.3</strong> — các loại
-			tài nguyên (resource) khác ngoài chuỗi, rồi đọc trọn <code>AndroidManifest.xml</code>: thẻ
-			<code>&lt;manifest&gt;</code>, <code>&lt;application&gt;</code>, <code>&lt;activity&gt;</code>,
-			<code>&lt;intent-filter&gt;</code> — kèm <strong>Intent</strong>, <strong>Permission</strong> và
-			<strong>Service</strong>. <strong>Chương 3.4</strong> — lần theo dấu <code>@style/Theme.KodecoChat</code> để
-			hiểu hai hệ thống theme song song của Android, dựng lại toàn bộ chuỗi việc xảy ra khi bấm một lần nút Send, và
-			đối chiếu toàn bộ Chương 3 với code thật cùng với Android của hôm nay.
-		</p>
-	</div>
-	<div class="callout">
-		<strong>App của Chương 3:</strong> <em>Kodeco Chat</em> (<code>com.kodeco.chat</code>) — cùng một app sẽ được xây
-		dần qua nhiều chương phía trước. Đây là chương đầu tiên bạn <em>thật sự viết code Kotlin</em>.
-		<p>
-			Hết Chương 3, app làm được đúng ba việc: có một ô nhập chữ, có một nút Send, và chữ vừa gõ hiện lên phía trên
-			sau khi bấm. Nghe rất ít so với 27 mục của cả Chương 3 — nhưng trọng tâm ở đây không phải làm ra nhiều tính
-			năng, mà là <strong>bộ khung của một app Android</strong>: Activity là gì, <code>onCreate()</code> chạy lúc
-			nào, giao diện được "gắn" vào Activity bằng cách nào, chuỗi văn bản nên nằm ở đâu, file
-			<code>AndroidManifest.xml</code> nói gì với hệ điều hành, và làm sao đặt breakpoint để nhìn thấy code đang
-			chạy.
-		</p>
-		<p>
-			Cần nói rõ app này <em>chưa có</em> gì, để bạn không đi tìm: chưa có ViewModel (Chương 6.2 mới đưa state ra
-			khỏi giao diện), chưa có navigation chuyển màn hình (Chương 8), chưa gọi mạng, chưa có database. Toàn bộ dữ
-			liệu của app sống trong bộ nhớ của một màn hình duy nhất — và bạn sẽ thấy hạn chế đó lộ ra ngay ở mục 4.
+			Đây là chương đầu tiên bạn <em>thật sự viết code Kotlin</em>. App được xây là <strong>Kodeco Chat</strong>
+			(<code>com.kodeco.chat</code>) — một app chat nhỏ: ô nhập chữ, nút Send, chữ vừa gõ hiện lên phía trên. Ba
+			chương nhỏ tiếp theo sẽ đưa chuỗi văn bản ra khỏi code (<code>strings.xml</code>, lớp <code>R</code>, lỗi
+			biên dịch đầu tiên và debug), đọc file <code>AndroidManifest.xml</code> (Intent, permission, Service), rồi
+			lần theo dấu theme và đọc lại toàn bộ code bằng đầu phê phán.
 		</p>
 	</div>
 
-	<h2 id="ban-do">1. Bản đồ Chương 3 — 6 khối kiến thức và thứ tự học</h2>
+	<h2 id="activity-la-gi">1. Activity là gì — mô hình tư duy trước khi đọc code</h2>
 	<p>
-		Chương 3 đi theo một mạch khá đặc biệt: mở ra bằng code, rồi <em>quay lại quá khứ</em>, rồi mới đi xuống hạ tầng
-		của app. Nắm được mạch này giúp bạn không bị cảm giác "sao đang code UI lại nhảy sang file XML lạ". Sáu khối dưới
-		đây là toàn bộ Chương 3, kèm chỉ dẫn khối nào nằm ở chương nhỏ nào:
-	</p>
-	<ol class="chain">
-		<li><strong>Khám phá Activity</strong> — đọc <code>MainActivity.kt</code> có sẵn, hiểu 4 dòng cốt lõi, rồi thay
-			toàn bộ nội dung bằng UI chat đơn giản. <em>(Chương 3.1, mục 2–6)</em></li>
-		<li><strong>Một chuyến về quá khứ</strong> — Android <em>ngày xưa</em> làm UI thế nào (XML layout,
-			<code>findViewById</code>, Fragment, View) và vì sao bạn vẫn cần biết. <em>(Chương 3.1, mục 7)</em></li>
-		<li><strong>Quản lý chuỗi văn bản</strong> — mọi chuỗi viết cứng được dọn vào <code>strings.xml</code>; gặp lỗi
-			biên dịch đầu tiên và học cách đọc lỗi. <em>(Chương 3.2, mục 8–12)</em></li>
-		<li><strong>Debug</strong> — chạy app ở chế độ debug, đặt breakpoint, xem giá trị biến.
-			<em>(Chương 3.2, mục 13)</em></li>
-		<li><strong>Resource</strong> — ngoài chuỗi còn những loại tài nguyên nào. <em>(Chương 3.3, mục 14)</em></li>
-		<li><strong>App Manifest</strong> — file khai báo bắt buộc, và 5 khái niệm gắn với nó: Activity, Intent,
-			Permission, Service, Theme. <em>(Chương 3.3, mục 15–19 và Chương 3.4, mục 20–22)</em></li>
-	</ol>
-	<p>
-		Nhìn vào thứ tự đó, có một điều đáng nói ngay: khối 2 (quá khứ của Android) trông như một đoạn ngoại đề chen giữa
-		hai khối thực hành. Nhưng nó được đặt đúng chỗ. Bạn vừa viết xong một giao diện bằng đúng vài dòng Kotlin ở mục
-		5–6; đây chính là lúc so sánh với cách cũ có tác dụng nhất, vì bạn còn nguyên cảm giác "làm việc này dễ thế".
-		Đọc phần quá khứ trước khi tự tay làm thì nó chỉ là danh sách tên công nghệ; đọc sau khi làm thì nó trả lời được
-		câu "vậy trước đây khó chỗ nào".
-	</p>
-	<p>
-		Một điểm nữa nên biết trước khi bắt đầu: Chương 3 là một trong những chương mà project mẫu bản
-		<code>final</code> có vài chỗ <strong>không khớp</strong> với những gì tài liệu Android phổ thông hay hướng dẫn cũ
-		dạy — trong đó có cả một chỗ tên thẻ XML bị viết sai ở rất nhiều nơi. Khoá học này nêu từng chỗ ngay tại mục nó
-		xuất hiện, gom cảnh báo của chương nhỏ này ở
-		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>, và tổng hợp toàn bộ 8 điểm lệch của cả Chương 3 ở
-		<strong>Chương 3.4, mục 24</strong>. Đây là phần đáng giá nhất, vì nó dạy bạn kỹ năng đọc codebase thật: tài liệu
-		nói một đằng, code chạy một nẻo là chuyện thường ngày, và người biết chỗ lệch mới là người sửa được lỗi.
-	</p>
-	<h2 id="activity-la-gi">2. Activity là gì — mô hình tư duy trước khi đọc code</h2>
-	<p>
-		Bắt đầu bằng một so sánh: một lối sống lành mạnh gồm nhiều <em>hoạt động</em> khác nhau — tập cardio,
-		tập sức mạnh, tập sức bền. Chúng khác nhau hoàn toàn, nhưng mỗi hoạt động có đúng một mục tiêu riêng. App Android
-		cũng vậy: nó gồm nhiều màn hình, mỗi màn hình xoay quanh <strong>đúng một việc</strong>. Màn hình đăng nhập chỉ
-		làm việc đăng nhập với tên và mật khẩu; màn hình cài đặt chỉ làm việc điều chỉnh thiết lập của app.
+		Bắt đầu bằng một so sánh: một lối sống lành mạnh gồm nhiều <em>hoạt động</em> khác nhau — tập cardio, tập sức
+		mạnh, tập sức bền. Chúng khác nhau hoàn toàn, nhưng mỗi hoạt động có đúng một mục tiêu riêng. App Android cũng
+		vậy: nó gồm nhiều màn hình, mỗi màn hình xoay quanh <strong>đúng một việc</strong>. Màn hình đăng nhập chỉ làm
+		việc đăng nhập; màn hình cài đặt chỉ làm việc điều chỉnh thiết lập.
 	</p>
 	<p>
 		Mỗi màn hình như vậy được xây trên nền một <strong>Activity</strong>. Và đây là chỗ cần nói chính xác cho người
 		mới, vì rất nhiều người hiểu sai ngay từ đầu: Activity <em>không phải</em> là giao diện. Nó là
-		<strong>một thành phần do hệ điều hành quản lý</strong>, có nhiệm vụ làm cầu nối giữa app của bạn và Android.
-		Giao diện là thứ bạn <em>đổ vào</em> Activity, không phải bản thân Activity. Cụ thể Activity giữ ba vai trò:
+		<strong>một thành phần do hệ điều hành quản lý</strong>, làm cầu nối giữa app của bạn và Android. Giao diện là
+		thứ bạn <em>đổ vào</em> Activity, không phải bản thân Activity. Activity giữ ba vai trò:
 	</p>
 	<ul>
 		<li><strong>Là điểm vào (entry point).</strong> Android không gọi hàm <code>main()</code> của bạn như một app máy
 			tính. Nó tạo một Activity rồi gọi các hàm vòng đời của Activity đó theo thứ tự định trước. Bạn không điều
 			khiển thời điểm app bắt đầu chạy — bạn chỉ khai báo "khi hệ thống gọi tới hàm này, hãy làm việc này".</li>
-		<li><strong>Là chủ của một cửa sổ.</strong> Mỗi Activity gắn với một cửa sổ (window) trên màn hình. Giao diện bạn
-			viết được "đổ" vào cửa sổ đó. Đây là lý do một Activity không hiển thị được gì cho tới khi bạn nói rõ nội
-			dung của nó là gì — chính là việc <code>setContent</code> làm ở mục 3.</li>
+		<li><strong>Là chủ của một cửa sổ.</strong> Mỗi Activity gắn với một cửa sổ (window) trên màn hình, và giao diện
+			bạn viết được "đổ" vào cửa sổ đó. Đây là lý do một Activity không hiển thị được gì cho tới khi bạn nói rõ nội
+			dung của nó là gì — chính là việc <code>setContent</code> làm ở mục 2.</li>
 		<li><strong>Là đơn vị mà hệ thống có quyền huỷ.</strong> Khi máy thiếu bộ nhớ, Android có thể huỷ Activity đang ở
-			nền rồi tạo lại sau. Đây là lý do bạn không được giữ dữ liệu quan trọng chỉ trong biến của Activity — một chủ
-			đề sẽ quay lại nhiều lần ở các chương sau, và là gốc rễ của cái bẫy đầu tiên trong mục
-			<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>.</li>
+			nền rồi tạo lại sau. Vì vậy bạn không được giữ dữ liệu quan trọng chỉ trong biến của Activity — gốc rễ của cái
+			bẫy đầu tiên trong mục <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>.</li>
 	</ul>
 	<p>
-		Ba vai trò đó nghe rời rạc, nhưng chúng dẫn tới cùng một kết luận thực dụng: <strong>Activity là của hệ điều
-		hành, không phải của bạn.</strong> Bạn viết code <em>bên trong</em> những chỗ hệ thống cho phép, và bạn phải chấp
-		nhận rằng object Activity có thể bị xoá đi rồi dựng lại mà không xin phép. Mọi kỹ thuật quản lý state mà bạn học ở
-		các chương sau — ViewModel, DataStore, database — đều là câu trả lời cho đúng một sự thật này.
+		Ba vai trò đó dẫn tới cùng một kết luận thực dụng: <strong>Activity là của hệ điều hành, không phải của bạn.</strong>
+		Bạn viết code <em>bên trong</em> những chỗ hệ thống cho phép, và phải chấp nhận object Activity có thể bị xoá đi
+		rồi dựng lại mà không xin phép. Mọi kỹ thuật quản lý state mà bạn học ở phần State &amp; kiến trúc và phần Dữ
+		liệu cục bộ — ViewModel, DataStore, database — đều là câu trả lời cho đúng một sự thật này.
 	</p>
 	<p class="hint">
-		<strong>Kiến thức bổ sung ngoài phần kiến thức nền:</strong> một app <em>có thể</em> chỉ dùng 1 Activity duy
-		nhất và chuyển màn hình bằng navigation của Compose — đó chính là hướng mà các chương sau đi
-		(<strong>Chương 8</strong> dùng <code>NavHost</code> với 1 Activity và nhiều composable "màn hình"). Vậy nên đừng
-		suy ra "mỗi màn hình = 1 Activity" thành quy tắc cứng. Cách phát biểu đúng hơn là: <em>mỗi Activity = một điểm mà
-		hệ điều hành có thể mở app của bạn vào</em>. App chat này chỉ cần một điểm vào, nên nó chỉ cần một Activity — kể
-		cả về sau khi có nhiều màn hình.
+		<strong>Kiến thức bổ sung:</strong> một app <em>có thể</em> chỉ dùng 1 Activity duy nhất và chuyển màn hình bằng
+		navigation của Compose — đó chính là hướng phần Điều hướng đi (một Activity, nhiều composable "màn hình").
+		Vậy nên đừng suy ra "mỗi màn hình = 1 Activity" thành quy tắc cứng. Cách phát biểu đúng hơn: <em>mỗi Activity =
+		một điểm mà hệ điều hành có thể mở app của bạn vào</em>. App chat này chỉ cần một điểm vào, nên nó chỉ cần một
+		Activity.
 	</p>
 
-	<h2 id="doc-starter">3. Đọc <code>MainActivity.kt</code> bản starter — 4 dòng cốt lõi</h2>
+	<h2 id="doc-starter">2. Đọc <code>MainActivity.kt</code> bản starter — 4 dòng cốt lõi</h2>
 	<p>
 		Mở project bản <code>starter</code>, trong Project navigator bên trái tìm tới
 		<code>app/kotlin+java/com.kodeco.chat/MainActivity.kt</code>. Đây là file Android Studio tự sinh khi bạn tạo một
-		project Compose mới — nghĩa là bạn sẽ gặp lại gần như y nguyên đoạn code này mỗi lần tạo project mới trong đời làm
-		nghề. Đáng bỏ ra vài phút đọc kỹ một lần.
+		project Compose mới — bạn sẽ gặp lại gần như y nguyên đoạn code này mỗi lần tạo project mới. Đáng bỏ ra vài phút
+		đọc kỹ một lần:
 	</p>
 	<Code code={starterActivityCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Trong đoạn trên có bốn vị trí mang toàn bộ ý nghĩa, còn lại là chi tiết trang trí. Rút gọn lại thành bộ khung mà
+		Trong đoạn trên có bốn vị trí mang toàn bộ ý nghĩa, còn lại là chi tiết trang trí. Rút gọn thành bộ khung mà
 		<em>mọi</em> Activity Compose đều có:
 	</p>
 	<Code code={onCreateSkeletonCode} lang="kotlin" theme="github-dark" />
-	<h3 id="giai-thich-4-dong">3.1. Bốn dòng đó nghĩa là gì</h3>
 	<table class="api">
 		<thead>
 			<tr><th>#</th><th>Dòng code</th><th>Ý nghĩa</th></tr>
@@ -296,101 +189,66 @@ const resTreeCode = `app/src/main/res/
 			<tr>
 				<td>1</td>
 				<td><code>class MainActivity : ComponentActivity()</code></td>
-				<td>Dấu <code>:</code> trong Kotlin ở vị trí này nghĩa là "kế thừa từ". <code>ComponentActivity</code> là lớp
-					có sẵn của thư viện AndroidX. Đây là Activity đầu tiên và duy nhất của app này. Nói thẳng cho đỡ hoang
-					mang: <em>bây giờ chưa cần biết <code>ComponentActivity</code> làm gì bên trong</em> — chỉ cần biết phải kế
-					thừa nó mới hiển thị được nội dung lên màn hình.</td>
+				<td>Dấu <code>:</code> ở vị trí này nghĩa là "kế thừa từ" (tương tự <code>extends</code> của Java — cú pháp
+					Kotlin sẽ được dạy đầy đủ ở phần Nền tảng Kotlin). <code>ComponentActivity</code> là lớp có sẵn của thư
+					viện AndroidX. <em>Bây giờ chưa cần biết nó làm gì bên trong</em> — chỉ cần biết phải kế thừa nó mới
+					hiển thị được nội dung lên màn hình.</td>
 			</tr>
 			<tr>
 				<td>2</td>
 				<td><code>override fun onCreate(savedInstanceState: Bundle?)</code></td>
-				<td><code>onCreate()</code> là điểm vào của Activity. Từ khoá <code>override</code> nghĩa là bạn đang
-					<em>viết lại</em> một hàm đã tồn tại ở lớp cha theo cách riêng của mình — lớp cha đây là
-					<code>ComponentActivity</code>. Tham số <code>Bundle?</code> có dấu <code>?</code>: trong Kotlin nghĩa là
-					"có thể null", tức có thể không có gì cả.</td>
+				<td><code>onCreate()</code> là điểm vào của Activity. <code>override</code> nghĩa là bạn đang <em>viết lại</em>
+					một hàm đã tồn tại ở lớp cha; <code>fun</code> là từ khoá khai báo hàm. Tham số <code>Bundle?</code> có dấu
+					<code>?</code>: trong Kotlin nghĩa là "có thể null", tức có thể không có gì cả.</td>
 			</tr>
 			<tr>
 				<td>3</td>
 				<td><code>super.onCreate(savedInstanceState)</code></td>
-				<td>Gọi bản gốc ở lớp cha. Điều này không chỉ quan trọng mà là <strong>bắt buộc</strong>. Android cần thiết
-					lập một số thứ nội bộ trước khi code của bạn chạy, và dòng này là cách bạn thông báo cho lớp cha rằng
-					"giờ bạn được phép làm việc đó". Bỏ dòng này thì app đổ ngay khi mở.</td>
+				<td>Gọi bản gốc ở lớp cha — <strong>bắt buộc</strong>. Android cần thiết lập một số thứ nội bộ trước khi code
+					của bạn chạy, và dòng này là cách bạn cho phép nó làm việc đó. Bỏ dòng này thì app đổ ngay khi mở.</td>
 			</tr>
 			<tr>
 				<td>4</td>
 				<td><code>setContent &#123; ... &#125;</code></td>
 				<td>Dòng này "compose" (dựng) mọi thứ nằm trong cặp <code>&#123; &#125;</code> vào Activity. Nội dung đó trở
-					thành <em>root view</em> — thành phần gốc của cây giao diện. Khối
-					<code>setContent &#123; &#125;</code> chính là nơi định nghĩa layout của Activity, và là nơi các hàm
-					Composable được gọi.</td>
+					thành <em>root view</em> — thành phần gốc của cây giao diện. Khối <code>setContent &#123; &#125;</code>
+					chính là nơi định nghĩa giao diện của Activity, và là nơi các hàm Composable được gọi.</td>
 			</tr>
 		</tbody>
 	</table>
 	<p>
-		Bốn dòng này là <em>bộ nguyên liệu chính</em> để tạo Activity trên Android. Bạn sẽ thấy chúng trong mọi Activity
-		mình tạo ra. Và có một quy tắc chung rất tiện để nhớ: nói một cách tổng quát nhất, <strong>mọi logic bạn thêm vào
-		đều phải nằm sau lời gọi <code>setContent &#123; &#125;</code></strong>.
-	</p>
-	<p>
-		Một hệ quả rất dễ bỏ qua, nhưng nó là ý tưởng kỹ thuật quan trọng nhất mà Chương 3 gieo mầm:
-		<strong>Composable function chỉ được gọi từ trong một Composable function khác.</strong> Vậy vì sao
-		<code>Greeting("Fuad")</code> gọi được trong <code>onCreate()</code> — trong khi <code>onCreate()</code> là một
-		hàm Kotlin hoàn toàn bình thường, không có <code>@Composable</code> nào?
+		Bốn dòng này là bộ nguyên liệu chính để tạo Activity; mọi logic bạn thêm vào đều nằm sau lời gọi
+		<code>setContent &#123; &#125;</code>. Và có một hệ quả rất dễ bỏ qua, nhưng là ý tưởng kỹ thuật quan trọng nhất
+		chương này gieo mầm: <strong>ranh giới giữa Kotlin và Compose nằm ở dấu <code>&#123;</code> của
+		<code>setContent</code>, không phải của <code>onCreate</code>.</strong> Vậy vì sao <code>Greeting("Fuad")</code>
+		— một hàm <em>giao diện</em> — gọi được trong <code>onCreate()</code>, vốn là một hàm Kotlin thường?
 	</p>
 	<p>
 		Vì nó <em>không</em> nằm trực tiếp trong <code>onCreate()</code>. Nó nằm trong lambda (khối code truyền vào như
-		một tham số) mà bạn đưa cho <code>setContent</code>, và lambda đó đã được đánh dấu là Composable từ trước, trong
-		định nghĩa của chính <code>setContent</code>. Nói cách khác: <strong>ranh giới nằm ở dấu <code>&#123;</code> của
-		<code>setContent</code>, không phải ở dấu <code>&#123;</code> của <code>onCreate</code>.</strong> Bên ngoài dấu
-		ngoặc đó là đất Kotlin thường; bên trong là đất Compose. Còn <code>Greeting</code> thì là một hàm bình thường được
-		định nghĩa ở phía dưới file, nhưng vì nó có gắn <code>@Composable</code> nên nó trở thành một Composable function.
-	</p>
-	<div class="callout">
-		<strong>Vì sao chi tiết này quan trọng ngay bây giờ?</strong> Vì <strong>Chương 3.2, mục 11</strong> sẽ cho bạn
-		gặp đúng lỗi biên dịch phát sinh từ nó — một lỗi có thật, xuất hiện khi bạn cố đọc chuỗi từ resource ở một chỗ
-		trông như "đang ở trong Compose" nhưng thật ra không phải, và trình biên dịch từ chối. Nếu bây giờ bạn nắm được
-		"ranh giới nằm ở dấu ngoặc nào", lúc đó bạn sẽ đọc thông điệp lỗi ra ngay thay vì đi tìm trên mạng.
-	</div>
-	<h3 id="compose-plugin">3.2. Compose biến hàm Kotlin thành giao diện bằng cách nào</h3>
-	<p>
-		Câu trả lời ngắn nhưng quan trọng: Jetpack Compose dùng <strong>một plugin của trình biên dịch Kotlin</strong> để
-		biến các hàm <code>@Composable</code> thành phần tử UI của app. Nói cách khác, <code>@Composable</code> không phải
-		một annotation trang trí, không phải một nhãn đánh dấu cho người đọc — nó thật sự thay đổi cách hàm được biên dịch
-		ra máy.
+		một tham số — cú pháp <code>&#123; ... &#125;</code> bạn thấy khắp nơi trong Compose) mà bạn đưa cho
+		<code>setContent</code>, và lambda đó đã được đánh dấu là Composable từ trước trong định nghĩa của chính
+		<code>setContent</code>. Bên ngoài dấu ngoặc đó là đất Kotlin thường; bên trong là đất Compose. Quy tắc đi kèm:
+		<em>một hàm Composable chỉ được gọi từ trong một hàm Composable khác</em> — và hàm <code>Greeting</code> ở cuối
+		file là Composable vì nó có gắn <code>@Composable</code>.
 	</p>
 	<p>
-		Điều đó dẫn tới một đảo chiều trong cách bạn nghĩ về giao diện. Bạn không "tạo" một object Text rồi gắn nó vào cây
-		view như thời XML. Bạn <em>gọi một hàm mô tả</em> giao diện mình muốn, và Compose lo phần dựng ra. Trong đoạn code
-		bản starter, <code>Text</code> nằm bên trong <code>Greeting</code> chính là một hàm như vậy: nó do thư viện Compose
-		UI cung cấp, và việc nó làm là hiển thị một nhãn chữ lên màn hình. Bạn viết các hàm Composable để định nghĩa một
-		layout, và layout đó được vẽ ra trên màn hình thiết bị.
-	</p>
-	<p>
-		Phần rất sâu về Compose — layout group, modifier, danh sách lazy, state hoisting, recomposition — thuộc
-		<strong>Chương 5</strong> và <strong>Chương 6</strong>. Ở đây bạn chỉ cần đủ để hiểu bộ khung Activity đang làm gì.
+		Chi tiết này quan trọng ngay bây giờ vì <strong>Chương 3.2, mục 11</strong> sẽ cho bạn gặp đúng lỗi biên dịch
+		phát sinh từ nó — một lỗi có thật khi bạn cố đọc chuỗi từ resource ở một chỗ trông như "đang ở trong Compose"
+		nhưng thật ra không phải. Nắm được "ranh giới nằm ở dấu ngoặc nào" thì lúc đó bạn sẽ đọc thông điệp lỗi ra ngay.
 	</p>
 	<p class="hint">
-		<strong>Bằng chứng cụ thể trong project:</strong> trong <code>{BUILD_APP}</code> có khối
-		<code>buildFeatures &#123; compose = true &#125;</code> (dòng 73–75) và
-		<code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code> (dòng 76–78). Đó chính là nơi
-		plugin biên dịch Compose được bật lên, và là con số phiên bản của chính plugin đó. Nếu xoá hai khối này, mọi hàm
-		<code>@Composable</code> trong project sẽ không biên dịch được nữa — không phải "chạy sai", mà là không build được.
-		Xem thêm <strong>Chương 3.4, mục 25</strong>: cách khai báo này đã đổi kể từ Kotlin 2.0, nên nếu bạn tạo project
-		mới hôm nay thì sẽ không thấy <code>kotlinCompilerExtensionVersion</code> ở đâu cả.
+		<strong>Bằng chứng cụ thể trong project:</strong> trong <code>aaf-materials/03-android-fundamentals/projects/final/app/build.gradle.kts</code>
+		có khối <code>buildFeatures &#123; compose = true &#125;</code> (dòng 73–75) — nơi plugin biên dịch Compose được
+		bật lên. <code>@Composable</code> không phải nhãn trang trí: nó là một plugin của trình biên dịch Kotlin, biến
+		các hàm được đánh dấu thành phần tử UI. Xoá khối này thì mọi hàm <code>@Composable</code> trong project không
+		build được nữa. Chi tiết về khai báo này đã đổi thế nào từ Kotlin 2.0 nằm ở <strong>Chương 3.4, mục 29</strong>.
 	</p>
 
-	<h2 id="lifecycle">4. <code>onCreate()</code> chạy khi nào — và khi nào <em>không</em></h2>
+	<h2 id="lifecycle">3. <code>onCreate()</code> chạy khi nào — và khi nào <em>không</em></h2>
 	<p>
-		Có một ghi chú quan trọng cần nói ra ngay: <code>onCreate()</code> <strong>không</strong> phải điểm vào duy nhất
-		của Activity, nhưng là điểm bạn nên quen nhất. Nó hoạt động cùng với một số hàm khác mà bạn cũng có thể
-		<code>override</code>, và tất cả hợp lại tạo thành <strong>vòng đời (lifecycle)</strong> của Activity. Khoá học
-		này chỉ dùng tới vài hàm trong số đó; muốn đi sâu ngay thì tài liệu chính thức là chỗ tốt nhất (liên kết ở cuối
-		mục này).
-	</p>
-	<p>
-		Còn đây là chỗ người mới hiểu sai nhiều nhất, nên nói thẳng ra thành một câu:
-		<strong><code>onCreate()</code> không chạy lại mỗi lần bạn mở app lên từ nền.</strong> Nó chỉ chạy khi Android
-		thật sự <em>tạo mới</em> một instance của Activity. Bốn tình huống thực tế:
+		Chỗ người mới hiểu sai nhiều nhất, nên nói thẳng thành một câu: <strong><code>onCreate()</code> không chạy lại
+		mỗi lần bạn mở app lên từ nền.</strong> Nó chỉ chạy khi Android thật sự <em>tạo mới</em> một instance của
+		Activity. Bốn tình huống thực tế:
 	</p>
 	<table class="cmp">
 		<thead>
@@ -407,148 +265,81 @@ const resTreeCode = `app/src/main/res/
 		</tbody>
 	</table>
 	<p>
-		Tham số <code>savedInstanceState: Bundle?</code> chính là móc nối cho tình huống thứ 3 và thứ 4: khi hệ thống huỷ
-		Activity <em>ngoài ý muốn của người dùng</em>, nó có thể trả lại cho bạn một túi dữ liệu nhỏ để phục hồi trạng
-		thái. Chương 3 chưa dùng tham số này — nó chỉ được truyền thẳng cho <code>super</code> và không ai đọc tới. Nhưng
-		biết nó tồn tại và biết nó dùng để làm gì thì lúc đọc code người khác bạn sẽ không bỏ qua.
-	</p>
-	<div class="callout note">
-		Muốn đi sâu ngay về vòng đời Activity, tài liệu chính thức là chỗ đọc tiếp:
+		Tham số <code>savedInstanceState: Bundle?</code> chính là móc nối cho tình huống thứ 3 và thứ 4: khi hệ thống
+		huỷ Activity <em>ngoài ý muốn của người dùng</em>, nó có thể trả lại cho bạn một túi dữ liệu nhỏ để phục hồi
+		trạng thái. Chương 3 chưa dùng tham số này — nó chỉ được truyền thẳng cho <code>super</code>. Nhưng biết nó tồn
+		tại thì lúc đọc code người khác bạn sẽ không bỏ qua. Muốn đi sâu về vòng đời Activity, tài liệu chính thức là
+		chỗ đọc tiếp:
 		<a href="https://developer.android.com/guide/components/activities/activity-lifecycle.html" target="_blank" rel="noopener">developer.android.com — Activity lifecycle</a>.
-	</div>
-	<p>
-		Hệ quả rất cụ thể cho app Kodeco Chat mà bạn sắp viết ở mục 5: vì <code>chatOutputText</code> chỉ nằm trong
-		<code>remember</code> bên trong Activity, nếu bạn xoay ngang máy thì tin nhắn vừa gõ <strong>biến mất</strong>.
-		Đây không phải một bug bạn cần sửa ở chương này — đó là hạn chế được để lộ ra một cách có chủ ý, và cũng là lý do
-		các chương sau đưa state ra ViewModel (<strong>Chương 6.2</strong>), rồi lưu xuống DataStore
-		(<strong>Chương 9</strong>) và database Room (<strong>Chương 10</strong>). Nhìn theo hướng đó, Chương 3 là bản
-		"chưa vá" để bạn thấy vấn đề trước khi học cách vá. Cái bẫy này được ghi lại đầy đủ ở
-		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>, mục 1.
 	</p>
-	<h2 id="thay-code">5. Thay toàn bộ <code>MainActivity.kt</code> — từ "Hello Fuad" sang app chat</h2>
+	<p>
+		Hệ quả rất cụ thể cho app chat bạn sắp viết: vì state chỉ nằm trong <code>remember</code> bên trong Activity,
+		nếu bạn xoay ngang máy thì tin nhắn vừa gõ <strong>biến mất</strong>. Đây không phải bug cần sửa ở chương này —
+		đó là hạn chế được để lộ ra một cách có chủ ý, và là lý do phần State &amp; kiến trúc đưa state ra ViewModel,
+		phần Dữ liệu cục bộ lưu xuống máy. Cái bẫy này được ghi đầy đủ ở <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi
+		thời</a>, mục 1.
+	</p>
+
+	<h2 id="thay-code">4. Thay toàn bộ <code>MainActivity.kt</code> — từ "Hello Fuad" sang app chat</h2>
 	<p>
 		Bước tiếp theo là <strong>xoá toàn bộ</strong> nội dung <code>MainActivity.kt</code> và thay bằng phiên bản mới.
-		Nghe đơn giản, nhưng đáng dừng lại một nhịp, vì việc "thay toàn bộ" làm mất ba thứ mà bản starter đang có — và đây
-		là chỗ gần như mọi tài liệu đều bỏ qua, dù cả ba đều để lại dấu vết bạn sẽ gặp lại:
-	</p>
-	<div class="ba">
-		<div class="ba-col">
-			<div class="ba-head bad">Bản starter có, nhưng bị xoá</div>
-			<ul>
-				<li><code>KodecoChatTheme &#123; &#125;</code> bọc ngoài giao diện</li>
-				<li><code>Surface(color = MaterialTheme.colorScheme.background)</code></li>
-				<li>Hàm <code>Greeting()</code> và <code>@Preview fun GreetingPreview()</code></li>
-			</ul>
-		</div>
-		<div class="ba-col">
-			<div class="ba-head good">Bản final có thêm</div>
-			<ul>
-				<li><code>Column</code> xếp dọc 3 thành phần</li>
-				<li>2 state bằng <code>remember &#123; mutableStateOf(...) &#125;</code></li>
-				<li><code>OutlinedTextField</code> + <code>Button</code> có xử lý bấm</li>
-				<li>Chuỗi lấy từ <code>strings.xml</code></li>
-			</ul>
-		</div>
-	</div>
-	<p>
-		Ba thứ bị mất đó không vô hại như vẻ ngoài, nên nói rõ từng cái. Mất <code>KodecoChatTheme</code> nghĩa là giao
-		diện không còn dùng bộ màu và font của theme Compose nữa, mà rơi về giá trị mặc định của Material 3 —
-		<strong>Chương 3.4, mục 22</strong> sẽ mổ đúng chỗ này. Mất <code>Surface</code> nghĩa là không còn nền phủ kín
-		màn hình theo màu background của theme. Và mất <code>@Preview</code> thì hệ quả rất cụ thể.
+		Nghe đơn giản, nhưng việc "thay toàn bộ" làm mất ba thứ mà bản starter đang có, và cả ba đều để lại dấu vết bạn
+		sẽ gặp lại: <code>KodecoChatTheme &#123; &#125;</code> bọc ngoài giao diện (app mất bộ màu và dark mode của
+		project — <strong>Chương 3.4, mục 27</strong> sẽ mổ đúng chỗ này), <code>Surface</code> phủ nền theo màu theme,
+		và hàm <code>Greeting()</code> với <code>@Preview fun GreetingPreview()</code>.
 	</p>
 	<p>
-		Hệ quả đó là: <strong>từ Chương 3 trở đi, project Kodeco Chat không còn <code>@Preview</code> nào.</strong> Đã
-		kiểm chứng bằng cách tìm chuỗi <code>@Preview</code> trong toàn bộ <code>{AAF}/final/app/</code> — không có một kết
-		quả nào. Nghĩa là bảng preview của Android Studio (khung xem trước giao diện, không cần chạy máy ảo) sẽ trống trơn
-		khi bạn mở file này. Nếu bạn quen dùng preview để nhìn giao diện lúc code, đây là chỗ bạn sẽ ngạc nhiên đầu tiên.
-		Muốn có lại preview thì phải tự viết, và phần quiz của chương nhỏ này có một câu thực hành cho đúng việc đó.
+		Hệ quả của cái thứ ba rất cụ thể: <strong>từ Chương 3 trở đi, project Kodeco Chat không còn <code>@Preview</code>
+		nào.</strong> Đã kiểm bằng cách tìm chuỗi <code>@Preview</code> trong toàn bộ <code>{AAF}/final/app/</code> —
+		không có một kết quả nào. Nghĩa là bảng preview của Android Studio (khung xem trước giao diện, không cần chạy
+		máy ảo) sẽ trống trơn khi bạn mở file này. Muốn có lại preview thì phải tự viết — bài tập ở quiz cuối chương có
+		một câu thực hành cho đúng việc đó.
 	</p>
 	<p>
-		Tương tự, hàm <code>KodecoChatTheme</code> vẫn còn nằm trong <code>{THEME_KT}</code> ở dòng 74 (thân hàm chạy tới
-		dòng 102, gồm cả một khối <code>SideEffect</code> đổi màu thanh trạng thái ở dòng 91–95), nhưng
-		<strong>không còn ai gọi nó</strong> — tìm chuỗi <code>KodecoChatTheme</code> trong toàn bộ
-		<code>final/app/src/main/java/</code> chỉ ra <em>đúng một</em> kết quả, và kết quả đó chính là dòng khai báo hàm.
-		Trong bản <code>starter</code> thì nó được gọi ở hai chỗ: <code>MainActivity.kt</code> dòng 53 (bọc
-		<code>Surface</code>) và dòng 77 (bọc nội dung của <code>GreetingPreview</code>). Nói cách khác, thao tác "thay
-		toàn bộ nội dung file" đã âm thầm cắt luôn hai lời gọi duy nhất tới theme Compose của app.
-		<strong>Chương 3.4, mục 22</strong> giải thích vì sao điều này quan trọng hơn vẻ bề ngoài, và cách nối lại.
+		Còn hàm <code>KodecoChatTheme</code> vẫn nằm trong <code>ui/theme/Theme.kt</code> ở dòng 74 nhưng
+		<strong>không còn ai gọi</strong> — tìm chuỗi <code>KodecoChatTheme</code> trong toàn bộ
+		<code>final/app/src/main/java/</code> chỉ ra <em>đúng một</em> kết quả, chính là dòng khai báo hàm. Trong bản
+		<code>starter</code> nó được gọi ở hai chỗ: <code>MainActivity.kt</code> dòng 53 (bọc <code>Surface</code>) và
+		dòng 77 (bọc nội dung của <code>GreetingPreview</code>). Thao tác "thay toàn bộ nội dung file" đã âm thầm cắt
+		luôn hai lời gọi duy nhất tới theme Compose của app. <strong>Chương 3.4, mục 27</strong> giải thích vì sao điều
+		này quan trọng hơn vẻ bề ngoài, và cách nối lại.
 	</p>
-	<h3 id="imports">5.1. Danh sách <code>import</code> — đọc được nhiều hơn bạn tưởng</h3>
 	<p>
-		Trước khi đọc thân hàm, đọc phần import. Với người mới, danh sách import là bản mục lục cho biết đoạn code sắp dùng
-		những gì — và nó cho biết trước cả những thứ mà thân hàm không nói ra:
-	</p>
-	<Code code={finalImportsCode} lang="kotlin" theme="github-dark" />
-	<table class="api">
-		<thead><tr><th>Nhóm import</th><th>Cho biết điều gì</th></tr></thead>
-		<tbody>
-			<tr><td><code>androidx.compose.material3.*</code> (Button, OutlinedTextField, Text)</td><td>Giao diện dùng
-				Material 3 — bộ thành phần thiết kế chuẩn của Google.</td></tr>
-			<tr><td><code>androidx.compose.runtime.*</code> (getValue, setValue, mutableStateOf, remember)</td><td>Có state.
-				Đặc biệt <code>getValue</code> + <code>setValue</code> là 2 import <em>bắt buộc</em> để dùng được từ khoá
-				<code>by</code>.</td></tr>
-			<tr><td><code>androidx.compose.ui.platform.LocalContext</code></td><td>Code cần truy cập <code>Context</code> của
-				Android.</td></tr>
-			<tr><td><code>androidx.compose.ui.res.stringResource</code></td><td>Chuỗi được đọc từ resource, không viết
-				cứng.</td></tr>
-		</tbody>
-	</table>
-	<p>
-		Chú ý hai import cuối cùng: <code>LocalContext</code> và <code>stringResource</code>. Chúng <em>không</em> có trong
-		bản starter, và chúng là dấu vết của việc dọn chuỗi văn bản ra <code>strings.xml</code> — chủ đề của
-		<strong>Chương 3.2, mục 8–12</strong>. Nghĩa là chỉ nhìn danh sách import, bạn đã đọc ra được rằng file này lấy chữ
-		từ tài nguyên chứ không viết cứng trong code.
-	</p>
-	<p class="hint">
-		<strong>Bẫy rất hay gặp:</strong> nếu bạn viết <code>var x by remember &#123; ... &#125;</code> mà thiếu
-		<code>import androidx.compose.runtime.getValue</code>, Android Studio báo lỗi kiểu "type mismatch" hoặc "delegate
-		must have getValue method" — nghe như lỗi kiểu dữ liệu, thật ra chỉ là thiếu import. Cách xử lý import nói chung:
-		khi con trỏ đứng ở chỗ bị gạch đỏ, macOS bấm <em>Option-Return</em>, Windows bấm <em>Alt-Enter</em>. Hoặc bật một
-		lần cho khỏi phải nghĩ nữa: <em>Android Studio ▸ Settings ▸ Editor ▸ General ▸ Auto Import</em>, trong mục
-		<em>Kotlin</em> tick <em>Add unambiguous imports on the fly</em> rồi bấm <em>Apply</em> — từ đó IDE tự thêm những
-		import không gây nhập nhằng. Lý do phải nói tới việc này: Android Studio nhiều khi không nhận ra một object mới
-		trong class của bạn cho tới khi bạn import định nghĩa của nó, và cách nó báo cho bạn biết là bôi đỏ object đó.
-	</p>
-	<h3 id="than-ham">5.2. Thân giao diện — bản final đầy đủ</h3>
-	<p>
-		Đây là toàn bộ class <code>MainActivity</code> của bản <code>final</code>, trích nguyên văn — kể cả một dòng trống
-		dư mà mục 6.5 sẽ nói tới:
+		Và đây là toàn bộ class <code>MainActivity</code> của bản <code>final</code>, trích nguyên văn:
 	</p>
 	<Code code={finalActivityCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Chạy app, gõ vài chữ vào ô nhập rồi bấm nút Send. Chữ ở phía trên sẽ đổi thành đúng những gì bạn vừa gõ, và ô nhập
-		trở về trắng. Vậy là bạn đã có một app chat cơ bản nhất: nhận được chữ người dùng nhập và hiển thị lại trên màn
-		hình. Từ mục 6 trở đi ta đi ngược lại vào từng phần để hiểu vì sao nó chạy được.
+		Chạy app, gõ vài chữ vào ô nhập rồi bấm nút Send. Chữ ở phía trên sẽ đổi thành đúng những gì bạn vừa gõ, và ô
+		nhập trở về trắng. Vậy là bạn đã có một app chat cơ bản nhất. Từ mục 5 trở đi ta đi vào từng phần để hiểu vì sao
+		nó chạy được.
 	</p>
-	<h2 id="giai-thich-ui">6. Đi qua từng phần của giao diện</h2>
+
+	<h2 id="giai-thich-ui">5. Đi qua từng phần của giao diện</h2>
 	<p>
 		Đoạn code trên có năm điểm cần nắm — <code>Column</code>, hai biến state, <code>Text</code> hiển thị,
-		<code>OutlinedTextField</code>, và <code>Button</code>. Dưới đây là năm điểm đó, mỗi điểm mở rộng thêm phần
-		<em>vì sao</em> và <em>nếu làm sai thì hiện tượng ra sao</em>, vì biết hiện tượng mới là thứ giúp bạn tự sửa được
-		lỗi về sau.
+		<code>OutlinedTextField</code>, và <code>Button</code> — mỗi điểm kèm phần <em>vì sao</em> và <em>nếu làm sai
+		thì hiện tượng ra sao</em>, vì biết hiện tượng mới là thứ giúp bạn tự sửa được lỗi về sau.
 	</p>
-	<h3 id="column">6.1. <code>Column</code> — nhóm layout xếp dọc</h3>
+	<h3 id="column">5.1. <code>Column</code> — nhóm layout xếp dọc</h3>
 	<p>
 		<code>Column</code> đặt một cột vào giao diện. Nó là một <em>layout group</em>: nhiệm vụ của nó không phải hiển
-		thị gì cả, mà là xếp chỗ cho các "con" (children) của nó — tức mọi thứ bạn viết bên trong cặp ngoặc của nó —
-		thành một cột theo chiều dọc, theo đúng thứ tự bạn viết trong code. Ở đây thứ tự là: <code>Text</code> (hiển thị
-		tin nhắn) → <code>OutlinedTextField</code> (ô nhập) → <code>Button</code> (nút Send). Đổi thứ tự ba dòng đó trong
-		code là đổi thứ tự trên màn hình — không có file nào khác cần sửa.
+		thị gì cả, mà là xếp chỗ cho các "con" (children) — tức mọi thứ bạn viết bên trong cặp ngoặc của nó — thành một
+		cột theo chiều dọc, theo đúng thứ tự bạn viết trong code. Ở đây: <code>Text</code> (hiển thị tin nhắn) →
+		<code>OutlinedTextField</code> (ô nhập) → <code>Button</code> (nút Send). Đổi thứ tự ba dòng đó trong code là
+		đổi thứ tự trên màn hình — không có file nào khác cần sửa. Các nhóm layout khác (<code>Row</code>,
+		<code>Box</code>, <code>Surface</code> và cách lồng chúng) thuộc phần Jetpack Compose.
 	</p>
 	<p class="hint">
 		Điểm khác biệt cốt lõi so với thời XML: ở XML, "cái gì hiện ở đâu" nằm trong file layout riêng, còn "cái gì làm
-		gì" nằm trong Kotlin — hai file, hai ngôn ngữ, phải tự nối lại. Với Compose, cả hai nằm chung một chỗ và cùng dùng
-		cấu trúc Kotlin bình thường: bạn viết được <code>if</code> để ẩn/hiện một phần giao diện, viết được
-		<code>for</code> để lặp ra nhiều dòng, ngay giữa phần mô tả giao diện. Các nhóm layout khác —
-		<code>Row</code>, <code>Box</code>, <code>Surface</code> và cách lồng chúng vào nhau — thuộc
-		<strong>Chương 5.2, mục 5</strong>.
+		gì" nằm trong Kotlin — hai file, hai ngôn ngữ, phải tự nối lại. Với Compose, cả hai nằm chung một chỗ và cùng
+		dùng cấu trúc Kotlin bình thường: bạn viết được <code>if</code> để ẩn/hiện một phần giao diện, viết được
+		<code>for</code> để lặp ra nhiều dòng, ngay giữa phần mô tả giao diện.
 	</p>
-	<h3 id="state">6.2. Hai biến state và từ khoá <code>by remember</code></h3>
+	<h3 id="state">5.2. Hai biến state và cụm <code>by remember</code></h3>
 	<p>
 		Hai biến <code>chatInputText</code> và <code>chatOutputText</code> được khai báo kèm giá trị mặc định. Chỗ đáng
-		chú ý là cụm <code>by remember</code>: các hàm Composable dùng API <em>remember</em> để lưu một object trong bộ
-		nhớ và cập nhật nó khi <em>recomposition</em> (Compose vẽ lại giao diện) xảy ra. Câu đó đúng nhưng gộp tới ba khái
-		niệm vào một dòng code, nên tách ra từng phần:
+		chú ý là cụm <code>by remember &#123; mutableStateOf(...) &#125;</code> — nó gộp tới ba khái niệm vào một dòng
+		code, nên tách ra từng phần:
 	</p>
 	<table class="api">
 		<thead><tr><th>Thành phần</th><th>Nhiệm vụ</th><th>Nếu bỏ đi thì sao</th></tr></thead>
@@ -562,41 +353,37 @@ const resTreeCode = `app/src/main/res/
 			</tr>
 			<tr>
 				<td><code>remember &#123; ... &#125;</code></td>
-				<td>Giữ lại object đó qua các lần vẽ lại. Không có nó, mỗi lần recomposition sẽ tạo ô nhớ mới với giá trị ban
-					đầu.</td>
+				<td>Giữ lại object đó qua các lần vẽ lại (<em>recomposition</em>). Không có nó, mỗi lần vẽ lại sẽ tạo ô nhớ
+					mới với giá trị ban đầu.</td>
 				<td>Bạn gõ 1 chữ, Compose vẽ lại, state reset về chuỗi mặc định — ô nhập gần như không gõ được.</td>
 			</tr>
 			<tr>
 				<td><code>by</code></td>
 				<td>Cú pháp <em>property delegate</em> của Kotlin: cho phép viết <code>chatInputText</code> thay vì
 					<code>chatInputText.value</code> ở mọi nơi.</td>
-				<td>Không sai, chỉ là phải viết <code>.value</code> khi đọc và khi ghi. Bù lại phải import
-					<code>getValue</code>/<code>setValue</code>.</td>
+				<td>Không sai, chỉ là phải viết <code>.value</code> khi đọc và khi ghi — và phải import
+					<code>getValue</code>/<code>setValue</code> — bẫy thiếu import này nằm ngay dưới đây).</td>
 			</tr>
 		</tbody>
 	</table>
 	<p>
-		Ba thành phần đó giải thích được vì sao dòng code trông rối: nó là ba việc khác nhau viết dính vào nhau. Đọc theo
-		thứ tự từ trong ra ngoài thì dễ hơn — <code>mutableStateOf(...)</code> tạo ô nhớ,
-		<code>remember &#123; ... &#125;</code> bọc quanh để giữ ô nhớ đó lại, còn <code>by</code> chỉ là tiện lợi cú pháp
-		ở ngoài cùng. Bỏ <code>by</code> đi thì code vẫn chạy; bỏ <code>remember</code> hoặc
-		<code>mutableStateOf</code> thì app hỏng theo hai kiểu khác nhau ghi trong bảng.
+		Đọc theo thứ tự từ trong ra ngoài thì dễ hơn: <code>mutableStateOf(...)</code> tạo ô nhớ,
+		<code>remember &#123; ... &#125;</code> bọc quanh để giữ ô nhớ đó qua các lần vẽ lại, còn <code>by</code> chỉ là
+		tiện lợi cú pháp ở ngoài cùng. Đây là khái niệm state của Compose — bạn chỉ cần nhận ra hình dạng của nó ở mức
+		đủ để đọc code; cơ chế đầy đủ (recomposition, state hoisting) là nội dung riêng của phần State &amp; kiến trúc.
 	</p>
 	<p>
 		Cần chú ý thêm vị trí: cả hai <code>var</code> này được khai báo <strong>bên trong <code>Column</code></strong>,
-		tức bên trong vùng Compose, chứ không phải là thuộc tính (property) của class <code>MainActivity</code>. Đây là
-		kiểu state <em>cục bộ trong UI</em>. Điểm mạnh: gọn, không cần class nào khác, đọc một chỗ là hiểu hết. Điểm yếu:
-		state gắn chết với giao diện, không test được riêng, và mất sạch khi Activity bị tạo lại.
-		<strong>Chương 6.1, mục 5</strong> sẽ gọi tên chuẩn của việc đẩy state ra ngoài là <em>state hoisting</em>, còn
-		<strong>Chương 6.2</strong> chuyển hẳn state ra một ViewModel.
+		tức bên trong vùng Compose, chứ không phải là thuộc tính của class <code>MainActivity</code>. Đây là kiểu state
+		<em>cục bộ trong UI</em>. Điểm mạnh: gọn, đọc một chỗ là hiểu hết. Điểm yếu: state gắn chết với giao diện, và
+		mất sạch khi Activity bị tạo lại — chính là hiện tượng xoay máy ở mục 3.
 	</p>
-	<h3 id="text-output">6.3. <code>Text</code> hiển thị tin nhắn — vòng lặp phản ứng</h3>
+	<h3 id="text-output">5.3. <code>Text</code> hiển thị tin nhắn — vòng lặp phản ứng</h3>
 	<p>
-		<code>Text(text = chatOutputText)</code> chỉ có một dòng, và về mặt hướng dẫn thì nó chỉ là "một Composable
-		<code>Text</code> đơn giản để hiển thị nội dung tin nhắn". Nhưng đây là chỗ thể hiện rõ nhất mô hình
-		<strong>reactive</strong> (phản ứng) của Compose, nên đáng nói kỹ. Vì <code>Text</code> có <em>đọc</em>
+		<code>Text(text = chatOutputText)</code> chỉ có một dòng, nhưng đây là chỗ thể hiện rõ nhất mô hình
+		<strong>reactive</strong> (phản ứng) của Compose. Vì <code>Text</code> có <em>đọc</em>
 		<code>chatOutputText</code>, Compose ghi nhận sự phụ thuộc đó. Khi nào giá trị đổi, đúng chỗ này được vẽ lại,
-		không cần bạn gọi hàm cập nhật nào cả.
+		không cần bạn gọi hàm cập nhật nào cả:
 	</p>
 	<ol class="chain">
 		<li>Người dùng bấm <code>Button</code>.</li>
@@ -607,17 +394,15 @@ const resTreeCode = `app/src/main/res/
 	<p class="hint">
 		So sánh với thời XML để thấy khác biệt: khi đó bạn phải tự viết
 		<code>chatOutputTextView.text = chatInputEditText.text.toString()</code> — tức <em>ra lệnh</em> cho từng phần tử
-		UI, và nếu quên một chỗ thì giao diện lệch khỏi dữ liệu mà không ai báo. Compose đảo chiều: bạn khai báo "chữ này
-		bằng biến kia", và framework chịu trách nhiệm giữ chúng đồng bộ. Đây là ý nghĩa thực tế của hai chữ "khai báo"
-		(declarative) so với "ra lệnh" (imperative) — hai từ nghe rất trừu tượng cho tới khi bạn nhìn thấy đúng cặp ví dụ
-		này.
+		UI, và nếu quên một chỗ thì giao diện lệch khỏi dữ liệu mà không ai báo. Compose đảo chiều: bạn khai báo "chữ
+		này bằng biến kia", và framework chịu trách nhiệm giữ chúng đồng bộ. Đây là ý nghĩa thực tế của hai chữ "khai
+		báo" (declarative) so với "ra lệnh" (imperative).
 	</p>
-	<h3 id="textfield">6.4. <code>OutlinedTextField</code> và vòng dữ liệu bắt buộc</h3>
+	<h3 id="textfield">5.4. <code>OutlinedTextField</code> và vòng dữ liệu bắt buộc</h3>
 	<p>
-		<code>OutlinedTextField</code> là ô nhập chữ có viền bao quanh — một TextField đã được tạo kiểu sẵn, nhiệm vụ duy
-		nhất là nhận chữ người dùng gõ từ bàn phím. Mô tả một câu như vậy đủ để biết nó <em>làm gì</em>, nhưng chưa đủ để
-		viết đúng. Điểm phải nắm là <strong>hai tham số đầu bắt buộc đi cùng nhau</strong>, vì mỗi tham số lo một chiều
-		của cùng một vòng dữ liệu:
+		<code>OutlinedTextField</code> là ô nhập chữ có viền bao quanh — nhiệm vụ duy nhất là nhận chữ người dùng gõ.
+		Điểm phải nắm là <strong>hai tham số đầu bắt buộc đi cùng nhau</strong>, vì mỗi tham số lo một chiều của cùng
+		một vòng dữ liệu:
 	</p>
 	<table class="api">
 		<thead><tr><th>Tham số</th><th>Chiều dữ liệu</th><th>Vai trò</th></tr></thead>
@@ -637,188 +422,134 @@ const resTreeCode = `app/src/main/res/
 		</tbody>
 	</table>
 	<p>
-		Chỗ đầu tiên người mới hay hiểu sai là ý nghĩa của <code>it</code>. <code>it</code> <strong>không</strong> phải ký
-		tự vừa bấm, mà là <em>toàn bộ nội dung mới</em> của ô nhập sau khi người dùng bấm phím đó. Gõ "abc" thì
-		<code>onValueChange</code> được gọi ba lần, với <code>"a"</code>, rồi <code>"ab"</code>, rồi <code>"abc"</code> —
-		chứ không phải với ba ký tự rời. Hiểu đúng chỗ này mới viết được những xử lý thường gặp về sau, ví dụ chặn không cho
-		nhập quá 100 ký tự hay tự chuyển thành chữ in hoa: bạn can thiệp vào chuỗi <em>trước khi</em> ghi nó vào state.
+		Chỗ đầu tiên người mới hay hiểu sai là ý nghĩa của <code>it</code>. <code>it</code> <strong>không</strong> phải
+		ký tự vừa bấm, mà là <em>toàn bộ nội dung mới</em> của ô nhập. Gõ "abc" thì <code>onValueChange</code> được gọi
+		ba lần, với <code>"a"</code>, rồi <code>"ab"</code>, rồi <code>"abc"</code> — chứ không phải với ba ký tự rời.
+		Hiểu đúng chỗ này mới viết được những xử lý thường gặp về sau, ví dụ chặn không cho nhập quá 100 ký tự: bạn
+		can thiệp vào chuỗi <em>trước khi</em> ghi nó vào state.
 	</p>
 	<p>
-		Chỗ thứ hai quan trọng hơn nhiều: <strong><code>OutlinedTextField</code> không tự giữ chữ bạn gõ.</strong> Nếu chỉ
-		truyền <code>value</code> mà để <code>onValueChange</code> trống, ô nhập sẽ <strong>không gõ được gì</strong> — và
-		đây là kiểu lỗi khó chịu nhất, vì nó <em>không báo lỗi</em>: bàn phím vẫn hiện lên, phím bấm vẫn có phản hồi rung
-		và có tiếng, con trỏ vẫn nháy, nhưng chữ không bao giờ xuất hiện. Lý do rất thẳng: ô nhập luôn vẽ đúng theo
-		<code>value</code>, mà <code>value</code> thì chưa bao giờ được cập nhật, nên sau mỗi lần vẽ lại nó trở về đúng giá
-		trị cũ. Cảnh báo này được ghi lại thành mục có số ở
-		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>, mục 2, vì nó là chỗ mất thời gian điển hình nhất khi mới
-		học Compose.
-	</p>
-	<p>
-		Hai chiều đó hợp lại thành đúng một vòng: state → <code>value</code> → màn hình → người dùng gõ →
-		<code>onValueChange</code> → state. Cắt bất kỳ khâu nào thì vòng đứt và ô nhập ngừng hoạt động. Mô hình này có tên
-		riêng — <em>state hoisting</em>, tức đẩy state lên cho người gọi giữ, còn thành phần giao diện thì không giữ gì —
-		và nó được gọi bằng đúng tên đó ở <strong>Chương 6.1, mục 5</strong>. Ở đây bạn chỉ cần nhận ra hình dạng của nó,
-		vì gần như mọi thành phần nhập liệu trong Compose (checkbox, slider, switch, dropdown) đều lặp lại đúng cặp
-		<code>value</code> + <code>onValueChange</code> này với tên hơi khác.
+		Chỗ thứ hai quan trọng hơn nhiều: <strong><code>OutlinedTextField</code> không tự giữ chữ bạn gõ.</strong> Nếu
+		chỉ truyền <code>value</code> mà để <code>onValueChange</code> trống, ô nhập sẽ <strong>không gõ được gì</strong>
+		— và đây là kiểu lỗi khó chịu nhất, vì nó <em>không báo lỗi</em>: bàn phím vẫn hiện lên, con trỏ vẫn nháy, nhưng
+		chữ không bao giờ xuất hiện. Lý do rất thẳng: ô nhập luôn vẽ đúng theo <code>value</code>, mà
+		<code>value</code> thì chưa bao giờ được cập nhật. Cảnh báo này được ghi lại ở
+		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>, mục 2. Hình dạng <code>value</code> +
+		<code>onValueChange</code> này lặp lại ở gần như mọi thành phần nhập liệu trong Compose (checkbox, slider,
+		switch, dropdown), và có tên riêng — <em>state hoisting</em> — sẽ được gọi đúng tên ở phần State &amp; kiến trúc.
 	</p>
 	<p>
 		Tham số thứ ba, <code>label = &#123; Text(...) &#125;</code>, có một điểm cú pháp đáng dừng lại: nó nhận vào
-		<em>một Composable</em> chứ không phải một chuỗi. Đó là lý do nó được viết trong cặp <code>&#123; &#125;</code> thay
-		vì gán bằng dấu <code>=</code> với một chuỗi trần. Nhờ vậy nhãn của ô nhập có thể là bất cứ giao diện gì — chữ, chữ
-		kèm icon, hai dòng chữ khác màu — không bị giới hạn ở text. Đây là một nét lặp lại rất nhiều trong Compose: chỗ nào
-		bạn tưởng phải truyền dữ liệu, hoá ra truyền được cả một mảnh giao diện.
+		<em>một Composable</em> chứ không phải một chuỗi, nên được viết trong cặp <code>&#123; &#125;</code> thay vì gán
+		bằng dấu <code>=</code>. Đây là một nét lặp lại rất nhiều trong Compose: chỗ nào bạn tưởng phải truyền dữ liệu,
+		hoá ra truyền được cả một mảnh giao diện. Trong code thật, nhãn đó là
+		<code>Text(text = stringResource(id = R.string.chat_entry_label))</code> — <code>{KT_FINAL}</code> dòng 65,
+		nghĩa là ngay cả nhãn của ô nhập cũng đọc chữ từ tài nguyên chứ không viết cứng. Cách <code>stringResource</code>
+		hoạt động là nội dung <strong>Chương 3.2, mục 12</strong>.
 	</p>
+	<h3 id="button">5.5. <code>Button</code> và thứ tự hai dòng trong <code>onClick</code></h3>
 	<p>
-		Trong code thật, nhãn đó là <code>Text(text = stringResource(id = R.string.chat_entry_label))</code> —
-		<code>{KT_FINAL}</code> dòng 65. Nghĩa là ngay cả nhãn của ô nhập cũng đọc chữ từ tài nguyên chứ không viết cứng.
-		Cách <code>stringResource</code> hoạt động và vì sao nó chỉ gọi được bên trong vùng Compose là nội dung
-		<strong>Chương 3.2, mục 12</strong>.
-	</p>
-	<h3 id="button">6.5. <code>Button</code> và thứ tự hai dòng trong <code>onClick</code></h3>
-	<p>
-		Thành phần cuối là <code>Button</code>: một nút bấm, và khi được bấm nó cập nhật vùng <code>Text</code> phía trên
-		bằng chữ bạn vừa gõ vào ô nhập. Toàn bộ việc đó nằm trong <code>onClick</code>, và <code>onClick</code> chỉ có đúng
-		hai dòng. Điều đáng nói là <strong>thứ tự hai dòng đó không thể đảo</strong>:
+		Thành phần cuối là <code>Button</code>: khi được bấm, nó cập nhật vùng <code>Text</code> phía trên bằng chữ bạn
+		vừa gõ. Toàn bộ việc đó nằm trong <code>onClick</code>, và <code>onClick</code> chỉ có đúng hai dòng. Điều đáng
+		nói là <strong>thứ tự hai dòng đó không thể đảo</strong>:
 	</p>
 	<Code code={onClickOrderCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Đảo lại thì <code>chatInputText</code> bị xoá trắng <em>trước khi</em> được sao chép, nên dòng sau sao một chuỗi
-		rỗng lên phần hiển thị — kết quả là bấm Send bao nhiêu lần thì phần hiển thị cũng trống trơn. Đây là loại lỗi không
-		có thông báo nào cả: app chạy bình thường, không crash, chỉ là kết quả sai. Đáng bỏ ra một phút tự đảo thử để nhìn
-		thấy hiện tượng bằng mắt. Cái bẫy này cũng được ghi lại ở
+		rỗng lên phần hiển thị — kết quả là bấm Send bao nhiêu lần thì phần hiển thị cũng trống trơn. Đây là loại lỗi
+		không có thông báo nào cả: app chạy bình thường, không crash, chỉ là kết quả sai. Cái bẫy này được ghi lại ở
 		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>, mục 3.
 	</p>
 	<p>
-		Lý do sâu hơn nằm ở chỗ hai dòng đó là <em>code Kotlin thường</em>, chạy lần lượt từ trên xuống, không phải hai
-		"khai báo" mà Compose tự sắp xếp lại. Bên trong <code>onClick</code> bạn đang ở đất Kotlin, không ở đất Compose —
-		đúng cái ranh giới đã nói ở mục 3.1. Compose chỉ vào cuộc <em>sau khi</em> cả khối <code>onClick</code> chạy xong:
+		Lý do sâu hơn: hai dòng đó là <em>code Kotlin thường</em>, chạy lần lượt từ trên xuống, không phải hai "khai
+		báo" mà Compose tự sắp xếp lại. Bên trong <code>onClick</code> bạn đang ở đất Kotlin, không ở đất Compose —
+		đúng cái ranh giới đã nói ở mục 2. Compose chỉ vào cuộc <em>sau khi</em> cả khối <code>onClick</code> chạy xong:
 		lúc đó nó thấy hai state đã đổi và vẽ lại những chỗ đang đọc chúng.
 	</p>
 	<p>
-		Về cú pháp, phần chữ trong nút cũng là một Composable đặt trong cặp <code>&#123; &#125;</code> đứng
-		<em>sau</em> <code>Button(...)</code> — nhìn thoáng qua trông như "hai khối ngoặc liền nhau" và rất dễ gây rối. Kotlin
-		có một quy tắc giải thích chuyện đó: nếu tham số cuối cùng của một hàm là lambda, bạn được phép viết lambda đó ra
-		ngoài dấu ngoặc tròn. Nên <code>Button(onClick = &#123;...&#125;) &#123; Text(...) &#125;</code> thực chất chỉ là
-		cách viết gọn của <code>Button(onClick = &#123;...&#125;, content = &#123; Text(...) &#125;)</code>. Biết quy tắc
-		này một lần là đọc được hầu hết code Compose, vì gần như mọi layout group và mọi thành phần có nội dung con đều được
-		viết theo kiểu đó — kể cả <code>Column &#123; ... &#125;</code> ở mục 6.1.
+		Về cú pháp, phần chữ trong nút là một Composable đặt trong cặp <code>&#123; &#125;</code> đứng <em>sau</em>
+		<code>Button(...)</code> — trông như "hai khối ngoặc liền nhau". Kotlin có một quy tắc giải thích chuyện đó: nếu
+		tham số cuối cùng của một hàm là lambda, bạn được phép viết lambda đó ra ngoài dấu ngoặc tròn
+		(<em>trailing lambda</em> — cú pháp này cũng sẽ nằm trong phần Nền tảng Kotlin). Nên
+		<code>Button(onClick = &#123;...&#125;) &#123; Text(...) &#125;</code> thực chất chỉ là cách viết gọn của
+		<code>Button(onClick = &#123;...&#125;, content = &#123; Text(...) &#125;)</code>. Biết quy tắc này một lần là
+		đọc được hầu hết code Compose — kể cả <code>Column &#123; ... &#125;</code> ở mục 5.1.
 	</p>
+
+	<h2 id="qua-khu">6. Ngày xưa Android làm UI thế nào — và vì sao bạn vẫn cần biết</h2>
 	<p>
-		Còn một chi tiết rất nhỏ trong code thật đáng nói ra, để bạn không nghi mình gõ thiếu: ở <code>{KT_FINAL}</code>
-		<strong>dòng 73</strong> có một <strong>dòng trống dư</strong>, nằm giữa
-		<code>Text(text = stringResource(id = R.string.send_button))</code> ở dòng 72 và dấu <code>&#125;</code> đóng khối
-		nội dung của <code>Button</code> ở dòng 74. Nó không ảnh hưởng gì đến hoạt động của app — Kotlin bỏ qua dòng trống —
-		nhưng nếu bạn so từng dòng code của mình với bản <code>final</code> thì đây là chỗ lệch vô hại đầu tiên bạn gặp.
+		Bạn vừa dựng xong một giao diện có ô nhập, nút bấm và vùng hiển thị bằng đúng vài chục dòng Kotlin. Việc phát
+		triển app Android <em>từng</em> phức tạp hơn thế rất nhiều. Đáng dừng một mục để kể về thời trước Compose, vì lý
+		do rất thực tế: trong đời làm nghề bạn <strong>sẽ</strong> gặp code cũ — một project công ty đã chạy 8 năm, một
+		câu trả lời trên Stack Overflow từ 2017. Bạn không cần viết được kiểu cũ, nhưng cần <em>nhận ra</em> nó trong
+		vài giây để biết mình đang đọc thứ không áp dụng được.
 	</p>
-	<h2 id="qua-khu">7. Ngày xưa Android làm UI thế nào — và vì sao bạn vẫn cần biết</h2>
+	<h3 id="xml-layout">6.1. Layout nằm trong file XML riêng, nối bằng <code>findViewById</code></h3>
 	<p>
-		Bạn vừa dựng xong một giao diện có ô nhập, nút bấm và vùng hiển thị bằng đúng vài chục dòng Kotlin. Việc phát triển
-		app Android <em>từng</em> phức tạp hơn thế rất nhiều. Đây là chỗ đáng dừng lại một mục để kể về thời trước Compose,
-		vì lý do rất thực tế: trong đời làm nghề bạn <strong>sẽ</strong> gặp code cũ — một project công ty đã chạy 8 năm,
-		một câu trả lời trên Stack Overflow từ 2017, một bài hướng dẫn đứng top tìm kiếm nhưng viết năm 2019. Bạn không cần
-		viết được kiểu cũ, nhưng cần <em>nhận ra</em> nó trong vài giây để biết mình đang đọc thứ không áp dụng được.
+		Trước Compose, <strong>toàn bộ giao diện được định nghĩa trong những file XML riêng</strong>, thường là
+		<code>res/layout/activity_main.xml</code>. Bạn phải gán một <code>id</code> cho từng phần tử UI muốn điều khiển
+		từ Kotlin, rồi viết code "nối" file XML với logic app. Đoạn nối đó trông như thế này:
 	</p>
-	<h3 id="xml-layout">7.1. Layout nằm trong file XML riêng</h3>
+	<pre class="tree">chatOutputTextView = findViewById(R.id.chat_output_text_view)</pre>
 	<p>
-		Trước Compose, code Kotlin vẫn nằm trong Activity như bây giờ — phần đó không đổi. Nhưng
-		<strong>toàn bộ giao diện được định nghĩa trong những file XML riêng</strong>, thường là
-		<code>res/layout/activity_main.xml</code>. Sau đó bạn phải gán một <code>id</code> cho từng phần tử UI mà bạn muốn
-		điều khiển từ Kotlin, rồi viết một loạt code chỉ để "nối" file XML với logic app. Giai đoạn đầu, đoạn code nối đó
-		trông như thế này:
-	</p>
-	<Code code={findViewByIdCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Đọc dòng đó theo nghĩa từng phần: bạn đưa cho hệ thống một mã số tài nguyên
-		(<code>R.id.chat_output_text_view</code> — chữ <code>R</code> là <em>Resource</em>, và bạn sẽ gặp lại nó rất kỹ ở
-		<strong>Chương 3.2, mục 10</strong>), hệ thống đi tìm trong giao diện đang hiển thị xem phần tử nào có id đó, rồi
-		trả về cho bạn. Từ đó trở đi bạn giữ tham chiếu ấy trong một biến và ra lệnh cho nó. Cách làm này có hai vấn đề, và
-		cả hai đều là lý do trực tiếp dẫn tới Compose:
+		Đọc theo nghĩa từng phần: bạn đưa cho hệ thống một mã số tài nguyên (<code>R.id.chat_output_text_view</code> —
+		chữ <code>R</code> là <em>Resource</em>, bạn sẽ gặp lại nó rất kỹ ở <strong>Chương 3.2, mục 10</strong>), hệ
+		thống đi tìm trong giao diện đang hiển thị xem phần tử nào có id đó, rồi trả về cho bạn. Cách làm này có hai vấn
+		đề, và cả hai đều là lý do trực tiếp dẫn tới Compose:
 	</p>
 	<ul>
-		<li><strong>Dễ sai và khó debug.</strong> Nếu id không tồn tại trong layout đang hiển thị — vì bạn gõ sai tên, vì
-			layout của màn hình khác, vì phần tử đó chỉ có trong bản layout dành cho máy tính bảng — bạn nhận về
-			<code>null</code>. Không có lỗi biên dịch nào cả: trình biên dịch chỉ thấy một mã số hợp lệ. Lỗi nổ ra lúc chạy,
-			và thường nổ ở một chỗ khác hẳn nơi gây ra nó, tức là ở dòng bạn dùng biến đó chứ không phải ở dòng bạn tìm nó.</li>
-		<li><strong>Tốn kém.</strong> <code>findViewById</code> phải <em>đi duyệt cây view</em> (view tree hierarchy) để tìm
-			ra đúng phần tử — nghĩa là dò từ gốc xuống từng nhánh, so từng id. Gọi một lần thì không sao. Gọi lại cho mỗi
-			dòng của một danh sách dài, mỗi lần người dùng kéo màn hình, là một nguồn giật lag kinh điển của Android thời
-			đó.</li>
+		<li><strong>Dễ sai và khó debug.</strong> Nếu id không tồn tại trong layout đang hiển thị — vì bạn gõ sai tên,
+			vì phần tử đó chỉ có trong layout dành cho máy tính bảng — bạn nhận về <code>null</code>. Không có lỗi biên
+			dịch nào cả: trình biên dịch chỉ thấy một mã số hợp lệ. Lỗi nổ ra lúc chạy, và thường nổ ở chỗ bạn dùng biến
+			chứ không phải chỗ bạn tìm nó.</li>
+		<li><strong>Tốn kém.</strong> <code>findViewById</code> phải <em>đi duyệt cây view</em> để tìm ra đúng phần tử —
+			dò từ gốc xuống từng nhánh, so từng id. Gọi cho mỗi dòng của một danh sách dài, mỗi lần người dùng kéo màn
+			hình, là một nguồn giật lag kinh điển của Android thời đó.</li>
 	</ul>
 	<p>
-		Theo thời gian, nhiều "chiến lược" khác nhau xuất hiện để nối XML với Activity cho đỡ đau. Nhưng dù chiến lược nào
-		thì hai thứ vẫn còn đó: một đống code lằng nhằng chỉ để nối dây, và những file XML tách rời khỏi logic.
-	</p>
-	<p class="hint">
-		<strong>Bổ sung ngoài phần kiến thức nền, để bạn nhận ra khi đọc code cũ:</strong> ba thế hệ chiến lược đó là
-		<em>ButterKnife</em> (thư viện ngoài, dùng annotation kiểu <code>@BindView</code>, nay đã ngừng phát triển),
-		<em>Kotlin synthetics</em> (import <code>kotlinx.android.synthetic.*</code> rồi gọi thẳng tên id như một biến, đã bị
-		loại bỏ khỏi Kotlin), và <em>View Binding</em> (giải pháp chính thức cuối cùng: trình biên dịch sinh ra một class
-		<code>...Binding</code> cho mỗi file layout — đến nay vẫn được dùng rộng rãi trong app View-based). Nếu bạn mở một
-		project và thấy <code>binding.chatOutputTextView.text = ...</code> thì đó là View Binding, và bạn đang đọc một app
-		không dùng Compose.
+		Theo thời gian nhiều "chiến lược" nối XML với Activity xuất hiện để đỡ đau — ButterKnife, Kotlin synthetics, rồi
+		View Binding (giải pháp chính thức cuối cùng: trình biên dịch sinh ra một class <code>...Binding</code> cho mỗi
+		file layout, đến nay vẫn dùng rộng rãi trong app View-based). Nếu bạn mở một project và thấy
+		<code>binding.chatOutputTextView.text = ...</code> thì đó là View Binding, và bạn đang đọc một app không dùng
+		Compose.
 	</p>
 	<p>
-		Có một hệ quả rất cụ thể của việc project này làm UI 100% bằng Compose, và nó đáng biết trước để khỏi tìm nhầm chỗ:
-		thư mục <code>res/</code> của app <strong>không có</strong> <code>layout/</code>. Đã kiểm bằng cách tìm mọi thư mục
-		tên <code>layout</code> trong toàn bộ project mẫu của khoá học — không có thư mục nào, ở cả 11 chương. Cây
-		<code>res/</code> của Chương 3 trông như sau:
+		Có một hệ quả rất cụ thể của việc project này làm UI 100% bằng Compose, đáng biết trước để khỏi tìm nhầm chỗ:
+		thư mục <code>res/</code> của app <strong>không có</strong> <code>layout/</code> — đã kiểm bằng cách tìm mọi thư
+		mục tên <code>layout</code> trong toàn bộ project mẫu của khoá học, không có thư mục nào. Cây <code>res/</code>
+		của Chương 3 gồm 9 thư mục: <code>drawable</code>, sáu thư mục <code>mipmap-*</code> (icon app theo từng mật độ
+		điểm ảnh), <code>values</code> (colors.xml, strings.xml, themes.xml) và <code>xml</code> (backup_rules.xml,
+		data_extraction_rules.xml). Vì vậy mọi bài hướng dẫn cũ bắt đầu bằng "mở <code>res/layout/activity_main.xml</code>
+		rồi thêm một <code>&lt;TextView&gt;</code>" đều không áp dụng được vào project này — không phải vì hướng dẫn sai,
+		mà vì nó nói về một kiến trúc giao diện khác. Điều này được ghi lại ở <a href="#cam-bay">Cạm bẫy &amp; tài liệu
+		lỗi thời</a>, mục 4, và danh sách đầy đủ các loại resource là nội dung <strong>Chương 3.3, mục 19</strong>.
 	</p>
-	<pre class="tree">{resTreeCode}</pre>
+	<h3 id="fragment">6.2. Fragment — ý tưởng tốt, cái giá không nhỏ</h3>
 	<p>
-		Vì vậy mọi bài hướng dẫn cũ bắt đầu bằng "mở <code>res/layout/activity_main.xml</code> rồi thêm một
-		<code>&lt;TextView&gt;</code>" đều không áp dụng được vào project này — không phải vì hướng dẫn sai, mà vì nó nói về
-		một kiến trúc giao diện khác. Điều này được ghi lại ở
-		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>, mục 4. Danh sách đầy đủ từng loại tài nguyên trong cây
-		<code>res/</code> ở trên là nội dung <strong>Chương 3.3, mục 14</strong>.
-	</p>
-	<h3 id="fragment">7.2. Fragment — ý tưởng tốt, cái giá không nhỏ</h3>
-	<p>
-		Ngoài Activity, thời đó còn một loại "hộp chứa UI" nữa tên là <strong>Fragment</strong>. Ý tưởng ban đầu rất hợp lý:
-		có những mảnh giao diện dùng lại được ở nhiều nơi, mỗi mảnh tự định nghĩa và tự quản lý layout của mình; một Activity
-		chứa nhiều Fragment và điều phối chúng. Trên máy tính bảng bạn hiện hai Fragment cạnh nhau (danh sách bên trái, chi
-		tiết bên phải); trên điện thoại bạn hiện lần lượt từng cái. Nghe rất gọn.
+		Ngoài Activity, thời đó còn một loại "hộp chứa UI" nữa tên là <strong>Fragment</strong>. Ý tưởng ban đầu rất hợp
+		lý: có những mảnh giao diện dùng lại được ở nhiều nơi, mỗi mảnh tự định nghĩa và tự quản lý layout của mình; một
+		Activity chứa nhiều Fragment và điều phối chúng. Trên máy tính bảng bạn hiện hai Fragment cạnh nhau (danh sách
+		bên trái, chi tiết bên phải); trên điện thoại bạn hiện lần lượt từng cái. Nghe rất gọn.
 	</p>
 	<p>
-		Nhận xét cần nói thẳng: khả năng tái sử dụng đó có ích ở thời điểm ấy, nhưng Fragment <strong>thêm một lớp phức tạp
-		nữa</strong> lên vai người viết app. Và cả Activity lẫn Fragment đều dựa vào file layout XML để vẽ ra các
-		<strong>View</strong> — đơn vị cơ bản nhất của giao diện thời đó, tức từng ô chữ, từng nút, từng ảnh đều là một object
-		View trong một cây view.
+		Nhận xét cần nói thẳng: khả năng tái sử dụng đó có ích ở thời điểm ấy, nhưng Fragment <strong>thêm một lớp phức
+		tạp nữa</strong> lên vai người viết app — nó có <em>vòng đời riêng</em> lồng bên trong vòng đời của Activity, với
+		những cặp hàm rất dễ nhầm (<code>onCreateView()</code>/<code>onDestroyView()</code> tách rời khỏi
+		<code>onCreate()</code>/<code>onDestroy()</code>). Kết quả là một họ lỗi rất khó truy: giữ tham chiếu tới view đã
+		bị huỷ (rò rỉ bộ nhớ), hoặc thao tác giao diện lúc Fragment chưa gắn vào Activity nào. Cả Activity lẫn Fragment
+		đều dựa vào file layout XML để vẽ ra các <strong>View</strong> — đơn vị cơ bản nhất của giao diện thời đó, từng
+		ô chữ, từng nút, từng ảnh đều là một object View trong một cây view. Với Compose, bạn không chỉ bớt một khái
+		niệm: bạn bớt cả một vòng đời thứ hai phải theo dõi.
 	</p>
-	<p class="hint">
-		<strong>"Lớp phức tạp" đó cụ thể là gì (phần bổ sung ngoài kiến thức nền):</strong> Fragment có <em>vòng đời
-		riêng</em> lồng bên trong vòng đời của Activity, với những cặp hàm rất dễ nhầm — <code>onCreateView()</code> /
-		<code>onDestroyView()</code> tách rời khỏi <code>onCreate()</code> / <code>onDestroy()</code>, và một Fragment có thể
-		bị huỷ view nhưng bản thân nó vẫn sống. Kết quả là một họ lỗi rất khó truy: giữ tham chiếu tới view sau khi view đã
-		bị huỷ (rò rỉ bộ nhớ), hoặc thao tác giao diện lúc Fragment chưa gắn vào Activity nào nên chưa có <code>Context</code>.
-		Đó là bối cảnh khiến câu "với Compose bạn không cần Fragment nữa" đáng giá hơn vẻ ngoài của nó: bạn không chỉ bớt
-		một khái niệm, bạn bớt cả một vòng đời thứ hai phải theo dõi.
-	</p>
-	<h3 id="di-san">7.3. Compose sống chung được với code cũ</h3>
+	<h3 id="song-song">6.3. Compose sống chung được với code cũ — và bảng nhận biết nhanh</h3>
 	<p>
-		Có hai chiều cần nói rõ ở đây, và cả hai đều là tin tốt. Chiều thứ nhất: với Jetpack Compose, bạn <em>không</em> còn
-		phải dùng XML layout hay Fragment nữa — <strong>trừ khi</strong> bạn đang nâng cấp một app cũ. Chiều thứ hai: nếu
-		đúng là app cũ, Compose <em>tích hợp được</em> với XML layout và Fragment sẵn có, nên bạn thay từng phần một cách
-		tuần tự thay vì viết lại cả app trong một lần. Trong thực tế đây là lý do Compose được nhận rộng rãi nhanh như vậy:
-		không đội nào phải đánh cược cả sản phẩm để đổi sang nó.
+		Hai chiều cần nói rõ, và cả hai đều là tin tốt. Chiều thứ nhất: với Jetpack Compose, bạn <em>không</em> còn phải
+		dùng XML layout hay Fragment nữa — <strong>trừ khi</strong> bạn đang nâng cấp một app cũ. Chiều thứ hai: nếu đúng
+		là app cũ, Compose <em>tích hợp được</em> với XML layout và Fragment sẵn có, nên bạn thay từng phần một cách tuần
+		tự thay vì viết lại cả app trong một lần. Trong thực tế đây là lý do Compose được nhận rộng rãi nhanh như vậy.
 	</p>
 	<p>
-		Lý do kỹ thuật đứng sau: Compose đi theo <strong>mô hình lập trình reactive</strong> và về bản chất hiệu năng tốt
-		hơn XML layout truyền thống. Thay vì khai báo layout trong XML rồi nối bằng code, bạn khai báo layout <em>bằng
-		chính code</em>. Các chương sau đi vào design pattern và kiến trúc giúp Compose phát huy thêm về hiệu năng, dễ dùng,
-		dễ debug và dễ mở rộng.
-	</p>
-	<p class="notice">
-		<strong>Cần đặt lại cho chính xác:</strong> câu "Compose nhanh hơn XML" đúng ở mức <em>mô hình</em> — Compose chỉ vẽ
-		lại phần giao diện đang đọc state vừa thay đổi, thay vì đo-và-đặt (measure/layout) lại cả cây view như cách cũ.
-		Nhưng nó <strong>không</strong> có nghĩa mọi giao diện Compose đều nhanh hơn mọi giao diện XML. Compose viết sai vẫn
-		chậm hơn XML viết tốt — điển hình là recomposition lan quá rộng vì đọc state ở tầng quá cao, khiến cả màn hình vẽ lại
-		mỗi lần gõ một ký tự. <strong>Chương 6.1, mục 3</strong> nói đúng về chủ đề này. Giọng điệu "nhanh hơn" trong các
-		tài liệu quanh năm 2023 hơi nghiêng về quảng bá, vì Compose lúc đó còn mới và đang cần được thuyết phục người dùng.
-	</p>
-	<h3 id="ban-do-cu-moi">7.4. Bảng đối chiếu nhanh: cùng một việc, hai thời kỳ</h3>
-	<p>
-		Cách nhanh nhất để nhận ra mình đang đọc tài liệu thời nào là đối chiếu theo <em>việc cần làm</em>. Bảng dưới đây là
-		bản tra cứu gọn: gặp cột giữa thì bạn đang đọc tài liệu View-based; gặp cột phải thì đang đọc Compose.
+		Cách nhanh nhất để nhận ra mình đang đọc tài liệu thời nào là đối chiếu theo <em>việc cần làm</em>:
 	</p>
 	<table class="cmp">
 		<thead><tr><th>Việc cần làm</th><th>Cách cũ (View + XML)</th><th>Cách của Compose</th></tr></thead>
@@ -831,170 +562,164 @@ const resTreeCode = `app/src/main/res/
 				Compose tự vẽ lại (khai báo)</td></tr>
 			<tr><td>Mảnh UI tái sử dụng</td><td>Fragment, custom View</td><td>Một hàm <code>@Composable</code> bình
 				thường</td></tr>
-			<tr><td>Xem trước giao diện</td><td>Tab Design của file XML</td><td><code>@Preview</code> trên một
-				Composable</td></tr>
 		</tbody>
 	</table>
-	<p>
-		Đọc bảng theo cột giữa bạn thấy một điểm chung: cách cũ luôn có <em>hai chỗ</em> cho một việc — file XML và file
-		Kotlin, phần tử và id, dữ liệu và câu lệnh cập nhật — và người viết app chịu trách nhiệm giữ hai chỗ đó đồng bộ.
-		Compose xoá hẳn cái ranh giới đó. Toàn bộ khác biệt trong bảng thật ra chỉ là một khác biệt duy nhất được nhìn từ
-		năm góc khác nhau.
+	<p class="notice">
+		Cần đặt lại cho chính xác một câu bạn hay gặp trong tài liệu quanh năm 2023: "Compose nhanh hơn XML". Câu này
+		đúng ở mức <em>mô hình</em> — Compose chỉ vẽ lại phần giao diện đang đọc state vừa thay đổi, thay vì đo-và-đặt
+		lại cả cây view như cách cũ. Nhưng nó <strong>không</strong> có nghĩa mọi giao diện Compose đều nhanh hơn mọi
+		giao diện XML: Compose viết sai vẫn chậm hơn XML viết tốt, điển hình là khi recomposition lan quá rộng khiến cả
+		màn hình vẽ lại mỗi lần gõ một ký tự — chủ đề phần State &amp; kiến trúc nói đúng.
 	</p>
-	<div class="callout">
-		<strong>Tổng kết Chương 3.1</strong>
-		<ul>
-			<li><strong>Activity không phải giao diện.</strong> Nó là thành phần do hệ điều hành quản lý, giữ ba vai trò: điểm
-				vào của app (Android gọi vòng đời chứ không gọi <code>main()</code>), chủ của một cửa sổ trên màn hình, và đơn
-				vị mà hệ thống có quyền huỷ rồi tạo lại. Vai trò thứ ba là gốc rễ của mọi kỹ thuật quản lý state bạn học ở các
-				chương sau.</li>
-			<li><strong>Bốn dòng cốt lõi</strong> mà mọi Activity Compose đều có:
-				<code>class ... : ComponentActivity()</code> · <code>override fun onCreate(savedInstanceState: Bundle?)</code> ·
-				<code>super.onCreate(savedInstanceState)</code> (bắt buộc, bỏ là app đổ ngay) ·
-				<code>setContent &#123; ... &#125;</code> (nội dung bên trong thành root view). Quy tắc chung: mọi logic bạn thêm
-				đều nằm sau lời gọi <code>setContent</code>.</li>
-			<li><strong>Ranh giới Kotlin ↔ Compose nằm ở dấu <code>&#123;</code> của <code>setContent</code></strong>, không
-				phải của <code>onCreate</code>. Composable chỉ gọi được từ trong Composable khác; lambda của
-				<code>setContent</code> đã được đánh dấu Composable từ trước nên bên trong nó bạn gọi được Composable.
-				<code>@Composable</code> không phải nhãn trang trí — nó là một plugin của trình biên dịch Kotlin, bật lên trong
-				<code>buildFeatures</code> và <code>composeOptions</code> của Gradle.</li>
-			<li><strong><code>onCreate()</code> không chạy lại mỗi lần mở app từ nền.</strong> Nó chạy khi hệ thống tạo mới
-				instance Activity: lần đầu mở app, sau khi Activity ở nền bị huỷ để lấy bộ nhớ, và khi xoay ngang màn hình.
-				Chuyển app rồi quay lại mà Activity còn sống thì chỉ <code>onPause()</code> → <code>onResume()</code>.
-				<code>savedInstanceState</code> là túi dữ liệu để phục hồi trong hai tình huống huỷ ngoài ý muốn — Chương 3
-				chưa dùng tới nó.</li>
-			<li><strong>Thay toàn bộ file làm mất ba thứ:</strong> <code>KodecoChatTheme</code> bọc ngoài,
-				<code>Surface</code> phủ nền theo màu theme, và <code>@Preview</code>. Hệ quả kiểm được: từ Chương 3 trở đi
-				project không còn <code>@Preview</code> nào, và hàm theme Compose không còn ai gọi.</li>
-			<li><strong>Năm mảnh của giao diện mới:</strong> <code>Column</code> xếp dọc theo đúng thứ tự viết trong code · hai
-				state <code>by remember &#123; mutableStateOf(...) &#125;</code> (ba việc dính vào nhau: tạo ô nhớ có thông báo,
-				giữ nó qua các lần vẽ lại, và cú pháp <code>by</code>) · <code>Text</code> đọc state nên tự đổi theo ·
-				<code>OutlinedTextField</code> cần đủ cặp <code>value</code> + <code>onValueChange</code> · <code>Button</code>
-				với hai dòng <code>onClick</code> không được đảo thứ tự.</li>
-			<li><strong>Mô hình khai báo thay cho ra lệnh:</strong> bạn không gọi hàm cập nhật giao diện, bạn gán vào state và
-				Compose vẽ lại đúng chỗ đang đọc state đó. Đây là khác biệt cốt lõi so với
-				<code>textView.text = "..."</code> thời XML.</li>
-			<li><strong>Thời trước Compose:</strong> layout trong file XML riêng, nối bằng <code>findViewById</code> (dễ trả về
-				<code>null</code> mà không có lỗi biên dịch, và phải duyệt cả cây view nên tốn kém), rồi ButterKnife → Kotlin
-				synthetics → View Binding; Fragment thêm một vòng đời thứ hai. Compose vẫn sống chung được với code cũ để nâng
-				cấp từng phần.</li>
-		</ul>
-	</div>
+
+	<h2 id="key-points">7. Tổng kết Chương 3.1</h2>
+	<ul>
+		<li><strong>Activity không phải giao diện.</strong> Nó là thành phần do hệ điều hành quản lý, giữ ba vai trò: điểm
+			vào của app (Android gọi vòng đời chứ không gọi <code>main()</code>), chủ của một cửa sổ trên màn hình, và đơn
+			vị mà hệ thống có quyền huỷ rồi tạo lại. Vai trò thứ ba là gốc rễ của mọi kỹ thuật quản lý state bạn học ở
+			các chương sau.</li>
+		<li><strong>Bốn dòng cốt lõi</strong> mà mọi Activity Compose đều có:
+			<code>class ... : ComponentActivity()</code> · <code>override fun onCreate(savedInstanceState: Bundle?)</code> ·
+			<code>super.onCreate(savedInstanceState)</code> (bắt buộc, bỏ là app đổ ngay) ·
+			<code>setContent &#123; ... &#125;</code> (nội dung bên trong thành root view). Mọi logic bạn thêm đều nằm sau
+			lời gọi <code>setContent</code>.</li>
+		<li><strong>Ranh giới Kotlin ↔ Compose nằm ở dấu <code>&#123;</code> của <code>setContent</code></strong>, không
+			phải của <code>onCreate</code>. Composable chỉ gọi được từ trong Composable khác; <code>@Composable</code>
+			không phải nhãn trang trí — nó là một plugin của trình biên dịch Kotlin.</li>
+		<li><strong><code>onCreate()</code> không chạy lại mỗi lần mở app từ nền.</strong> Nó chạy khi hệ thống tạo mới
+			instance Activity: lần đầu mở app, sau khi Activity ở nền bị huỷ để lấy bộ nhớ, và khi xoay ngang màn hình.
+			<code>savedInstanceState</code> là túi dữ liệu phục hồi trong hai tình huống huỷ ngoài ý muốn — Chương 3 chưa
+			dùng tới nó.</li>
+		<li><strong>Thay toàn bộ file làm mất ba thứ:</strong> <code>KodecoChatTheme</code> bọc ngoài,
+			<code>Surface</code> phủ nền theo màu theme, và <code>@Preview</code>. Hệ quả kiểm được: từ Chương 3 trở đi
+			project không còn <code>@Preview</code> nào, và hàm theme Compose không còn ai gọi.</li>
+		<li><strong>Năm mảnh của giao diện mới:</strong> <code>Column</code> xếp dọc theo đúng thứ tự viết trong code · hai
+			state <code>by remember &#123; mutableStateOf(...) &#125;</code> (ba việc dính vào nhau) · <code>Text</code> đọc
+			state nên tự đổi theo · <code>OutlinedTextField</code> cần đủ cặp <code>value</code> +
+			<code>onValueChange</code> · <code>Button</code> với hai dòng <code>onClick</code> không được đảo thứ tự.</li>
+		<li><strong>Mô hình khai báo thay cho ra lệnh:</strong> bạn không gọi hàm cập nhật giao diện, bạn gán vào state và
+			Compose vẽ lại đúng chỗ đang đọc state đó.</li>
+		<li><strong>Thời trước Compose:</strong> layout trong file XML riêng, nối bằng <code>findViewById</code> (dễ trả về
+			<code>null</code> mà không có lỗi biên dịch, phải duyệt cả cây view), rồi ButterKnife → Kotlin synthetics →
+			View Binding; Fragment thêm một vòng đời thứ hai. Compose vẫn sống chung được với code cũ để nâng cấp từng
+			phần.</li>
+	</ul>
 	<p>
 		<strong>Tiếp theo — Chương 3.2:</strong> đưa chuỗi ra khỏi code, lớp <code>R</code>, đọc lỗi biên dịch và dùng
 		breakpoint. Toàn bộ chữ hiển thị trong app hiện đang được viết cứng ở đâu đó, và bạn sẽ dọn chúng vào
 		<code>strings.xml</code> — không phải để cho đẹp, mà vì đó là điều kiện để app hỗ trợ được nhiều ngôn ngữ. Trên
-		đường đi bạn sẽ gặp lớp <code>R</code> do trình biên dịch tự sinh, gặp <em>lỗi biên dịch đầu tiên</em> của khoá học
-		và học cách đọc thông điệp lỗi thay vì tìm trên mạng, rồi chạy app ở chế độ debug với breakpoint để nhìn thấy giá trị
-		từng biến ngay lúc code đang chạy.
+		đường đi bạn sẽ gặp lớp <code>R</code> do trình biên dịch tự sinh, gặp <em>lỗi biên dịch đầu tiên</em> của khoá
+		học và học cách đọc thông điệp lỗi, rồi chạy app ở chế độ debug với breakpoint để nhìn thấy giá trị từng biến
+		ngay lúc code đang chạy.
 	</p>
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
-		Bốn chỗ dưới đây là nơi người mới mất nhiều thời gian nhất trong phạm vi chương nhỏ này. Ba cái đầu là bẫy về cách
-		Compose và Activity thực sự hoạt động — chúng không báo lỗi, chỉ cho kết quả sai hoặc mất dữ liệu. Cái thứ tư là chỗ
-		tài liệu cũ trên mạng không còn áp dụng được vào project này. Đọc trước để khỏi mất buổi tối đi tìm một lỗi không
-		tồn tại.
+		Bốn chỗ dưới đây là nơi người mới mất nhiều thời gian nhất trong phạm vi chương nhỏ này. Ba cái đầu là bẫy về
+		cách Compose và Activity thực sự hoạt động — chúng không báo lỗi, chỉ cho kết quả sai hoặc mất dữ liệu. Cái thứ
+		tư là chỗ tài liệu cũ trên mạng không còn áp dụng được vào project này.
 	</p>
 	<p class="notice">
-		<strong>1. Xoay ngang máy là mất tin nhắn — và đó không phải bug của bạn.</strong> Sau khi chạy app ở mục 5, thử gõ
-		một câu, bấm Send, rồi xoay ngang thiết bị. Chữ vừa hiện lên biến mất, ô nhập trở về chuỗi mặc định. Rất nhiều người
-		mới đi tìm lỗi trong <code>onClick</code> hoặc nghi <code>remember</code> hỏng — không phải. Mặc định Android
-		<em>huỷ và tạo lại</em> Activity mỗi khi cấu hình thiết bị thay đổi (configuration change), và xoay màn hình là một
-		thay đổi cấu hình. Instance Activity cũ bị xoá, <code>onCreate()</code> chạy lại từ đầu, <code>setContent</code> dựng
-		lại giao diện, và hai lời gọi <code>remember &#123; mutableStateOf(...) &#125;</code> tạo ra ô nhớ mới với giá trị ban
-		đầu. <code>remember</code> chỉ giữ giá trị qua các lần <em>recomposition</em>, nó không giữ qua việc Activity bị dựng
-		lại — đây là hai chuyện khác nhau và rất dễ gộp làm một. Đừng chữa bằng cách khoá xoay màn hình trong manifest: đó là
-		né vấn đề, và cùng cơ chế đó còn xảy ra khi hệ thống huỷ Activity ở nền để lấy bộ nhớ, lúc ấy khoá xoay không giúp
-		gì. Cách chữa thật đi theo ba bậc ở các chương sau: <code>rememberSaveable</code> và ViewModel giữ state qua
-		configuration change (<strong>Chương 6.2</strong>), DataStore lưu xuống máy (<strong>Chương 9</strong>), database Room
-		cho dữ liệu có cấu trúc (<strong>Chương 10</strong>). Ở Chương 3 thì việc mất dữ liệu là hiện tượng cần
-		<em>quan sát</em>, không phải lỗi cần sửa.
+		<strong>1. Xoay ngang máy là mất tin nhắn — và đó không phải bug của bạn.</strong> Sau khi chạy app ở mục 4, thử
+		gõ một câu, bấm Send, rồi xoay ngang thiết bị. Chữ vừa hiện lên biến mất, ô nhập trở về chuỗi mặc định. Rất nhiều
+		người mới đi tìm lỗi trong <code>onClick</code> hoặc nghi <code>remember</code> hỏng — không phải. Mặc định
+		Android <em>huỷ và tạo lại</em> Activity mỗi khi cấu hình thiết bị thay đổi (configuration change), và xoay màn
+		hình là một thay đổi cấu hình. Instance Activity cũ bị xoá, <code>onCreate()</code> chạy lại từ đầu,
+		<code>setContent</code> dựng lại giao diện, và hai lời gọi <code>remember &#123; mutableStateOf(...) &#125;</code>
+		tạo ra ô nhớ mới với giá trị ban đầu. <code>remember</code> chỉ giữ giá trị qua các lần <em>recomposition</em>,
+		nó không giữ qua việc Activity bị dựng lại — đây là hai chuyện khác nhau và rất dễ gộp làm một. Đừng chữa bằng
+		cách khoá xoay màn hình trong manifest: đó là né vấn đề, và cùng cơ chế đó còn xảy ra khi hệ thống huỷ Activity ở
+		nền để lấy bộ nhớ, lúc ấy khoá xoay không giúp gì. Cách chữa thật đi theo ba bậc ở các phần sau:
+		<code>rememberSaveable</code> và ViewModel giữ state qua configuration change (phần State &amp; kiến trúc),
+		DataStore lưu xuống máy (phần Dữ liệu cục bộ — settings), database Room cho dữ liệu có cấu trúc (phần Dữ liệu
+		cục bộ — Room). Ở Chương 3 thì việc mất dữ liệu là hiện tượng cần <em>quan sát</em>, không phải lỗi cần sửa.
 	</p>
 	<p class="notice">
-		<strong>2. <code>OutlinedTextField</code> không tự giữ chữ — thiếu <code>onValueChange</code> là ô nhập chết lặng.</strong>
-		Nếu bạn quen với <code>EditText</code> thời XML, hoặc quen với thẻ <code>&lt;input&gt;</code> của web, bạn sẽ mặc định
-		cho rằng ô nhập tự nhớ những gì người dùng gõ vào nó. Trong Compose thì <strong>không</strong>: thành phần nhập liệu
-		không giữ trạng thái nào cả, nó chỉ vẽ đúng những gì <code>value</code> đang chứa. Nên nếu bạn truyền
-		<code>value</code> mà bỏ trống <code>onValueChange</code>, hoặc viết <code>onValueChange = &#123; &#125;</code> cho
-		"đủ tham số", ô nhập sẽ không gõ được gì — mà <em>không có lỗi nào</em>: build thành công, app chạy, bàn phím hiện
-		lên, phím bấm có phản hồi, con trỏ nháy đều, chỉ là chữ không bao giờ xuất hiện. Người mới thường đi kiểm bàn phím,
-		kiểm máy ảo, kiểm quyền — trong khi nguyên nhân là vòng dữ liệu bị cắt một nửa. Quy tắc để nhớ: trong Compose, mỗi
-		thành phần nhập liệu cần đủ <em>hai chiều</em> — một tham số đưa state vào để hiển thị, một callback nhận giá trị mới
-		để ghi ngược lại state. Thấy chỉ có một chiều là biết chắc sẽ không hoạt động.
+		<strong>2. <code>OutlinedTextField</code> không tự giữ chữ — thiếu <code>onValueChange</code> là ô nhập chết
+		lặng.</strong> Nếu bạn quen với <code>EditText</code> thời XML, hoặc quen với thẻ <code>&lt;input&gt;</code> của
+		web, bạn sẽ mặc định cho rằng ô nhập tự nhớ những gì người dùng gõ vào nó. Trong Compose thì
+		<strong>không</strong>: thành phần nhập liệu không giữ trạng thái nào cả, nó chỉ vẽ đúng những gì
+		<code>value</code> đang chứa. Nên nếu bạn truyền <code>value</code> mà bỏ trống <code>onValueChange</code>, hoặc
+		viết <code>onValueChange = &#123; &#125;</code> cho "đủ tham số", ô nhập sẽ không gõ được gì — mà <em>không có
+		lỗi nào</em>: build thành công, app chạy, bàn phím hiện lên, phím bấm có phản hồi, con trỏ nháy đều, chỉ là chữ
+		không bao giờ xuất hiện. Người mới thường đi kiểm bàn phím, kiểm máy ảo, kiểm quyền — trong khi nguyên nhân là
+		vòng dữ liệu bị cắt một nửa. Quy tắc để nhớ: trong Compose, mỗi thành phần nhập liệu cần đủ <em>hai chiều</em> —
+		một tham số đưa state vào để hiển thị, một callback nhận giá trị mới để ghi ngược lại state. Thấy chỉ có một
+		chiều là biết chắc sẽ không hoạt động.
 	</p>
 	<p class="notice">
 		<strong>3. Hai dòng trong <code>onClick</code> đảo thứ tự thì phần hiển thị luôn trống.</strong> Trong
-		<code>onClick</code> của nút Send có đúng hai dòng: sao <code>chatInputText</code> sang <code>chatOutputText</code>,
-		rồi xoá trắng <code>chatInputText</code>. Viết ngược lại — xoá trước, sao sau — thì dòng sao chép nhận về một chuỗi
-		rỗng, nên bấm Send bao nhiêu lần thì vùng hiển thị cũng trống trơn. Không có cảnh báo nào: app build được, chạy được,
-		chỉ sai kết quả. Lý do đáng nhớ hơn cả hiện tượng: bên trong <code>onClick</code> bạn đang ở đất Kotlin thường, hai
-		dòng đó chạy lần lượt từ trên xuống như mọi code Kotlin khác. Compose <em>không</em> sắp xếp lại thứ tự và không "hiểu
-		ý" bạn; nó chỉ vào cuộc sau khi cả khối <code>onClick</code> chạy xong, thấy state đã đổi rồi vẽ lại. Đây là chỗ hay
-		gây nhầm với người mới học Compose, vì phần mô tả giao diện phía trên trông như "khai báo" nên dễ tưởng mọi thứ trong
-		file đều khai báo.
+		<code>onClick</code> của nút Send có đúng hai dòng: sao <code>chatInputText</code> sang
+		<code>chatOutputText</code>, rồi xoá trắng <code>chatInputText</code>. Viết ngược lại — xoá trước, sao sau — thì
+		dòng sao chép nhận về một chuỗi rỗng, nên bấm Send bao nhiêu lần thì vùng hiển thị cũng trống trơn. Không có cảnh
+		báo nào: app build được, chạy được, chỉ sai kết quả. Lý do đáng nhớ hơn cả hiện tượng: bên trong
+		<code>onClick</code> bạn đang ở đất Kotlin thường, hai dòng đó chạy lần lượt từ trên xuống như mọi code Kotlin
+		khác. Compose <em>không</em> sắp xếp lại thứ tự và không "hiểu ý" bạn; nó chỉ vào cuộc sau khi cả khối
+		<code>onClick</code> chạy xong, thấy state đã đổi rồi vẽ lại. Đây là chỗ hay gây nhầm với người mới học Compose,
+		vì phần mô tả giao diện phía trên trông như "khai báo" nên dễ tưởng mọi thứ trong file đều khai báo.
 	</p>
 	<p class="notice">
-		<strong>4. Không có <code>res/layout/</code> — mọi hướng dẫn sửa XML layout đều không áp dụng được.</strong> Đây là
-		chỗ tài liệu cũ dễ làm bạn đi lệch nhất, vì phần lớn hướng dẫn Android trên mạng viết cho thời View-based và vẫn đứng
-		rất cao trong kết quả tìm kiếm. Chúng bắt đầu bằng "mở <code>res/layout/activity_main.xml</code>", "kéo một
-		<code>TextView</code> vào layout", "gán <code>android:id</code> rồi gọi <code>findViewById</code>". Trong project của
-		khoá học này, <strong>thư mục <code>layout/</code> không tồn tại</strong> — đã kiểm bằng cách tìm mọi thư mục tên
-		<code>layout</code> trong toàn bộ project mẫu, không có thư mục nào ở bất kỳ chương nào trong 11 chương. Cây
-		<code>res/</code> chỉ gồm chín thư mục: <code>drawable</code>, sáu thư mục <code>mipmap-*</code>,
-		<code>values</code> và <code>xml</code>. Đừng tự tạo <code>res/layout/</code> để làm theo hướng dẫn: bạn sẽ có một
-		file XML không ai đọc, vì <code>setContent</code> không hề nhìn tới nó. Dấu hiệu nhận ra tài liệu thuộc thời kỳ nào,
-		trong một câu: thấy <code>setContentView(R.layout.activity_main)</code> là View-based; thấy
-		<code>setContent &#123; ... &#125;</code> là Compose. Bảng đối chiếu đầy đủ giữa hai thời kỳ ở mục 7.4.
+		<strong>4. Không có <code>res/layout/</code> — mọi hướng dẫn sửa XML layout đều không áp dụng được.</strong> Đây
+		là chỗ tài liệu cũ dễ làm bạn đi lệch nhất, vì phần lớn hướng dẫn Android trên mạng viết cho thời View-based và
+		vẫn đứng rất cao trong kết quả tìm kiếm. Chúng bắt đầu bằng "mở <code>res/layout/activity_main.xml</code>",
+		"kéo một <code>TextView</code> vào layout", "gán <code>android:id</code> rồi gọi
+		<code>findViewById</code>". Trong project của khoá học này, <strong>thư mục <code>layout/</code> không tồn
+		tại</strong> — đã kiểm bằng cách tìm mọi thư mục tên <code>layout</code> trong toàn bộ project mẫu, không có thư
+		mục nào ở bất kỳ chương nào trong 11 chương. Cây <code>res/</code> chỉ gồm chín thư mục:
+		<code>drawable</code>, sáu thư mục <code>mipmap-*</code>, <code>values</code> và <code>xml</code>. Đừng tự tạo
+		<code>res/layout/</code> để làm theo hướng dẫn: bạn sẽ có một file XML không ai đọc, vì
+		<code>setContent</code> không hề nhìn tới nó. Dấu hiệu nhận ra tài liệu thuộc thời kỳ nào, trong một câu: thấy
+		<code>setContentView(R.layout.activity_main)</code> là View-based; thấy <code>setContent &#123; ... &#125;</code>
+		là Compose. Bảng đối chiếu đầy đủ giữa hai thời kỳ ở mục 6.3.
 	</p>
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<ul>
 		<li>
-			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 11–22 (Activity là gì, ẩn dụ lối sống nhiều hoạt động,
-			giới thiệu app Kodeco Chat) · dòng 24–102 (mục "Exploring Activities": code bản starter, bảng giải thích 4 dòng cốt
-			lõi, plugin biên dịch Compose, ghi chú về vòng đời Activity và liên kết tài liệu chính thức) · dòng 104–169 (nội
-			dung mới của <code>MainActivity.kt</code>, ghi chú về cách import trong Android Studio, 5 điểm giải thích giao diện:
-			<code>Column</code>, hai biến state với <code>by remember</code>, <code>Text</code>, <code>OutlinedTextField</code>,
-			<code>Button</code>) · dòng 171–191 (mục "A Blast From the Past: Activities, Fragments &amp; Views": XML layout,
+			<strong>Giáo trình gốc:</strong> <code>content/book/ch03-android-fundamentals.md</code> — dòng 11–22 (Activity
+			là gì, ẩn dụ lối sống nhiều hoạt động, giới thiệu app Kodeco Chat) · dòng 24–102 (mục "Exploring Activities":
+			code bản starter, bảng giải thích 4 dòng cốt lõi, plugin biên dịch Compose, ghi chú về vòng đời Activity và
+			liên kết tài liệu chính thức) · dòng 104–169 (nội dung mới của <code>MainActivity.kt</code>, ghi chú về cách
+			import trong Android Studio, 5 điểm giải thích giao diện: <code>Column</code>, hai biến state với
+			<code>by remember</code>, <code>Text</code>, <code>OutlinedTextField</code>, <code>Button</code>) · dòng
+			171–191 (mục "A Blast From the Past: Activities, Fragments &amp; Views": XML layout,
 			<code>findViewById</code> và hai nhược điểm của nó, Fragment, View, Compose tích hợp với code cũ, mô hình
 			reactive). Ảnh minh hoạ trong giáo trình gốc: <code>img46.png</code> (giao diện app hoàn chỉnh),
-			<code>img47.png</code> (Project navigator trỏ tới <code>MainActivity.kt</code>), <code>img48.png</code> (app sau
-			khi bấm Send) — khoá học này diễn giải lại bằng chữ, không kèm ảnh. Đoạn code <code>findViewById</code> ở mục 7.1
-			lấy từ dòng 179–181.
+			<code>img47.png</code> (Project navigator trỏ tới <code>MainActivity.kt</code>), <code>img48.png</code> (app
+			sau khi bấm Send) — khoá học này diễn giải lại bằng chữ, không kèm ảnh. Đoạn code
+			<code>findViewById</code> ở mục 6.1 lấy từ dòng 179–181.
 		</li>
 		<li>
 			<strong>Code thật đã đối chiếu:</strong> <code>{KT_START}</code> — tổng 80 dòng: header license dòng 1–33 ·
 			<code>package</code> dòng 35 · <code>import</code> dòng 37–47 · <code>class MainActivity</code> dòng 49–64 ·
-			<code>fun Greeting</code> dòng 66–72 · <code>@Preview fun GreetingPreview</code> dòng 74–80; đoạn code ở mục 3
+			<code>fun Greeting</code> dòng 66–72 · <code>@Preview fun GreetingPreview</code> dòng 74–80; đoạn code ở mục 2
 			trích dòng 49–80 (đã lược 33 dòng header license). <code>{KT_FINAL}</code> — tổng 80 dòng: header license dòng
-			1–32 · <code>package</code> dòng 34 · <code>import</code> dòng 36–48 (đoạn ở mục 5.1) ·
-			<code>class MainActivity</code> dòng 50–78 (đoạn ở mục 5.2, nguyên văn kể cả dòng trống dư ở dòng 73); chi tiết
-			từng dòng: <code>val context = LocalContext.current</code> dòng 55 · hai state dòng 56–57 ·
+			1–32 · <code>package</code> dòng 34 · <code>import</code> dòng 36–48 · <code>class MainActivity</code> dòng
+			50–78 (đoạn ở mục 4, nguyên văn kể cả dòng trống dư ở dòng 73); chi tiết từng dòng:
+			<code>val context = LocalContext.current</code> dòng 55 · hai state dòng 56–57 ·
 			<code>Text(text = chatOutputText)</code> dòng 58 · <code>OutlinedTextField</code> dòng 60–66 với nhãn
 			<code>stringResource</code> ở dòng 65 · <code>Button</code> dòng 68–71 và chữ trong nút ở dòng 72.
-			<code>{THEME_KT}</code> — <code>@Composable</code> dòng 73, <code>fun KodecoChatTheme(</code> dòng 74, thân hàm tới
-			dòng 102 gồm khối <code>SideEffect</code> đổi màu thanh trạng thái dòng 91–95. <code>{BUILD_APP}</code> — khối
+			<code>aaf-materials/03-android-fundamentals/projects/final/app/build.gradle.kts</code> — khối
 			<code>buildFeatures &#123; compose = true &#125;</code> dòng 73–75 và
-			<code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code> dòng 76–78.
-			Cấu trúc <code>res/</code> ở mục 7.1 kiểm trực tiếp trong <code>{AAF}/final/app/src/main/res/</code> (9 thư mục
-			con, không có <code>layout/</code>).
+			<code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code> dòng 76–78. Cấu trúc
+			<code>res/</code> ở mục 6.1 kiểm trực tiếp trong <code>{AAF}/final/app/src/main/res/</code> (9 thư mục con,
+			không có <code>layout/</code>).
 		</li>
 		<li>
 			<strong>Kiểm chứng bằng lệnh tìm kiếm:</strong> tìm <code>@Preview</code> trong
-			<code>{AAF}/final/app/</code> → 0 kết quả (dùng cho mục 5) · tìm thư mục tên <code>layout</code> trong toàn bộ
-			<code>aaf-materials/</code> → 0 thư mục (mục 7.1 và mục Cạm bẫy số 4) · tìm <code>KodecoChatTheme</code> trong
+			<code>{AAF}/final/app/</code> → 0 kết quả (dùng cho mục 4) · tìm thư mục tên <code>layout</code> trong toàn bộ
+			<code>aaf-materials/</code> → 0 thư mục (mục 6.1 và mục Cạm bẫy số 4) · tìm <code>KodecoChatTheme</code> trong
 			<code>final/app/src/main/java/</code> → đúng 1 kết quả tại <code>Theme.kt</code> dòng 74, trong
-			<code>starter/app/src/main/java/</code> → 3 kết quả tại <code>MainActivity.kt</code> dòng 47, 53, 77 (mục 5).
+			<code>starter/app/src/main/java/</code> → 3 kết quả tại <code>MainActivity.kt</code> dòng 47, 53, 77 (mục 4).
 		</li>
 		<li>
-			<strong>Phần bổ sung ngoài giáo trình:</strong> ba vai trò của Activity dựng thành danh sách ở mục 2 và ghi chú
-			"mỗi Activity = một điểm vào" thay cho "mỗi màn hình = 1 Activity" · bảng bốn tình huống <code>onCreate()</code> có
-			chạy hay không ở mục 4 · bảng ba thứ bị mất khi thay toàn bộ file ở mục 5 và hệ quả mất <code>@Preview</code> ·
-			bảng đọc danh sách <code>import</code> ở mục 5.1 cùng bẫy thiếu <code>import getValue</code> · bảng tách ba thành
-			phần của <code>by remember &#123; mutableStateOf(...) &#125;</code> và cột "nếu bỏ đi thì sao" ở mục 6.2 · chuỗi
-			bốn bước của vòng lặp phản ứng ở mục 6.3 · giải thích <code>it</code> là toàn bộ chuỗi mới ở mục 6.4 · quy tắc
-			lambda cuối viết ngoài ngoặc ở mục 6.5 · ba thế hệ chiến lược nối XML (ButterKnife, Kotlin synthetics, View
-			Binding) và vòng đời riêng của Fragment ở mục 7.1–7.2 · đặt lại cho chính xác câu "Compose nhanh hơn XML" ở mục
-			7.3 · bảng đối chiếu hai thời kỳ ở mục 7.4 · toàn bộ bốn mục của phần Cạm bẫy &amp; tài liệu lỗi thời.
+			<strong>Phần bổ sung ngoài giáo trình:</strong> ba vai trò của Activity dựng thành danh sách ở mục 1 và ghi chú
+			"mỗi Activity = một điểm vào" thay cho "mỗi màn hình = 1 Activity" · bảng bốn tình huống <code>onCreate()</code>
+			có chạy hay không ở mục 3 · hệ quả mất <code>@Preview</code> và mất lời gọi theme khi thay toàn bộ file ở mục 4 ·
+			bảng tách ba thành phần của <code>by remember &#123; mutableStateOf(...) &#125;</code> và cột "nếu bỏ đi thì
+			sao" ở mục 5.2 · chuỗi bốn bước của vòng lặp phản ứng ở mục 5.3 · giải thích <code>it</code> là toàn bộ chuỗi
+			mới ở mục 5.4 · quy tắc lambda cuối viết ngoài ngoặc ở mục 5.5 · ba thế hệ chiến lược nối XML (ButterKnife,
+			Kotlin synthetics, View Binding) và vòng đời riêng của Fragment ở mục 6.1–6.2 · đặt lại cho chính xác câu
+			"Compose nhanh hơn XML" và bảng đối chiếu hai thời kỳ ở mục 6.3 · toàn bộ bốn mục của phần Cạm bẫy &amp; tài
+			liệu lỗi thời.
 		</li>
 	</ul>
 </section>
