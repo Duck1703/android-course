@@ -232,7 +232,7 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		file là Composable vì nó có gắn <code>@Composable</code>.
 	</p>
 	<p>
-		Chi tiết này quan trọng ngay bây giờ vì <strong>Chương 3.2, mục 11</strong> sẽ cho bạn gặp đúng lỗi biên dịch
+		Chi tiết này quan trọng ngay bây giờ vì <strong>Chương 3.2, mục 12</strong> sẽ cho bạn gặp đúng lỗi biên dịch
 		phát sinh từ nó — một lỗi có thật khi bạn cố đọc chuỗi từ resource ở một chỗ trông như "đang ở trong Compose"
 		nhưng thật ra không phải. Nắm được "ranh giới nằm ở dấu ngoặc nào" thì lúc đó bạn sẽ đọc thông điệp lỗi ra ngay.
 	</p>
@@ -241,7 +241,7 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		có khối <code>buildFeatures &#123; compose = true &#125;</code> (dòng 73–75) — nơi plugin biên dịch Compose được
 		bật lên. <code>@Composable</code> không phải nhãn trang trí: nó là một plugin của trình biên dịch Kotlin, biến
 		các hàm được đánh dấu thành phần tử UI. Xoá khối này thì mọi hàm <code>@Composable</code> trong project không
-		build được nữa. Chi tiết về khai báo này đã đổi thế nào từ Kotlin 2.0 nằm ở <strong>Chương 3.4, mục 29</strong>.
+		build được nữa. Chi tiết về khai báo này đã đổi thế nào từ Kotlin 2.0 nằm ở <strong>Chương 3.4, mục 26.1</strong>.
 	</p>
 
 	<h2 id="lifecycle">3. <code>onCreate()</code> chạy khi nào — và khi nào <em>không</em></h2>
@@ -285,7 +285,7 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		Bước tiếp theo là <strong>xoá toàn bộ</strong> nội dung <code>MainActivity.kt</code> và thay bằng phiên bản mới.
 		Nghe đơn giản, nhưng việc "thay toàn bộ" làm mất ba thứ mà bản starter đang có, và cả ba đều để lại dấu vết bạn
 		sẽ gặp lại: <code>KodecoChatTheme &#123; &#125;</code> bọc ngoài giao diện (app mất bộ màu và dark mode của
-		project — <strong>Chương 3.4, mục 27</strong> sẽ mổ đúng chỗ này), <code>Surface</code> phủ nền theo màu theme,
+		project — <strong>Chương 3.4, mục 24</strong> sẽ mổ đúng chỗ này), <code>Surface</code> phủ nền theo màu theme,
 		và hàm <code>Greeting()</code> với <code>@Preview fun GreetingPreview()</code>.
 	</p>
 	<p>
@@ -301,7 +301,7 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		<code>final/app/src/main/java/</code> chỉ ra <em>đúng một</em> kết quả, chính là dòng khai báo hàm. Trong bản
 		<code>starter</code> nó được gọi ở hai chỗ: <code>MainActivity.kt</code> dòng 53 (bọc <code>Surface</code>) và
 		dòng 77 (bọc nội dung của <code>GreetingPreview</code>). Thao tác "thay toàn bộ nội dung file" đã âm thầm cắt
-		luôn hai lời gọi duy nhất tới theme Compose của app. <strong>Chương 3.4, mục 27</strong> giải thích vì sao điều
+		luôn hai lời gọi duy nhất tới theme Compose của app. <strong>Chương 3.4, mục 24</strong> giải thích vì sao điều
 		này quan trọng hơn vẻ bề ngoài, và cách nối lại.
 	</p>
 	<p>
@@ -361,8 +361,8 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 				<td><code>by</code></td>
 				<td>Cú pháp <em>property delegate</em> của Kotlin: cho phép viết <code>chatInputText</code> thay vì
 					<code>chatInputText.value</code> ở mọi nơi.</td>
-				<td>Không sai, chỉ là phải viết <code>.value</code> khi đọc và khi ghi — và phải import
-					<code>getValue</code>/<code>setValue</code> — bẫy thiếu import này nằm ngay dưới đây).</td>
+				<td>Không sai, chỉ là phải viết <code>.value</code> khi đọc và khi ghi — bù lại phải import
+					<code>getValue</code>/<code>setValue</code>; bẫy thiếu import nằm ngay dưới đây.</td>
 			</tr>
 		</tbody>
 	</table>
@@ -378,6 +378,18 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		<em>cục bộ trong UI</em>. Điểm mạnh: gọn, đọc một chỗ là hiểu hết. Điểm yếu: state gắn chết với giao diện, và
 		mất sạch khi Activity bị tạo lại — chính là hiện tượng xoay máy ở mục 3.
 	</p>
+	<p class="hint">
+		<strong>Bẫy rất hay gặp với cú pháp <code>by</code>:</strong> nếu bạn viết
+		<code>var x by remember &#123; ... &#125;</code> mà thiếu
+		<code>import androidx.compose.runtime.getValue</code>, Android Studio báo lỗi kiểu "type mismatch" hoặc "delegate
+		must have getValue method" — nghe như lỗi kiểu dữ liệu, thật ra chỉ là thiếu import. Cách xử lý import nói chung:
+		khi con trỏ đứng ở chỗ bị gạch đỏ, macOS bấm <em>Option-Return</em>, Windows bấm <em>Alt-Enter</em>. Hoặc bật một
+		lần cho khỏi phải nghĩ nữa: <em>Android Studio ▸ Settings ▸ Editor ▸ General ▸ Auto Import</em>, trong mục
+		<em>Kotlin</em> tick <em>Add unambiguous imports on the fly</em> rồi bấm <em>Apply</em> — từ đó IDE tự thêm những
+		import không gây nhập nhằng. Lý do phải nói tới việc này: Android Studio nhiều khi không nhận ra một object mới
+		trong class của bạn cho tới khi bạn import định nghĩa của nó, và cách nó báo cho bạn biết là bôi đỏ object đó.
+	</p>
+
 	<h3 id="text-output">5.3. <code>Text</code> hiển thị tin nhắn — vòng lặp phản ứng</h3>
 	<p>
 		<code>Text(text = chatOutputText)</code> chỉ có một dòng, nhưng đây là chỗ thể hiện rõ nhất mô hình
@@ -445,7 +457,7 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		hoá ra truyền được cả một mảnh giao diện. Trong code thật, nhãn đó là
 		<code>Text(text = stringResource(id = R.string.chat_entry_label))</code> — <code>{KT_FINAL}</code> dòng 65,
 		nghĩa là ngay cả nhãn của ô nhập cũng đọc chữ từ tài nguyên chứ không viết cứng. Cách <code>stringResource</code>
-		hoạt động là nội dung <strong>Chương 3.2, mục 12</strong>.
+		hoạt động là nội dung <strong>Chương 3.2, mục 11</strong>.
 	</p>
 	<h3 id="button">5.5. <code>Button</code> và thứ tự hai dòng trong <code>onClick</code></h3>
 	<p>
@@ -522,7 +534,7 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		data_extraction_rules.xml). Vì vậy mọi bài hướng dẫn cũ bắt đầu bằng "mở <code>res/layout/activity_main.xml</code>
 		rồi thêm một <code>&lt;TextView&gt;</code>" đều không áp dụng được vào project này — không phải vì hướng dẫn sai,
 		mà vì nó nói về một kiến trúc giao diện khác. Điều này được ghi lại ở <a href="#cam-bay">Cạm bẫy &amp; tài liệu
-		lỗi thời</a>, mục 4, và danh sách đầy đủ các loại resource là nội dung <strong>Chương 3.3, mục 19</strong>.
+		lỗi thời</a>, mục 4, và danh sách đầy đủ các loại resource là nội dung <strong>Chương 3.3, mục 16</strong>.
 	</p>
 	<h3 id="fragment">6.2. Fragment — ý tưởng tốt, cái giá không nhỏ</h3>
 	<p>

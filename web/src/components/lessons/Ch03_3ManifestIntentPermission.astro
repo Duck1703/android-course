@@ -8,8 +8,8 @@
 //   • Rút từ ~9.100 từ (~46 phút) về ~5.200 từ (~29 phút). Số mục 19–24, liên tục với
 //     3.1 (1–7), 3.2 (8–15), 3.4 (25–30).
 //   • Giữ trọng tâm: resource ngoài chuỗi (19), manifest + namespace (20), <activity> +
-//     <intent-filter> + exported (21), Intent explicit/implicit (22), permission hai thẻ +
-//     hai bậc (23), Service fg/bg + WorkManager (24). Mọi khái niệm được quiz Ch03_3Quiz
+//     <intent-filter> + exported (18), Intent explicit/implicit (19), permission hai thẻ +
+//     hai bậc (20), Service fg/bg + WorkManager (21). Mọi khái niệm được quiz Ch03_3Quiz
 //     kiểm đều còn nguyên: mipmap 6 thư mục, res/ 9 thư mục không layout, vai trò manifest,
 //     thư mục ảo manifests, package → namespace (0/19), xoá category LAUNCHER, exported="true",
 //     Intent lời nhắn, uses-permission, runtime permission, WorkManager.
@@ -127,7 +127,7 @@ const serviceTagCode = `<service
 		</p>
 	</div>
 
-	<h2 id="resources">19. Resource — ngoài chuỗi còn gì</h2>
+	<h2 id="resources">16. Resource — ngoài chuỗi còn gì</h2>
 	<p>
 		Ngoài string, Chương 3 còn dùng hai loại resource nữa: <strong>style resource</strong> (định nghĩa hình thức:
 		màu, cỡ chữ, viền, được gom thành theme) và <strong>drawable resource</strong> (mọi thứ vẽ ra được: icon, ảnh,
@@ -170,7 +170,7 @@ const serviceTagCode = `<service
 		Compose (Chương 3.1, mục 6.1).
 	</p>
 
-	<h2 id="manifest">20. <code>AndroidManifest.xml</code> — tờ khai của app với hệ điều hành</h2>
+	<h2 id="manifest">17. <code>AndroidManifest.xml</code> — tờ khai của app với hệ điều hành</h2>
 	<p>
 		Mọi app Android đều có một <em>app manifest</em>: nơi <strong>nói cho thiết bị biết mọi thứ nó cần biết về app của
 		bạn</strong>. File phải tên đúng <code>AndroidManifest.xml</code>, phải nằm đúng vị trí; thiếu nó, Android
@@ -178,9 +178,9 @@ const serviceTagCode = `<service
 		duy hữu ích: manifest là <strong>tờ khai hải quan</strong> của app. Code là hàng hoá; manifest là bản khai "trong
 		này có những gì, tôi cần những quyền gì, cửa nào mở được vào" — và hệ điều hành đọc tờ khai <em>trước</em> khi
 		chạy một dòng code nào của bạn. Đây là lý do một lớp lỗi rất khó chịu tồn tại: code đúng tuyệt đối mà app vẫn
-		không mở được hoặc không xin được quyền, vì tờ khai sai — mục 21 và mục 23 mỗi mục một ví dụ.
+		không mở được hoặc không xin được quyền, vì tờ khai sai — mục 18 và mục 20 mỗi mục một ví dụ.
 	</p>
-	<h3 id="manifest-vi-tri">20.1. File nằm ở đâu — và cái bẫy của Project navigator</h3>
+	<h3 id="manifest-vi-tri">17.1. File nằm ở đâu — và cái bẫy của Project navigator</h3>
 	<p>
 		Đường đi trong Android Studio: <em>app ▸ manifests ▸ AndroidManifest.xml</em>. Nhưng thư mục <em>manifests</em>
 		trong sidebar là <strong>thư mục ảo</strong> do chế độ Android project view sinh ra — không tương ứng với thư mục
@@ -191,7 +191,7 @@ const serviceTagCode = `<service
 		<em>tạm thời đừng lo về các warning xuất hiện trong manifest</em> — ở giai đoạn Chương 3, chúng không ảnh hưởng
 		gì tới việc app chạy được.
 	</p>
-	<h3 id="manifest-the-chinh">20.2. Đọc toàn bộ manifest của Chương 3</h3>
+	<h3 id="manifest-the-chinh">17.2. Đọc toàn bộ manifest của Chương 3</h3>
 	<p>
 		Dưới đây là nguyên văn phần nội dung thật của manifest — <strong>dòng 35 tới 61</strong>, lược header license
 		chiếm <strong>dòng 1–33</strong>. Ghi rõ số dòng là có lý do: bản <code>starter</code> có license dài hơn đúng
@@ -220,7 +220,7 @@ const serviceTagCode = `<service
 			</tr>
 			<tr>
 				<td><code>&lt;activity&gt;</code></td>
-				<td>Khai báo một màn hình của app cho hệ thống. Xem <a href="#activity-tag">mục 21</a>.</td>
+				<td>Khai báo một màn hình của app cho hệ thống. Xem <a href="#activity-tag">mục 18</a>.</td>
 				<td>Dòng 48–52, <code>&lt;intent-filter&gt;</code> ở 53–57 — đúng 1 thẻ, cho
 					<code>.MainActivity</code>.</td>
 			</tr>
@@ -242,10 +242,10 @@ const serviceTagCode = `<service
 		báo, tôi biết thuộc tính này cần API 31" — dùng namespace <code>tools</code> và bị loại bỏ khi đóng gói app
 		thật.
 	</p>
-	<h3 id="package-namespace">20.3. Tài liệu cũ khai <code>package</code> trong manifest — hôm nay khai ở đâu</h3>
+	<h3 id="package-namespace">17.3. Tài liệu cũ khai <code>package</code> trong manifest — hôm nay khai ở đâu</h3>
 	<p>
 		Tài liệu Android viết trước 2022 gần như chắc chắn dạy: thẻ <code>&lt;manifest&gt;</code> phải khai
-		<code>package="com.kodeco.chat"</code>. Nhưng manifest ở mục 20.2 không có thuộc tính đó — và không phải chuyện
+		<code>package="com.kodeco.chat"</code>. Nhưng manifest ở mục 17.2 không có thuộc tính đó — và không phải chuyện
 		riêng của một file: tìm chuỗi <code>package="</code> trong <strong>toàn bộ 19 file
 		<code>AndroidManifest.xml</code></strong> của mọi project mẫu trong khoá học cho kết quả <strong>0</strong>.
 		Lý do: thông tin đó đã <strong>chuyển sang Gradle</strong> từ Android Gradle Plugin 7.3, dưới tên mới
@@ -271,7 +271,7 @@ const serviceTagCode = `<service
 		lỗi build thẳng vào mặt.
 	</p>
 
-	<h2 id="activity-tag">21. Thẻ <code>&lt;activity&gt;</code> và <code>&lt;intent-filter&gt;</code> — vì sao app mở được</h2>
+	<h2 id="activity-tag">18. Thẻ <code>&lt;activity&gt;</code> và <code>&lt;intent-filter&gt;</code> — vì sao app mở được</h2>
 	<p>
 		Quy tắc nền: <strong>mọi Activity trong app đều nên có một thẻ tương ứng trong manifest</strong> — điều này đảm
 		bảo app chỉ chạy Activity <em>của chính nó</em>, không chạy Activity từ nơi khác. Nói cách khác, đây là danh sách
@@ -289,7 +289,7 @@ const serviceTagCode = `<service
 		</tbody>
 	</table>
 	<p>
-		Chi tiết bên trong hai thẻ này chưa cần lo — <a href="#intent">mục 22</a> giải thích Intent là gì, lúc đó cặp
+		Chi tiết bên trong hai thẻ này chưa cần lo — <a href="#intent">mục 19</a> giải thích Intent là gì, lúc đó cặp
 		<code>action</code> + <code>category</code> mới thật sự có nghĩa. Điều cần nhớ gói trong một câu:
 		<code>&lt;intent-filter&gt;</code> đặt Activity chính làm Activity khởi động của app.
 	</p>
@@ -313,10 +313,10 @@ const serviceTagCode = `<service
 		application là tên app (dưới icon, trong Settings), nhãn cấp activity là tên <em>màn hình đó</em> — ở đây cả hai
 		trỏ về cùng một chuỗi nên trông giống nhau. Cuối mục, một lời khuyên thực dụng: khi bạn tạo project hoặc dùng
 		wizard tạo Activity mới, Android Studio đã làm sẵn phần việc khó là cập nhật manifest cho bạn — hãy để nó làm để
-		giảm nguy cơ sai sót, và mục 23 sẽ cho bạn thấy một cái sai chỉ lệch <em>một chữ</em> mà đủ làm app mất quyền.
+		giảm nguy cơ sai sót, và mục 20 sẽ cho bạn thấy một cái sai chỉ lệch <em>một chữ</em> mà đủ làm app mất quyền.
 	</p>
 
-	<h2 id="intent">22. Intent — "việc sẽ làm" dưới dạng một object</h2>
+	<h2 id="intent">19. Intent — "việc sẽ làm" dưới dạng một object</h2>
 	<p>
 		Định nghĩa: một <code>Intent</code> là object dùng để <strong>chỉ ra công việc hoặc hành động mà app sẽ thực hiện
 		trong tương lai</strong>. Hiện tại app Kodeco Chat chỉ có 1 Activity; nhưng nếu thêm một Activity nữa, bạn sẽ
@@ -330,7 +330,7 @@ const serviceTagCode = `<service
 		một Intent, bộ lọc của <code>MainActivity</code> khớp, Android mở màn hình đó lên — toàn bộ chuyện "mở app" chỉ
 		là như vậy.
 	</p>
-	<h3 id="intent-mo-hinh">22.1. Mô hình tư duy: Intent là lời nhắn, không phải cuộc gọi</h3>
+	<h3 id="intent-mo-hinh">19.1. Mô hình tư duy: Intent là lời nhắn, không phải cuộc gọi</h3>
 	<p>
 		Chỗ người mới hay hiểu sai, nên nói rõ: bạn <em>không</em> gọi trực tiếp hàm của màn hình khác. Bạn tạo một
 		object mô tả ý định, rồi giao nó cho hệ điều hành — hệ điều hành mới là bên quyết định ai nhận và khi nào chạy.
@@ -377,7 +377,7 @@ const serviceTagCode = `<service
 		thời</a>.
 	</p>
 
-	<h2 id="permission">23. Permission — và một cái bẫy tên thẻ</h2>
+	<h2 id="permission">20. Permission — và một cái bẫy tên thẻ</h2>
 	<p>
 		Càng đi xa, app càng cần thêm quyền: truy cập mạng, đọc file, dùng camera. Và câu trả lời cho "khai quyền ở đâu"
 		bạn đoán được rồi: <strong>quyền cũng được liệt kê trong manifest</strong> — tờ khai không chỉ nói "trong này có
@@ -418,7 +418,7 @@ const serviceTagCode = `<service
 		<code>INTERNET</code>, và luôn có sẵn từ bản starter. Nghĩa là trong cả khoá học này bạn không phải tự tay gõ thẻ
 		permission nào — nhưng biết cơ chế vẫn cần, vì app thật đầu tiên bạn tự làm gần như chắc chắn sẽ cần.
 	</p>
-	<h3 id="permission-runtime">23.1. Permission được cấp lúc nào</h3>
+	<h3 id="permission-runtime">20.1. Permission được cấp lúc nào</h3>
 	<p>
 		Ví dụ chuẩn nhất để nắm cơ chế: nếu app muốn theo dõi vị trí người dùng, app phải <em>vừa</em> khai quyền vị trí
 		trong manifest, <em>vừa</em> xin phép người dùng đúng lúc thích hợp. Chỗ "vừa... vừa..." là điểm dễ bị bỏ qua
@@ -450,11 +450,11 @@ const serviceTagCode = `<service
 	</p>
 	<Code code={runtimePermissionCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Đoạn code trên là cầu nối giữa hai nửa của mục 23: nó tồn tại được vì khai trong manifest và xin lúc chạy là
+		Đoạn code trên là cầu nối giữa hai nửa của mục 20: nó tồn tại được vì khai trong manifest và xin lúc chạy là
 		<em>hai việc</em>, không phải một.
 	</p>
 
-	<h2 id="service">24. Service — chạy việc khi người dùng không nhìn</h2>
+	<h2 id="service">21. Service — chạy việc khi người dùng không nhìn</h2>
 	<p>
 		Thành phần cuối cùng được khai trong manifest ở chương này là <strong>Service</strong>, khai bằng thẻ
 		<code>&lt;service&gt;</code>, dùng cho những việc như tiến trình chạy nền hoặc API liên lạc. Ví dụ sát với app
@@ -550,7 +550,7 @@ const serviceTagCode = `<service
 		khác nhau — <code>namespace</code> quyết định lớp <code>R</code> sinh ra ở package nào,
 		<code>applicationId</code> là danh tính app trên thiết bị và Play Store. Trong project này hai giá trị tình cờ
 		bằng nhau nên trông như một, dễ khiến bạn tưởng chúng luôn phải giống nhau. Chi tiết ở
-		<a href="#package-namespace">mục 20.3</a>.
+		<a href="#package-namespace">mục 17.3</a>.
 	</p>
 	<p class="notice">
 		<strong>2. <code>&lt;permission&gt;</code> và <code>&lt;uses-permission&gt;</code> — sai một chữ là app không xin
@@ -571,7 +571,7 @@ const serviceTagCode = `<service
 		đang chạy</em>, và người dùng có toàn quyền bấm từ chối. Làm theo tài liệu cũ trên máy hiện đại thì app khai đủ
 		quyền mà vẫn bị hệ thống từ chối. Nhớ theo công thức: khai manifest là <em>điều kiện cần</em>, hộp thoại lúc
 		chạy là <em>điều kiện đủ</em>. Ngược lại, quyền normal (như <code>INTERNET</code>) chỉ cần khai manifest là xong
-		— nên đừng đi tìm chỗ xin phép INTERNET, không có. Chi tiết ở <a href="#permission-runtime">mục 23.1</a>.
+		— nên đừng đi tìm chỗ xin phép INTERNET, không có. Chi tiết ở <a href="#permission-runtime">mục 17.1</a>.
 	</p>
 	<p class="notice">
 		<strong>4. Intent là kiến thức nền, nhưng các chương sau chuyển màn hình bằng navigation của Compose, không bằng
@@ -582,7 +582,7 @@ const serviceTagCode = `<service
 		networking import <code>NavHost</code> ở dòng 51, gọi <code>rememberNavController()</code> ở dòng 78, dựng
 		<code>NavHost(...)</code> ở dòng 84. Và trong cả 11 chương, không chương nào có Activity thứ hai. Đây là cách làm
 		phổ biến nhất của Android hiện đại (kiến trúc "single-activity"), nên việc Intent không xuất hiện lại không phải
-		thiếu sót. Chi tiết ở <a href="#intent">mục 22</a>.
+		thiếu sót. Chi tiết ở <a href="#intent">mục 19</a>.
 	</p>
 	<p class="notice">
 		<strong>5. Project navigator hiển thị manifest ở chỗ không phải đường dẫn thật.</strong> Trong Android Studio bạn
@@ -591,7 +591,7 @@ const serviceTagCode = `<service
 		<code>main</code> bên trong <code>app/src</code>. Cùng cơ chế đó tạo ra "kotlin+java" (thật ra là
 		<code>app/src/main/java/</code>) và gộp mọi thư mục <code>values-*</code> thành một nhóm. Người mới rất hay
 		hoang mang khi mở File Explorer đối chiếu và không tìm được thư mục nào khớp. Cách chữa: đổi dropdown góc
-		trên-trái cây project sang chế độ <em>Project</em>. Chi tiết ở <a href="#manifest-vi-tri">mục 20.1</a>.
+		trên-trái cây project sang chế độ <em>Project</em>. Chi tiết ở <a href="#manifest-vi-tri">mục 17.1</a>.
 	</p>
 	<p class="notice">
 		<strong>6. Đoạn code permission trong chương này không nằm trong project của Chương 3 — đừng đi tìm nó ở
@@ -616,13 +616,13 @@ const serviceTagCode = `<service
 			<em>manifests</em> là thư mục ảo, và lời dặn tạm bỏ qua các warning trong file) · dòng 340–344 (ba thẻ chính
 			<code>&lt;manifest&gt;</code> / <code>&lt;application&gt;</code> / <code>&lt;activity&gt;</code> cùng vai trò
 			từng thẻ — trong đó câu "phải khai package trong thẻ <code>&lt;manifest&gt;</code>" được khoá học này đính
-			chính ở mục 20.3) · dòng 346–356 (mục "Activities": mọi Activity nên có thẻ tương ứng trong manifest,
+			chính ở mục 17.3) · dòng 346–356 (mục "Activities": mọi Activity nên có thẻ tương ứng trong manifest,
 			<code>.MainActivity</code>, <code>&lt;intent-filter&gt;</code> với cặp <code>&lt;action&gt;</code> /
 			<code>&lt;category&gt;</code>, và lời khuyên để Android Studio tự cập nhật manifest thay vì sửa tay) · dòng
 			358–362 (mục "Intents": định nghĩa Intent, ba loại việc Intent làm được, và việc hệ thống khởi động app bằng
 			một Intent qua bộ lọc trong manifest) · dòng 364–366 (mục "Permissions": quyền được liệt kê trong manifest,
 			ví dụ quyền vị trí phải vừa khai vừa xin phép người dùng — riêng câu mô tả tên thẻ ở dòng 366 dùng
-			<code>&lt;permission&gt;</code>, khoá học này đính chính thành <code>&lt;uses-permission&gt;</code> ở mục 23
+			<code>&lt;permission&gt;</code>, khoá học này đính chính thành <code>&lt;uses-permission&gt;</code> ở mục 20
 			và ở cảnh báo số 2) · dòng 368–374 (mục "Services": thẻ <code>&lt;service&gt;</code>, ví dụ tải tin nhắn ở
 			nền của app chat, định nghĩa foreground service và background service). Ảnh minh hoạ trong giáo trình gốc:
 			<code>img55.png</code> (Project navigator trỏ tới <code>AndroidManifest.xml</code>) — khoá học này diễn giải
@@ -645,19 +645,19 @@ const serviceTagCode = `<service
 			<code>android &#123;</code> mở ở dòng 40, <code>namespace</code> dòng 41, <code>compileSdk</code> dòng 42;
 			khối <code>defaultConfig &#123;</code> mở ở dòng 44 với <code>applicationId</code> dòng 45,
 			<code>minSdk</code> dòng 46, <code>targetSdk</code> dòng 47, <code>versionCode</code> dòng 48,
-			<code>versionName</code> dòng 49. Chỗ dựa cho mục 20.3: <code>namespace</code> nằm trong file build,
+			<code>versionName</code> dòng 49. Chỗ dựa cho mục 17.3: <code>namespace</code> nằm trong file build,
 			<em>không</em> nằm trong manifest.
 		</li>
 		<li>
 			<strong>Kiểm chứng bằng cách tìm chuỗi trên toàn bộ project mẫu</strong> (19 manifest trong
-			<code>aaf-materials/**/projects/</code>): tìm <code>package="</code> → <strong>0 kết quả</strong> (mục 20.3) ·
-			tìm <code>&lt;service</code> → <strong>0 kết quả</strong>, nên mục 24 dạy Service bằng ví dụ tự dựng · tìm
+			<code>aaf-materials/**/projects/</code>): tìm <code>package="</code> → <strong>0 kết quả</strong> (mục 17.3) ·
+			tìm <code>&lt;service</code> → <strong>0 kết quả</strong>, nên mục 21 dạy Service bằng ví dụ tự dựng · tìm
 			<code>uses-permission</code> → <strong>8 file</strong>, đúng là <code>starter</code> và
 			<code>final</code> của 4 chương 08, 09, 10, 11, và cả 8 lần đều là quyền <code>INTERNET</code>; ví dụ cụ thể ở
 			<code>{NET_MANIFEST}</code> dòng 5.
 		</li>
 		<li>
-			<strong>Hai chỗ trong project mẫu được dẫn ở mục 23 và mục 22:</strong>
+			<strong>Hai chỗ trong project mẫu được dẫn ở mục 20 và mục 19:</strong>
 			<code>aaf-materials/07-advanced-architecture/projects/final/app/src/main/java/com/kodeco/chat/MainActivity.kt</code>
 			— <code>import</code> <code>DittoSyncPermissions</code> ở dòng 54, hàm <code>checkPermissions()</code> được gọi
 			ở dòng 80 và thân hàm ở dòng 84–89 (runtime permission thật — quyền phải xin lúc chạy chứ không chỉ khai trong
@@ -683,11 +683,11 @@ const serviceTagCode = `<service
 		<li>
 			<strong>Phần bổ sung ngoài giáo trình</strong> (do khoá học tự dựng để giải thích cho người mới): mô hình tư duy
 			"manifest là tờ khai với hệ điều hành" · bảng 6 loại resource đối chiếu với project thật ở mục 19 · bảng phân
-			biệt <code>&lt;permission&gt;</code> với <code>&lt;uses-permission&gt;</code> ở mục 23 cùng lý do vì sao gõ
+			biệt <code>&lt;permission&gt;</code> với <code>&lt;uses-permission&gt;</code> ở mục 20 cùng lý do vì sao gõ
 			sai thẻ thì app vẫn build được mà quyền không có hiệu lực · giải thích hai bậc quyền và bảng ba loại quyền ·
-			mục 20.1 về thư mục ảo <em>manifests</em> · giải thích <code>namespace</code> vs
-			<code>applicationId</code> kèm ví dụ app free/pro ở mục 20.3 · bảng explicit so với implicit Intent ở mục
-			22.1 · ghi chú WorkManager cho việc chạy nền ở mục 24.
+			mục 17.1 về thư mục ảo <em>manifests</em> · giải thích <code>namespace</code> vs
+			<code>applicationId</code> kèm ví dụ app free/pro ở mục 17.3 · bảng explicit so với implicit Intent ở mục
+			19.1 · ghi chú WorkManager cho việc chạy nền ở mục 21.
 		</li>
 	</ul>
 </section>

@@ -6,15 +6,15 @@
 //
 // Lần sửa 2026-09 (CONTENT BATCH 03 — chuẩn hoá theo docs/COURSE_CONTENT_STANDARD.md):
 //   • Rút từ ~8.800 từ (~44 phút) về ~4.000 từ (~24 phút). Giữ nguyên trọng tâm: lần theo
-//     dấu @style/Theme.KodecoChat (mục 25), hai hệ theme song song (mục 26), hàm theme
-//     không ai gọi + cách nối lại (mục 27), chuỗi 7 việc khi bấm Send (mục 28), đọc code
-//     phê phán + version drift (mục 29–30).
+//     dấu @style/Theme.KodecoChat (mục 25), hai hệ theme song song (mục 23), hàm theme
+//     không ai gọi + cách nối lại (mục 24), chuỗi 7 việc khi bấm Send (mục 25), đọc code
+//     phê phán + version drift (mục 26–27).
 //   • Cắt sâu: mẹo IDE "bia ngắm" (giữ 1 câu trong hint), bảng 8 dòng cạm bẫy rút thành
 //     bảng 5 dòng đúng phạm vi chương 3.4 (các dòng thuộc 3.1–3.3 đã nằm ở cạm bẫy của
 //     từng chương nhỏ đó), bảng phiên bản 8 dòng (giữ), bảng 11 điểm tổng kết cả chương
 //     (giữ), đoạn "5 gạch đầu dòng kinh điển" (giữ ngắn), phần "khoảng trống theme qua
 //     Chương 4/5" (giữ nhưng ngắn).
-//   • Số mục 25–30, liên tục với 3.1 (1–7), 3.2 (8–15), 3.3 (19–24).
+//   • Số mục 22–27, liên tục với 3.1 (1–7), 3.2 (8–15), 3.3 (16–21).
 // Số dòng aaf-materials đã kiểm lại bằng lệnh thật (2026-09-05):
 //   final/res/values/themes.xml = 37 dòng (wc, không newline cuối → 37): <resources> 35,
 //     style duy nhất dòng 37 (file hiện có dòng trống 36 — đã đối chiếu nguyên văn).
@@ -113,7 +113,7 @@ const gradleRootCode = `plugins {
 	<div class="callout">
 		<strong>Chương 3.3 để lại gì cho chương này</strong>
 		<p>
-			Ở Chương 3.3, mục 20.2 bạn đã đọc hết <code>AndroidManifest.xml</code> của app và thấy nó gần như không chứa
+			Ở Chương 3.3, mục 17.2 bạn đã đọc hết <code>AndroidManifest.xml</code> của app và thấy nó gần như không chứa
 			giá trị thật nào — chỉ chứa <em>đường dẫn tới</em> resource: <code>@string/app_name</code> cho tên app,
 			<code>@mipmap/ic_launcher</code> cho icon, và một thuộc tính còn bỏ ngỏ chưa lần theo:
 			<code>android:theme="@style/Theme.KodecoChat"</code>. Nó xuất hiện <strong>hai lần</strong> trong file — một
@@ -128,10 +128,11 @@ const gradleRootCode = `plugins {
 		</p>
 	</div>
 
-	<h2 id="theme">25. Theme — lần theo dấu @style/Theme.KodecoChat</h2>
+	<h2 id="theme">22. Theme — lần theo dấu @style/Theme.KodecoChat</h2>
 	<p>
-		Điểm khởi đầu là thuộc tính bạn đã thấy trong thẻ <code>&lt;application&gt;</code> ở Chương 3.3, mục 20.2:
+		Điểm khởi đầu là thuộc tính bạn đã thấy trong thẻ <code>&lt;application&gt;</code> ở Chương 3.3, mục 17.2:
 	</p>
+	<Code code={`android:theme="@style/Theme.KodecoChat"`} lang="xml" theme="github-dark" />
 	<p>
 		Cú pháp <code>@style/</code> ở đầu giá trị là dấu hiệu quen thuộc: giống <code>@string/</code> ở Chương 3.2, mục
 		10, nó nói với hệ thống build "đừng hiểu đây là chữ, hãy đi tìm một resource loại <em>style</em> tên là
@@ -174,7 +175,7 @@ const gradleRootCode = `plugins {
 		Hai thanh chồng nhau thì giao diện sẽ trông rất lạ.
 	</p>
 	<p class="notice">
-		<strong>Vì sao thuộc tính này xuất hiện hai lần trong manifest?</strong> Ở Chương 3.3, mục 20.2 bạn thấy
+		<strong>Vì sao thuộc tính này xuất hiện hai lần trong manifest?</strong> Ở Chương 3.3, mục 17.2 bạn thấy
 		<code>android:theme</code> vừa nằm trên <code>&lt;application&gt;</code> (dòng 46) vừa nằm trên
 		<code>&lt;activity&gt;</code> (dòng 52), và cùng trỏ tới đúng một style. Quy tắc là: theme khai ở
 		<code>&lt;application&gt;</code> là <em>mặc định cho mọi Activity</em>, còn theme khai ở từng
@@ -183,7 +184,7 @@ const gradleRootCode = `plugins {
 		một màn hình splash nền tối trong khi cả app nền sáng.
 	</p>
 
-	<h2 id="hai-he-theme">26. Hai hệ thống theme song song — XML và Compose</h2>
+	<h2 id="hai-he-theme">23. Hai hệ thống theme song song — XML và Compose</h2>
 	<p>
 		Nếu chỉ dừng ở <code>themes.xml</code> thì bức tranh còn thiếu một nửa. Mở thư mục <code>ui/theme/</code> trong
 		project — nó nằm ngay cạnh <code>MainActivity.kt</code>, trong cùng package <code>com.kodeco.chat</code> — bạn
@@ -202,7 +203,7 @@ const gradleRootCode = `plugins {
 			<tr><td>Ai áp dụng nó</td><td>Hệ điều hành, qua <code>android:theme</code> trong manifest — <em>trước khi</em> code Kotlin của bạn chạy</td><td>Chính code của bạn, bằng cách bọc giao diện trong <code>KodecoChatTheme &#123; ... &#125;</code></td></tr>
 			<tr><td>Quyết định điều gì</td><td>Nền cửa sổ, màu thanh trạng thái, có action bar hay không, hình dáng cửa sổ lúc app vừa mở</td><td>Màu sắc, kiểu chữ của <em>mọi</em> thành phần Material 3 trong Compose — <code>Button</code>, <code>Text</code>, <code>OutlinedTextField</code>…</td></tr>
 			<tr><td>Tồn tại từ bao giờ</td><td>Có từ Android những bản đầu, dùng cho cả app XML lẫn app Compose</td><td>Chỉ có nghĩa trong Compose; là bản làm lại khái niệm theme cho thế giới hàm Composable</td></tr>
-			<tr><td>Ở Chương 3</td><td><strong>Có hiệu lực</strong> — manifest dòng 46 và 52 đều trỏ tới nó</td><td><strong>Không được gọi ở đâu cả</strong> — chi tiết ở mục 27 ngay dưới</td></tr>
+			<tr><td>Ở Chương 3</td><td><strong>Có hiệu lực</strong> — manifest dòng 46 và 52 đều trỏ tới nó</td><td><strong>Không được gọi ở đâu cả</strong> — chi tiết ở mục 24 ngay dưới</td></tr>
 		</tbody>
 	</table>
 	<p>
@@ -220,7 +221,7 @@ const gradleRootCode = `plugins {
 		đó là <em>code chết</em> — có mặt nhưng không bao giờ chạy.
 	</p>
 
-	<h2 id="theme-mo-cua">27. Một hàm theme không còn ai gọi — và cách nối lại</h2>
+	<h2 id="theme-mo-cua">24. Một hàm theme không còn ai gọi — và cách nối lại</h2>
 	<p>
 		Đây là chỗ đáng chú ý hơn hẳn các điểm chỉ nằm ở câu chữ, vì nó ảnh hưởng trực tiếp tới <em>giao diện bạn thấy khi
 		chạy app</em>. Nhắc lại Chương 3.1, mục 4: bản <code>starter</code> của <code>MainActivity.kt</code>
@@ -297,7 +298,7 @@ const gradleRootCode = `plugins {
 		trong các chương sau, sẽ không có.
 	</p>
 
-	<h2 id="bam-send">28. Bấm Send một lần — toàn bộ chuỗi việc xảy ra</h2>
+	<h2 id="bam-send">25. Bấm Send một lần — toàn bộ chuỗi việc xảy ra</h2>
 	<p>
 		Trước khi tổng kết, hãy nối tất cả các mảnh của Chương 3 lại thành <em>một</em> câu chuyện liền mạch. Tình huống
 		rất đơn giản: bạn gõ chữ vào ô nhập rồi bấm Send. Dưới đây là chuỗi việc thật sự diễn ra bên trong — và mỗi bước
@@ -323,7 +324,7 @@ const gradleRootCode = `plugins {
 		<li>
 			<strong>Bạn bấm Send.</strong> Lambda trong <code>onClick</code> chạy. Đây <em>không</em> phải một hàm Composable
 			mà là một khối code Kotlin thường, chạy khi có sự kiện — chính vì thế trong đó bạn không gọi được
-			<code>stringResource()</code>, đúng như lỗi biên dịch bạn đã gặp ở Chương 3.2, mục 11.
+			<code>stringResource()</code>, đúng như lỗi biên dịch bạn đã gặp ở Chương 3.2, mục 12.
 		</li>
 		<li>
 			<strong><code>chatOutputText = chatInputText</code></strong> — chép nội dung sang biến state thứ hai. Compose ghi
@@ -361,10 +362,10 @@ const gradleRootCode = `plugins {
 		State &amp; kiến trúc), lấy dữ liệu thật từ mạng (phần Mạng), và lưu xuống máy (phần Dữ liệu cục bộ). Còn một
 		khoảng trống thứ tư ít ai để ý: chuỗi trên không có chỗ nào <em>chuyển sang màn hình khác</em>. App của Chương 3
 		chỉ có một Activity duy nhất, nên câu hỏi "làm sao đi từ màn hình này sang màn hình kia" chưa xuất hiện — và như
-		đã nói ở Chương 3.3, mục 23, các phần sau không dùng Intent để chuyển màn hình mà dùng navigation của Compose.
+		đã nói ở Chương 3.3, mục 20, các phần sau không dùng Intent để chuyển màn hình mà dùng navigation của Compose.
 	</p>
 
-	<h2 id="tong-hop-lech">29. Đọc code mẫu bằng đầu phê phán — và những gì đã đổi từ 2023</h2>
+	<h2 id="tong-hop-lech">26. Đọc code mẫu bằng đầu phê phán — và những gì đã đổi từ 2023</h2>
 	<p>
 		Suốt bốn chương nhỏ của Chương 3, mỗi lần gặp một chỗ mà <em>tài liệu Android phổ biến dạy một đằng, code trong
 		project mẫu làm một nẻo</em>, khoá học đều nói ra ngay tại chỗ đó thay vì im lặng sửa cho gọn. Cột "nên theo cái
@@ -382,7 +383,7 @@ const gradleRootCode = `plugins {
 		</thead>
 		<tbody>
 			<tr>
-				<td>Chương 3.3, mục 20.3</td>
+				<td>Chương 3.3, mục 17.3</td>
 				<td>Thẻ <code>&lt;manifest&gt;</code> phải khai thuộc tính <code>package</code></td>
 				<td><strong>0 trong 19</strong> manifest của <code>aaf-materials/</code> có thuộc tính đó. Từ AGP 7.3 nó
 					chuyển thành <code>namespace</code> trong <code>build.gradle.kts</code> (dòng 41); project dùng cách mới</td>
@@ -390,7 +391,7 @@ const gradleRootCode = `plugins {
 					báo lỗi. Loại "nền tảng đã đổi theo thời gian".</td>
 			</tr>
 			<tr>
-				<td>Chương 3.3, mục 23</td>
+				<td>Chương 3.3, mục 20</td>
 				<td>Xin quyền bằng thẻ <code>&lt;permission&gt;</code></td>
 				<td><strong>Sai tên thẻ.</strong> Xin quyền là <code>&lt;uses-permission&gt;</code>;
 					<code>&lt;permission&gt;</code> dùng để <em>tự định nghĩa</em> một quyền mới</td>
@@ -398,7 +399,7 @@ const gradleRootCode = `plugins {
 					theo thì quyền không được cấp, app im lặng thất bại lúc chạy chứ không báo lỗi lúc build.</td>
 			</tr>
 			<tr>
-				<td>Chương 3.3, mục 23</td>
+				<td>Chương 3.3, mục 20</td>
 				<td>Quyền mạng sẽ được thêm ở chương Advanced Architecture</td>
 				<td>Đếm thực tế: project của Chương 3, 4, 5, 6, 7 đều có <strong>0</strong> thẻ
 					<code>uses-permission</code>; chương networking (Chương 8) mới có <code>INTERNET</code> (dòng 5 của
@@ -407,7 +408,7 @@ const gradleRootCode = `plugins {
 					gì vào manifest. Cần thẻ <code>INTERNET</code> thì mốc đúng là Chương 8.</td>
 			</tr>
 			<tr>
-				<td>Chương 3.3, mục 24</td>
+				<td>Chương 3.3, mục 21</td>
 				<td>Ví dụ về Service: app chat lấy tin nhắn mới ở nền</td>
 				<td>Không có thẻ <code>&lt;service&gt;</code> nào trong bất kỳ manifest nào của cả <strong>11</strong>
 					chương</td>
@@ -415,12 +416,12 @@ const gradleRootCode = `plugins {
 					dùng <strong>WorkManager</strong>.</td>
 			</tr>
 			<tr>
-				<td>Chương 3.4, mục 27</td>
+				<td>Chương 3.4, mục 24</td>
 				<td>Không đề cập gì</td>
 				<td>Bước "thay toàn bộ nội dung <code>MainActivity.kt</code>" xoá luôn lời gọi
 					<code>KodecoChatTheme &#123; &#125;</code>. Hàm này vẫn nằm ở <code>ui/theme/Theme.kt</code> dòng 74 nhưng
 					<strong>không còn ai gọi</strong></td>
-				<td><strong>Nên tự bọc lại theme</strong> (<a href="#theme-mo-cua">mục 27</a>). Không bọc thì app vẫn chạy,
+				<td><strong>Nên tự bọc lại theme</strong> (<a href="#theme-mo-cua">mục 24</a>). Không bọc thì app vẫn chạy,
 					chỉ là giao diện dùng bộ màu tím mặc định của Material 3. Loại "hệ quả không ai nói ra".</td>
 			</tr>
 		</tbody>
@@ -433,7 +434,7 @@ const gradleRootCode = `plugins {
 		đổi). Nhận ra khác biệt giữa hai loại lệch này là kỹ năng đáng giá khi bạn đọc bất kỳ tài liệu Android nào không
 		ghi ngày.
 	</p>
-	<h3 id="phien-ban-gradle">30.1. Khai báo compiler Compose đã đổi từ Kotlin 2.0</h3>
+	<h3 id="phien-ban-gradle">26.1. Khai báo compiler Compose đã đổi từ Kotlin 2.0</h3>
 	<p>
 		Đây là khác biệt duy nhất trong cả Chương 3 khiến bạn <em>không thể copy nguyên</em> file Gradle của project mẫu
 		vào một project mới tạo hôm nay. Khối liên quan nằm trong <code>app/build.gradle.kts</code> (dòng 76–78 của file
@@ -466,7 +467,7 @@ const gradleRootCode = `plugins {
 		— module <code>app/</code> mới là chỗ thật sự bật plugin lên. Cách chia hai tầng này là để cả project dùng chung
 		một con số, tránh chuyện mỗi module ghim một version khác nhau. Bài Gradle chuyên sâu sẽ mổ kỹ chính cơ chế đó.
 	</p>
-	<h3 id="phien-ban-so">30.2. Bảng số phiên bản: project mẫu so với 2026-08</h3>
+	<h3 id="phien-ban-so">26.2. Bảng số phiên bản: project mẫu so với 2026-08</h3>
 	<p>
 		Các số bên phải tra từ Google Maven và Maven Central, không lấy từ ký ức. Đọc bảng này với tinh thần
 		<em>đừng vội nâng</em>: project mẫu chạy đúng với bộ số cũ, và nâng phiên bản giữa lúc đang học chỉ tạo thêm lỗi
@@ -482,11 +483,11 @@ const gradleRootCode = `plugins {
 			<tr><td><code>lifecycle-runtime-ktx</code></td><td>2.6.2</td><td><strong>2.11.0</strong></td><td>Liên quan tới vòng đời ở Chương 3.1, mục 3 (khai ở dòng 88); sẽ dùng nhiều từ phần State &amp; kiến trúc khi ViewModel xuất hiện.</td></tr>
 			<tr><td><code>material3</code></td><td>do BOM quyết định</td><td><strong>1.4.0</strong></td><td>Bộ <code>Button</code>, <code>OutlinedTextField</code>, <code>Text</code> bạn vừa dùng (khai ở dòng 94, không có số version — đúng vì BOM đã lo).</td></tr>
 			<tr><td>Android Gradle Plugin</td><td>8.2.0</td><td><strong>9.3.2</strong></td><td>Đổi bản lớn thường kèm yêu cầu Gradle wrapper mới và JDK mới — đây là lý do thường gặp nhất khi mở một project cũ mà không build được.</td></tr>
-			<tr><td>Kotlin</td><td>1.9.10</td><td><strong>2.4.10</strong></td><td>Chính là ranh giới gây ra thay đổi ở mục 29.1.</td></tr>
+			<tr><td>Kotlin</td><td>1.9.10</td><td><strong>2.4.10</strong></td><td>Chính là ranh giới gây ra thay đổi ở mục 26.1.</td></tr>
 			<tr><td><code>compileSdk</code> / <code>targetSdk</code></td><td>34</td><td>36 (Android 16)</td><td>Còn <code>minSdk = 30</code> của project nghĩa là app chỉ cài được từ Android 11 trở lên — con số này quyết định bạn mất bao nhiêu người dùng, sẽ nói kỹ ở phần Gradle.</td></tr>
 		</tbody>
 	</table>
-	<h3 id="phien-ban-con-dung">30.3. Những gì trong Chương 3 vẫn đúng nguyên</h3>
+	<h3 id="phien-ban-con-dung">26.3. Những gì trong Chương 3 vẫn đúng nguyên</h3>
 	<p>
 		Danh sách dưới đây quan trọng không kém bảng trên, vì nó cho biết phần lớn thời gian bạn vừa bỏ ra là đầu tư dài
 		hạn: <code>ComponentActivity</code> + <code>onCreate</code> + <code>setContent</code> — không đổi;
@@ -499,11 +500,11 @@ const gradleRootCode = `plugins {
 	</p>
 	<p class="hint">
 		Kết luận thực dụng: <strong>không có gì trong Chương 3 bị lỗi thời về mặt khái niệm.</strong> Cái đáng cập nhật
-		đúng là một dòng khai báo Gradle ở mục 29.1 và một số phiên bản trong bảng ở mục 29.2. Học xong Chương 3 bạn dựng
+		đúng là một dòng khai báo Gradle ở mục 26.1 và một số phiên bản trong bảng ở mục 26.2. Học xong Chương 3 bạn dựng
 		được Activity trên Android bản mới nhất mà không phải học lại gì.
 	</p>
 
-	<h2 id="key-points">30. Tổng kết cả Chương 3 (3.1 → 3.4)</h2>
+	<h2 id="key-points">27. Tổng kết cả Chương 3 (3.1 → 3.4)</h2>
 	<p>
 		Mười một điều dưới đây là tổng kết cho <strong>cả bốn chương nhỏ</strong> — 3.1 (Activity, vòng đời, state và
 		giao diện Compose đầu tiên), 3.2 (string resource, lớp <code>R</code>, lỗi biên dịch và debug), 3.3 (manifest,
@@ -561,17 +562,17 @@ const gradleRootCode = `plugins {
 			<code>&lt;intent-filter&gt;</code> khỏi manifest?
 		</p>
 		<p>
-			Nếu có câu nào chưa chắc: câu 1 xem lại Chương 3.1, mục 3 và mục 5.2; câu 2 xem Chương 3.2, mục 11 và mục 12;
-			câu 3 xem Chương 3.3, mục 22. Phần quiz phía dưới đi sâu hơn ba câu này, kèm bài tập chạy được trên project
-			thật — trong đó một bài tập chính là việc bọc lại theme ở mục 27.
+			Nếu có câu nào chưa chắc: câu 1 xem lại Chương 3.1, mục 3 và mục 5.2 (state cục bộ trong UI); câu 2 xem Chương 3.2, mục 12; câu 2b (hai cách lấy chuỗi) xem Chương 3.2, mục 11;
+			câu 3 xem Chương 3.3, mục 19. Phần quiz phía dưới đi sâu hơn ba câu này, kèm bài tập chạy được trên project
+			thật — trong đó một bài tập chính là việc bọc lại theme ở mục 24.
 		</p>
 	</div>
 	<p>
 		<strong>Tiếp theo — Gradle:</strong> suốt Chương 3 bạn đã <em>gặp</em> Gradle nhiều lần mà chưa được giải thích.
 		Bốn lần cụ thể: khối <code>buildFeatures &#123; compose = true &#125;</code> bật compiler Compose (Chương 3.1, mục
-		2), <code>namespace</code> thay cho <code>package</code> trong manifest (Chương 3.3, mục 20.3),
-		<code>minSdk = 30</code> quyết định app chạy được trên máy nào (Chương 3.3, mục 20.2), và
-		<code>compose-bom</code> quyết định phiên bản cả bộ thư viện Compose cùng lúc (mục 29.2 ở trên). Bài Gradle cho
+		2), <code>namespace</code> thay cho <code>package</code> trong manifest (Chương 3.3, mục 17.3),
+		<code>minSdk = 30</code> quyết định app chạy được trên máy nào (Chương 3.3, mục 17.2), và
+		<code>compose-bom</code> quyết định phiên bản cả bộ thư viện Compose cùng lúc (mục 26.2 ở trên). Bài Gradle cho
 		người mới sẽ trả lời câu hỏi <em>ai dựng app này lên</em>: cái gì biến code Kotlin, file XML, ảnh icon và một đống
 		thư viện tải từ mạng thành một file APK cài được lên máy — và vì sao build đôi khi đứt vì những lý do chẳng liên
 		quan gì tới code bạn vừa viết.
@@ -579,7 +580,7 @@ const gradleRootCode = `plugins {
 
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
-		Cột "nên theo cái nào" của bảng ở mục 29 đã gom năm chỗ lệch thuộc phạm vi chương này; ở đây là ba chỗ bổ sung
+		Cột "nên theo cái nào" của bảng ở mục 26 đã gom năm chỗ lệch thuộc phạm vi chương này; ở đây là ba chỗ bổ sung
 		không nằm trong bảng — hai cái đầu là chi tiết project dễ làm bạn nghi mình đọc sai file, cái cuối là một mẹo đọc
 		bảng.
 	</p>
@@ -606,24 +607,24 @@ const gradleRootCode = `plugins {
 		sai vẫn chậm hơn XML viết tốt, điển hình là khi recomposition lan quá rộng vì đọc state ở tầng quá cao, khiến cả
 		màn hình vẽ lại mỗi lần gõ một ký tự. Phần State &amp; kiến trúc nói đúng về chủ đề này. Giọng điệu "nhanh hơn"
 		trong các tài liệu quanh năm 2023 hơi nghiêng về quảng bá, vì Compose lúc đó còn mới và đang cần được thuyết phục
-		người dùng. (Chuỗi bảy việc ở mục 29 chính là hình ảnh cụ thể của "chỉ vẽ lại phần liên quan".)
+		người dùng. (Chuỗi bảy việc ở mục 25 chính là hình ảnh cụ thể của "chỉ vẽ lại phần liên quan".)
 	</p>
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<ul>
 		<li><strong>Giáo trình gốc:</strong> <code>content/book/ch03-android-fundamentals.md</code> — dòng 376–389 (phần
 			Themes: thuộc tính <code>android:theme</code>, thao tác Control-click sang <code>themes.xml</code>, mẹo icon
 			bia ngắm, kết luận theme là lớp con của theme Material Design; ảnh minh hoạ gốc <code>img56.png</code> là ảnh
-			chụp icon bia ngắm, đã được diễn giải thành chữ ở mục 26) · dòng 391–399 (phần điểm chính, 5 gạch đầu dòng —
-			đã đối chiếu ở mục 30) · dòng 401–413 (phần đi tiếp: Fragment, tài liệu debugging chuyên sâu, material.io, và
+			chụp icon bia ngắm, đã được diễn giải thành chữ ở mục 22) · dòng 391–399 (phần điểm chính, 5 gạch đầu dòng —
+			đã đối chiếu ở mục 27) · dòng 401–413 (phần đi tiếp: Fragment, tài liệu debugging chuyên sâu, material.io, và
 			câu nối sang Gradle) · dòng 127 và 222 (hai chuỗi mặc định khác nhau của ô hiển thị — cạm bẫy số 2) · dòng 287
-			và 291 (mô tả <code>Context</code> và <code>getString()</code> — nền cho bảng ở mục 29) · dòng 322–324 (phần
+			và 291 (mô tả <code>Context</code> và <code>getString()</code> — nền cho bảng ở mục 26) · dòng 322–324 (phần
 			Resource) · dòng 342 (yêu cầu khai <code>package</code> trong thẻ <code>&lt;manifest&gt;</code> — dòng 1 của
 			bảng) · dòng 366 (tên thẻ xin quyền và mốc chương Advanced Architecture — dòng 2 và 3 của bảng) · dòng
 			370–374 (ví dụ Service và
 			hai loại foreground/background — dòng 4 của bảng).</li>
 		<li><strong>Code thật đã đối chiếu</strong> (trích nguyên văn, chỉ lược phần đã ghi rõ):
 			<code>{THEMES_XML}</code> (37 dòng; <code>&lt;resources&gt;</code> dòng 35, dòng style duy nhất ở dòng 37 —
-			khối code ở mục 26 là toàn bộ phần có nghĩa của file) ·
+			khối code ở mục 22 là toàn bộ phần có nghĩa của file) ·
 			<code>{THEME_KT}</code> (102 dòng; <code>@Composable</code> dòng 73, <code>fun KodecoChatTheme(</code> dòng
 			74, thân hàm 74–102, khối <code>SideEffect</code> đổi màu thanh trạng thái ở dòng 91–95 là phần được lược bằng
 			<code>...</code>, <code>MaterialTheme(</code> dòng 98–102) ·
@@ -654,14 +655,14 @@ const gradleRootCode = `plugins {
 			<code>NavHost</code> trong <code>aaf-materials/07-advanced-architecture/</code> → 0 kết quả, trong
 			<code>08-networking/…/MainActivity.kt</code> → dòng 51 import và dòng 84 lời gọi.</li>
 		<li><strong>Phần bổ sung ngoài giáo trình</strong> (do khoá học tự dựng để giải thích cho người mới): bảng phân
-			biệt hai hệ thống theme XML và Compose theo 5 tiêu chí ở mục 27 · giải thích ba thông tin đọc được từ một dòng
-			style và ý nghĩa ba phần trong tên theme cha ở mục 26 · quy tắc theme khai ở <code>&lt;application&gt;</code>
-			so với <code>&lt;activity&gt;</code> ở mục 26 · toàn bộ phân tích hàm theme không ai gọi, hệ quả nhìn thấy
-			được và đoạn code bọc lại ở mục 27 · theo dõi khoảng trống theme qua chương Gradle và cách chương Compose lấp
+			biệt hai hệ thống theme XML và Compose theo 5 tiêu chí ở mục 23 · giải thích ba thông tin đọc được từ một dòng
+			style và ý nghĩa ba phần trong tên theme cha ở mục 22 · quy tắc theme khai ở <code>&lt;application&gt;</code>
+			so với <code>&lt;activity&gt;</code> ở mục 23 · toàn bộ phân tích hàm theme không ai gọi, hệ quả nhìn thấy
+			được và đoạn code bọc lại ở mục 24 · theo dõi khoảng trống theme qua chương Gradle và cách chương Compose lấp
 			bằng hệ
-			thống khác ở mục 27 · chuỗi bảy bước khi bấm Send và các chỗ chuỗi đó dừng lại ở mục 29 · giải thích vì sao
-			khai compiler Compose đổi từ Kotlin 2.0 và ý nghĩa <code>apply false</code> ở mục 29.1 · cột "Mới nhất
-			2026-08" của bảng phiên bản ở mục 29.2 (tra Google Maven và Maven Central) · danh sách những gì vẫn đúng
-			nguyên ở mục 29.3 · bản tổng kết 11 điểm cho cả Chương 3 ở mục 30 · cả ba mục của phần Cạm bẫy.</li>
+			thống khác ở mục 24 · chuỗi bảy bước khi bấm Send và các chỗ chuỗi đó dừng lại ở mục 25 · giải thích vì sao
+			khai compiler Compose đổi từ Kotlin 2.0 và ý nghĩa <code>apply false</code> ở mục 26.1 · cột "Mới nhất
+			2026-08" của bảng phiên bản ở mục 26.2 (tra Google Maven và Maven Central) · danh sách những gì vẫn đúng
+			nguyên ở mục 26.3 · bản tổng kết 11 điểm cho cả Chương 3 ở mục 27 · cả ba mục của phần Cạm bẫy.</li>
 	</ul>
 </section>
