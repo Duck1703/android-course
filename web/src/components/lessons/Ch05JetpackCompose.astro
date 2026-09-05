@@ -33,6 +33,12 @@
 //         operator fun invoke, vòng `for`) — mô hình tầng data vs tầng UI.
 //   → C5  (A11y cơ bản): `contentDescription`, `Modifier.semantics(mergeDescendants)`,
 //         kích thước vùng chạm của icon 64.dp/24.dp.
+//   → D2  (Prefs trong app / nối dây tầng app): CƠ CHẾ CompositionLocal —
+//         `CompositionLocalProvider`, `provides`, quy tắc `LocalFoo.current`, tự tạo
+//         local (`compositionLocalOf` / `staticCompositionLocalOf`), hành vi
+//         recomposition của CompositionLocal, dùng CompositionLocal để tiêm phụ thuộc.
+//         C3 chỉ giữ ĐÚNG MỘT câu ghi nhận tên cơ chế; MaterialTheme vẫn dạy đầy đủ ở C3.
+//   → Ngoài phạm vi khoá: API provider của `@PreviewParameter` (C4 chỉ nhận diện tên).
 //   → R4  (UI với Room): LaunchedEffect ở mức đầy đủ (C4 chỉ chạm lần đầu).
 //   → N1/N2 (Điều hướng): `navigationIcon` mở side menu.
 //
@@ -98,6 +104,19 @@
 //   rồi trỏ sang C3; C3 giữ nguyên vì Compose là nơi theme thật sự có hiệu lực.
 //   Đổi lại, Ch03.4 mục 24 đoạn "khoảng trống theme kéo dài tới đâu" nên trỏ tới C3
 //   thay vì mô tả lại tên hàm/số dòng của Chương 5.
+//
+// LẦN SỬA CH05B (2026-09-05) — hai chỗ chỉnh phạm vi, không viết lại C1–C4:
+//   1. C4 mục 15: bỏ cách phát biểu quá tuyệt đối "hàm @Preview không được có tham số
+//      bắt buộc". Phát biểu đúng: Android Studio GỌI hàm xem trước nên mọi tham số phải
+//      có nguồn giá trị. Thêm h3 "Bản xem trước cần giá trị — cấp cho nó bằng cách nào"
+//      với Cách 1 (lớp bọc tự chứa, không tham số — mẫu cho người mới) và Cách 2 (tham số
+//      có giá trị mặc định), cộng một câu nhận diện `@PreviewParameter`. KHÔNG dạy API
+//      provider của nó. Phần Preview vs chạy thật, dữ liệu mẫu, giới hạn của Preview,
+//      bọc theme, bảng "ba việc Preview không chứng minh được" giữ nguyên.
+//   2. C3 mục 11: hạ CompositionLocal về mức ghi nhận. Bỏ đoạn dạy cơ chế và bỏ quy tắc
+//      "tên Local… đọc qua .current". Thay bằng mô hình "cấp một lần ở ngoài, đọc bao
+//      nhiêu lần cũng được ở trong" + đúng một câu ghi nhận tên cơ chế, trỏ giai đoạn
+//      Dữ liệu cục bộ (D2). MaterialTheme vẫn dạy đầy đủ ở C3.
 // ============================================================================
 import { Code } from "astro:components";
 
@@ -594,13 +613,23 @@ Text(
   color = MaterialTheme.colorScheme.onSurfaceVariant
 )`;
 
-const compositionLocalCode = `val uriHandler = LocalUriHandler.current
+const themeAvailabilityCode = `// Cấp giá trị: một lần, ở ngoài
+MaterialTheme(
+  colorScheme = myColorScheme,
+  typography = KodecochatTypography
+) {
+  AppContent()
+}
 
-ClickableText(
+// Đọc giá trị: bao nhiêu lần cũng được, ở bất kỳ đâu bên trong
+MaterialTheme.colorScheme.primary
+MaterialTheme.typography.titleMedium`;
+
+const bubbleTextCode = `ClickableText(
   text = styledMessage,
   style = MaterialTheme.typography.bodyLarge.copy(color = LocalContentColor.current),
   modifier = Modifier.padding(16.dp),
-  onClick = { /* mở link hoặc gọi authorClicked — chi tiết ở mục Nguồn */ }
+  onClick = { /* mở link hoặc gọi authorClicked */ }
 )`;
 
 const manifestThemeCode = `<application
@@ -665,6 +694,30 @@ fun KodecochatAppBarPreview() {
 fun KodecohatAppBarPreviewDark() {
   KodecochatTheme(isDarkTheme = true) {
     KodecochatAppBar(title = { Text("Preview!") })
+  }
+}`;
+
+const previewWrapperCode = `// Composable thật — nó cần dữ liệu mới vẽ được
+@Composable
+fun TheChao(ten: String) {
+  Text(text = "Xin chào $ten")
+}
+
+// Cách 1 — hàm bọc không cần tham số nào, tự cấp dữ liệu mẫu
+@Preview
+@Composable
+fun TheChaoPreview() {
+  KodecochatTheme {
+    TheChao(ten = "An")
+  }
+}`;
+
+const previewParamDefaultCode = `// Cách 2 — hàm xem trước CÓ tham số, nhưng tham số có giá trị mặc định
+@Preview
+@Composable
+fun TheChaoPreview(ten: String = "An") {
+  KodecochatTheme {
+    TheChao(ten = ten)
   }
 }`;
 
@@ -1755,6 +1808,8 @@ fun ManHinhKenh(channelId: String) {
 	<!--   • kỹ thuật "tìm chuỗi ra 1 kết quả ⇒ code chết" (Ch03.4 mục 23)    -->
 	<!--   • nhận biết isSystemInDarkTheme / dynamic*ColorScheme (Ch03.4 m.24) -->
 	<!--   Trùng lặp tạm thời được phép; hướng dọn ghi ở đầu file.            -->
+	<!-- RANH GIỚI: CompositionLocal chỉ ở mức GHI NHẬN TÊN (1 câu). Cơ chế     -->
+	<!--   (Provider/provides/LocalFoo.current/tự tạo local) → D2, xem đầu file. -->
 	<!-- Cạm bẫy của đơn vị này: nhóm (f), (g), (h) + khối "tài liệu lỗi thời" -->
 	<!-- Nguồn của đơn vị này: gạch đầu dòng "Đơn vị 3" trong #nguon          -->
 	<!-- ==================================================================== -->
@@ -1899,28 +1954,35 @@ fun ManHinhKenh(channelId: String) {
 		dòng kẻ. Còn <code>isoToTimeAgo()</code> là một extension function tự viết trong project, đổi mốc thời gian dạng ISO
 		thành "5 phút trước" — cùng loại cơ chế với <code>setContent</code> ở Đơn vị 1.
 	</p>
-	<h3>Cơ chế phía sau: giá trị "có sẵn của môi trường"</h3>
+	<h3>Cấp một lần ở ngoài, đọc bao nhiêu lần cũng được ở trong</h3>
 	<p>
-		Compose gọi cơ chế này là <strong><code>CompositionLocal</code></strong>: một giá trị được <em>cấp</em> ở một tầng
-		trên và mọi composable bên dưới <em>đọc</em> được, bất kể sâu bao nhiêu, không cần truyền qua từng tầng.
-		<code>MaterialTheme</code> chính là một bộ <code>CompositionLocal</code> được đóng gói cho tiện.
+		Không ai truyền theme xuống qua tham số. Bong bóng chat nằm sâu năm tầng trong cây composable vẫn đọc được màu chỉ
+		bằng một dòng — và đó là toàn bộ mô hình cần nắm ở đơn vị này:
+		<strong><code>MaterialTheme</code> làm cho các giá trị theme hiện tại <em>có sẵn</em> cho mọi composable nằm trong
+		phần nội dung của nó.</strong>
+	</p>
+	<Code code={themeAvailabilityCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Hai việc, hai chỗ: <em>cấp</em> giá trị xảy ra đúng một lần ở lớp bọc ngoài; <em>đọc</em> giá trị xảy ra bất kỳ đâu bên
+		trong, không cần biết lớp bọc nằm cách mình mấy tầng. Đây là lý do đổi một chỗ mà cả app đổi theo, và cũng là lý do
+		thứ tự lồng nhau ở mục 12 có ý nghĩa thật.
+	</p>
+	<p class="hint">
+		<strong>Ghi nhận, chưa cần học:</strong> bên dưới, Compose dùng một cơ chế tên là <code>CompositionLocal</code> để đưa
+		nhiều loại giá trị theo ngữ cảnh xuống cây composable — theme chỉ là một trong số đó. Bạn sẽ gặp lại đúng cơ chế này
+		khi nối cấu hình và thiết lập ở tầng app, thuộc giai đoạn Dữ liệu cục bộ. Ở đơn vị này không cần biết nó hoạt động
+		thế nào.
 	</p>
 	<p>
-		Bạn đã gặp họ hàng của nó vài lần trong chương: <code>LocalContext.current</code> ở Đơn vị 1, và hai cái nữa trong
-		đoạn code hiển thị chữ của bong bóng chat:
+		Một ví dụ nữa cho thấy việc đọc theme xảy ra sâu tới đâu: chữ <em>bên trong</em> bong bóng chat được vẽ bởi một
+		composable riêng nữa, và nó vẫn lấy kiểu chữ từ theme.
 	</p>
 	<p class="src">Nguồn: <code>{KT}/conversation/Conversation.kt</code> (dòng 322–352, đã lược phần xử lý bấm)</p>
-	<Code code={compositionLocalCode} lang="kotlin" theme="github-dark" />
+	<Code code={bubbleTextCode} lang="kotlin" theme="github-dark" />
 	<p>
-		<code>LocalUriHandler.current</code> cấp cho composable "thứ biết cách mở một đường link" — nhờ nó, bấm vào link trong
-		tin nhắn thì trình duyệt mở ra. <code>LocalContentColor.current</code> cấp "màu chữ hợp với nền hiện tại", nên chữ
-		trong bong bóng màu <code>primary</code> tự đổi cho tương phản. Phần nhận ra link và tên người được nhắc trong chuỗi
-		là việc của một hàm tiện ích riêng trong project; ở đơn vị này chỉ cần biết vai trò của nó.
-	</p>
-	<p class="notice">
-		<strong>Nhìn thấy quy tắc chung của cả nhóm này chưa?</strong> Tên bắt đầu bằng <code>Local…</code> và luôn đọc qua
-		<code>.current</code>. Gặp một cái tên như vậy trong code lạ, bạn biết ngay: đây là giá trị do một tầng trên cấp
-		xuống, hãy đi tìm chỗ nào bọc ngoài đã cấp nó. Mục 12 làm đúng việc đi tìm đó.
+		Đây cũng là composable làm cho <em>một phần</em> của chữ bấm được: nhờ nó, bấm vào đường link trong tin nhắn đầu tiên
+		thì trình duyệt mở ra. Phần nhận ra link và tên người được nhắc trong chuỗi là việc của một hàm tiện ích riêng trong
+		project; ở đơn vị này chỉ cần biết vai trò của nó.
 	</p>
 	<h2 id="theme-project">12. Theme thật của project: <code>setContent</code> → <code>KodecochatTheme</code> → <code>MaterialTheme</code></h2>
 	<p>
@@ -2222,8 +2284,8 @@ fun ManHinhKenh(channelId: String) {
 				<code>typography</code>, <code>shapes</code>.</li>
 			<li>Màu và kiểu chữ được gọi tên theo <strong>vai trò</strong> (<code>primary</code>, <code>onSurface</code>,
 				<code>titleMedium</code>), không theo màu sắc hay cỡ chữ. Nhờ vậy cùng một dòng code đúng ở cả chế độ sáng và tối.</li>
-			<li>Composable con đọc giá trị theme qua <code>MaterialTheme.*</code> ở bất kỳ độ sâu nào, nhờ cơ chế
-				<code>CompositionLocal</code> — nhận diện bằng tên <code>Local…</code> đọc qua <code>.current</code>.</li>
+			<li><code>MaterialTheme</code> <em>cấp</em> giá trị một lần ở lớp bọc ngoài; composable con <em>đọc</em> qua
+				<code>MaterialTheme.*</code> ở bất kỳ độ sâu nào, không cần truyền qua tham số.</li>
 			<li>Đường đi trong app thật: <code>setContent</code> → <code>KodecochatTheme</code> → <code>MaterialTheme</code> →
 				các composable. Theme phải bọc <em>ngoài</em> phần đọc nó.</li>
 			<li>Chế độ tối không cần composable nào thay đổi: <code>isSystemInDarkTheme()</code> chọn giữa
@@ -2299,9 +2361,9 @@ fun ManHinhKenh(channelId: String) {
 			tên là thêm chữ "Preview" ở cuối tên hàm; đây là quy ước cho người đọc, không phải yêu cầu của công cụ.
 		</li>
 		<li>
-			Hàm xem trước <strong>không có tham số</strong>, và tự cấp dữ liệu cứng cho composable mà nó gọi
+			Hai hàm xem trước này <strong>tự cấp đủ dữ liệu</strong> cho composable mà chúng gọi
 			(<code>title = &#123; Text("Preview!") &#125;</code>). Lý do rất thực tế: <strong>Android Studio là phía gọi hàm
-			này</strong>, và nó không có dữ liệu thật nào để truyền vào. Composable có tham số bắt buộc thì không vẽ được.
+			xem trước</strong>, nên nó phải có <em>giá trị</em> để vẽ. Phần ngay dưới nói rõ những cách cấp giá trị đó.
 		</li>
 		<li>
 			Hai bản xem trước khác nhau đúng một chỗ: hàm thứ hai gọi
@@ -2309,6 +2371,43 @@ fun ManHinhKenh(channelId: String) {
 			composable ở nhiều điều kiện khác nhau thì mỗi điều kiện là một <code>@Preview</code>.
 		</li>
 	</ol>
+	<h3>Bản xem trước cần giá trị — cấp cho nó bằng cách nào</h3>
+	<p>
+		Android Studio vẽ bản xem trước bằng cách <em>gọi</em> hàm có nhãn <code>@Preview</code>. Vì vậy điều kiện duy nhất
+		là: <strong>khi được gọi, hàm đó phải có đủ giá trị để chạy.</strong> Có nhiều cách đáp ứng điều đó; hai cách dưới
+		đây đủ cho toàn bộ khoá này.
+	</p>
+	<Code code={previewWrapperCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<strong>Cách 1 là mẫu nên dùng khi mới học:</strong> hàm xem trước là một lớp bọc <em>tự chứa</em> — nó không nhận
+		tham số nào, và tự truyền dữ liệu mẫu vào composable thật. Không có gì cần Android Studio phải đoán, nên nó luôn vẽ
+		được. Đây cũng chính là mẫu của hai hàm xem trước app bar ở trên, và của bản xem trước dòng tin nhắn ở mục 16.
+	</p>
+	<Code code={previewParamDefaultCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<strong>Cách 2 cũng chạy được:</strong> hàm xem trước <em>có</em> tham số, nhưng mỗi tham số có
+		<strong>giá trị mặc định</strong> — thứ bạn đã học ở Nền tảng Kotlin. Khi Android Studio gọi hàm mà không truyền gì,
+		giá trị mặc định được dùng. Cách này tiện khi bạn muốn sửa nhanh dữ liệu mẫu ngay tại chữ ký hàm.
+	</p>
+	<div class="callout mental">
+		<strong>Phát biểu đúng của quy tắc</strong>
+		<p>
+			Không phải "hàm <code>@Preview</code> <em>không được</em> có tham số". Compose không cấm điều đó. Quy tắc thật là:
+			<strong>Android Studio cần có giá trị cho mọi tham số để gọi được hàm</strong> — nên tham số nào cũng phải có
+			nguồn giá trị, dù là giá trị mặc định hay do một lớp bọc tự cấp.
+		</p>
+		<p>
+			Một hàm xem trước có tham số <em>bắt buộc</em> mà không có nguồn giá trị nào thì Android Studio không vẽ được — và
+			nó nói đúng điều đó trong khung xem trước. Đó là giới hạn của <em>tình huống ấy</em>, không phải luật chung của
+			<code>@Preview</code>.
+		</p>
+	</div>
+	<p class="hint">
+		<strong>Ghi nhận, chưa cần học:</strong> Compose còn có công cụ riêng để <em>bơm</em> dữ liệu mẫu vào tham số của hàm
+		xem trước — annotation <code>@PreviewParameter</code>, thường dùng khi bạn muốn xem cùng một composable với nhiều bộ
+		dữ liệu khác nhau (tin ngắn, tin rất dài, tên trống…). Ở đây chỉ cần nhận ra cái tên khi gặp trong code người khác;
+		cách viết bên trong nó không thuộc phạm vi khoá này. Với hai cách ở trên bạn làm được mọi việc của khoá.
+	</p>
 	<h3>Live preview: đổi một con số, thấy kết quả ngay</h3>
 	<p>
 		Làm thử để thấy giá trị thật của công cụ. Trong <code>KodecochatAppBar()</code>, đổi <code>.padding()</code> của icon
@@ -2587,7 +2686,8 @@ fun ManHinhKenh(channelId: String) {
 		<strong>Tóm tắt Đơn vị 4</strong>
 		<ol>
 			<li><code>@Preview</code> vẽ một composable ngay trong IDE, và <strong>bạn phải tự viết hàm sinh ra bản xem
-				trước</strong>. Hàm đó không được có tham số bắt buộc, vì Android Studio là phía gọi nó.</li>
+				trước</strong>. Android Studio là phía gọi hàm đó, nên mọi tham số của nó phải có nguồn giá trị — cách đơn giản
+				nhất là một lớp bọc không tham số, tự cấp dữ liệu mẫu.</li>
 			<li>Mỗi cấu hình muốn xem là một <code>@Preview</code> riêng. <strong>Luôn bọc trong theme của app</strong>, nếu không
 				bản xem trước hiện màu mặc định của Material 3 chứ không phải màu app.</li>
 			<li>Preview không chứng minh app <em>chạy</em> đúng, không chứng minh giao diện đúng trên mọi thiết bị, và không
@@ -2862,11 +2962,14 @@ fun ManHinhKenh(channelId: String) {
 			mô hình "cửa sổ trượt trên cuốn sổ" cho <code>LazyColumn</code> và ví dụ chèn item vào đầu danh sách để giải thích
 			<code>key</code> (C2) ·
 			mô hình "bảng vật liệu chung của một công trình" cho <code>MaterialTheme</code> (C3) ·
+			mô hình "cấp một lần ở ngoài, đọc bao nhiêu lần cũng được ở trong" cho giá trị theme (C3) ·
 			cách tách hai lớp tên "màu cụ thể vs vai trò màu" (C3) ·
 			bảng phân biệt theme XML và theme Compose theo 5 tiêu chí (C3 — thu hoạch và mở rộng từ Chương 3.4) ·
 			kỹ thuật đếm số lần một tên xuất hiện để phát hiện code chết, áp cho cả hai thư mục theme và cho API font tải về
 			(C3 — thu hoạch từ Chương 3.4) ·
 			bảng "ba việc <code>@Preview</code> không chứng minh được" và mô hình "bản vẽ mặt tiền, không phải căn nhà" (C4) ·
+			hai cách cấp giá trị cho hàm xem trước (lớp bọc tự chứa · tham số có giá trị mặc định) kèm cách phát biểu đúng của
+			quy tắc, ví dụ <code>TheChao</code>/<code>TheChaoPreview</code> do khoá học dựng (C4) ·
 			cách đọc ý của bộ dữ liệu mẫu và bản <code>@Preview</code> cho một dòng tin nhắn (C4) ·
 			bảng ba tình huống vào / vẽ lại / rời composition kèm cảnh báo thuật ngữ "vòng đời" (C4) ·
 			mô hình "thân hàm là câu trả lời, không phải hành động" và cách phát biểu chính xác về thời điểm chạy của
