@@ -2,9 +2,10 @@
 
 > **TRẠNG THÁI: DRAFT NỘI BỘ CHO BÀI HỌC TƯƠNG LAI.** File này KHÔNG phải trang site.
 > Khi dựng bài chính thức (task IMP-047 trong `docs/COURSE_REDESIGN_IMPLEMENTATION_PLAN.md`),
-> nội dung học là phần "Bài học" phía dưới. Ba mục cuối file — "Thu hoạch code thật (phân loại nội
-> bộ)", "Editorial migration notes", "Sources for future Nguồn block" — là **nội dung biên tập nội
-> bộ, KHÔNG đưa cho người học** và không được để lọt vào trang bài học.
+> nội dung học là phần "Bài học" phía dưới. Bốn mục cuối file — "Thu hoạch code thật (phân loại nội
+> bộ)", "Future accessibility reference notes", "Editorial migration notes", "Sources for future
+> Nguồn block" — là **nội dung biên tập nội bộ, KHÔNG đưa cho người học** và không được để lọt vào
+> trang bài học.
 >
 > **Vị trí trong khoá:** Giai đoạn 2 (Jetpack Compose), bài **5/5** — ngay sau C4 (Preview & vòng
 > đời composable), trước Giai đoạn 3 (State & kiến trúc). Phân loại **Lõi (core-lite)**, mục tiêu
@@ -13,9 +14,14 @@
 > **Đánh số mục tiếp nối Ch05** (theo ranh giới tách đã ghi trong `Ch05JetpackCompose.astro`):
 > C1 = mục 1–3 · C2 = mục 4–9 · C3 = mục 10–14 · C4 = mục 15–18 ⇒ **C5 = mục 19–28**.
 >
-> **Phạm vi:** đây là một **nền tảng nhỏ**, không phải khoá accessibility đầy đủ. Mọi thứ vượt mức
-> nhận biết (cấu trúc cây semantics, `SemanticsPropertyKey` tự định nghĩa, `clearAndSetSemantics`,
-> API test) được cố tình để ngoài — xem danh sách loại trừ ở mục 25.
+> **Phạm vi:** đây là một **nền tảng nhỏ**, không phải khoá accessibility đầy đủ. Bài này có đúng
+> **năm điều cốt lõi** (xem "Tóm tắt"), và mọi chi tiết khác được cố tình hạ xuống mức *nhận biết*
+> hoặc chuyển vào mục nội bộ "Future accessibility reference notes" để không cạnh tranh với năm điều
+> đó. Ngân sách nhấn mạnh: **4 callout** (mô hình hai bản mô tả · quy tắc `contentDescription` ·
+> kích thước ≠ vùng chạm · bắt buộc tự kiểm bằng tay) và **3 checkpoint**. Chi tiết vượt mức nhận
+> biết (cấu trúc cây semantics, `SemanticsPropertyKey`, `clearAndSetSemantics`, `stateDescription`,
+> API test, cơ chế nới vùng chạm, con số tương phản chính xác, phóng chữ không tuyến tính) nằm ở mục
+> nội bộ nói trên — **không xoá, chỉ hạ ưu tiên**.
 
 ---
 
@@ -23,20 +29,16 @@
 
 ## Mục tiêu — sau bài này bạn sẽ
 
-- Giải thích được vì sao một giao diện luôn có **hai bản mô tả**: cái người dùng *nhìn thấy* và cái
-  các dịch vụ hỗ trợ *hiểu được* — và vì sao bản thứ hai không tự có.
+- Giải thích được vì sao một giao diện luôn có **hai bản mô tả** — cái người dùng *nhìn thấy* và cái
+  các dịch vụ hỗ trợ *hiểu được* — và nói được **semantics** là gì ở mức người mới.
 - Quyết định được khi nào `contentDescription` phải là một câu chữ và khi nào `null` mới là lựa chọn
-  đúng, thay vì "cứ điền cho có".
+  đúng, rồi viết được mô tả theo **hành động** thay vì theo hình dáng.
 - Chỉ ra được khác biệt giữa **kích thước nhìn thấy** và **vùng chạm**, và tự đặt được vùng chạm
   48dp cho một icon 24dp.
-- Chỉ ra được ít nhất ba cách bố cục bị vỡ khi người dùng tăng cỡ chữ hệ thống, và cách viết để nó
-  không vỡ.
-- Nói được vì sao "chữ hiện ra" chưa đồng nghĩa với "đọc được", và vì sao *chỉ* dùng màu để báo lỗi
-  là không đủ.
-- Nói được **semantics** là gì ở mức người mới, và giải thích được `mergeDescendants = true` giúp gì
-  cho một hàng avatar + tên + nội dung.
-- Tự soi một màn hình bằng TalkBack và cỡ chữ lớn theo một checklist 8 bước, rồi chỉ ra được vấn đề
-  cụ thể thay vì cảm giác chung.
+- Chỉ ra được những kiểu bố cục bị vỡ khi người dùng **tăng cỡ chữ**, và vì sao *chỉ* dùng màu để
+  báo lỗi là không đủ.
+- Chọn được đúng mức can thiệp (dùng component có nghĩa sẵn → điền mô tả → tự viết semantics khi cần
+  như `mergeDescendants`), rồi **tự soi màn hình của mình** bằng TalkBack và cỡ chữ lớn.
 
 **Tại sao điều này quan trọng khi làm Android.** Bốn bài trước cho bạn dựng được một màn hình *nhìn*
 đúng. Nhưng người dùng Android không chỉ có một kiểu: có người bật TalkBack và không nhìn màn hình,
@@ -79,9 +81,9 @@ tích hay chưa. Việc của bạn trong bài này chỉ là ba nhóm nhỏ:
 2. **Đừng phá phần đã có sẵn** — vùng chạm quá nhỏ, hộp cao cứng, màu ghi cứng (mục 22–24).
 3. **Gom hoặc mô tả lại đúng chỗ cần** — khi cấu trúc hình ảnh không diễn đạt đúng ý nghĩa (mục 25–26).
 
-> **Kiến thức bền vs cú pháp dễ đổi.** Nguyên lý "mọi thứ bấm được phải có tên gọi có nghĩa", "vùng
-> chạm phải đủ lớn", "chữ phải sống được khi to lên" sẽ đúng còn lâu hơn Compose. Tên API cụ thể
-> (`contentDescription`, `Modifier.semantics`) thì có thể đổi. Học nguyên lý trước, API sau.
+Ba nhóm việc đó là **nguyên lý, không phải cú pháp**: "mọi thứ bấm được phải có tên gọi có nghĩa",
+"vùng chạm phải đủ lớn", "chữ phải sống được khi to lên" sẽ còn đúng lâu hơn Compose — còn tên API cụ
+thể (`contentDescription`, `Modifier.semantics`) thì có thể đổi. Học nguyên lý trước, API sau.
 
 ---
 
@@ -106,7 +108,12 @@ Icon(
 )
 ```
 
-Câu hỏi để chọn: **nếu xoá icon này đi, người dùng có mất thông tin nào không?**
+> **Quy tắc quyết định `contentDescription` — nhớ đúng ba dòng này.**
+> Hỏi: *nếu xoá thành phần này đi, người dùng có mất thông tin nào không?*
+> · **Mất** ⇒ viết một **câu chữ** mô tả nó.
+> · **Không mất** ⇒ `null`.
+> · Và một điều đè lên cả hai: **mọi thứ bấm được đều phải có tên gọi**, kể cả khi nó *nhìn* như
+> trang trí.
 
 - Icon mũi tên trong app bar là **cách duy nhất** để biết có nút quay lại ⇒ mang thông tin ⇒ phải có
   mô tả.
@@ -123,7 +130,7 @@ nhiều mô tả vô nghĩa**. Một hàng có avatar, icon trạng thái, icon 
 có mô tả thì mỗi lần lướt qua một tin nhắn, người dùng phải nghe bốn câu trước khi tới nội dung thật.
 Điền `null` cho phần trang trí là cách bạn **giảm tiếng ồn**.
 
-### Cạm bẫy quan trọng nhất: mô tả trùng trong một nút đã có chữ
+### Bẫy phổ biến nhất: mô tả trùng trong một nút đã có chữ
 
 Đây là lỗi phổ biến nhất của người mới, và nó *xuất phát từ ý tốt*:
 
@@ -181,23 +188,17 @@ câu: **mô tả việc thành phần đó làm, không mô tả nó trông th�
 Hệ quả thực dụng: **đổi hình không phải đổi mô tả.** Nếu mô tả của bạn là "mũi tên trái" thì hôm
 designer đổi sang hình chữ V, mô tả thành sai. Nếu mô tả là "Quay lại" thì nó vẫn đúng.
 
-Hai chi tiết nhỏ nhưng quan trọng:
+Ba chi tiết nhỏ nhưng quan trọng:
 
 - **Đừng nhồi loại thành phần vào mô tả.** Viết `"Nút gửi"` là dư: dịch vụ hỗ trợ **tự** thông báo
   phần "nút" cho một `Button` — người dùng sẽ nghe "nút gửi, nút". Chỉ viết `"Gửi"`.
+- **Đừng nhồi màu sắc hay hình dáng vào mô tả.** `"Nút loa màu xám"` nói hai thứ mà đúng người cần
+  mô tả nhất đều không dùng được. Với một icon loa mà bấm vào thì tắt tiếng cuộc gọi, mô tả đúng chỉ
+  gồm hành động: `"Tắt tiếng"`.
 - **Mô tả là chữ người dùng nghe được ⇒ nó là chuỗi hiển thị.** Nên nó thuộc `strings.xml` như mọi
   chữ khác trong app (Chương 3), không phải chuỗi gõ thẳng trong code:
   `contentDescription = stringResource(id = R.string.info)`. Đây là điều project mẫu làm đúng ở mọi
   chỗ có mô tả (mục 28) — và là điều kiện để app dịch được sang ngôn ngữ khác.
-
-> **Tự kiểm tra 2.** Một `IconButton` chứa icon hình cái loa, bấm vào thì **tắt tiếng** cuộc gọi.
-> Chọn mô tả tốt nhất: (a) `"Loa"` · (b) `"Nút loa màu xám"` · (c) `"Tắt tiếng"` · (d) `"Nút tắt tiếng"`.
->
-> <details><summary>Đáp án</summary>
->
-> **(c) `"Tắt tiếng"`.** (a) mô tả hình, không nói hành động. (b) mô tả hình *và* màu — vô dụng với
-> người không nhìn màn hình. (d) đúng ý nhưng dư chữ "Nút": `IconButton` đã tự thông báo là nút.
-> </details>
 
 ---
 
@@ -264,7 +265,7 @@ Hai lưu ý để không hiểu sai lời hứa đó:
 **Quy tắc thực dụng:** dùng component Material cho mọi control ⇒ khỏi nghĩ về vùng chạm. Chỉ tự dựng
 hộp 48dp khi bạn tự làm control bằng `Box` + `clickable` — và đó chính là lúc dễ quên nhất.
 
-> **Tự kiểm tra 3.** Chuỗi `Modifier.padding(12.dp).clickable { … }.size(24.dp)` cho một icon 24dp.
+> **Tự kiểm tra 2.** Chuỗi `Modifier.padding(12.dp).clickable { … }.size(24.dp)` cho một icon 24dp.
 > Vùng chạm rộng bao nhiêu, và sửa thế nào?
 >
 > <details><summary>Đáp án</summary>
@@ -279,8 +280,9 @@ hộp 48dp khi bạn tự làm control bằng `Box` + `clickable` — và đó c
 
 ## 23. Cỡ chữ hệ thống có thể to hơn bạn tưởng
 
-Trong Cài đặt của Android có mục cỡ chữ. Từ **Android 14**, người dùng đặt được cỡ chữ tới **200%** —
-gấp đôi. Đây không phải trường hợp hiếm: đó là thiết lập đầu tiên rất nhiều người trên 40 tuổi bật lên.
+Trong Cài đặt của Android có mục cỡ chữ, và mức lớn nhất trên các bản Android hiện nay là **200%** —
+gấp đôi cỡ chữ bạn đang thấy. Đây không phải trường hợp hiếm: đó là thiết lập đầu tiên rất nhiều người
+trên 40 tuổi bật lên.
 
 Hai đơn vị đo, hai vai trò — và đây là chỗ duy nhất trong Compose bạn **không** được dùng lẫn:
 
@@ -290,9 +292,8 @@ Hai đơn vị đo, hai vai trò — và đây là chỗ duy nhất trong Compos
 | `dp` (*density-independent pixels*) | kích thước, khoảng cách, đệm, icon | **Không đổi** |
 
 Quy tắc: **cỡ chữ luôn ghi bằng `sp`; mọi thứ còn lại ghi bằng `dp`.** Ngược lại cũng cấm — đừng dùng
-`sp` cho `padding` hay chiều cao: từ Android 14 việc phóng chữ là **không tuyến tính** (chữ to không
-phóng cùng tỉ lệ với chữ nhỏ, để chữ tiêu đề không vọt lên vô lý), nên `4sp + 20sp` không còn bằng
-`24sp` và mọi phép tính bố cục dựa trên `sp` sẽ lệch.
+`sp` cho `padding` hay chiều cao, vì việc phóng chữ không phải một phép nhân đơn giản (chữ tiêu đề
+phóng ít hơn chữ nhỏ), nên mọi phép tính bố cục dựa trên `sp` sẽ lệch.
 
 Tin tốt: nếu bạn dùng `MaterialTheme.typography` như đã học ở C3 thì bạn **đã** dùng `sp` — bộ kiểu
 chữ của theme khai bằng `sp` sẵn. Vấn đề gần như không bao giờ nằm ở cỡ chữ, mà nằm ở **cái hộp bọc
@@ -328,10 +329,10 @@ Row(modifier = Modifier.padding(vertical = 8.dp)) {
 Điểm khác biệt cốt lõi: bản TỐT **không nói trước chiều cao**. Nó nói "đệm 8dp trên dưới" và để nội
 dung tự quyết định phần còn lại. Chữ to lên thì hàng cao lên — đúng như người dùng muốn.
 
-> **Nối lại với C4.** Bảng "ba việc `@Preview` không chứng minh được" đã nói: bản xem trước dùng một
-> cấu hình cố định, còn *cỡ chữ hệ thống của người dùng* thì có thể khác. Đây chính là phần đó, giờ có
-> tên và có cách kiểm tra (mục 27). Lưu ý phạm vi: bố cục cho tablet/màn hình gập (window size classes)
-> là chủ đề khác nằm ở track Mở rộng — ở đây chỉ nói về **cỡ chữ**.
+Chỗ này nối thẳng vào C4: bảng "ba việc `@Preview` không chứng minh được" đã nói bản xem trước dùng
+một cấu hình cố định, còn cỡ chữ hệ thống của người dùng thì có thể khác — giờ phần đó có tên và có
+cách kiểm tra (mục 27). Phạm vi ở đây chỉ là **cỡ chữ**; bố cục cho tablet/màn hình gập là chủ đề khác
+nằm ở track Mở rộng.
 
 ---
 
@@ -360,15 +361,15 @@ Surface(color = MaterialTheme.colorScheme.surface) {
 cho mỗi cặp `X` / `onX` giữ được độ tương phản ở cả chế độ sáng và tối. Dùng đúng cặp ⇒ bạn được thừa
 hưởng phần việc đó mà không phải tính gì.
 
-> **Đừng hiểu quá lời hứa này.** MaterialTheme **không** tự làm mọi giao diện trở nên tương phản đủ.
-> Nó chỉ bảo đảm cho các cặp vai trò *khi bạn dùng đúng cặp*. Ghép `onSurface` lên nền `primary`, đặt
-> chữ lên một tấm ảnh, hay giảm `alpha` của chữ cho "đẹp" — cả ba đều đưa bạn ra ngoài vùng bảo đảm và
-> phải tự kiểm tra.
+⚠ **Đừng hiểu quá lời hứa này.** MaterialTheme **không** tự làm mọi giao diện trở nên tương phản đủ.
+Nó chỉ bảo đảm cho các cặp vai trò *khi bạn dùng đúng cặp*. Ghép `onSurface` lên nền `primary`, đặt
+chữ lên một tấm ảnh, hay giảm `alpha` của chữ cho "đẹp" — cả ba đều đưa bạn ra ngoài vùng bảo đảm và
+phải tự kiểm tra.
 
-Con số để biết mình đang ở đâu (không cần học thuộc, cần biết là nó tồn tại): chữ nhỏ hơn 18sp (hoặc
-in đậm nhỏ hơn 14sp) nên đạt độ tương phản **ít nhất 4.5:1** so với nền; chữ lớn hơn thì **3:1**. Có
-app **Accessibility Scanner** trên Play Store quét màn hình và chỉ ra chỗ không đạt — dùng nó thay vì
-đoán.
+Thứ đáng mang ra khỏi bài là **kỹ năng quyết định**, không phải con số: chữ và nền phải còn đọc được,
+nên hãy ưu tiên cặp vai trò của theme và tự soi lại mọi chỗ bạn tự chọn màu. *(Mức tham khảo, không
+cần học thuộc: hướng dẫn accessibility đặt ngưỡng tương phản tối thiểu 4.5:1 cho chữ thường và 3:1 cho
+chữ lớn, và có công cụ quét màn hình đo giúp bạn — mục 27.)*
 
 Ba chỗ hay vỡ:
 
@@ -394,7 +395,7 @@ của Android nói thẳng: hãy dùng **thêm** dấu hiệu khác ngoài màu 
 Chữ là dấu hiệu tốt nhất trong ba loại, vì nó phục vụ **cả** người nhìn thấy màu **và** dịch vụ hỗ trợ
 cùng một lúc — bạn không phải làm hai lần.
 
-> **Tự kiểm tra 4.** Vì sao "ô nhập đổi sang màu đỏ khi sai" là chưa đủ, dù ai cũng thấy màu đỏ nghĩa
+> **Tự kiểm tra 3.** Vì sao "ô nhập đổi sang màu đỏ khi sai" là chưa đủ, dù ai cũng thấy màu đỏ nghĩa
 > là lỗi?
 >
 > <details><summary>Đáp án</summary>
@@ -413,10 +414,8 @@ cùng một lúc — bạn không phải làm hai lần.
 tính semantics; `Text` tự đặt nội dung chữ của nó vào semantics; `Button` tự đặt vào đó "tôi là nút,
 bấm được".
 
-Định nghĩa đủ dùng ở mức người mới:
-
-> **Semantics = phần mô tả kèm theo mỗi thành phần giao diện, nói nó CÓ NGHĨA GÌ, LÀM ĐƯỢC GÌ và ĐANG
-> Ở TRẠNG THÁI NÀO.** Dịch vụ hỗ trợ chỉ đọc phần này.
+Định nghĩa đủ dùng ở mức người mới: **semantics là phần mô tả kèm theo mỗi thành phần giao diện, nói
+nó có nghĩa gì, làm được gì và đang ở trạng thái nào.** Dịch vụ hỗ trợ chỉ đọc phần này.
 
 Khi cần tự thêm vào phần mô tả đó, công cụ là một modifier:
 
@@ -426,11 +425,9 @@ Modifier.semantics {
 }
 ```
 
-> **Chú giải cú pháp (Kotlin).** Khối `{ … }` sau `semantics` là một **khối cấu hình**: bên trong nó
-> bạn *gán* vào các thuộc tính mô tả, chứ không gọi hàm nào. Nó vẫn là lambda đuôi đã học ở F1 — chỉ
-> khác là Kotlin cho khối này truy cập thẳng vào một chỗ chứa thuộc tính có sẵn (`contentDescription`,
-> `stateDescription`, `role`…), nên bạn viết `contentDescription = …` mà không cần tên đối tượng nào ở
-> trước. Ở bài này chỉ cần đọc được khuôn hình đó.
+Khối `{ … }` sau `semantics` vẫn là lambda đuôi đã học ở F1, chỉ khác là bên trong nó bạn *gán* vào
+các thuộc tính mô tả có sẵn chứ không gọi hàm nào — nên viết được `contentDescription = …` mà không
+cần tên đối tượng ở trước. Ở bài này chỉ cần đọc được khuôn hình đó.
 
 ### `mergeDescendants = true`: nhiều mảnh hình, một ý nghĩa
 
@@ -456,10 +453,6 @@ Ba điều cần đọc trong đoạn trên:
 - Bạn **không phải** viết nó cho `Button` hay bất cứ thứ gì `clickable`: những cái đó đã tự gộp
   (mục 20). Chỉ nhóm *không* bấm được mới cần bật tay.
 
-Ngược lại, gộp cũng có giới hạn cần biết trước để không tưởng mình viết sai: **một cha không gộp được
-một con đã tự gộp.** Nếu trong hàng có một nút bookmark riêng, nút đó vẫn tách ra thành thành phần
-riêng của nó — và đó là điều bạn *muốn*, vì người dùng cần bấm được vào nó.
-
 Cách quyết định: **gộp khi các mảnh chỉ có nghĩa khi đi cùng nhau, và không mảnh nào cần bấm riêng.**
 Đừng gộp một khối lớn gồm nhiều hành động khác nhau — lúc đó bạn tạo ra một câu thông báo rất dài mà
 người dùng không tách được thao tác nào ra.
@@ -471,15 +464,13 @@ chọn, bật / tắt được. Một `Checkbox` mà chỉ đọc lên `"Nhận 
 biết nó **đang** được tích hay không.
 
 Tin tốt: các component Material đã làm việc này. `Checkbox`, `Switch`, `RadioButton` tự thông báo trạng
-thái của chúng; một control bị `enabled = false` cũng tự được thông báo là đang tắt. Compose có thuộc
-tính `stateDescription` để bạn *đổi lời* thông báo trạng thái (ví dụ nói "Đã đăng ký" thay vì "Đã
-tích"), nhưng ở bài này bạn chỉ cần **nhận ra cái tên**. Quy tắc dùng được ngay: **nếu component
-Material đã thể hiện đúng trạng thái thì dùng nó, đừng dựng lại bằng `Box` + `clickable`.**
+thái của chúng; một control bị `enabled = false` cũng tự được thông báo là đang tắt. Nên bài học ở đây
+gọn đúng một câu: **nếu component Material đã thể hiện đúng trạng thái thì dùng nó, đừng dựng lại bằng
+`Box` + `clickable`.**
 
-> **Cố ý để ngoài phạm vi bài này** (và bạn *không* cần chúng để làm app của khoá): cấu trúc bên trong
-> của cây semantics; tự định nghĩa `SemanticsPropertyKey`; `clearAndSetSemantics` (xoá/ghi đè toàn bộ
-> mô tả của một nhánh); `Modifier.semantics` cho thứ tự đọc; các API kiểm thử accessibility. Bạn sẽ gặp
-> tên `SemanticsPropertyKey` trong code thật của project ở mục 28 — nhận ra rồi đi tiếp là đủ.
+Bài này dừng ở mức đó. Bên trong Compose còn cả một cây semantics với các thuộc tính tự định nghĩa và
+API kiểm thử riêng, nhưng bạn *không* cần chúng để làm app của khoá — gặp một cái tên lạ trong code
+thật (mục 28) thì nhận ra rồi đi tiếp là đủ.
 
 ---
 
@@ -501,22 +492,15 @@ Vì sao thứ tự này quan trọng: mỗi lần bạn tự viết semantics l�
 nó. Mô tả tự viết sẽ lạc hậu khi chức năng đổi, còn `Button` thì không bao giờ quên nói mình là nút.
 Dùng component có sẵn là cách ít công nhất **và** bền nhất.
 
-> **Tự kiểm tra 5.** Khi nào `mergeDescendants = true` là lựa chọn hợp lý?
->
-> <details><summary>Đáp án</summary>
->
-> Khi một nhóm gồm nhiều mảnh hình chỉ có nghĩa **khi đi cùng nhau** (avatar + tên + thời gian + nội
-> dung tin nhắn), và **không mảnh nào bên trong cần bấm riêng**. Không hợp lý khi: nhóm chứa nhiều
-> hành động khác nhau (mỗi hành động phải bấm được riêng); hoặc nhóm đã tự gộp vì có `clickable`/là
-> `Button` — lúc đó viết thêm là dư.
-> </details>
-
 ---
 
 ## 27. Tự kiểm tra bằng tay: 8 bước
 
-Accessibility không kiểm được bằng cách đọc code, cũng **không** kiểm được bằng `@Preview` (C4). Cách
-duy nhất đáng tin là mở app lên và thử. Toàn bộ việc này mất khoảng 5 phút mỗi màn hình.
+> **Không một điều nào trong bài này kiểm được bằng cách đọc code.** `@Preview` (C4) và chiếc điện
+> thoại của bạn ở thiết lập mặc định đều không chứng minh được gì: mô tả sai vẫn compile, vùng chạm
+> 24dp vẫn trông đẹp, chữ vẫn vừa khít một dòng. **Mỗi màn hình bạn dựng phải được thử ba lần — một
+> lần với TalkBack, một lần ở cỡ chữ lớn nhất, một lần bằng ngón tay.** Khoảng 5 phút mỗi màn hình, và
+> đó là toàn bộ phần "kiểm tra" mà bài này yêu cầu ở bạn.
 
 **Bật TalkBack:** *Cài đặt → Trợ năng (Accessibility) → TalkBack → bật*. Lần đầu bật sẽ có hướng dẫn
 ngắn — nên xem hết một lượt. Hai cách di chuyển cần biết: **lướt phải/trái** để đi lần lượt qua từng
@@ -540,10 +524,10 @@ Checklist:
 Và một bước không cần thiết bị: **đọc lại màn hình, tìm mọi chỗ mà thông tin chỉ được truyền bằng
 màu.**
 
-> **Đây không phải kiểm thử tự động.** Có công cụ tự động (Accessibility Scanner để quét màn hình,
-> Compose UI Check trong Android Studio, và các API kiểm thử accessibility) — nhưng chúng nằm ở track
-> Mở rộng. Với người mới, tám bước bằng tay ở trên phát hiện được gần hết vấn đề thật, và quan trọng
-> hơn: nó cho bạn *cảm giác* app của mình dùng như thế nào khi không nhìn thấy nó.
+Có công cụ tự động cho phần này — Accessibility Scanner (app quét màn hình) và Compose UI Check trong
+Android Studio — nhưng ở đây chỉ cần **biết chúng tồn tại**; cách dùng thuộc track Mở rộng. Tám bước
+bằng tay ở trên phát hiện được gần hết vấn đề thật, và quan trọng hơn: nó cho bạn *cảm giác* app của
+mình dùng như thế nào khi không nhìn thấy nó.
 
 ---
 
@@ -675,100 +659,99 @@ thì gì xảy ra. Người dùng nghe "Information, bấm hai lần để mở"
 hơn: `"Xem thông tin kênh"`. (Cũng như avatar, `onClick = { }` ở đây còn để trống — tầng giao diện chưa
 được nối.)
 
-### Chỗ đáng đặt câu hỏi 3 — ô nhập tự dựng phải tự gắn mô tả (dòng 371–441)
+### Chỗ đáng đặt câu hỏi 3 — ô nhập tự dựng phải tự gắn mô tả (`UserInput.kt` dòng 371–441)
 
-```kotlin
-val a11ylabel = stringResource(id = R.string.textfield_desc)      // "Text input"
-Row(
-    modifier = Modifier
-        .fillMaxWidth()
-        .height(64.dp)
-        .semantics {
-            contentDescription = a11ylabel
-            keyboardShownProperty = keyboardShown
-        },
-    …
-) { … BasicTextField(…) … }
-```
+Ô nhập chữ ở đây không dùng `OutlinedTextField` như C2 mục 4, mà dùng `BasicTextField` — thành phần thô
+nhất, chỉ vẽ chữ và nhận gõ, **không có** `label` hay `placeholder`. Không có `label` nghĩa là không có
+tên gọi nào để dịch vụ hỗ trợ đọc, nên `Row` bọc ngoài phải tự gắn `contentDescription` bằng
+`Modifier.semantics` (dòng 386–389, nhãn lấy từ `strings.xml`). Đây là nguyên tắc của mục 26 nhìn từ
+chiều ngược lại: **chọn thành phần thô thì bạn nhận luôn phần việc semantics mà component Material đã
+làm sẵn** — code này không sai, nó chỉ đang trả giá cho lựa chọn đó. (Trong cùng khối còn một thuộc
+tính semantics tự định nghĩa ở dòng 366–367: ngoài phạm vi bài này, nhận ra tên rồi đi tiếp.)
 
-Vì sao chỗ này phải viết semantics bằng tay, trong khi ô nhập ở C2 thì không? Vì nó dùng
-`BasicTextField` — **thành phần thô nhất**, chỉ vẽ chữ và nhận gõ, **không có** `label` hay
-`placeholder` như `OutlinedTextField` (C2 mục 4). Không có `label` nghĩa là không có tên gọi để dịch vụ
-hỗ trợ đọc, nên phần code dựng màn hình phải tự gắn.
+### Nhận diện vấn đề — chưa sửa ở bài này: liên kết nằm trong chuỗi chữ (dòng 322–352)
 
-Đây đúng là nguyên tắc của mục 26 nhìn từ chiều ngược lại: **chọn thành phần thô thì bạn nhận luôn phần
-việc semantics mà thành phần Material đã làm sẵn.** Với `OutlinedTextField` + `label`, bạn không phải
-viết dòng nào.
+`ClickableMessage` làm cho @mention và đường link *bên trong* một đoạn chữ bấm được. Với mắt thì rõ
+ràng; với dịch vụ hỗ trợ thì những liên kết đó **không** hiện ra thành thành phần thao tác riêng —
+người dùng TalkBack nghe được cả đoạn chữ nhưng không có cách nào lướt tới từng liên kết.
 
-Còn `keyboardShownProperty` ở dòng dưới là một **thuộc tính semantics tự định nghĩa** (`SemanticsPropertyKey`
-ở dòng 366–367). Nó thuộc phần cố ý để ngoài phạm vi (mục 25): **nhận ra cái tên rồi đi tiếp** — bạn
-không cần nó cho app của khoá này.
+**Nhận diện vấn đề — chưa sửa ở bài này.** Cách sửa đúng cần API liên kết trong `AnnotatedString` của
+bản Compose mới hơn, vượt phạm vi C5. Ghi nhận rồi đi tiếp vẫn tốt hơn là dạy nửa vời một giải pháp
+nâng cao — và bản thân việc *nhìn ra* được vấn đề này đã là kỹ năng bài này muốn bạn có.
 
 ### Tổng kết đợt đọc
 
+Hai mẫu tốt nữa không cần đoạn riêng: bộ kiểu chữ của project (`theme/Typography.kt`) khai **toàn bộ
+bằng `sp`**, nên chữ phóng được theo thiết lập của người dùng; và mọi mô tả trong app đều nằm trong
+`strings.xml`. Còn một chỗ đáng sửa cùng họ với mục 22: nút Send bị ép `Modifier.height(36.dp)`
+(`conversation/UserInput.kt` dòng 311) — chiều cao dưới mức tối thiểu, đúng lỗi "ép cứng kích thước một
+control".
+
 | Chỗ | Đọc ra gì |
 |---|---|
-| Nút menu app bar (64dp, mô tả hành động, lớp trong `null`) | Mẫu tốt — dùng làm khuôn |
+| Nút menu app bar (64dp, mô tả hành động lấy từ `strings.xml`, hai lớp icon bên trong đều `null`) | Mẫu tốt — dùng làm khuôn |
 | `IconButton` chọn emoji/ảnh (56dp, mô tả hành động) | Mẫu tốt — Material lo vùng chạm |
 | `Row` gộp tên + thời gian | Mẫu tốt — đúng ca dùng `mergeDescendants` |
+| `theme/Typography.kt`: 15 vai trò kiểu chữ, tất cả khai bằng `sp` | Mẫu tốt — chữ phóng được theo thiết lập của người dùng |
 | Avatar `clickable` + `contentDescription = null`, cao 42dp | Đáng sửa: thành phần bấm được không có tên; chiều dọc dưới 48dp |
 | `"Information"` cho icon thông tin | Đáng chỉnh lời: nên là tên **hành động** |
+| Nút Send bị ép `Modifier.height(36.dp)` (`UserInput.kt` dòng 311) | Đáng sửa: đừng ép chiều cao một control xuống dưới 48dp |
 | `BasicTextField` + semantics tay | Hợp lý *vì* chọn thành phần thô — nhưng `OutlinedTextField` thì miễn phí |
-| `SemanticsPropertyKey` tự định nghĩa | Ngoài phạm vi — nhận ra rồi đi tiếp |
+| Liên kết/@mention trong `ClickableText` | **Nhận diện vấn đề — chưa sửa ở bài này** (cách sửa cần API mới hơn) |
+| Thuộc tính semantics tự định nghĩa | Ngoài phạm vi — nhận ra rồi đi tiếp |
 
 ---
 
 ## Cạm bẫy
 
 > *Khi dựng trang: đây là khối `<h2 id="cam-bay">` duy nhất của bài. Ba cạm bẫy dưới đây được gom theo
-> chủ đề (mỗi cạm bẫy chứa vài lỗi cùng họ) để giữ đúng giới hạn "tối đa 3 cạm bẫy / bài" của template.*
+> **niềm tin sai của người học** — mỗi cạm bẫy sửa một quyết định, không phải một API — và vừa đúng
+> giới hạn "tối đa 3 cạm bẫy / bài" của template.*
 
-**(a) Đặt mô tả sai chỗ — thừa ở chỗ trang trí, thiếu ở chỗ bấm được, và mô tả sai thứ.** Ba lỗi này
-luôn đi cùng nhau vì cùng một nguyên nhân: điền `contentDescription` theo cảm giác "có điền là tốt".
-Ảnh nền trang trí có mô tả ⇒ người dùng phải nghe một câu vô nghĩa trước mỗi lần tới nội dung thật.
-Một `Button` đã có chữ "Gửi" mà icon bên trong cũng mô tả `"Gửi"` ⇒ nghe thành "Gửi Gửi", vì nút tự gộp
-mô tả của các con. Và mô tả `"Biểu tượng thùng rác màu đỏ"` thì vô dụng với đúng người cần nó nhất — họ
-cần biết *bấm vào thì gì xảy ra*. Ngược lại, thứ **luôn** phải có mô tả là mọi thành phần bấm được mà
-không có chữ hiển thị nào bên cạnh.
+**(a) "Cứ thêm mô tả cho mọi thứ là an toàn."** Đây là kết luận sai phổ biến nhất sau khi học
+accessibility lần đầu, và nó tạo ra ba lỗi một lúc. Ảnh nền trang trí có mô tả ⇒ mỗi lần lướt tới nội
+dung thật, người dùng phải nghe trước một câu vô nghĩa. Một `Button` đã có chữ "Gửi" mà icon bên trong
+cũng mô tả `"Gửi"` ⇒ nghe thành "Gửi Gửi", vì nút tự gộp mô tả của các con. Gắn thêm
+`Modifier.semantics { }` lên một `Checkbox` hay `Switch` là công vô ích — chúng đã tự thông báo đúng
+loại và trạng thái, còn mô tả bạn tự viết sẽ là thứ đầu tiên lạc hậu khi chức năng đổi. Trong khi đó
+thứ **luôn** phải có mô tả lại thường bị quên: mọi thành phần **bấm được** mà không có chữ hiển thị nào
+bên cạnh. Quy tắc gọn: điền phần Compose không thể tự đoán, đừng điền phần đã có người làm sẵn.
 
-**(b) Ép cứng kích thước: vùng chạm co lại và hộp chữ không nở ra.** Hai lỗi cùng một gốc — nói trước
-một con số mà đáng ra phải để nội dung quyết định. Vùng chạm: `Modifier.padding(12.dp).clickable { … }`
-để lại vùng bấm 24dp cho icon 24dp (đổi thứ tự là xong — C2 mục 6), và truyền `Modifier.height(36.dp)`
-vào một `Button` thì bạn **lấy lại** mức tối thiểu 48dp mà Material vừa cho bạn. Hộp chữ:
-`Modifier.height(40.dp)` quanh một dòng `Text` trông ổn trên máy bạn rồi cắt mất chữ ở cỡ chữ 200%. Cả
-hai lỗi này **không hiện ra trong `@Preview`** — chỉ hiện khi có ngón tay thật và thiết lập thật.
+**(b) "Icon 24dp thì vùng bấm 24dp, và UI nhìn ổn trên máy mình là ổn."** Hai nửa của cùng một thói
+quen: nói trước một con số mà đáng ra phải để ngón tay và nội dung quyết định.
+`Modifier.padding(12.dp).clickable { … }` để lại vùng bấm đúng 24dp cho một icon 24dp (đổi thứ tự là
+xong — C2 mục 6). Truyền `Modifier.height(36.dp)` vào một `Button` là **lấy lại** mức tối thiểu mà
+Material vừa cho bạn. `Modifier.height(40.dp)` quanh một dòng `Text` trông ổn trên máy bạn rồi cắt mất
+chữ ở cỡ chữ lớn nhất. Cả ba **không hiện ra trong `@Preview`**, và cũng không hiện ra trên điện thoại
+đang để thiết lập mặc định của bạn — chỉ hiện khi có ngón tay thật và thiết lập thật (mục 27).
 
-**(c) Tin rằng màu tự nói lên ý nghĩa, và tự làm lại phần Material đã làm.** Hai mặt của cùng một thói
-quen: làm việc ở tầng sai. Màu: nếu tín hiệu duy nhất của "lỗi" là viền đỏ thì thông tin đó **không tồn
-tại** với dịch vụ hỗ trợ (màu không nằm trong phần mô tả), chưa kể người khó nhận biết màu. Thêm chữ là
-cách sửa rẻ nhất. Ngược lại: gắn `Modifier.semantics { }` lên một `Checkbox` hay `Switch` là công vô ích
-— chúng đã thông báo đúng loại và trạng thái của mình, và mô tả bạn tự viết sẽ là thứ đầu tiên lạc hậu
-khi chức năng đổi.
+**(c) "Đổi sang màu đỏ là đủ để báo lỗi."** Màu **không** nằm trong phần mô tả mà dịch vụ hỗ trợ đọc,
+nên nếu tín hiệu duy nhất của "có lỗi" là viền đỏ thì với người dùng TalkBack thông tin đó **không tồn
+tại** — chưa kể người khó phân biệt màu và người đang để màn hình ở chế độ đơn sắc. Cách sửa rẻ nhất là
+thêm một dòng chữ nói thẳng vấn đề: chữ phục vụ cả người thấy màu **và** dịch vụ hỗ trợ, nên bạn không
+phải làm hai lần.
 
 ---
 
 ## Tóm tắt
 
-1. Mọi giao diện có **hai bản mô tả**: phần vẽ ra màn hình, và phần **semantics** mà dịch vụ hỗ trợ
-   đọc. Bản thứ hai không tự khớp với bản thứ nhất.
-2. `contentDescription` có đúng hai câu trả lời hợp lệ: **một câu chữ** cho thành phần mang thông tin,
-   và **`null`** cho thành phần trang trí. `null` là lựa chọn có nội dung, không phải sự lười.
-3. Mô tả **việc làm được**, không mô tả **hình dáng**: `"Xoá tin nhắn"`, không phải `"Icon thùng rác"`.
-   Không nhồi loại thành phần vào mô tả (dịch vụ hỗ trợ tự nói "nút"), và vì mô tả là chữ người dùng
-   nghe được, nó thuộc `strings.xml` như mọi chuỗi hiển thị khác.
-4. **Kích thước nhìn thấy ≠ vùng chạm.** Icon 24dp, vùng chạm ít nhất **48dp × 48dp**. Component
+Bài này có **năm** điều cốt lõi. Nếu một tuần sau bạn chỉ còn nhớ năm thứ, hãy để chúng là năm thứ này.
+
+1. **Một giao diện luôn có hai bản mô tả.** Phần vẽ ra màn hình, và phần **semantics** — nói *nghĩa,
+   hành động, trạng thái* — mà dịch vụ hỗ trợ đọc. Bản thứ hai không tự khớp với bản thứ nhất.
+2. **`contentDescription` là để nói nghĩa, không phải để điền cho có.** Mang thông tin ⇒ một câu chữ mô
+   tả **việc làm được** (`"Xoá tin nhắn"`, không phải `"Icon thùng rác"`; và vì người dùng nghe được nó,
+   nó thuộc `strings.xml`). Trang trí ⇒ `null`. Bấm được ⇒ **luôn** phải có tên gọi.
+3. **Kích thước nhìn thấy ≠ vùng chạm.** Icon 24dp, vùng chạm ít nhất **48dp × 48dp**. Component
    Material tương tác đã giữ mức đó; control tự dựng bằng `Box` + `clickable` thì bạn tự đặt.
-5. **Cỡ chữ ghi bằng `sp`, mọi thứ khác bằng `dp`.** Người dùng có thể tăng cỡ chữ tới **200%** (từ
-   Android 14). Đừng ép chiều cao hộp chứa chữ, đừng giả định chữ luôn một dòng.
-6. **"Hiện ra được" chưa phải "đọc được".** Dùng cặp vai trò màu (`surface` / `onSurface`) để thừa hưởng
-   độ tương phản — nhưng đừng tin rằng theme tự bảo đảm mọi giao diện tuỳ biến.
-7. **Đừng để màu là kênh thông tin duy nhất.** Thêm chữ: nó phục vụ cả người thấy màu và dịch vụ hỗ trợ.
-8. **Semantics = mô tả nghĩa + hành động + trạng thái.** `mergeDescendants = true` gom nhiều mảnh hình
-   thành một thành phần khi chúng chỉ có nghĩa cùng nhau và không mảnh nào cần bấm riêng.
-9. **Thứ tự ưu tiên:** component Material có nghĩa sẵn → điền phần Compose không đoán được → chỉ tự
-   viết semantics khi cấu trúc hình ảnh không diễn đạt đúng ý nghĩa.
-10. Cách kiểm duy nhất đáng tin là **thử bằng tay**: TalkBack + cỡ chữ lớn nhất, theo checklist 8 bước
-    ở mục 27. `@Preview` không chứng minh được phần này.
+4. **Giao diện phải sống được khi chữ to lên, và không được nói bằng màu.** Cỡ chữ ghi bằng `sp`, mọi
+   thứ khác bằng `dp`; đừng ép chiều cao hộp chứa chữ, đừng giả định chữ luôn một dòng; dùng cặp vai trò
+   màu (`surface` / `onSurface`) để giữ phần tương phản; và mọi thông tin đang truyền bằng màu phải có
+   thêm chữ hoặc hình đi kèm.
+5. **Ưu tiên component có nghĩa sẵn, rồi tự kiểm bằng tay.** Component Material trước → điền phần Compose
+   không đoán được → chỉ tự viết semantics (ví dụ `mergeDescendants = true` cho một nhóm mảnh rời chỉ có
+   nghĩa khi đi cùng nhau) khi cấu trúc hình ảnh không diễn đạt đúng ý nghĩa. Sau đó bật TalkBack + cỡ
+   chữ lớn nhất và soi lại màn hình theo checklist mục 27 — `@Preview` không chứng minh được phần này.
 
 ---
 
@@ -824,9 +807,10 @@ báo, và ở đây nó gây thêm một vấn đề nữa.)*
 3. **Vùng chạm của nút đóng chỉ 24dp** (mục 22). `padding` đứng trước `clickable` nên phần đệm không nhận
    thao tác bấm. Sửa bằng cách đổi thứ tự, hoặc gọn hơn: dùng `IconButton`.
 4. **Chiều cao cứng 40dp** (mục 23). Ở cỡ chữ lớn, dòng chữ bị cắt hoặc mất hẳn. Bỏ `height`, dùng đệm.
-5. **Chữ xám nhạt trên nền gần trắng + màu ghi cứng** (mục 24). `0xFFBDBDBD` trên `0xFFFFF3F3` không đạt
-   mức tương phản 4.5:1, và cả hai màu ghi cứng nên chế độ tối sẽ vỡ. Dùng cặp vai trò
-   `errorContainer` / `onErrorContainer`. `fontSize = 13.sp` cũng nên thay bằng kiểu chữ của theme.
+5. **Chữ xám nhạt trên nền gần trắng + màu ghi cứng** (mục 24). `0xFFBDBDBD` trên `0xFFFFF3F3` là xám
+   nhạt trên gần-trắng: tương phản quá thấp để đọc được ngoài trời hoặc với mắt kém hơn bạn — và vì cả
+   hai màu đều ghi cứng, chế độ tối sẽ vỡ. Dùng cặp vai trò `errorContainer` / `onErrorContainer`.
+   `fontSize = 13.sp` cũng nên thay bằng kiểu chữ của theme.
 6. **Thông tin "có lỗi" chỉ được truyền bằng màu** (mục 24). Dòng chữ chỉ nói `"3 tin nhắn"` — hoàn toàn
    trung tính. Người dùng TalkBack không nhận được sắc đỏ, nên với họ màn hình này **không có lỗi nào**.
    Chữ phải nói ra vấn đề.
@@ -903,16 +887,16 @@ hàng phải cao lên, chữ không bị cắt, nút đóng vẫn bấm được
 | 4 | `conversation/Conversation.kt` 265–289 (merge ở 273) | `Row(Modifier.semantics(mergeDescendants = true) {})` gộp tên + thời gian, có comment nêu ý định | **A** | mục 25 + mục 28, Mẫu tốt 2 |
 | 5 | `conversation/Conversation.kt` 366–376 | Icon info: `clickable` **trước** `padding` ⇒ vùng chạm ~48×56dp | **A** | mục 28 (phần vùng chạm) |
 | 6 | `res/values/strings.xml` 47–59 | Khối `<!-- Accessibility descriptions -->`: mô tả nằm trong string resource | **A** | mục 21 + mục 28 |
-| 7 | `theme/Typography.kt` 68–174 | 15 vai trò kiểu chữ, toàn bộ khai bằng `sp` | **A** | mục 23 (câu "dùng typography là đã dùng `sp`") |
+| 7 | `theme/Typography.kt` 68–174 | 15 vai trò kiểu chữ, toàn bộ khai bằng `sp` | **A** | mục 23 (câu "dùng typography là đã dùng `sp`") + một hàng trong bảng tổng kết mục 28 |
 | 8 | `conversation/Conversation.kt` 366–376 | Mô tả `R.string.info` = "Information" — tên **đồ vật**, không phải tên **hành động** | **B** | mục 28, Chỗ đáng đặt câu hỏi 2 |
-| 9 | `conversation/UserInput.kt` 371–441 (nhãn 381, semantics 386–389) | `BasicTextField` không có `label` ⇒ phải tự gắn `contentDescription` cho `Row` bọc ngoài | **B** | mục 28, Chỗ đáng đặt câu hỏi 3 |
+| 9 | `conversation/UserInput.kt` 371–441 (nhãn 381, semantics 386–389) | `BasicTextField` không có `label` ⇒ phải tự gắn `contentDescription` cho `Row` bọc ngoài | **B** | mục 28, Chỗ đáng đặt câu hỏi 3 — sau C5B rút còn **prose, bỏ code block** (bài học của nó đã nằm ở mục 26) |
 | 10 | `conversation/UserInput.kt` 443–479 (semantics 456) | `Column` của bộ chọn emoji mang một `contentDescription` nhóm | **B** | không dùng (đã đủ ví dụ) |
 | 11 | `conversation/MessageFormatter.kt` 179 | `fontSize = 12.sp` ghi cứng trong `SpanStyle` của đoạn code inline | **B** | không dùng (vẫn là `sp` nên vẫn phóng; chỉ là không lấy từ `typography`) |
 | 12 | `conversation/Conversation.kt` 207–219 (mô tả 218, gọi ở 171) | `Image` có `clickable` nhưng `contentDescription = null` ⇒ thành phần bấm được không tên; `onAuthorClick` truyền vào là lambda rỗng | **C** | mục 28, Chỗ đáng đặt câu hỏi 1 |
 | 13 | `conversation/Conversation.kt` 207–219 | Vùng chạm avatar `74dp × 42dp` — chiều dọc dưới mức 48dp | **C** (nhỏ) | mục 28, cùng chỗ |
-| 14 | `conversation/UserInput.kt` 310–322 (dòng 311) | Nút Send bị ép `Modifier.height(36.dp)`, dưới mức 48dp | **C** (nhỏ) | mục 22 + Cạm bẫy (b), nêu ở dạng nguyên tắc |
-| 15 | `conversation/Conversation.kt` 322–352 | `ClickableText`: liên kết/@mention bên trong chuỗi **không** được đưa ra thành thành phần thao tác riêng cho dịch vụ hỗ trợ | **C — hoãn** | KHÔNG dùng: cách sửa cần API liên kết trong `AnnotatedString` (Compose 1.7+), vượt phạm vi C5 |
-| 16 | `conversation/UserInput.kt` 366–367 | `SemanticsPropertyKey<Boolean>("KeyboardShownKey")` tự định nghĩa | **D** | mục 25 + mục 28: chỉ nhận diện tên, cấm dạy |
+| 14 | `conversation/UserInput.kt` 310–322 (dòng 311) | Nút Send bị ép `Modifier.height(36.dp)`, dưới mức 48dp | **C** (nhỏ) | mục 22 + Cạm bẫy (b) ở dạng nguyên tắc, và một hàng trong bảng tổng kết mục 28 |
+| 15 | `conversation/Conversation.kt` 322–352 | `ClickableText`: liên kết/@mention bên trong chuỗi **không** được đưa ra thành thành phần thao tác riêng cho dịch vụ hỗ trợ | **C — hoãn** | mục 28: **dùng ở mức nhận diện**, gắn nhãn "Nhận diện vấn đề — chưa sửa ở bài này". Không dạy cách sửa (cần API liên kết trong `AnnotatedString`, Compose 1.7+) |
+| 16 | `conversation/UserInput.kt` 366–367 | `SemanticsPropertyKey<Boolean>("KeyboardShownKey")` tự định nghĩa | **D** | mục 28: sau C5B chỉ còn một mệnh đề "một thuộc tính semantics tự định nghĩa" — **không nêu tên API** trong bài học; tên và ngữ cảnh nằm ở "Future accessibility reference notes" |
 | 17 | `components/KodecochatIcon.kt` 57 | `role = Role.Image` trên node mà bên gọi gắn `clickable` | **D** | mục 28: chỉ một câu "role là chỗ nói loại thành phần"; không bắt lỗi |
 | 18 | `ui/theme/Type.kt`, `ui/theme/Theme.kt` | Thư mục theme thứ hai — code chết (đã kết luận ở C3 mục 14) | **D** | không dùng |
 
@@ -927,6 +911,74 @@ hàng phải cao lên, chữ không bị cắt, nút đóng vẫn bấm được
   hơn mức tối thiểu, nhưng hướng dẫn chính thức vẫn yêu cầu tự đặt kích thước (vì các vùng chạm nới ra
   có thể chồng lên nhau, và việc nới không cứu được một vùng chạm bị co lại do sai thứ tự modifier). Bài
   học vì vậy dạy **đặt kích thước tường minh**, và không dựa vào cơ chế nới đó.
+
+---
+
+## Future accessibility reference notes
+
+> **Nội dung biên tập nội bộ — KHÔNG đưa vào bài học.** Đây là **kho ghi nhớ kỹ thuật** cho các chi
+> tiết đã được **hạ ưu tiên** khỏi prose học của C5 ở đợt C5B: chúng đúng và đã kiểm, nhưng không giúp
+> người mới ra quyết định hằng ngày tốt hơn, nên nếu để trong bài thì chúng cạnh tranh với năm điều cốt
+> lõi. Đây **không** phải nội dung học tương lai đã được duyệt — cột "nhà khả dĩ" chỉ là gợi ý.
+>
+> Mỗi mục ghi: phát biểu đầy đủ · vì sao không ở lõi C5 · dấu vết còn lại trong bài (nếu có).
+
+**1. Phóng chữ không tuyến tính và mốc phiên bản.** Từ Android 14, người dùng đặt được cỡ chữ tới 200%,
+và đường phóng là **không tuyến tính**: chữ đã lớn phóng ít hơn chữ nhỏ, nên `4sp + 20sp` không còn bằng
+`24sp` và mọi phép tính bố cục dựa trên `sp` sẽ lệch. *Không ở lõi:* biến hành vi theo phiên bản Android
+thành một bài con là đúng thứ C5B cấm; quyết định thực dụng ("cỡ chữ dùng `sp`, mọi thứ khác dùng `dp`")
+không cần con số nào để đúng. *Dấu vết trong bài:* mục 23 giữ mức 200% và một mệnh đề "việc phóng chữ
+không phải một phép nhân đơn giản". *Nhà khả dĩ:* AP3 (bảng tra cứu) hoặc O3 (adaptive UI).
+
+**2. Ngưỡng tương phản chính xác.** Chữ nhỏ hơn 18sp (hoặc in đậm nhỏ hơn 14sp) nên đạt tối thiểu
+**4.5:1** so với nền; chữ lớn hơn thì **3:1**. *Không ở lõi:* nhớ con số không phải kỹ năng C5 dạy —
+kỹ năng là "ưu tiên cặp vai trò màu, và tự kiểm chỗ mình tự chọn màu". *Dấu vết trong bài:* mục 24 nêu
+hai con số **một lần**, in nghiêng, kèm chữ "mức tham khảo, không cần học thuộc", và không đưa ngưỡng
+kích thước chữ vào. *Nhà khả dĩ:* AP3.
+
+**3. Hành vi gộp ở biên cha/con.** Một cha đặt `mergeDescendants = true` **không** gộp được một con đã
+tự gộp (ví dụ một `IconButton` nằm trong hàng): con đó vẫn là thành phần thao tác riêng — và đó là điều
+mong muốn. *Không ở lõi:* đây là lời giải thích *vì sao an toàn*, còn quyết định của người học đã được
+quy tắc "đừng gộp nhóm có mảnh cần bấm riêng" xử lý xong. *Dấu vết trong bài:* mục 25 giữ đúng quy tắc
+quyết định đó. *Nhà khả dĩ:* một bài a11y nâng cao, nếu khoá học mở track đó.
+
+**4. `stateDescription`.** Thuộc tính semantics cho phép **đổi lời** thông báo trạng thái (nói "Đã đăng
+ký" thay vì "Đã tích"). *Không ở lõi:* C5 đã có một mục tiêu về semantics; thêm một API nữa là thêm một
+thứ phải nhớ mà không đổi được quyết định nào, vì bài học thật là "component Material đã thông báo đúng
+trạng thái, đừng dựng lại bằng `Box` + `clickable`". *Dấu vết trong bài:* mục 25 giữ nguyên bài học đó,
+không nêu tên API. *Nhà khả dĩ:* bài a11y nâng cao / AP3.
+
+**5. Công cụ tự động.** **Accessibility Scanner** (app trên Play Store, quét một màn hình và báo touch
+target nhỏ, tương phản thấp, thiếu nhãn) · **Compose UI Check** trong Android Studio (kiểm ngay trong
+chế độ xem trước) · các **API kiểm thử accessibility** của Compose. *Không ở lõi:* C5 sở hữu phần *nhận
+thức thủ công* — biết app của mình dùng như thế nào khi không nhìn thấy nó; kiểm thử tự động là một chủ
+đề khác và đã có nhà. *Dấu vết trong bài:* mục 27 có **đúng một câu** nêu tên hai công cụ đầu ở mức
+"biết là chúng tồn tại". *Nhà khả dĩ:* O2 (testing) cho API kiểm thử; AP3 cho tên công cụ.
+
+**6. Cơ chế nới vùng chạm.** Compose/Material có nới vùng chạm ra **ngoài** biên hiển thị cho composable
+bấm được nhỏ hơn mức tối thiểu, nhưng các vùng nới có thể chồng nhau và việc nới **không** cứu được một
+vùng chạm bị co lại vì sai thứ tự modifier — nên hướng dẫn chính thức vẫn yêu cầu tự đặt kích thước.
+*Không ở lõi:* biết cơ chế này ở mức nửa vời dễ dẫn tới kết luận sai "Compose tự lo, khỏi đặt size".
+*Dấu vết trong bài:* mục 22 dạy đặt kích thước tường minh và **không** khẳng định con số vùng chạm cuối
+cùng của nút Send 36dp. *Nhà khả dĩ:* bài a11y nâng cao. (Xem thêm hai gạch "không khẳng định quá" ở
+mục "Thu hoạch code thật".)
+
+**7. Phần còn lại của bề mặt API semantics.** Cấu trúc cây semantics (merged tree vs unmerged tree) ·
+`SemanticsPropertyKey` tự định nghĩa — trong project mẫu là `SemanticsPropertyKey<Boolean>("KeyboardShownKey")`
+(`conversation/UserInput.kt` 366–367) · `clearAndSetSemantics` (xoá và ghi đè toàn bộ mô tả của một
+nhánh) · điều khiển thứ tự đọc · `Role` do người viết tự đặt. *Không ở lõi:* C5 cố tình **không** là
+tutorial API semantics; người học chỉ cần `contentDescription` và `mergeDescendants` để làm app của khoá.
+*Dấu vết trong bài:* mục 25 có một câu "bên trong Compose còn cả một cây semantics… nhận ra rồi đi tiếp",
+mục 28 nhắc một mệnh đề về `role` và một mệnh đề về thuộc tính tự định nghĩa (không nêu tên API).
+*Nhà khả dĩ:* bài a11y nâng cao.
+
+**8. Liên kết trong chuỗi chữ (`ClickableText` → `AnnotatedString` link API).** `ClickableMessage`
+(`conversation/Conversation.kt` 322–352) làm @mention và URL bấm được bằng `ClickableText`, nên các liên
+kết đó không hiện ra thành thành phần thao tác riêng cho dịch vụ hỗ trợ. Cách sửa đúng dùng API liên kết
+trong `AnnotatedString` (Compose 1.7+), tức là một API **chưa** có trong stack 2023 của khoá. *Không ở
+lõi:* dạy cách sửa sẽ kéo theo một API mới ngoài phạm vi; nhưng **nhìn ra** vấn đề thì đúng tầm C5.
+*Dấu vết trong bài:* mục 28 giữ mục này ở mức nhận diện, gắn nhãn "Nhận diện vấn đề — chưa sửa ở bài
+này". *Nhà khả dĩ:* bài a11y nâng cao, hoặc một ghi chú drift khi khoá nâng phiên bản Compose.
 
 ---
 
@@ -980,40 +1032,91 @@ thêm liên kết chéo.
 ### D. Việc còn lại của IMP-047 mà draft này KHÔNG làm (đúng phạm vi task)
 
 - **Quiz ≥ 8 câu** theo chuẩn §13 (4 phương án, cân rank độ dài + vị trí, giải thích cả distractor).
-  Bảy mục tiêu ở đầu bài đều cần ≥ 1 câu; nguồn câu hỏi tốt nhất: cặp `null` vs chữ (mục 20), mô tả
-  trùng trong `Button` (mục 20), thứ tự modifier ⇒ vùng chạm (mục 22), `sp`/`dp` (mục 23), màu-đơn-kênh
-  (mục 24), ca dùng `mergeDescendants` (mục 25), thứ tự ưu tiên component (mục 26), và một câu đọc code
-  lấy từ đoạn Luyện tập.
+  **Năm** mục tiêu ở đầu bài đều cần ≥ 1 câu; nguồn câu hỏi tốt nhất, theo đúng thứ tự ưu tiên của bài:
+  cặp `null` vs chữ (mục 20), mô tả trùng trong `Button` (mục 20), lời mô tả theo hành động (mục 21),
+  thứ tự modifier ⇒ vùng chạm (mục 22), `sp`/`dp` + hộp cao cứng (mục 23), màu-đơn-kênh (mục 24), ca
+  dùng `mergeDescendants` + thứ tự ưu tiên component (mục 25–26), và một câu đọc code lấy từ đoạn Luyện
+  tập. **Không** hỏi các chi tiết đã hạ xuống mức tham khảo (con số tương phản, phóng chữ không tuyến
+  tính, `stateDescription`, tên công cụ tự động) — chúng không nằm trong mục tiêu nào.
 - **Slug + registry + `stageId=compose` + badge "Lõi"**, `lessons.ts`, `TARGET_REGISTRY_v5.md`: theo
   IMP-012/IMP-047. C5 là bài **NEW** ⇒ slug mới, **không** tự done từ progress cũ (§12.2 case D).
 - **Khối `<h2 id="nguon">`** dựng từ mục "Sources for future Nguồn block" bên dưới.
-- Kiểm tra template: đúng 1 `cam-bay`, đúng 1 `nguon`, số mục **19–28** liên tục với C1–C4, ≤ 4 callout,
-  ≥ 1 checkpoint.
+- Kiểm tra template: đúng 1 `cam-bay`, đúng 1 `nguon`, số mục **19–28** liên tục với C1–C4, **4 callout**
+  và **3 checkpoint** như draft này đang có (đừng thêm callout mới khi chuyển sang Astro — mọi khối `>`
+  còn lại trong phần "Bài học" đều đã được chọn có chủ ý).
 
-### E. Tín hiệu kích thước — cần một đợt rút gọn khi dựng trang
+### E. Ngân sách nhấn mạnh sau đợt C5B
 
-Draft này **dài hơn mục tiêu 20 phút**: phần "Bài học" khoảng **7.900 từ** (đối chiếu: draft F2 ≈ 6.000
-từ cho mục tiêu 25 phút). Nội dung không dư *chủ đề* — cả 8 điểm của quality gate đều có nhà, và mọi mục
-đều bị một mục tiêu học tập gọi tên — nhưng cách diễn đạt còn rộng, và **số callout đang vượt hạn mức**
-(9 callout + 5 checkpoint, trong khi template cho ≤ 4 callout).
+**Vấn đề đã sửa.** Bản trước **không** sai nội dung và cũng không dư chủ đề — nó sai **thứ bậc**: 9
+callout, 5 checkpoint, 7 mục tiêu, 10 điểm tóm tắt, và các chi tiết tham chiếu (con số tương phản, phóng
+chữ không tuyến tính, `stateDescription`, tên công cụ tự động) nằm ngang hàng với năm quyết định cốt lõi.
+Với một bài **nền tảng nhỏ / core-lite** thì đó là quá tải nhận thức, kể cả khi từng câu đều đúng. Đợt
+C5B xếp lại thứ bậc chứ **không** cắt nội dung cho ngắn:
 
-Thứ tự rút gọn đề xuất cho IMP-047, từ ít mất mát nhất:
+| | Trước | Sau |
+|---|---|---|
+| Callout (khối `>` nổi trong phần Bài học) | 9 | **4** |
+| Checkpoint ("Tự kiểm tra") | 5 | **3** |
+| Mục tiêu đầu bài | 7 | **5** (vẫn phủ đủ 8 câu hỏi của learning job) |
+| Điểm Tóm tắt | 10 | **5** — đúng năm điều cốt lõi |
+| Cạm bẫy | 3 nhóm theo chủ đề API | 3 nhóm theo **niềm tin sai của người học** |
+| Code block trong mục 28 | 6 | 5 (`BasicTextField` còn lại prose) |
+| Chi tiết nâng cao trong prose học | ngang hàng với nội dung lõi | 0 chỗ ở mức "phải nhớ" — xuống mức nhận biết hoặc vào "Future accessibility reference notes" (8 mục) |
+| Số từ phần "Bài học" | ~8.060 | ~8.080 (gần như không đổi — đây **không** phải đợt rút ngắn) |
 
-1. **Hạ callout xuống ≤ 4.** Giữ 4 khối nổi: mô hình "bản vẽ và bản chú thích" (mục 19), mô hình
-   "24dp/48dp" (mục 22), "đừng hiểu quá lời hứa của theme" (mục 24), "cố ý để ngoài phạm vi" (mục 25).
-   Bốn khối còn lại (kiến thức bền, chú giải cú pháp khối `semantics`, nối lại với C4, "không phải kiểm
-   thử tự động") chuyển thành **đoạn văn thường hoặc ⚠ trên chữ** — spec §19 cho phép, và nó giảm cảm
-   giác "tường màu".
-2. **Rút checkpoint 5 → 3.** Giữ Tự kiểm tra 1 (`null` vs chữ), 3 (vùng chạm/thứ tự modifier), 4
-   (màu-đơn-kênh). Tự kiểm tra 2 (chọn lời mô tả) có thể gộp vào bảng "nên viết / đừng viết" ở mục 21;
-   Tự kiểm tra 5 (`mergeDescendants`) đã được đoạn Luyện tập kiểm lại.
-3. **Mục 28 là mục dài nhất** — nếu vẫn quá dài, rút "Chỗ đáng đặt câu hỏi 3" (`BasicTextField`) còn 3–4
-   câu trỏ về mục 26, vì bài học của nó ("chọn thành phần thô thì nhận luôn phần việc semantics") đã
-   được phát biểu ở mục 26.
-4. **Tóm tắt 10 điểm** có thể xuống 8 bằng cách gộp cặp 6–7 (tương phản + màu-đơn-kênh) và cặp 8–9
-   (semantics + thứ tự ưu tiên).
-5. **Không cắt:** mục 20 (cặp `null`/chữ + bẫy mô tả trùng), mục 22 (48dp), mục 23 (`sp`/`dp`), checklist
-   mục 27, đoạn Luyện tập — đây là năm chỗ quality gate kiểm trực tiếp.
+**Bốn callout giữ lại và lý do từng cái xứng đáng đứng riêng:**
+
+1. *Mô hình "bản vẽ và bản chú thích"* (mục 19) — mô hình trực quan duy nhất của bài; nếu người học chỉ
+   nhớ một hình ảnh thì phải là hình này.
+2. *Quy tắc quyết định `contentDescription`* (mục 20) — quyết định người học sẽ gặp nhiều nhất, mỗi lần
+   đặt một `Icon`; ba dòng, dán được lên tường.
+3. *"24dp là thứ bạn thấy, 48dp là thứ ngón tay chạm được"* (mục 22) — hiểu sai chỗ này tạo ra một app
+   khó dùng mà vẫn "trông đúng"; nó cần đứng cao hơn phần cú pháp quanh nó.
+4. *"Không một điều nào trong bài này kiểm được bằng cách đọc code"* (mục 27) — cảnh báo thực sự nghiêm
+   trọng và là cửa vào checklist; nó cũng là chỗ trả lời câu hỏi "vậy tôi tự soi màn hình bằng gì".
+
+**Bảy khối callout cũ được chuyển xuống, không mất một chữ nào:**
+
+| Callout cũ | Nay nằm ở đâu |
+|---|---|
+| "Kiến thức bền vs cú pháp dễ đổi" (mục 19) | đoạn văn thường, cuối mục 19 |
+| Định nghĩa semantics (mục 25) | câu in đậm trong prose — định nghĩa vẫn là câu đầu tiên người học đọc |
+| "Chú giải cú pháp (Kotlin)" cho khối `semantics` (mục 25) | prose, rút còn 2 câu (vẫn giữ chú giải tại điểm dùng đầu tiên theo chuẩn §8) |
+| "Cố ý để ngoài phạm vi bài này" (mục 25) | một câu prose + mục nội bộ "Future accessibility reference notes" |
+| "Nối lại với C4" (mục 23) | đoạn văn thường, cùng chỗ |
+| "Đừng hiểu quá lời hứa này" (mục 24) | prose mở đầu bằng **⚠** — spec §19 cho phép ⚠-trên-chữ thay cho hộp |
+| "Đây không phải kiểm thử tự động" (mục 27) | một câu nhận biết ở cuối mục 27; chi tiết công cụ vào reference notes |
+
+**Phép cộng callout:** 9 cũ − 7 chuyển xuống = 2 giữ nguyên ("bản vẽ và bản chú thích" ở mục 19,
+"24dp/48dp" ở mục 22) **+ 2 callout mới** (quy tắc quyết định `contentDescription` ở mục 20, cảnh báo
+"không kiểm được bằng cách đọc code" ở mục 27) = **4**. Hai callout mới không phải nội dung mới: cả hai
+nâng một đoạn prose đã có sẵn lên mức nổi, đúng hai chỗ người học cần nhớ nhất.
+
+**Hai checkpoint bỏ đi, bài học của chúng ở lại:** Tự kiểm tra 2 (chọn lời mô tả) → bảng "Nên viết / Đừng
+viết" + gạch đầu dòng "đừng nhồi màu sắc hay hình dáng vào mô tả" ở mục 21. Tự kiểm tra 5 (khi nào
+`mergeDescendants`) → câu "Cách quyết định" ở mục 25 + được kiểm lại trong đoạn Luyện tập.
+
+**Tín hiệu thời lượng — thông tin, không phải tiêu chí đánh giá.** Phần "Bài học" ~8.080 từ ⇒ đọc khoảng
+**33–35 phút** (đối chiếu: F2 ≈ 6.000 từ cho mục tiêu 25 phút). Spec §12 nêu cap 30 phút, nên IMP-047 phải
+**chọn một** trong ba đường, và đây là quyết định cấu trúc khoá nên C5B cố tình không tự quyết:
+
+1. **Nhận C5 ~33 phút như một ngoại lệ có ghi chép** — nội dung đã đúng thứ bậc, không mục nào dư chủ đề,
+   và mọi mục đều bị một trong năm mục tiêu gọi tên.
+2. **Đưa mục 28 (đọc code thật) vào khối gập "đọc thêm"** — giữ nguyên chữ, giảm thời lượng bắt buộc
+   xuống ~25 phút. Mục 28 là mục dài nhất và cũng là mục ít "phải nhớ" nhất.
+3. **Tách thành C5a (mô tả + kích thước) và C5b (chữ/màu/semantics + tự kiểm)** — chỉ nên làm nếu registry
+   chấp nhận thêm một bài; sẽ đổi §6 của spec, `stageId=compose` và số mục 19–28.
+
+**Tín hiệu thứ hai còn lại: số code block.** Phần "Bài học" có **15** khối code (mục 28 chiếm 5, mục
+20/22/25/Luyện tập mỗi mục 2, mục 23/24 mỗi mục 1) trong khi template nêu 3–8. Không khối nào dài (đa số
+6–12 dòng) và mỗi khối đều có giải thích, nhưng nếu IMP-047 chọn đường (2) ở trên thì con số này xuống
+còn 10 cùng lúc. C5B **không** xoá code block nào để chạy theo hạn mức: các cặp SAI/ĐÚNG ở mục 20 và
+TỆ/TỐT ở mục 23 là cách dạy chính của hai mục đó.
+
+**Không cắt trong mọi trường hợp:** mục 20 (cặp `null`/chữ + bẫy mô tả trùng), mục 22 (48dp), mục 23
+(`sp`/`dp` + hộp cao cứng), checklist mục 27, đoạn Luyện tập, và các quan sát code thật ở mục 28 — đây là
+chỗ năm điều cốt lõi được dạy và được kiểm.
+
 
 ---
 
@@ -1041,12 +1144,12 @@ chính thức của Android.**
 |---|---|
 | *Accessibility in Compose* — `developer.android.com/develop/ui/compose/accessibility` | Mô hình "Compose dựng phần semantics song song với phần vẽ" (mục 19) |
 | *Compose accessibility · API defaults* — `/develop/ui/compose/accessibility/api-defaults` | Mức tối thiểu **48dp**; các component Material tự giữ mức đó **chỉ khi** nhận được thao tác (ví dụ `Checkbox` với `onCheckedChange = null` thì không); `sizeIn(minWidth, minHeight)` cho control tự dựng; Compose có nới vùng chạm ra ngoài biên nhưng vẫn nên tự đặt kích thước (mục 22) |
-| *Compose accessibility · Semantics* — `/develop/ui/compose/accessibility/semantics` | Semantics = nghĩa/vai trò/trạng thái; "icon camera về hình chỉ là một ảnh, nhưng nghĩa của nó có thể là *Chụp ảnh*" (mục 19, 21); `stateDescription` và `Role` ở mức nhận biết (mục 25) |
-| *Compose accessibility · Merging and clearing* — `/develop/ui/compose/accessibility/merging-clearing` | `mergeDescendants = true`; **cha `clickable` tự gộp con** ⇒ giải thích bẫy mô tả trùng trong `Button` (mục 20); con đã tự gộp thì không bị cha gộp; ví dụ chính thức của tài liệu là đúng hàng avatar + tác giả + ngày (mục 25); `clearAndSetSemantics` (chỉ nêu tên trong danh sách loại trừ) |
-| *Make apps more accessible* — `/guide/topics/ui/accessibility/apps` | Vùng chạm **48dp × 48dp**, "lớn hơn thì càng tốt", `Button`/`IconButton`/`ListItem` đã bảo đảm, control tự dựng thì tự đặt (mục 22) · độ tương phản **4.5:1** cho chữ < 18sp (hoặc in đậm < 14sp) và **3:1** cho chữ lớn hơn (mục 24) · "mô tả mục đích và kết quả của thao tác, không mô tả chi tiết hình ảnh" + `Role` (mục 21) · Accessibility Scanner (mục 24, 27) |
+| *Compose accessibility · Semantics* — `/develop/ui/compose/accessibility/semantics` | Semantics = nghĩa/vai trò/trạng thái; "icon camera về hình chỉ là một ảnh, nhưng nghĩa của nó có thể là *Chụp ảnh*" (mục 19, 21); `Role` ở mức nhận biết (mục 28) · `stateDescription`: sau C5B **không** còn trong bài học — chống lưng cho "Future accessibility reference notes" mục 4 |
+| *Compose accessibility · Merging and clearing* — `/develop/ui/compose/accessibility/merging-clearing` | `mergeDescendants = true`; **cha `clickable` tự gộp con** ⇒ giải thích bẫy mô tả trùng trong `Button` (mục 20); ví dụ chính thức của tài liệu là đúng hàng avatar + tác giả + ngày (mục 25) · "con đã tự gộp thì không bị cha gộp" và `clearAndSetSemantics`: chống lưng cho reference notes mục 3 và 7 |
+| *Make apps more accessible* — `/guide/topics/ui/accessibility/apps` | Vùng chạm **48dp × 48dp**, "lớn hơn thì càng tốt", `Button`/`IconButton`/`ListItem` đã bảo đảm, control tự dựng thì tự đặt (mục 22) · "mô tả mục đích và kết quả của thao tác, không mô tả chi tiết hình ảnh" + `Role` (mục 21) · độ tương phản **4.5:1** cho chữ < 18sp (hoặc in đậm < 14sp) và **3:1** cho chữ lớn hơn: mục 24 nêu hai con số **một lần ở mức tham khảo**, ngưỡng kích thước chữ ở reference notes mục 2 · Accessibility Scanner: một câu nhận biết ở mục 27 |
 | *Principles for improving app accessibility* — `/guide/topics/ui/accessibility/principles` | "Use cues other than color" — dùng hình dạng, vị trí, chữ **cùng với** màu (mục 24) |
 | *Test your app's accessibility* — `/guide/topics/ui/accessibility/testing` | Cách bật TalkBack; hai kiểu di chuyển (lướt phải/trái tuần tự, chạm hai lần để chọn); checklist thủ công: lời đọc có truyền đúng nội dung/mục đích, có ngắn gọn hay rườm rà, có lướt tới được mọi thành phần, thông báo tạm thời có được đọc (mục 27) · phân loại vấn đề của pre-launch report: touch target size, low contrast, content labeling |
-| *Android 14 features · Non-linear font scaling to 200%* — `/about/versions/14/features` | Cỡ chữ tới **200%** từ Android 14; đường phóng **không tuyến tính**; "luôn ghi cỡ chữ bằng `sp`"; **không** dùng `sp` cho `padding`/chiều cao vì `4sp + 20sp` không còn bằng `24sp`; đường dẫn Cài đặt → Trợ năng → Cỡ hiển thị và văn bản (mục 23, 27) |
+| *Android 14 features · Non-linear font scaling to 200%* — `/about/versions/14/features` | Cỡ chữ tới **200%** và đường dẫn Cài đặt → Trợ năng → Cỡ hiển thị và văn bản (mục 23, 27); "luôn ghi cỡ chữ bằng `sp`", không dùng `sp` cho `padding`/chiều cao (mục 23) · đường phóng **không tuyến tính** + phép tính `4sp + 20sp ≠ 24sp` + mốc Android 14: chống lưng cho reference notes mục 1 |
 
 **3. Code thật của project mẫu** (đường dẫn gốc
 `aaf-materials/05-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat`, đã kiểm số dòng
@@ -1069,9 +1172,9 @@ C3 Cạm bẫy (g) (ghi cứng màu vỡ ở chế độ tối) · C4 mục 15 (
 được" và ghi chú live-preview 64dp) · Chương 3 (string resource).
 
 **5. Phần do khoá học tự dựng** (ghi vào gạch "Phần bổ sung ngoài giáo trình"): mô hình "bản vẽ và bản
-chú thích" · câu hỏi quyết định "xoá đi thì người dùng có mất thông tin nào không" · bảng "nên viết / đừng
+chú thích" · quy tắc quyết định "xoá đi thì người dùng có mất thông tin nào không" · bảng "nên viết / đừng
 viết" cho lời mô tả · mô hình "24dp là thứ bạn thấy, 48dp là thứ ngón tay chạm được" · bốn lỗi vỡ bố cục
 khi tăng cỡ chữ + cặp so sánh tệ/tốt · bảng "chỉ có màu / có màu và thứ khác" · checklist 8 bước kiểm
-bằng tay · đoạn `ThongBaoLoi` sáu lỗi và bản đã sửa · toàn bộ năm khối Tự kiểm tra và ba cạm bẫy gom
-nhóm.
+bằng tay · đoạn `ThongBaoLoi` sáu lỗi và bản đã sửa · ba khối Tự kiểm tra và ba cạm bẫy gom theo niềm tin
+sai của người học.
 
