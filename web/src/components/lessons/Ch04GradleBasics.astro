@@ -1,16 +1,34 @@
 ---
-// Lesson Chapter 4: "Gradle Basics: A Look Behind the Curtain" — viết lại hoàn toàn ở Task 37.
-// Nguồn nội dung (primary source): content/book/ch04-gradle-basics-a-look-behind-the-curtain.md (682 dòng, 7 heading "##").
+// Ch04 — "Gradle cho người mới: dependency, version catalog, BOM" (lesson ID tương lai A14).
+// Nguồn nội dung: content/book/ch04-gradle-basics-a-look-behind-the-curtain.md
 // Nguồn code: aaf-materials/04-gradle-basics-a-look-behind-the-curtain/projects/{starter,final}/
-// Mọi số dòng trích dẫn trong bài đã mở file thật để kiểm (Read tool) trước khi viết — không có số dòng phỏng đoán.
-// Giải thích tự viết bằng tiếng Việt, diễn giải lại — không copy nguyên văn sách (CLAUDE.md, mục Bản quyền).
-// Dùng code thật của aaf-materials theo Quyết định #7 trong docs/PROJECT_PLAN.md, luôn ghi rõ file + dòng.
+//
+// Lần sửa 2026-09 (CONTENT BATCH 04 — chất lượng đặt lên trên, theo docs/COURSE_CONTENT_STANDARD.md):
+//   • Rút từ ~15 mục (~9.400 từ, ~59 phút) về lõi Gradle người mới (~5.300 từ, ~34 phút).
+//   • Cột mốc học: Gradle vs AGP vs Kotlin DSL → bản đồ file → project-level vs module-level
+//     (`apply false`) → khối android {} → dependencies + configuration → BOM → Version Catalog
+//     → debug vs release (mức nhận diện).
+//   • Phần ký app/keystore/minify/R8/APK-AAB CHUYỂN sang draft nội bộ docs/drafts/ap1-gradle-release.md
+//     (phụ lục AP1 tương lai) — A14 chỉ giữ 1 câu định hướng.
+//   • keys.properties KHÔNG còn là bài học chính về secret: pattern dùng được cho API key sẽ dạy
+//     ở phần "Mạng và quản lý API key" (W3); A14 chỉ nói "cấu hình build có thể đọc giá trị cục bộ".
+//   • Voice: bỏ hết "sách/chapter/tác giả/tôi" khỏi thân bài; attribution gom 1 khối #nguon.
+//   • Kotlin DSL JIT gloss tối thiểu (khối-nhận-lệnh, =, chuỗi, val, +=) — không dạy Kotlin sâu.
+//   • Số dòng aaf-materials đã kiểm lại bằng lệnh thật (2026-09-05): starter/build.gradle.kts = 5 dòng
+//     (dòng 1 comment, 2–4 plugins, dòng 5 rỗng); starter/settings.gradle.kts = 17 dòng;
+//     starter/app/build.gradle.kts = 67 dòng (license 1–33 · plugins 35–38 · android 40–70 ·
+//     dependencies 72–88); final/libs.versions.toml = 47 dòng ([versions] 1–17 · [libraries] 19–36 ·
+//     [plugins] 38–40 · [bundles] 42–47); final/build.gradle.kts = 5 dòng; final/app/build.gradle.kts
+//     = 75 dòng; gradle-wrapper.properties: distributionUrl ở dòng 36.
+//   • Quiz Ch04Quiz kiểm gì thì bài giữ đủ nội dung đó: file nào chứa gì, apply false, 3 số SDK,
+//     configuration, BOM, alias/`libs...`, debug vs release mức nhận diện.
+
 import { Code } from "astro:components";
 
 const S = "aaf-materials/04-gradle-basics-a-look-behind-the-curtain/projects/starter";
 const F = "aaf-materials/04-gradle-basics-a-look-behind-the-curtain/projects/final";
 
-// ── Top-level build.gradle.kts ────────────────────────────────────────────────
+// ── File top-level build.gradle.kts ──────────────────────────────────────────
 const starterRootBuildCode = `// Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
   id("com.android.application") version "8.2.0" apply false
@@ -21,11 +39,6 @@ const finalRootBuildCode = `// Top-level build file where you can add configurat
 plugins {
   alias(libs.plugins.android.application) apply false
   alias(libs.plugins.kotlin.android) apply false
-}`;
-
-const bookRootBuildCode = `plugins {
-  id("com.android.application") version "8.1.4" apply false
-  id("org.jetbrains.kotlin.android") version "1.9.10" apply false
 }`;
 
 // ── settings.gradle.kts ──────────────────────────────────────────────────────
@@ -47,22 +60,17 @@ dependencyResolutionManagement {
 rootProject.name = "Kodeco Chat"
 include(":app")`;
 
-// ── gradle-wrapper.properties + gradle.properties ────────────────────────────
+// ── gradle-wrapper.properties ────────────────────────────────────────────────
 const wrapperCode = `distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 
-const gradlePropertiesCode = `org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-# org.gradle.parallel=true
-android.useAndroidX=true
-kotlin.code.style=official
-android.nonTransitiveRClass=true`;
-
-// ── Module-level build.gradle.kts (starter) ──────────────────────────────────
+// ── Khối plugins của file module ─────────────────────────────────────────────
 const modulePluginsCode = `plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.android")
 }`;
 
-const starterAndroidTopCode = `android {
+// ── Khối android { } (starter, bản rút gọn theo phần được dạy) ───────────────
+const starterAndroidCoreCode = `android {
   namespace = "com.kodeco.chat"
   compileSdk = 34
 
@@ -72,50 +80,14 @@ const starterAndroidTopCode = `android {
     targetSdk = 34
     versionCode = 1
     versionName = "1.0"
+  }
 
-    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    vectorDrawables {
-      useSupportLibrary = true
-    }
-  }`;
-
-const starterAndroidRestCode = `  buildTypes {
-    release {
-      isMinifyEnabled = false
-      proguardFiles(
-        getDefaultProguardFile("proguard-android-optimize.txt"),
-        "proguard-rules.pro"
-      )
-    }
-  }
-  compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-  }
-  kotlinOptions {
-    jvmTarget = "17"
-  }
   buildFeatures {
     compose = true
   }
-  composeOptions {
-    kotlinCompilerExtensionVersion = "1.5.3"
-  }
-  packaging {
-    resources {
-      excludes += "/META-INF/{AL2.0,LGPL2.1}"
-    }
-  }
 }`;
 
-const bookCompileOptionsCode = `compileOptions {
-  sourceCompatibility = JavaVersion.VERSION_1_8
-  targetCompatibility = JavaVersion.VERSION_1_8
-}
-kotlinOptions {
-  jvmTarget = "1.8"
-}`;
-
+// ── buildTypes (starter) ─────────────────────────────────────────────────────
 const starterBuildTypesCode = `  buildTypes {
     release {
       isMinifyEnabled = false
@@ -126,46 +98,12 @@ const starterBuildTypesCode = `  buildTypes {
     }
   }`;
 
-const finalBuildTypesCode = `  buildTypes {
-    release {
-      isMinifyEnabled = false
-      proguardFiles(
-          getDefaultProguardFile("proguard-android-optimize.txt"),
-          "proguard-rules.pro"
-      )
-      signingConfig = signingConfigs.getByName("release")
-    }
-    debug {
-      applicationIdSuffix = ".debug"
-    }
-  }`;
-
-const proguardRulesCode = `# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile`;
-
-const instrumentedTestCode = `@RunWith(AndroidJUnit4::class)
-class ExampleInstrumentedTest {
-  @Test
-  fun useAppContext() {
-    // Context of the app under test.
-    val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-    assertEquals("com.kodeco.chat", appContext.packageName)
-  }
+// ── debug { applicationIdSuffix } ────────────────────────────────────────────
+const debugSuffixCode = `debug {
+  applicationIdSuffix = ".debug"
 }`;
 
-const unitTestCode = `class ExampleUnitTest {
-  @Test
-  fun addition_isCorrect() {
-    assertEquals(4, 2 + 2)
-  }
-}`;
-
-// ── dependencies ─────────────────────────────────────────────────────────────
+// ── Khối dependencies (starter) ──────────────────────────────────────────────
 const starterDependenciesCode = `dependencies {
   implementation("androidx.core:core-ktx:1.12.0")
   implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
@@ -184,24 +122,23 @@ const starterDependenciesCode = `dependencies {
   debugImplementation("androidx.compose.ui:ui-test-manifest")
 }`;
 
-const dependencyFormsCode = `// 1. Dạng gọn — cách project mẫu dùng
+const dependencyFormsCode = `// 1. Dạng gọn — cách project dùng
 implementation("androidx.core:core-ktx:1.12.0")
 
-// 2. Dạng dài, cùng ý nghĩa (chỉ có trong sách, không có trong project mẫu)
+// 2. Dạng dài, cùng ý nghĩa
 implementation(group = "androidx.core", name = "core-ktx", version = "1.12.0")
 
-// 3. Local binary: kéo mọi file .jar trong thư mục libs của module
-implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
-
-// 4. Local module (sách in thiếu dấu ngoặc kép — dạng đúng phải là):
+// 3. Local module trong cùng project
 implementation(project(":moduleName"))`;
 
-const bomLinesCode = `// dòng 55 — cho code chính
+// ── BOM xuất hiện 2 lần ở starter ────────────────────────────────────────────
+const bomLinesCode = `// cho code chính
 implementation(platform("androidx.compose:compose-bom:2023.10.00"))
 // ...
-// dòng 63 — cho instrumented test: CÙNG một chuỗi, viết lại lần thứ hai
+// cho instrumented test: CÙNG một chuỗi, viết lại lần thứ hai
 androidTestImplementation(platform("androidx.compose:compose-bom:2023.10.00"))`;
 
+// ── CameraX: cùng version lặp 4 lần ─────────────────────────────────────────
 const cameraXCode = `implementation("androidx.camera:camera-camera2:1.3.0")
 implementation("androidx.camera:camera-lifecycle:1.3.0")
 implementation("androidx.camera:camera-video:1.3.0")
@@ -233,1620 +170,688 @@ androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecyc
 
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "androidx-compose-bom" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
-androidx-compose-ui-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-compose-ui-ui = { group = "androidx.compose.ui", name = "ui" }
-androidx-compose-ui-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-
-androidx-compose-ui-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
-androidx-compose-ui-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
-
-androidx-compose-ui-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso-core" }
-androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-junit" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }`;
+androidx-compose-ui-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }`;
 
 const pluginsSectionCode = `[plugins]
 android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }`;
 
-const bundlesSectionCode = `[bundles]
-androidx = ["androidx-activity-compose", "androidx-core-ktx", "androidx-lifecycle-runtime-ktx"]
-compose = ["androidx-compose-material3", "androidx-compose-ui-ui-graphics", "androidx-compose-ui-ui", "androidx-compose-ui-ui-tooling-preview"]
-compose-debug = ["androidx-compose-ui-ui-tooling", "androidx-compose-ui-ui-test-manifest"]
-instrumented-tests = ["androidx-junit", "androidx-espresso-core", "androidx-compose-ui-ui-test-junit4"]
-unit-tests = ["junit"]`;
-
-const bookCatalogDependenciesCode = `dependencies {
+const composeBomVarCode = `dependencies {
   val composeBom = platform(libs.androidx.compose.bom)
-
-  implementation(libs.androidx.core.ktx)
-  implementation(libs.androidx.lifecycle.runtime.ktx)
-  implementation(libs.androidx.activity.compose)
-  implementation(composeBom)
-  implementation(libs.androidx.compose.ui.ui)
-  implementation(libs.androidx.compose.ui.ui.graphics)
-  implementation(libs.androidx.compose.ui.ui.tooling.preview)
-  implementation(libs.androidx.compose.material3)
-  testImplementation(libs.junit)
-  androidTestImplementation(libs.androidx.junit)
-  androidTestImplementation(libs.androidx.espresso.core)
-  androidTestImplementation(composeBom)
-  androidTestImplementation(libs.androidx.compose.ui.ui.test.junit4)
-  debugImplementation(libs.androidx.compose.ui.ui.tooling)
-  debugImplementation(libs.androidx.compose.ui.ui.test.manifest)
-}`;
-
-const finalDependenciesCode = `dependencies {
-  val composeBom = platform(libs.androidx.compose.bom)
-
-  implementation(composeBom)
-  implementation(libs.bundles.androidx)
-  implementation(libs.bundles.compose)
-
-  testImplementation(libs.bundles.unit.tests)
-  androidTestImplementation(composeBom)
-  androidTestImplementation(libs.bundles.instrumented.tests)
-
-  debugImplementation(libs.bundles.compose.debug)
-}`;
-
-// ── Signing ──────────────────────────────────────────────────────────────────
-const bookSigningConfigsCode = `signingConfigs {
-  create("release") {
-    storeFile = file("path to your keystore file")
-    storePassword = "your store password"
-    keyAlias = "your key alias"
-    keyPassword = "your key password"
-  }
-}`;
-
-const finalSigningConfigsCode = `  signingConfigs {
-    create("release") {
-      keyAlias = keysProperties["keyAlias"] as String
-      keyPassword = keysProperties["keyPassword"] as String
-      storeFile = file(keysProperties["storeFile"] as String)
-      storePassword = keysProperties["storePassword"] as String
-    }
-  }`;
-
-const keysLoadCode = `import java.io.FileInputStream
-import java.util.Properties
-
-plugins {
-  id("com.android.application")
-  id("org.jetbrains.kotlin.android")
-}
-
-val keysPropertiesFile: File = rootProject.file("keys.properties")
-val keysProperties = Properties()
-
-keysProperties.load(FileInputStream(keysPropertiesFile))`;
-
-// Bản an toàn hơn — KIẾN THỨC BỔ SUNG của bài này, không có trong sách.
-const safeKeysLoadCode = `val keysPropertiesFile: File = rootProject.file("keys.properties")
-val keysProperties = Properties()
-
-if (keysPropertiesFile.exists()) {
-  keysProperties.load(FileInputStream(keysPropertiesFile))
-}`;
-
-const finalAndroidCode = `android {
-  namespace = "com.kodeco.chat"
-  compileSdk = 34
-
-  defaultConfig {
-    applicationId = "com.kodeco.chat"
-    minSdk = 30
-    targetSdk = 34
-    versionCode = 1
-    versionName = "1.0"
-
-    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-  }
-  signingConfigs { /* ... xem mục 10 ... */ }
-  buildTypes { /* ... xem mục 6 ... */ }
-  compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-  }
-  kotlinOptions {
-    jvmTarget = "17"
-  }
-  buildFeatures {
-    compose = true
-  }
-  composeOptions {
-    kotlinCompilerExtensionVersion = "1.5.3"
-  }
-}`;
-
-const keysPropertiesCode = `storeFile = "path to your keystore file"
-storePassword = "your store password"
-keyAlias = "your key alias"
-keyPassword = "your key password"`;
-
-const gitignoreCode = `*.iml
-.gradle
-/local.properties
-.idea/
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-
-# Keystore confidential information
-keys.properties`;
-
-// ── Code chết: ui/theme ──────────────────────────────────────────────────────
-const bookDebugSuffixCode = `debug {
-  applicationIdSuffix = ".debug"
-}`;
-
-const bookReleaseSigningCode = `release {
-  signingConfig = signingConfigs.getByName("release")
   // ...
+  implementation(composeBom)
+  // ...
+  androidTestImplementation(composeBom)
 }`;
 
-// KIẾN THỨC BỔ SUNG (ngoài sách): cú pháp tương đương từ AGP 9.0 — built-in Kotlin.
-const modernCompilerOptionsCode = `// Cách của sách (AGP 8.x, plugin org.jetbrains.kotlin.android)
-android {
-  kotlinOptions {
-    jvmTarget = "17"
-  }
-}
+const catalogDependenciesCode = `dependencies {
+  val composeBom = platform(libs.androidx.compose.bom)
 
-// Cách của AGP 9.x — kotlinOptions không còn, chuyển sang khối kotlin { }
-kotlin {
-  compilerOptions {
-    // jvmTarget thường không cần khai báo nữa:
-    // mặc định lấy theo android.compileOptions.targetCompatibility
-  }
+  implementation(composeBom)
+  implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.compose.ui.ui)
+  implementation(libs.androidx.compose.material3)
+  // ... phần còn lại cũng chuyển tương tự ...
+  debugImplementation(libs.androidx.compose.ui.ui.tooling)
 }`;
-
-const themeCode = `@Composable
-fun KodecoChatTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
-) {
-  val colorScheme = when {
-    dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-      val context = LocalContext.current
-      if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    }`;
-
-const themesXmlCode = `<resources>
-
-  <style name="Theme.KodecoChat" parent="android:Theme.Material.Light.NoActionBar" />
-</resources>`;
-
-const manifestActivityCode = `<activity
-  android:name=".MainActivity"
-  android:exported="true"
-  android:label="@string/app_name"
-  android:theme="@style/Theme.KodecoChat">`;
 ---
-
 <section class="lesson">
 	<div class="callout goals">
-		<strong>Bạn sẽ học được gì trong bài này</strong>
+		<strong>Mục tiêu — sau bài này bạn sẽ</strong>
 		<ul>
-			<li>
-				Phân biệt <strong>Gradle</strong>, <strong>Android Gradle Plugin (AGP)</strong>, và file kết quả
-				<code>.apk</code> / <code>.aab</code> — ai làm việc gì trong dây chuyền build.
-			</li>
-			<li>
-				Bản đồ đầy đủ các file cấu hình Gradle của một project Android: hai file trùng tên
-				<code>build.gradle.kts</code>, <code>settings.gradle.kts</code>, và hai file sách bỏ qua
-				(<code>gradle.properties</code>, <code>gradle-wrapper.properties</code>).
-			</li>
-			<li>
-				Gradle quyết định app hỗ trợ phiên bản Android nào bằng ba con số: <code>compileSdk</code>,
-				<code>minSdk</code>, <code>targetSdk</code> — và vì sao nhầm ba con số này gây hậu quả rất khác nhau.
-			</li>
-			<li>
-				<strong>Build type</strong> là gì, vì sao Android Studio chỉ khai báo <code>release</code> mà cửa sổ
-				Build Variants lại đang chọn <code>debug</code>, và <code>isMinifyEnabled</code> vì sao mặc định tắt.
-			</li>
-			<li>
-				<strong>Bill of Materials (BOM)</strong> là gì và vì sao các dependency Compose trong project không có
-				số version nào.
-			</li>
-			<li>
-				Cách quản lý dependency bằng <strong>Version Catalog</strong> (<code>libs.versions.toml</code>) với đủ 4
-				section, cùng <strong>bundles</strong> và cái giá phải trả của bundles.
-			</li>
-			<li>
-				Cách <strong>ký app</strong> (app signing) cho bản release, và cách tách mật khẩu ra khỏi code bằng
-				<code>keys.properties</code> + <code>.gitignore</code>.
-			</li>
-			<li>
-				Ba cái bẫy thật của chapter này mà sách không nói: thêm <code>.debug</code> làm vỡ instrumented test,
-				<code>keys.properties</code> vẫn bị commit trong chính project mẫu, và project <code>final</code> không
-				sync được nếu thiếu file secret.
-			</li>
+			<li>Giải thích được <strong>Gradle</strong> làm gì trong một project Android, và phân biệt được
+				bốn thứ hay bị gộp làm một: Android Studio (giao diện làm việc), Gradle (hệ thống build),
+				Android Gradle Plugin (lớp biết-Android), và Kotlin DSL (ngôn ngữ của file <code>.kts</code>).</li>
+			<li>Nhận ra được từng file cấu hình Gradle trong project — hai file cùng tên
+				<code>build.gradle.kts</code>, <code>settings.gradle.kts</code>,
+				<code>gradle/libs.versions.toml</code>, <code>gradle-wrapper.properties</code> — và nói được
+				mình mở mỗi file để trả lời câu hỏi nào.</li>
+			<li>Hiểu được vì sao một khai báo plugin xuất hiện ở <strong>cả</strong> file gốc
+				<em>và</em> file module, và giải thích được <code>apply false</code> nghĩa là gì.</li>
+			<li>Đọc được phần quan trọng của khối <code>android {'{ }'}</code>: ba con số SDK,
+				<code>applicationId</code>, <code>versionCode</code>/<code>versionName</code>.</li>
+			<li>Đọc được khối <code>dependencies {'{ }'}</code>: vì sao có nhiều từ khoá khác nhau
+				(<code>implementation</code>, <code>debugImplementation</code>, các configuration test),
+				vì sao thư viện Compose không có số version (nhờ <strong>BOM</strong>), và truy ngược được
+				một dòng <code>libs.…</code> về khai báo trong <strong>Version Catalog</strong>.</li>
+			<li>Phân biệt được <strong>bản debug</strong> và <strong>bản release</strong> ở mức khái niệm —
+				và biết rằng phần ký app/tối ưu release là chủ đề riêng, học khi thật sự cần phát hành.</li>
+		</ul>
+		<p>
+			Đây là bài <em>không viết thêm dòng Kotlin nào cho app</em>: toàn bộ công việc diễn ra ở
+			<em>tầng build</em> — các file mô tả "app này được lắp ráp thế nào". Bạn sẽ mở lại đúng những
+			file này mỗi khi thêm thư viện, đổi phiên bản, hay gặp thông báo <em>"Gradle sync failed"</em>.
+		</p>
+	</div>
+	<div class="callout prereq">
+		<strong>Cần biết trước</strong>
+		<ul>
+			<li><strong>Chương 2</strong> — bạn đã tạo project Kodeco Chat và chạy nó lên máy ảo; bạn đã
+				gặp khái niệm <code>minSdk</code>/<code>targetSdk</code> khi tạo project và đã thấy
+				<em>Gradle Sync</em> chạy lúc mở project.</li>
+			<li><strong>Chương 3</strong> — bạn đã biết Activity, resource (<code>res/</code>,
+				<code>strings.xml</code>) và thấy file Gradle xuất hiện trong các bài tìm-lỗi.</li>
+			<li>Forward reference: bài nhắc tới <em>Compose</em> qua vài dòng cấu hình. Bạn chưa cần biết
+				Compose — nó được dạy ở phần Jetpack Compose; ở đây chỉ cần hiểu vai trò của những dòng đó.</li>
 		</ul>
 	</div>
-	<div class="callout">
-		<strong>Chapter này làm gì trong app Kodeco Chat</strong>
-		<p>
-			App minh hoạ vẫn là <strong>Kodeco Chat</strong> — cái app một màn hình bạn đã tạo ở chapter 2 và đã mổ
-			Activity ở chapter 3: một ô nhập chữ, một nút Send, và một dòng chữ hiện lại nội dung vừa gửi.
-		</p>
-		<p>
-			Điều đặc biệt: chapter 4 <strong>không viết thêm một dòng Kotlin nào</strong>. Toàn bộ công việc diễn ra ở
-			<em>tầng build</em> — tức là ở các file mô tả "app này được lắp ráp thế nào", chứ không phải "app này làm
-			gì". So sánh trực tiếp hai project <code>starter</code> và <code>final</code> của chapter cho thấy đúng như
-			vậy: chỉ có các file Gradle thay đổi thật sự về nội dung.
-		</p>
-		<p>
-			Vì thế nếu bạn mở app sau khi làm xong chapter, <strong>giao diện không đổi một pixel</strong>. Cái đổi là:
-			app đã có bản debug và bản release riêng biệt, dependency được quản lý tập trung, và bản release đã sẵn sàng
-			để ký và phát hành. Nói cách khác, chapter này biến "một app chạy được trên máy bạn" thành "một app có thể
-			đem đi phát hành".
-		</p>
-		<p>
-			Chapter cũng cố tình <strong>chưa làm</strong> mấy việc: không tạo keystore thật (sách dẫn sang một tutorial
-			riêng và một cuốn sách riêng về app distribution), không nói về <em>build flavors</em>, không đi sâu vào cú
-			pháp Proguard rules, và không thêm module thứ hai vào project.
-		</p>
-	</div>
 
-	<div class="callout journey">
-		<strong>Từ <code>starter</code> tới <code>final</code>: bạn sẽ tự tay làm gì</strong>
-		<p>
-			<strong>Project <code>starter</code> có gì:</strong> đúng một project Android bình thường do Android Studio
-			sinh ra. Một module <code>app</code>, hai file <code>build.gradle.kts</code>, dependency ghi version thẳng
-			trong <code>dependencies</code>, chỉ có build type <code>release</code>, không có Version Catalog, không có
-			cấu hình ký app.
-		</p>
-		<p>
-			<strong>Project <code>final</code> có gì thêm:</strong> hai file <em>mới</em> —
-			<code>gradle/libs.versions.toml</code> (Version Catalog) và <code>keys.properties</code> (thông tin ký app);
-			ba file Gradle bị sửa — <code>build.gradle.kts</code> ở gốc, <code>app/build.gradle.kts</code>, và
-			<code>.gitignore</code>.
-		</p>
-		<p>
-			<strong>Bạn tự viết gần như toàn bộ.</strong> Chapter này không có file nào được "copy sẵn cho bạn". Mọi thay
-			đổi đều là bạn gõ vào file cấu hình: xoá 3 khối không cần, thêm build type <code>debug</code>, tạo file TOML
-			từ đầu với 4 section, chuyển từng dependency sang dạng catalog, thêm <code>signingConfigs</code>, tách secret
-			ra file riêng.
-		</p>
-		<p>
-			<strong>Chỗ sách thiếu, bài này xử lý thế nào:</strong> sách in một số con số version khác với project mẫu
-			(AGP, Compose BOM, Java version), có một chỗ tự mâu thuẫn với chính nó, và yêu cầu xoá một khối mà project
-			<code>final</code> vẫn giữ. Bài này <em>không</em> âm thầm sửa cho khớp — mọi chỗ lệch đều được ghi thành nội
-			dung học, có bảng đối chiếu riêng ở gần cuối bài. Bạn làm theo sách mà thấy file mình khác
-			<code>final</code> thì đó không phải lỗi của bạn.
-		</p>
-	</div>
-	<h2 id="gradle-la-gi">1. Gradle, AGP, và cái file bạn thật sự đem đi phát hành</h2>
+	<h2 id="gradle-la-gi">1. Ai làm gì trong project của bạn: bốn vai, không phải một</h2>
 	<p>
-		Trước khi mở bất kỳ file cấu hình nào, cần phân biệt ba cái tên mà người mới rất hay gộp thành một.
+		Khi bạn bấm nút Run, một dây chuyền khởi động để biến code Kotlin + resource thành file cài được.
+		Bốn vai tham gia dây chuyền đó, và người mới thường gộp chúng thành một:
+	</p>
+	<ul>
+		<li><strong>Android Studio</strong> là <em>giao diện xưởng làm việc</em> (IDE): nơi bạn viết code,
+			bấm Run, xem Logcat. Nó không tự build được app — nó gọi hệ thống build làm việc đó.</li>
+		<li><strong>Gradle</strong> là <em>điều phối viên build</em>: một hệ thống tự động hoá build mã nguồn
+			mở, không biết gì về Android cả. Nó cũng build project Java, server Kotlin, thư viện. Việc của
+			nó là đọc các file mô tả "project gồm gì, cần thư viện nào, phải làm những bước gì", rồi thực
+			hiện đúng thứ tự.</li>
+		<li><strong>Android Gradle Plugin (AGP)</strong> là lớp <em>biết về Android</em>, chạy bên trên Gradle
+			và dạy Gradle những việc riêng của Android: biên dịch resource trong <code>res/</code>, gộp
+			nhiều <code>AndroidManifest.xml</code>, đóng gói thành file cài được. Vì là hai thứ tách rời,
+			project có <strong>hai số version riêng</strong> — một cho Gradle, một cho AGP — và hai số này
+			phải tương thích với nhau.</li>
+		<li><strong>Kotlin DSL</strong> là <em>ngôn ngữ</em> các file build được viết bằng đó. Kết đuôi
+			<code>.kts</code> (như <code>build.gradle.kts</code>) nghĩa là file đó là <em>code Kotlin thật</em>.
+			Khi tra Google bạn sẽ gặp nhiều file <code>build.gradle</code> không có <code>.kts</code> — đó
+			là cách viết cũ bằng ngôn ngữ Groovy, vẫn chạy và vẫn gặp trong thực tế; project mới dùng
+			Kotlin DSL vì IDE gợi ý code và báo lỗi ngay khi gõ.</li>
+	</ul>
+	<p class="hint">
+		<strong>Mental model:</strong> Android Studio là cửa sổ xưởng — nơi bạn đứng làm việc. Gradle là
+		cái dây chuyền lắp ráp. AGP là bộ khuôn "làm app Android" gắn vào dây chuyền. Kotlin DSL là ngôn
+		ngữ bạn dùng để viết chỉ dẫn cho dây chuyền.
 	</p>
 	<p>
-		<strong>Gradle</strong> là một <em>build automation system</em> (hệ thống tự động hoá việc build) mã nguồn mở. Nó
-		không biết gì về Android cả — Gradle cũng được dùng để build project Java, Kotlin server, thư viện, thậm chí tài
-		liệu. Việc của nó là: đọc các file mô tả "project này gồm gì, cần thư viện nào, phải làm những bước gì", rồi thực
-		hiện các bước đó theo đúng thứ tự.
+		Kết quả cuối của dây chuyền là một file cài được: <code>.apk</code> — app đã đóng gói hoàn chỉnh,
+		cài trực tiếp lên máy. Bản bạn chạy trên emulator bằng nút Run chính là một APK của bản debug —
+		cái này sẽ có ý nghĩa hơn ở mục 8.
 	</p>
+	<h3>Ba khối lệnh lặp lại suốt file build</h3>
 	<p>
-		<strong>Android Gradle Plugin (AGP)</strong> là phần <em>biết về Android</em>. Nó chạy <em>bên trên</em> Gradle và
-		dạy Gradle những việc rất riêng của Android: biên dịch resource trong <code>res/</code>, gộp nhiều
-		<code>AndroidManifest.xml</code> lại, chạy R8/Proguard, đóng gói thành file cài được. Đây là lý do bạn sẽ thấy
-		<strong>hai số version khác nhau</strong> trong project — một cho Gradle, một cho AGP — và vì sao chúng phải tương
-		thích với nhau.
+		Mở file <code>.kts</code> nào bạn cũng thấy những <em>khối</em> có hình dạng
+		<code>tên {'{ ... }'}</code>. Đó là toàn bộ "cú pháp" cần thiết để đọc bài này:
 	</p>
-	<p>Kết quả cuối của dây chuyền này là một trong hai loại file, và sách phân biệt rất rõ:</p>
 	<table class="api">
 		<thead>
-			<tr><th>File</th><th>Là gì</th><th>Dùng khi nào</th></tr>
+			<tr><th>Khối</th><th>Trả lời câu hỏi</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>plugins {'{ }'}</code></td><td>Module này dùng những plugin (bộ năng lực) nào?</td></tr>
+			<tr><td><code>android {'{ }'}</code></td><td>App Android này được build với những thiết lập nào?</td></tr>
+			<tr><td><code>dependencies {'{ }'}</code></td><td>Module cần những đoạn code có sẵn nào (thư viện, module khác)?</td></tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		<strong>JIT gloss cho cú pháp Kotlin DSL:</strong> <code>id("...")</code> là một lời gọi hàm nhận
+		chuỗi trong ngoặc kép; <code>compileSdk = 34</code> là phép gán giá trị; chuỗi luôn nằm trong dấu
+		nháy kép. Khi gặp dòng lạ, tự hỏi đúng ba câu: <em>đây là gì</em>, <em>vì sao project cần nó</em>,
+		<em>sửa cái này thì tìm ở đâu</em> — không cần hiểu sâu ngôn ngữ Kotlin để đọc file build.
+	</p>
+
+	<h2 id="ban-do-file">2. Bản đồ file build — mỗi file trả lời một câu hỏi</h2>
+	<p>
+		Trong Android Studio, tab Project mặc định ở chế độ <em>Android</em> gom các file Gradle vào một
+		nhóm ảo tên "Gradle Scripts" và giấu thư mục thật của chúng. Muốn hiểu file nào nằm đâu, đổi chế
+		độ xem sang <strong>Project</strong>. Đây là cấu trúc thật của project chương này:
+	</p>
+	<pre class="tree">Kodeco Chat/
+├── settings.gradle.kts       ← project gồm những module nào? tải từ đâu?
+├── build.gradle.kts          ← top-level: plugin nào có sẵn cho cả project?
+├── gradle.properties         ← thiết lập cho chính tiến trình Gradle
+├── gradlew / gradlew.bat     ← script chạy Gradle đúng phiên bản của project
+├── gradle/
+│   ├── wrapper/
+│   │   └── gradle-wrapper.properties  ← project dùng bản Gradle nào?
+│   └── libs.versions.toml    ← danh bạ version dùng chung (sẽ học ở mục 7)
+└── app/                      ← MODULE (phần sinh ra app)
+    ├── build.gradle.kts      ← module-level: cấu hình thật của app
+    └── proguard-rules.pro    ← quy tắc rút gọn code cho bản release (chưa cần đụng)</pre>
+	<table class="api">
+		<thead>
+			<tr><th>File</th><th>Mở nó để trả lời câu hỏi</th></tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td><code>.apk</code></td>
-				<td><em>Android Package</em> — app đã đóng gói hoàn chỉnh, cài trực tiếp lên máy được.</td>
-				<td>Tự cài lên máy mình / gửi cho người khác test.</td>
+				<td><code>settings.gradle.kts</code></td>
+				<td>"Project này gồm những module nào?" và "thư viện/plugin được tải từ đâu?"</td>
 			</tr>
 			<tr>
-				<td><code>.aab</code></td>
-				<td>
-					<em>Android App Bundle</em> — không cài trực tiếp được. Nó chứa <strong>mọi thông tin</strong> Google Play cần
-					để tự sinh ra file <code>.apk</code> tối ưu cho <em>đúng</em> chiếc máy đang tải app.
-				</td>
-				<td>Nộp lên Google Play.</td>
+				<td><code>build.gradle.kts</code> (gốc)</td>
+				<td>"Plugin nào được cung cấp cho toàn project, bản nào?"</td>
+			</tr>
+			<tr>
+				<td><code>app/build.gradle.kts</code></td>
+				<td>"Module app dùng SDK bản nào, cần thư viện gì, build theo kiểu nào?"</td>
+			</tr>
+			<tr>
+				<td><code>gradle/libs.versions.toml</code></td>
+				<td>"Số version này của thư viện/plugin nằm ở đâu?" (Version Catalog — mục 7)</td>
+			</tr>
+			<tr>
+				<td><code>gradle/wrapper/gradle-wrapper.properties</code></td>
+				<td>"Project này chạy trên bản Gradle nào?"</td>
 			</tr>
 		</tbody>
 	</table>
-	<div class="hint">
-		<strong>Vì sao có <code>.aab</code>?</strong> Một app phải mang theo ảnh cho mọi mật độ điểm ảnh, chuỗi dịch cho mọi
-		ngôn ngữ, code máy cho mọi loại CPU. Máy của bạn chỉ cần <em>một</em> bộ trong số đó. Với <code>.aab</code>, Google
-		Play cắt phần thừa trước khi gửi xuống máy người dùng, nên app tải về nhẹ hơn đáng kể. Đây là <em>kiến thức bổ
-		sung</em> của bài này để bạn hiểu vì sao Google bắt buộc <code>.aab</code>, sách chỉ nói ngắn về mục đích của nó.
-	</div>
-	<h2 id="ban-do-file">2. Bản đồ các file cấu hình Gradle — và hai file trùng tên</h2>
 	<p>
-		Sách mở đầu phần thực hành bằng một việc rất nhỏ nhưng cần thiết: đổi chế độ xem của tab Project trong Android
-		Studio từ <em>Android</em> sang <strong>Project</strong>. Lý do: chế độ <em>Android</em> mặc định <strong>gom</strong>
-		các file Gradle vào một nhóm ảo tên "Gradle Scripts" và <em>giấu</em> thư mục thật của chúng. Muốn hiểu file nào nằm
-		ở đâu thì phải xem cấu trúc ổ đĩa thật.
-	</p>
-	<p>Đây là cấu trúc thật của project chapter này (đã kiểm bằng cách liệt kê thư mục thật):</p>
-	<pre class="tree">Kodeco Chat/
-├── build.gradle.kts          ← top-level  (cấu hình CHUNG cả project)
-├── settings.gradle.kts       ← khai báo repository + danh sách module
-├── gradle.properties         ← thiết lập cho chính tiến trình Gradle
-├── gradlew / gradlew.bat     ← Gradle Wrapper (script chạy Gradle)
-├── gradle/
-│   └── wrapper/
-│       └── gradle-wrapper.properties  ← phiên bản Gradle của project
-└── app/                      ← MODULE
-    ├── build.gradle.kts      ← module-level (cấu hình RIÊNG module app)
-    └── proguard-rules.pro</pre>
-	<p>
-		Điểm dễ nhầm nhất, và sách nhấn mạnh đúng chỗ này: <strong>có hai file cùng tên <code>build.gradle.kts</code></strong>.
-		Chúng làm hai việc hoàn toàn khác nhau:
+		Điểm dễ nhầm nhất của bản đồ này: <strong>có hai file cùng tên
+		<code>build.gradle.kts</code></strong>, làm hai việc hoàn toàn khác nhau. Bảng dưới phân biệt:
 	</p>
 	<table class="api">
 		<thead>
 			<tr><th>&nbsp;</th><th><code>build.gradle.kts</code> ở gốc</th><th><code>app/build.gradle.kts</code></th></tr>
 		</thead>
 		<tbody>
-			<tr>
-				<td>Tên gọi</td>
-				<td><em>top-level</em> (cấp cao nhất)</td>
-				<td><em>module-level</em> (cấp module)</td>
-			</tr>
-			<tr>
-				<td>Có bao nhiêu file</td>
-				<td>Đúng <strong>một</strong> cho mỗi project Android.</td>
-				<td><strong>Một file cho mỗi module.</strong> Project có 5 module thì có 5 file.</td>
-			</tr>
-			<tr>
-				<td>Nội dung</td>
-				<td>
-					Rất ngắn. Chỉ khai báo <em>plugin nào có sẵn cho toàn project</em> — không thực sự áp dụng chúng.
-				</td>
-				<td>
-					Rất dài. Toàn bộ cấu hình Android thật: version SDK, build type, dependency, ký app…
-				</td>
-			</tr>
-			<tr>
-				<td>Bạn sửa nhiều không</td>
-				<td>Rất ít khi.</td>
-				<td>
-					<strong>Đây là file bạn mở nhiều nhất trong cả đời làm Android.</strong> Sách nói thẳng như vậy.
-				</td>
-			</tr>
+			<tr><td>Tên gọi</td><td><em>top-level</em> (cấp cao nhất)</td><td><em>module-level</em> (cấp module)</td></tr>
+			<tr><td>Có bao nhiêu</td><td>Đúng <strong>một</strong> cho mỗi project.</td><td><strong>Một cho mỗi module.</strong> 5 module → 5 file.</td></tr>
+			<tr><td>Nội dung</td><td>Rất ngắn. Chỉ khai <em>plugin nào có sẵn</em> cho toàn project.</td><td>Rất dài. Toàn bộ cấu hình Android thật.</td></tr>
+			<tr><td>Bạn sửa nhiều không</td><td>Rất ít khi.</td><td><strong>File bạn mở nhiều nhất khi làm Android.</strong></td></tr>
 		</tbody>
 	</table>
-
-	<h3><em>Module</em> là gì, và vì sao "một app = một module" chỉ là mặc định</h3>
+	<h3><em>Module</em> là gì</h3>
 	<p>
-		Sách định nghĩa <strong>module</strong> là một <em>container</em> (hộp chứa) gồm code, resource và các file cấu hình
-		— trong đó có <code>AndroidManifest.xml</code> và chính file <code>build.gradle.kts</code> của module đó.
+		<strong>Module</strong> là một hộp chứa gồm code, resource và file cấu hình — trong đó có
+		<code>AndroidManifest.xml</code> và file <code>build.gradle.kts</code> riêng của nó. Project mới
+		sinh ra luôn có đúng một module tên <code>app</code>. App lớn thường tách thêm module (networking
+		riêng, phần UI dùng lại được riêng…) để build nhanh hơn và ranh giới rõ ràng hơn; khi đó mỗi
+		module có một file build của mình.
 	</p>
+	<h3>Thư viện được tải từ đâu</h3>
 	<p>
-		Project Android mới sinh ra luôn có đúng <strong>một</strong> module tên <code>app</code>. Nhưng app thật rất thường
-		có nhiều module: tách phần networking ra một module, phần UI dùng lại được ra một module khác, v.v. Mỗi module có
-		file build riêng của nó, và các module có thể dùng chung code.
+		Trong <code>settings.gradle.kts</code> của project mẫu, hai khối đáng để biết tồn tại:
 	</p>
-	<div class="hint">
-		<strong>Vì sao người ta tách module?</strong> (kiến thức bổ sung, sách không nói ở chapter này) Hai lý do chính:
-		(1) <em>build nhanh hơn</em> — sửa code trong một module thì Gradle chỉ build lại module đó và những module phụ
-		thuộc vào nó; (2) <em>ranh giới rõ ràng</em> — module A không thể vô tình gọi vào ruột của module B nếu bạn không
-		khai báo phụ thuộc. Đổi lại, nhiều module thì nhiều file cấu hình phải giữ đồng bộ, và đây chính là một trong những
-		lý do Version Catalog (mục 8) ra đời.
-	</div>
-
-	<h3><code>.kts</code> hay không <code>.kts</code>: Kotlin DSL vs Groovy</h3>
-	<p>
-		Nếu bạn tra Google về Gradle, bạn sẽ gặp rất nhiều bài viết dùng tên file <code>build.gradle</code>
-		<em>không có</em> <code>.kts</code>. Đây không phải bài viết sai — đó là cách viết cũ, và sách giải thích rõ:
-	</p>
-	<table class="api">
-		<thead>
-			<tr><th>Tên file</th><th>Ngôn ngữ</th><th>Trạng thái</th></tr>
-		</thead>
-		<tbody>
-			<tr>
-				<td><code>build.gradle</code></td>
-				<td><strong>Groovy</strong></td>
-				<td>Cách gốc, dùng nhiều năm. Vẫn chạy được, vẫn gặp rất nhiều trong thực tế.</td>
-			</tr>
-			<tr>
-				<td><code>build.gradle.kts</code></td>
-				<td><strong>Kotlin</strong> (gọi là <em>Kotlin DSL</em>)</td>
-				<td>Cách Google khuyến nghị hiện nay. Là mặc định khi tạo project mới.</td>
-			</tr>
-		</tbody>
-	</table>
-	<p>
-		Và đây là chỗ sách <strong>trung thực đáng khen</strong>, không tô hồng: build dùng Kotlin DSL
-		<em>có xu hướng chậm hơn</em> Groovy. Đổi lại bạn được hai thứ đáng giá hơn với đa số người: cú pháp dễ đọc-dễ viết
-		hơn, và <strong>IDE hỗ trợ tốt hơn</strong> — tức là gợi ý code (autocomplete) và báo lỗi ngay khi gõ sai, thay vì
-		chờ tới lúc build mới biết. Sách kết luận: việc chuyển từ Groovy sang Kotlin DSL đang thực sự diễn ra.
-	</p>
-	<div class="hint">
-		<strong>Vì sao Kotlin DSL chậm hơn?</strong> (bổ sung) Vì file <code>.kts</code> là <em>code Kotlin thật</em> — Gradle
-		phải biên dịch nó trước khi chạy. Groovy thì được thông dịch. Cái giá đó chỉ trả ở lần build đầu hoặc khi bạn sửa
-		file build; sau đó Gradle dùng lại bản đã biên dịch.
-	</div>
-	<h2 id="hai-file-sach-bo-qua">3. Hai file sách đi qua rất nhanh — nhưng bạn sẽ gặp chúng</h2>
-	<p>
-		Sách liệt kê "các file cấu hình Gradle mặc định" rồi tập trung vào ba file: hai <code>build.gradle.kts</code> và
-		<code>settings.gradle.kts</code>. Nhưng project thật còn hai file nữa mà sách <strong>không nhắc tên ở đâu trong cả
-		chapter</strong> (đã kiểm bằng cách tìm toàn văn chapter). Bài này bổ sung, vì chúng gây ra những lỗi mà người mới
-		không biết tìm ở đâu.
-	</p>
-
-	<h3><code>gradle/wrapper/gradle-wrapper.properties</code> — phiên bản Gradle nằm ở đây</h3>
-	<p class="src">
-		Nguồn: <code>{F}/gradle/wrapper/gradle-wrapper.properties</code> (dòng 36 — 35 dòng đầu là header license)
-	</p>
+	<p class="src">Nguồn: <code>{S}/settings.gradle.kts</code> (dòng 1–17, toàn bộ file — giống hệt ở bản <code>final</code>)</p>
+	<Code code={settingsGradleCode} lang="kotlin" theme="github-dark" />
+	<ul>
+		<li>
+			<code>pluginManagement {'{ }'}</code> khai <strong>nơi tải plugin</strong>;
+			<code>dependencyResolutionManagement {'{ }'}</code> khai <strong>nơi tải thư viện của app</strong>.
+			Plugin và thư viện là hai thứ được tìm riêng, nên có hai khối riêng. Trong mỗi danh sách,
+			<code>google()</code> và <code>mavenCentral()</code> là những "kho" trực tuyến; <strong>thứ tự
+			là thứ tự ưu tiên</strong> — Gradle thử kho trước, không có mới sang kho sau.
+		</li>
+		<li>
+			<code>rootProject.name</code> đặt tên project; dòng cuối <code>include(":app")</code> khai báo
+			module <code>app</code> thuộc project. Mọi module phải được khai bằng <code>include</code> —
+			thiếu dòng đó thì thư mục có đủ file, code không sai gì, nhưng Gradle build như thể module
+			không tồn tại.
+		</li>
+	</ul>
+	<h3>Phiên bản Gradle nằm ở file nào?</h3>
+	<p class="src">Nguồn: <code>{F}/gradle/wrapper/gradle-wrapper.properties</code> (dòng 36)</p>
 	<Code code={wrapperCode} lang="properties" theme="github-dark" />
 	<p>
-		Chính dòng này quyết định project dùng Gradle bản nào: <strong>8.2</strong>. Cơ chế gọi là
-		<strong>Gradle Wrapper</strong> — bạn <em>không</em> cần cài Gradle lên máy. Hai script <code>gradlew</code> (Linux/
-		macOS) và <code>gradlew.bat</code> (Windows) sẽ đọc file này, tự tải đúng bản Gradle được ghi trong đó rồi chạy nó.
+		Dòng này quyết định project dùng Gradle bản nào: <strong>8.2</strong>. Cơ chế gọi là
+		<strong>Gradle Wrapper</strong>: bạn <em>không</em> cần cài Gradle lên máy — script
+		<code>gradlew</code> (Linux/macOS) / <code>gradlew.bat</code> (Windows) đọc file này, tự tải đúng
+		bản Gradle được ghi rồi chạy nó. Nhờ vậy, ai clone project cũng build ra kết quả giống nhau bất
+		kể máy họ có Gradle bản nào. Nếu một ngày gặp lỗi kiểu <em>"minimum supported Gradle version"</em>,
+		đây là file cần sửa — không phải <code>build.gradle.kts</code>.
 	</p>
-	<div class="hint">
-		<strong>Vì sao cơ chế này quan trọng:</strong> nó làm cho <em>ai clone project cũng build ra kết quả giống nhau</em>,
-		bất kể trên máy họ có Gradle bản nào. Đây cũng là lý do bạn nên chạy <code>./gradlew build</code> chứ không phải
-		<code>gradle build</code>. Nếu một ngày Gradle báo lỗi "unsupported Gradle version" hay "minimum supported Gradle
-		version is X", <strong>đây là file cần sửa</strong> — không phải file <code>build.gradle.kts</code>.
-	</div>
-
-	<h3><code>gradle.properties</code> — thiết lập cho chính tiến trình Gradle</h3>
-	<p class="src">
-		Nguồn: <code>{F}/gradle.properties</code> (dòng 41–55, đã bỏ comment; file giống nhau ở <code>starter</code> và
-		<code>final</code>)
+	<p class="hint">
+		<strong><code>gradle.properties</code> thì sao?</strong> File này cấu hình <em>công cụ build</em>
+		chứ không cấu hình app: ví dụ dòng <code>org.gradle.jvmargs=-Xmx2048m</code> cho Gradle tối đa
+		2&nbsp;GB RAM (lỗi <em>"Java heap space"</em> khi build thì tăng con số này), và
+		<code>android.useAndroidX=true</code> bật thư viện AndroidX. Lưu ý duy nhất ở mức người mới:
+		file này được commit, nên <strong>không đặt mật khẩu hay thông tin nhạy cảm vào đó</strong>.
 	</p>
-	<Code code={gradlePropertiesCode} lang="properties" theme="github-dark" />
-	<p>Bốn dòng này không cấu hình app, chúng cấu hình <em>công cụ build</em>:</p>
-	<ul>
-		<li>
-			<code>org.gradle.jvmargs=-Xmx2048m</code> — cho tiến trình Gradle tối đa 2 GB RAM. Gặp lỗi
-			<em>"Java heap space"</em> hoặc <em>"Daemon has terminated"</em> khi build project lớn thì đây là con số cần tăng.
-		</li>
-		<li>
-			<code># org.gradle.parallel=true</code> — <strong>đang bị comment</strong>, tức là <em>tắt</em>. Bật lên thì Gradle
-			build nhiều module song song. Project này chỉ có một module nên bật cũng không nhanh hơn.
-		</li>
-		<li>
-			<code>android.useAndroidX=true</code> — dùng thư viện AndroidX thay cho Support Library đời cũ. Bắt buộc với mọi
-			project hiện đại.
-		</li>
-		<li>
-			<code>android.nonTransitiveRClass=true</code> — mỗi thư viện chỉ sinh class <code>R</code> chứa resource
-			<em>của riêng nó</em>, không gộp cả resource của thư viện mà nó phụ thuộc. Kết quả: class <code>R</code> nhỏ hơn,
-			build nhanh hơn.
-		</li>
-	</ul>
-	<div class="notice">
-		<strong>Bẫy thật:</strong> file <code>gradle.properties</code> ở project và file <code>gradle.properties</code> trong
-		thư mục Gradle của máy bạn (<code>~/.gradle/</code>) là <em>hai file khác nhau</em>, và bản của máy
-		<strong>thắng</strong>. Nếu build của bạn hành xử khác đồng nghiệp dù cùng một project, đây là chỗ đầu tiên nên nhìn.
-		Cũng vì lý do đó: <strong>không đặt mật khẩu vào <code>gradle.properties</code> của project</strong> — nó được commit.
-		Mục 10 sẽ nói cách làm đúng.
-	</div>
 
-	<h2 id="top-level">4. File top-level <code>build.gradle.kts</code>: khai báo mà không áp dụng</h2>
-	<p>Mở file <code>build.gradle.kts</code> ở gốc project <code>starter</code>. Toàn bộ nội dung chỉ có vậy:</p>
+	<h2 id="project-vs-module">3. Cấp project và cấp module — vì sao cùng một plugin khai hai lần</h2>
+	<p>
+		Mở file <code>build.gradle.kts</code> ở gốc project <code>starter</code>. Toàn bộ nội dung chỉ có vậy:
+	</p>
 	<p class="src">Nguồn: <code>{S}/build.gradle.kts</code> (dòng 1–5, toàn bộ file)</p>
 	<Code code={starterRootBuildCode} lang="kotlin" theme="github-dark" />
-	<p>Đọc từng phần:</p>
-	<ol>
-		<li>
-			Khối <code>plugins {'{ }'}</code> khai báo <strong>plugin nào Gradle được dùng ở phạm vi cả project</strong>. Không
-			có plugin thì hệ thống build không làm được gì cả. Mỗi plugin được gọi qua <strong>ID</strong> — một chuỗi định
-			danh duy nhất của nó.
-		</li>
-		<li>
-			<code>com.android.application</code> — plugin cho phép đánh dấu một module là <em>application module</em>. Hệ thống
-			build của Android quy định: mỗi project phải có <strong>một</strong> application module, và <em>được phép</em> có
-			nhiều library module (tuỳ chọn). Nếu project có library module, bạn sẽ khai báo thêm
-			<code>com.android.library</code> ở đây.
-		</li>
-		<li>
-			<code>org.jetbrains.kotlin.android</code> — Kotlin Gradle plugin, để bạn viết được code Kotlin (và cả file Gradle
-			bằng Kotlin).
-		</li>
-	</ol>
-	<div class="notice">
-		<strong>Chỗ sách in khác project mẫu (thứ nhất):</strong> sách in <code>version "8.1.4"</code> cho
-		<code>com.android.application</code>, còn project <code>starter</code> thật ghi <strong><code>"8.2.0"</code></strong>.
-		Kotlin thì khớp (<code>1.9.10</code> cả hai bên). Chênh lệch này vô hại — nó chỉ nói lên project mẫu được cập nhật
-		sau khi bản thảo sách viết xong. Bài này giữ nguyên cả hai con số thay vì âm thầm sửa một bên cho khớp.
-	</div>
-	<div class="ba">
-		<div class="ba-col">
-			<div class="ba-head bad">Sách in</div>
-			<Code code={bookRootBuildCode} lang="kotlin" theme="github-dark" />
-		</div>
-		<div class="ba-col">
-			<div class="ba-head good">Project starter thật</div>
-			<Code code={starterRootBuildCode} lang="kotlin" theme="github-dark" />
-		</div>
-	</div>
-
-	<h3>Vì sao phải có <code>apply false</code>?</h3>
 	<p>
-		Đây là câu hỏi hay nhất của mục này, và sách trả lời rất gọn. Bạn muốn hai thứ <em>đồng thời</em>:
+		Khối <code>plugins {'{ }'}</code> khai báo <strong>plugin nào có sẵn ở phạm vi cả project</strong>:
 	</p>
 	<ul>
 		<li>
-			Các module <strong>truy cập được</strong> plugin này — nên phải khai báo nó ở đâu đó cấp project.
+			<code>com.android.application</code> — plugin của AGP cho phép đánh dấu một module là
+			<em>application module</em>, tức module sinh ra một app cài được. Nếu sau này project có
+			library module, bạn sẽ khai thêm <code>com.android.library</code> ở đây.
 		</li>
 		<li>
-			Nhưng <strong>không</strong> muốn <em>áp dụng</em> (apply) plugin ngay tại cấp gốc — vì cấp gốc không chứa code
-			Android nào, áp dụng vào chỉ tốn công build vô ích.
+			<code>org.jetbrains.kotlin.android</code> — plugin của JetBrains để module viết được code
+			Kotlin (và cả file build bằng Kotlin).
 		</li>
 	</ul>
 	<p>
-		<code>apply false</code> chính là cách nói "chuẩn bị sẵn, đừng dùng ở đây". Lợi ích thật sự là
-		<strong>single source of truth</strong> (một nguồn sự thật duy nhất): số version của plugin chỉ nằm ở
-		<strong>một chỗ</strong>. Module nào cần thì khai báo lại ID mà <em>không cần ghi lại version</em> — bạn sẽ thấy đúng
-		điều này ở mục 6.
+		Còn mở file <code>app/build.gradle.kts</code> — bạn gặp lại <strong>đúng hai plugin đó</strong>:
 	</p>
-	<div class="hint">
-		<strong>Note của sách, dễ bỏ qua nhưng đáng nhớ:</strong> mặc dù mỗi module <code>com.android.application</code> định
-		nghĩa <em>một</em> app, một project Android <strong>có thể</strong> chứa nhiều application module và xuất ra nhiều app
-		khác nhau. Trường hợp dùng thật: bạn có nhiều app khác nhau về tính năng nhưng dùng chung rất nhiều thành phần — quản
-		lý chung một project sẽ dễ hơn là ba project rời rạc.
-	</div>
-	<h2 id="settings">5. <code>settings.gradle.kts</code>: nơi Gradle biết đi đâu tìm thư viện</h2>
-	<p>
-		Trước khi sang file module, còn một file quan trọng ở cấp gốc. File này quyết định <em>hai</em> việc rất khác nhau,
-		và trộn lẫn chúng là nguồn gây nhầm lẫn kinh điển.
-	</p>
-	<p class="src">
-		Nguồn: <code>{S}/settings.gradle.kts</code> (dòng 1–17, toàn bộ file) — đã kiểm: file này
-		<strong>giống hệt nhau</strong> ở <code>starter</code> và <code>final</code>, chapter không sửa nó.
-	</p>
-	<Code code={settingsGradleCode} lang="kotlin" theme="github-dark" />
-	<ol>
-		<li>
-			<code>pluginManagement {'{ }'}</code> — khai báo repository <strong>cho plugin</strong>. Gradle dùng danh sách này
-			để đi tìm những plugin bạn khai báo ở file top-level. Trong khối này bạn còn có thể khai báo plugin kèm version cụ
-			thể, hoặc thêm <code>resolutionStrategy {'{ }'}</code> để quy định cách xử lý khi có xung đột plugin.
-		</li>
-		<li>
-			<code>repositories {'{ }'}</code> — danh sách nơi tải, và <strong>thứ tự ở đây là thứ tự ưu tiên</strong>. Gradle thử
-			<code>google()</code> trước, không có mới sang <code>mavenCentral()</code>, rồi
-			<code>gradlePluginPortal()</code>.
-		</li>
-		<li>
-			<code>dependencyResolutionManagement {'{ }'}</code> — khai báo repository <strong>cho dependency của project</strong>
-			(tức các thư viện app bạn dùng). Đây là phần khác hẳn phần trên: <em>plugin</em> và <em>thư viện</em> là hai thứ
-			được resolve riêng.
-		</li>
-		<li>
-			<code>rootProject.name</code> đặt tên cho <em>root project</em>. Dòng cuối <code>include(":app")</code> khai báo
-			module <code>app</code> là một <em>sub-project</em>.
-		</li>
-	</ol>
-
-	<h3><code>FAIL_ON_PROJECT_REPOS</code> — một dòng đáng hiểu kỹ</h3>
-	<p>
-		Dòng <code>repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)</code> nhìn như thiết lập vô hại nhưng nó
-		thay đổi hành vi khá mạnh. Sách giải thích logic đằng sau:
-	</p>
-	<div class="ba">
-		<div class="ba-col">
-			<div class="ba-head bad">Mặc định (không có dòng đó)</div>
-			<p>
-				Repository nào khai báo trong <code>build.gradle.kts</code> của một module sẽ <strong>ghi đè</strong> repository
-				khai báo ở <code>settings.gradle.kts</code>. Kết quả: mỗi module có thể tải thư viện từ một nơi khác nhau, và bạn
-				phải đọc hết mọi file mới biết thư viện thật sự đến từ đâu.
-			</p>
-		</div>
-		<div class="ba-col">
-			<div class="ba-head good">Có <code>FAIL_ON_PROJECT_REPOS</code></div>
-			<p>
-				Bất kỳ ai khai báo repository <em>ngoài</em> file này thì <strong>build fail ngay</strong>. Hơi khắt khe, nhưng đó
-				chính là mục đích: buộc mọi nguồn tải thư viện phải nằm ở đúng một chỗ.
-			</p>
-		</div>
-	</div>
-	<div class="hint">
-		<strong>Vì sao đây là chuyện bảo mật, không chỉ chuyện gọn gàng</strong> (bổ sung, sách không nói): nếu một module lặng
-		lẽ thêm một repository lạ, thư viện của bạn có thể được tải từ nguồn không đáng tin mà không ai để ý —
-		<em>dependency confusion</em>. Chốt mọi repository vào một file dễ review chính là cách phòng.
-	</div>
-	<div class="notice">
-		<strong>Chỗ dễ hiểu sai về từ "project":</strong> trong ngôn ngữ Gradle, "project" <em>không</em> đồng nghĩa với "cả
-		cái thư mục bạn mở trong Android Studio". <em>Root project</em> là cái mà file <code>build.gradle.kts</code> ở gốc quản
-		lý; mỗi module lại là một <em>sub-project</em> riêng. Vì vậy <code>FAIL_ON_PROJECT_REPOS</code> nghĩa là "fail nếu
-		repository được khai báo ở tầng sub-project", không phải "fail nếu có repository trong project".
-	</div>
-	<div class="notice">
-		<strong>Quên <code>include</code> là gì sẽ ra lỗi gì:</strong> sách cảnh báo bạn phải khai báo <em>mọi</em> module bằng
-		<code>include</code>, nếu không Gradle <strong>không thấy</strong> module đó. Đây là lỗi hay gặp khi tự thêm module mới:
-		thư mục có đầy đủ file, code không sai gì, nhưng build vẫn như thể module không tồn tại. Nguyên nhân là thiếu một dòng
-		trong file này.
-	</div>
-
-	<h2 id="module-plugins">6. File module-level: khai báo plugin (lần thứ hai, không có version)</h2>
-	<p>
-		Đây là file bạn sẽ mở nhiều nhất. Nó dài nên sách chia ra đọc từng khối — bài này theo đúng thứ tự đó. Bắt đầu từ trên
-		cùng:
-	</p>
-	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 1–4)</p>
+	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 35–38)</p>
 	<Code code={modulePluginsCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Đây là nơi bạn nói: <em>module <code>app</code> dùng những plugin này</em>. Hãy để ý điều mà mục 4 đã hứa —
-		<strong>không có số version nào ở đây cả.</strong> Version đã nằm ở file top-level, và <code>apply false</code> làm cho
-		nó "có sẵn để dùng". Module chỉ cần gọi tên.
+		Vì sao khai hai lần? Vì hai file có hai nhiệm vụ khác nhau, và đây là điểm quan trọng nhất của
+		mục này:
 	</p>
+	<ul>
+		<li>
+			<strong>File gốc = nơi cung cấp.</strong> Nó khai plugin kèm <strong>version</strong>, kèm chữ
+			<code>apply false</code> — nghĩa là: "plugin bản này được <em>chuẩn bị sẵn</em> cho toàn project,
+			nhưng <em>đừng bật</em> ở cấp gốc". Cấp gốc không chứa code Android nào, bật plugin ở đó chỉ
+			tốn công build vô ích.
+		</li>
+		<li>
+			<strong>File module = nơi sử dụng.</strong> Module gọi lại đúng ID plugin mà <strong>không ghi
+			version</strong> — version đã nằm ở file gốc, apply false làm nó "có sẵn để dùng".
+		</li>
+	</ul>
 	<p>
-		Sách còn nhận xét một chi tiết nhỏ mà tinh: module này <em>tình cờ</em> dùng đúng toàn bộ plugin mà file top-level cung
-		cấp. Không phải luôn như vậy — một project nhiều module có thể khai báo sẵn 5 plugin ở gốc, còn mỗi module chỉ lấy 2–3
-		cái nó cần.
+		Lợi ích thật của cách chia này là <strong>single source of truth</strong>: số version của plugin
+		chỉ nằm ở <em>một chỗ</em>. Project nhiều module sẽ khai sẵn plugin ở gốc, còn mỗi module chỉ
+		lấy cái nó cần. Một project Android <em>có thể</em> có nhiều application module (nhiều app dùng
+		chung một đống thành phần), nhưng phổ biến nhất vẫn là một.
 	</p>
-	<h2 id="android-block">7. Khối <code>android { }</code>: nơi quyết định app chạy được ở đâu</h2>
+	<p class="hint">
+		<strong>Ở file <code>final</code>, file gốc trông khác đi một chút:</strong>
+	</p>
+	<p class="src">Nguồn: <code>{F}/build.gradle.kts</code> (dòng 1–5, toàn bộ file)</p>
+	<Code code={finalRootBuildCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Ngay dưới <code>plugins</code> là khối lớn nhất của file: <code>android {'{ }'}</code>. Sách gọi đây là nơi định nghĩa
-		<em>mọi</em> tuỳ chọn build riêng của Android. Khối này dài, nên sách chia làm hai lần đọc — bài này giữ đúng cách chia
-		đó.
+		<code>id("...") version "..."</code> được thay bằng <code>alias(libs.plugins.…)</code> — plugin
+		giờ được gọi theo tên từ Version Catalog, và số version biến mất khỏi file build. Đừng cố hiểu
+		<code>libs.…</code> vội: cuối bài (mục 7) bạn sẽ truy ngược được từng dòng này về khai báo gốc.
 	</p>
-	<h3>7.1. Nửa trên: <code>namespace</code>, <code>compileSdk</code>, và <code>defaultConfig</code></h3>
-	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 6–21)</p>
-	<Code code={starterAndroidTopCode} lang="kotlin" theme="github-dark" />
-	<ol>
-		<li>
-			<code>namespace</code> — là thứ cần cho việc <strong>truy cập resource</strong>. Sách kể một chi tiết lịch sử đáng
-			nhớ: nhiều năm trước thuộc tính này nằm trong <code>AndroidManifest.xml</code> dưới tên
-			<code>package</code>, nay đã chuyển sang file Gradle. Nếu bạn đọc code Android cũ và thấy
-			<code>package="..."</code> trong manifest thì đó là cùng một khái niệm ở chỗ cũ.
-		</li>
-		<li>
-			<code>compileSdk = 34</code> — <strong>API level dùng để biên dịch</strong> app. Hệ quả trực tiếp: bạn
-			<em>không thể</em> dùng tính năng của API cao hơn con số này. Ở đây là 34, tức API của Android 14.
-		</li>
-		<li>
-			<code>defaultConfig {'{ }'}</code> — chứa các tuỳ chọn áp dụng <strong>mặc định cho mọi phiên bản build</strong>
-			(debug, release…). "Mặc định" là từ khoá: từng build type có thể ghi đè lại phần nó muốn.
-		</li>
-		<li>
-			<code>applicationId</code> — <strong>danh tính</strong> của app, phải duy nhất để publish/update trên Play Store.
-			Chi tiết dễ bỏ qua: nếu bạn <em>không</em> khai báo, build system lấy luôn <code>namespace</code> làm
-			<code>applicationId</code>.
-		</li>
-		<li>
-			<code>versionCode</code> là con số (Play Store dùng để biết bản nào mới hơn), <code>versionName</code> là chuỗi cho
-			người dùng đọc (<code>"1.0"</code>).
-		</li>
-		<li>
-			<code>testInstrumentationRunner</code> — Android cho phép chạy test theo hai kiểu: trên <em>JVM</em> (máy tính của
-			bạn) hoặc trực tiếp trên <em>thiết bị Android</em>. Loại thứ hai gọi là <strong>instrumented test</strong>, và muốn
-			chạy được thì phải khai báo runner này. <code>androidx.test.runner.AndroidJUnitRunner</code> là giá trị mặc định.
-		</li>
-		<li>
-			<code>vectorDrawables {'{ useSupportLibrary = true }'}</code> — bật thư viện hỗ trợ để dùng
-			<em>vector drawable</em> (ảnh định nghĩa bằng XML) ở API dưới 24.
-		</li>
-	</ol>
 
-	<h3>7.2. Ba con số SDK — nhầm cái nào thì hậu quả gì</h3>
+	<h2 id="android-block">4. Khối <code>android {'{ }'}</code>: app của bạn chạy được ở đâu</h2>
 	<p>
-		Đây là phần đáng dừng lại lâu nhất trong mục này, vì ba con số nhìn giống nhau (<code>compileSdk</code>,
-		<code>minSdk</code>, <code>targetSdk</code>) nhưng ý nghĩa và hậu quả khi sai thì rất khác. Sách giải thích từng cái rời;
-		bảng dưới đây gom lại để bạn thấy sự đối lập:
+		Ngay dưới <code>plugins</code> trong file module là khối lớn nhất: <code>android {'{ }'}</code> —
+		nơi tập hợp mọi thiết lập build riêng của Android. Đây là phiên bản rút gọn của khối này trong
+		project <code>starter</code>, giữ đúng những dòng cần dạy:
+	</p>
+	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 40–70, đã lược vài khối phụ được bàn ở mục Cạm bẫy)</p>
+	<Code code={starterAndroidCoreCode} lang="kotlin" theme="github-dark" />
+	<ul>
+		<li>
+			<code>namespace = "com.kodeco.chat"</code> — tên đóng gói dùng cho việc <strong>truy cập
+			resource</strong> (đối tượng <code>R</code> bạn đã gặp ở phần resource). Nhiều năm trước thuộc
+			tính này nằm trong <code>AndroidManifest.xml</code> dưới tên <code>package</code>; đọc code cũ
+			thấy <code>package="..."</code> trong manifest thì đó là cùng khái niệm ở chỗ cũ.
+		</li>
+		<li>
+			<code>compileSdk = 34</code> — <strong>API level dùng để biên dịch</strong>. Hệ quả trực tiếp:
+			không thể gọi tính năng của API cao hơn con số này. 34 là API của Android 14.
+		</li>
+		<li>
+			<code>defaultConfig {'{ }'}</code> — chứa các thiết lập áp dụng <strong>mặc định cho mọi phiên
+			bản build</strong> (debug, release…). "Mặc định" là từ khoá: từng build type có thể ghi đè phần
+			nó muốn — bạn sẽ thấy đúng điều này ở mục 8.
+		</li>
+		<li>
+			<code>buildFeatures {'{ }'}</code> — bật/tắt từng tính năng của AGP. Ở đây
+			<code>compose = true</code> bật bộ công cụ vẽ giao diện Compose cho module. Bạn sẽ học đầy đủ
+			Compose ở phần Jetpack Compose; ở đây chỉ cần hiểu vai trò: dòng này <em>bật</em> Compose, và
+			khối <code>composeOptions</code> kế bên khai phiên bản trình biên dịch Compose đi kèm.
+		</li>
+	</ul>
+	<h3>Ba con số SDK — nhầm cái nào thì hậu quả gì</h3>
+	<p>
+		Bạn đã gặp <code>minSdk</code>/<code>targetSdk</code> lúc tạo project (Chương 2); giờ là lúc đặt
+		chúng cạnh <code>compileSdk</code> vì ba con số nhìn giống nhau nhưng ý nghĩa và hậu quả khi sai
+		thì rất khác:
 	</p>
 	<table class="api">
 		<thead>
 			<tr><th>Thuộc tính</th><th>Trả lời câu hỏi</th><th>Ở project này</th><th>Đặt sai thì sao</th></tr>
 		</thead>
 		<tbody>
-			<tr>
-				<td><code>compileSdk</code></td>
-				<td>Tôi được phép <em>gọi tới</em> API của Android bản nào?</td>
-				<td><code>34</code></td>
-				<td>Đặt thấp: code không compile được vì API bạn cần chưa tồn tại ở bản đó.</td>
-			</tr>
-			<tr>
-				<td><code>minSdk</code></td>
-				<td>Máy cũ nhất mà app tôi <em>hỗ trợ</em> là bản nào?</td>
-				<td><code>30</code> (Android 11)</td>
-				<td>Đặt cao: app <strong>không xuất hiện trên Play Store</strong> với những máy chạy API thấp hơn.</td>
-			</tr>
-			<tr>
-				<td><code>targetSdk</code></td>
-				<td>Bản Android cao nhất tôi <em>đã test</em> và cam kết app chạy đúng là bản nào?</td>
-				<td><code>34</code></td>
-				<td>Đặt thấp: hệ thống bật các hành vi tương thích ngược (backward-compatibility) cho app bạn.</td>
-			</tr>
+			<tr><td><code>compileSdk</code></td><td>Tôi được <em>gọi tới</em> API của Android bản nào?</td><td><code>34</code></td><td>Đặt thấp: code không compile vì API bạn cần chưa tồn tại ở bản đó.</td></tr>
+			<tr><td><code>minSdk</code></td><td>Máy cũ nhất mà app tôi <em>hỗ trợ</em> là bản nào?</td><td><code>30</code> (Android 11)</td><td>Đặt cao: app <strong>không hiện trên Play Store</strong> với máy chạy API thấp hơn.</td></tr>
+			<tr><td><code>targetSdk</code></td><td>Bản Android cao nhất tôi <em>đã test</em> là bản nào?</td><td><code>34</code></td><td>Đặt thấp: hệ thống bật các hành vi tương thích ngược cho app bạn.</td></tr>
 		</tbody>
 	</table>
-	<div class="hint">
-		<strong>Lời khuyên rất cụ thể của sách:</strong> hãy test app kỹ với API mới nhất và <strong>giữ
-		<code>targetSdk</code> bằng <code>compileSdk</code></strong>. Ở project này đúng như vậy: cả hai đều là 34.
-		<code>minSdk</code> thì độc lập — nó nói về máy cũ nhất bạn muốn phục vụ, không liên quan tới hai con số kia.
-	</div>
-	<div class="notice">
-		<strong>Chỗ dễ nhầm về <code>targetSdk</code>:</strong> "target" ở đây <em>không</em> có nghĩa "app chỉ chạy trên bản
-		này". App vẫn chạy trên Android mới hơn. Ý nghĩa thật là một lời cam kết: <em>"tôi đã test tới bản này, đừng bật chế độ
-		tương thích cũ cho tôi"</em>. Con số này càng thấp, hệ thống càng phải giả lập hành vi cũ để app bạn không vỡ.
-	</div>
-	<div class="hint">
-		<strong>Vì sao <code>vectorDrawables</code> ở đây là code vô ích</strong> — sách chỉ ra rất hay: thư viện hỗ trợ này chỉ
-		cần cho API <strong>dưới 24</strong>, còn project đặt <code>minSdk = 30</code>. Nghĩa là dòng này
-		<em>không bao giờ</em> có tác dụng. Nó có mặt chỉ vì Android Studio tự thêm khi tạo project. Đây là ví dụ tốt cho một
-		thói quen: template sinh sẵn không có nghĩa là code cần thiết.
-	</div>
-
-	<h3>7.3. Nửa dưới: build type, Java/Kotlin, Compose, đóng gói</h3>
-	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 22–49)</p>
-	<Code code={starterAndroidRestCode} lang="kotlin" theme="github-dark" />
-	<ol>
-		<li>
-			<code>buildTypes {'{ }'}</code> — cho phép build app theo nhiều bộ thuộc tính khác nhau. Đây là chủ đề riêng, mục 8
-			nói kỹ.
-		</li>
-		<li>
-			<code>compileOptions {'{ }'}</code> — mọi tuỳ chọn biên dịch <strong>Java</strong>. Sách nhận xét thẳng: project này
-			<em>không có dòng Java nào</em>, nên khối này sẽ được xoá.
-		</li>
-		<li>
-			<code>kotlinOptions {'{ }'}</code> — ngược lại, đây là tuỳ chọn biên dịch <strong>Kotlin</strong>. Phần lý giải của
-			sách về <code>jvmTarget</code> rất đáng đọc kỹ, xem ngay dưới đây.
-		</li>
-		<li>
-			<code>buildFeatures {'{ }'}</code> — bật/tắt từng tính năng của AGP, ví dụ <em>View binding</em> hoặc
-			<strong>Compose</strong>. Ở đây <code>compose = true</code>.
-		</li>
-		<li>
-			<code>composeOptions {'{ }'}</code> — tuỳ chọn riêng cho Compose. <code>kotlinCompilerExtensionVersion</code> đặt
-			version của <strong>Compose compiler</strong>.
-		</li>
-		<li>
-			<code>packaging {'{ }'}</code> — chỉ dẫn cách <em>đóng gói</em> file khi tạo output cuối. Ở đây thêm một pattern vào
-			<code>resources.excludes</code> để những file khớp pattern <strong>không</strong> nằm trong file output.
-		</li>
-	</ol>
-	<div class="hint">
-		<strong>Chú ý dấu <code>+=</code>, sách nhấn mạnh riêng:</strong> code viết <code>excludes += "..."</code> chứ không phải
-		<code>excludes = "..."</code>. Tức là <em>thêm vào</em> danh sách loại trừ sẵn có, không phải <em>thay thế</em> nó. Đổi
-		<code>+=</code> thành <code>=</code> sẽ xoá sạch các loại trừ mặc định — một lỗi rất khó lần ra.
-	</div>
-	<h4>Vì sao <code>jvmTarget</code> lại là <code>"1.8"</code> trong sách?</h4>
-	<p>
-		Sách trả lời câu hỏi này thay vì bỏ qua, và lý do khá thực tế: Kotlin compiler <strong>mặc định</strong> nhắm tới code
-		tương thích Java 8. Nếu bạn không khai báo gì, nó sẽ thử dùng <em>bản Java đang cài trên máy bạn</em> — gần như chắc
-		chắn mới hơn 8 rất nhiều. Việc ghi cố định <code>"1.8"</code> là để <strong>tránh xung đột version</strong>: máy ai cũng
-		build ra cùng một kết quả, không phụ thuộc JDK từng người cài.
+	<p class="hint">
+		<strong>Hai chỗ dễ hiểu sai:</strong> (1) "target" <em>không</em> nghĩa là "app chỉ chạy trên bản
+		này" — app vẫn chạy trên Android mới hơn; đó là lời cam kết "tôi đã test tới đây, đừng bật chế
+		độ tương thích cũ cho tôi", nên quy tắc thực dụng là giữ <code>targetSdk</code> bằng
+		<code>compileSdk</code>. (2) <code>minSdk</code> độc lập với hai con số kia — nó nói về máy cũ
+		nhất bạn muốn phục vụ.
 	</p>
-	<p>
-		Nói cách khác, giá trị của dòng này không phải "8 là con số đúng", mà là "đừng để kết quả build phụ thuộc vào môi
-		trường của từng lập trình viên".
-	</p>
-	<div class="notice">
-		<strong>Chỗ sách in khác project mẫu (thứ hai):</strong> sách in <code>VERSION_1_8</code> và
-		<code>jvmTarget = "1.8"</code>, nhưng project <code>starter</code> thật dùng <strong><code>VERSION_17</code></strong> và
-		<strong><code>jvmTarget = "17"</code></strong> (đã kiểm: <code>{S}/app/build.gradle.kts</code> dòng 31–37).
-		Nguyên nhân gần như chắc chắn là Android Studio đổi template giữa lúc sách được viết và lúc code mẫu được cập nhật.
-		<strong>Lập luận của sách vẫn đúng nguyên</strong> — chỉ có con số thay đổi. Bạn nên theo project (17), vì AGP 8.x yêu
-		cầu JDK 17 để chạy.
-	</div>
-	<div class="ba">
-		<div class="ba-col">
-			<div class="ba-head bad">Sách in</div>
-			<Code code={bookCompileOptionsCode} lang="kotlin" theme="github-dark" />
-		</div>
-		<div class="ba-col">
-			<div class="ba-head good">Project mẫu thật</div>
-			<Code
-				code={`compileOptions {
-  sourceCompatibility = JavaVersion.VERSION_17
-  targetCompatibility = JavaVersion.VERSION_17
-}
-kotlinOptions {
-  jvmTarget = "17"
-}`}
-				lang="kotlin"
-				theme="github-dark"
-			/>
-		</div>
-	</div>
-
-	<h3>7.4. Việc bạn thật sự phải làm: xoá ba khối — nhưng project chỉ xoá hai</h3>
-	<p>
-		Sau khi giải thích xong, sách cho một việc rất cụ thể: <strong>xoá <code>packaging {'{ }'}</code>,
-		<code>vectorDrawables {'{ }'}</code> và <code>compileOptions {'{ }'}</code></strong> để file gọn nhất có thể. Lý do từng
-		cái:
-	</p>
+	<h3><code>applicationId</code>, <code>versionCode</code>, <code>versionName</code></h3>
 	<ul>
-		<li><code>vectorDrawables</code> — vô tác dụng vì <code>minSdk = 30</code> (đã nói ở 7.2).</li>
 		<li>
-			<code>packaging</code> — chỉ cần trong tình huống cụ thể: khi hai thư viện trong project chứa <em>file cùng tên
-			trong thư mục khớp nhau</em>, build sẽ báo conflict, và <code>packaging {'{ }'}</code> là cách gỡ. Project này chưa
-			gặp tình huống đó.
+			<code>applicationId</code> — <strong>danh tính</strong> của app, phải duy nhất để publish/update
+			trên Play Store. Nếu không khai, build system lấy luôn <code>namespace</code> làm
+			<code>applicationId</code> — ở project này hai giá trị trùng nhau vì vậy.
 		</li>
-		<li><code>compileOptions</code> — vì project không có code Java.</li>
+		<li>
+			<code>versionCode</code> là con số (Play Store dùng để biết bản nào mới hơn — mỗi lần nộp bản
+			mới phải tăng); <code>versionName</code> là chuỗi cho người dùng đọc (<code>"1.0"</code>).
+		</li>
 	</ul>
-	<div class="notice">
-		<strong>Chỗ sách khác project mẫu (thứ ba) — cái này quan trọng vì nó là bài tập bạn tự làm:</strong> project
-		<code>final</code> thật <strong>vẫn giữ khối <code>compileOptions</code></strong> (đã kiểm:
-		<code>{F}/app/build.gradle.kts</code> dòng 48–51). Chỉ <code>vectorDrawables</code> và <code>packaging</code> bị xoá
-		thật. Nên nếu bạn làm theo đúng chữ trong sách rồi so với <code>final</code>, bạn sẽ thấy mình xoá <em>nhiều hơn</em>
-		một khối.
-		<br /><br />
-		<strong>Ai đúng?</strong> Giữ lại như <code>final</code> là an toàn hơn. Với Java/Kotlin toolchain hiện nay,
-		<code>compileOptions.targetCompatibility</code> ảnh hưởng tới cả cách Kotlin và các thư viện Java được xử lý, nên xoá nó
-		đi có thể làm bản build lệch khỏi Java 17 một cách âm thầm. Kết quả cuối của mục này, theo <em>project</em>:
-	</div>
-	<Code code={finalAndroidCode} lang="kotlin" theme="github-dark" />
-	<div class="notice">
-		<strong>Chỗ sách tự mâu thuẫn với chính nó (thứ tư):</strong> trong đoạn giải thích, sách in
-		<code>kotlinCompilerExtensionVersion = "1.5.1"</code>; nhưng ở listing kết quả ngay sau đó, cùng dòng ấy thành
-		<strong><code>"1.5.3"</code></strong>. Project mẫu dùng <code>1.5.3</code>. Đã đối chiếu bảng tương thích
-		Compose-compiler ↔ Kotlin của Google: với Kotlin <code>1.9.10</code> thì Compose compiler đúng là
-		<strong>1.5.3</strong>. Vậy <code>1.5.1</code> là chỗ sai của sách, không phải của project.
-	</div>
-	<h2 id="build-types">8. Build type: vì sao file chỉ khai báo <code>release</code> mà bạn đang chạy <code>debug</code></h2>
 	<p>
-		Quay lại khối <code>buildTypes {'{ }'}</code>. Nhìn vào file, nó chỉ có <strong>đúng một</strong> build type:
-		<code>release</code>. Nhưng nếu bạn mở cửa sổ <em>Build Variants</em> ở thanh sidebar bên trái của Android Studio (nếu
-		không thấy icon, bấm <em>More tool windows</em>), bạn sẽ thấy một điều lạ: build variant đang được chọn
-		<strong>không phải <code>release</code></strong> mà là <strong><code>debug</code></strong> — một cái tên không hề xuất
-		hiện trong file.
+		Các khối còn lại của file — <code>compileOptions</code>/<code>kotlinOptions</code> (ghi cố định
+		phiên bản Java/Kotlin để máy ai cũng build ra cùng kết quả, không phụ thuộc JDK từng người cài),
+		<code>composeOptions</code>, <code>packaging</code> — bạn chỉ cần nhận ra tên: chúng là thiết lập
+		công cụ biên dịch và đóng gói, hiếm khi người mới phải sửa.
 	</p>
-	<p>Lời giải thích của sách gọn nhưng là chìa khoá của cả mục:</p>
-	<div class="callout note">
-		<p>
-			Build system <strong>luôn</strong> có sẵn <strong>hai</strong> build type mặc định, dù bạn có viết chúng ra hay không:
-		</p>
-		<ul>
-			<li><code>debug</code> — <code>isDebuggable = true</code></li>
-			<li><code>release</code> — <code>isDebuggable = false</code></li>
-		</ul>
-		<p>
-			Vậy việc khai báo chúng trong <code>build.gradle.kts</code> <em>không phải</em> để "tạo ra" chúng, mà để
-			<strong>tuỳ biến thuộc tính</strong>. Thuộc tính nào bạn không đổi thì giữ nguyên giá trị mặc định.
-		</p>
-	</div>
+
+	<h2 id="dependencies">5. <code>dependencies {'{ }'}</code>: một dependency là gì, đi vào bản build nào</h2>
 	<p>
-		Đây là một mental model quan trọng và áp dụng lại nhiều lần trong Gradle: <em>khối cấu hình thường là "chỉnh sửa cái đã
-		có", không phải "khai sinh cái mới"</em>. Vì vậy file chỉ ghi <code>release</code> đơn giản vì Android Studio muốn chỉnh
-		<em>một</em> thứ trong <code>release</code>, còn <code>debug</code> thì mặc định đã đủ dùng.
+		Khối cuối của file module là <code>dependencies {'{ }'}</code> — nơi khai báo
+		<strong>mọi thư viện và module</strong> mà module này cần. Một <strong>dependency</strong> là code
+		có sẵn mà module của bạn dùng lại: có thể là thư viện tải từ internet, hoặc một module khác trong
+		cùng project. Trong project mẫu, toàn bộ dependency đều thuộc loại thứ nhất — ví dụ
+		<code>androidx.core:core-ktx</code> là thư viện tiện ích Kotlin của AndroidX, hay được thêm nhất.
 	</p>
-	<h3>Vì sao Android Studio đặt <code>isMinifyEnabled = false</code>?</h3>
-	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 22–30)</p>
-	<Code code={starterBuildTypesCode} lang="kotlin" theme="github-dark" />
-	<ol>
-		<li>
-			<code>isMinifyEnabled</code> bảo build system <strong>obfuscate (làm rối tên), optimize và shrink (thu nhỏ)</strong>
-			code của bạn — đúng là những thứ bạn <em>muốn</em> ở bản release. Nhưng Android Studio vẫn để <code>false</code> và
-			nhường quyết định cho lập trình viên. Lý do sách nói rất thẳng: nếu <em>Proguard rules</em> của bạn chưa được định
-			nghĩa đúng, bật nó lên có thể gây <strong>crash lúc chạy</strong>. Crash ở bản release, tức là crash ở máy người
-			dùng thật — không phải máy bạn.
-		</li>
-		<li>
-			<code>proguardFiles(...)</code> chỉ cho build system biết tìm rules ở đâu. Thường bạn để trong file
-			<code>proguard-rules.pro</code>. Sách nói phần cú pháp rules nằm ngoài phạm vi chapter, nhưng cho một câu tóm rất
-			hữu ích: đa số rules rút lại chỉ là bạn <strong>nói rõ class nào <em>không</em> được obfuscate/xoá</strong>.
-		</li>
-	</ol>
-	<p>
-		Còn file <code>proguard-rules.pro</code> trong project thì sao? Mở ra thì thấy nó gần như trống — toàn bộ là comment do
-		template sinh:
-	</p>
-	<p class="src">Nguồn: <code>{S}/app/proguard-rules.pro</code> (phần cuối file, các dòng đều bị comment)</p>
-	<Code code={proguardRulesCode} lang="properties" theme="github-dark" />
-	<div class="hint">
-		<strong>Vì sao hai dòng bị comment kia lại đáng biết</strong> (bổ sung, sách không giải thích): khi R8 làm rối code, số
-		dòng trong crash log cũng bị mất theo, nên stack trace từ máy người dùng trở nên gần như không đọc được.
-		<code>-keepattributes SourceFile,LineNumberTable</code> giữ lại thông tin số dòng để bạn còn đọc được crash, còn
-		<code>-renamesourcefileattribute</code> thì ẩn tên file gốc đi. Cặp này là thứ hầu như mọi app release đều bật.
-	</div>
-	<h3>Việc bạn tự làm: thêm build type <code>debug</code></h3>
-	<p>
-		Sách yêu cầu thêm ngay dưới khối <code>release {'{ }'}</code>:
-	</p>
-	<Code code={bookDebugSuffixCode} lang="kotlin" theme="github-dark" />
-	<p>
-		<code>applicationIdSuffix</code> nối thêm <code>.debug</code> vào <code>applicationId</code>. Bản debug sẽ có ID
-		<code>com.kodeco.chat.debug</code>, bản release vẫn là <code>com.kodeco.chat</code>.
-	</p>
-	<p>
-		Lợi ích mà sách nêu rất thực tế: <strong>tránh gửi sai file lên Play Store</strong>. Khi upload, Google Play hiện app ID
-		— thấy có <code>.debug</code> ở cuối là biết ngay mình vừa build sai bản. Một hệ quả thứ hai (bổ sung): vì ID khác nhau,
-		Android coi đây là <em>hai app khác nhau</em>, nên bản debug và bản release có thể <strong>cùng tồn tại trên một
-		máy</strong> mà không ghi đè nhau.
-	</p>
-	<div class="notice">
-		<strong>Bẫy thật, đã kiểm bằng code trong project — sách không cảnh báo:</strong> thêm
-		<code>applicationIdSuffix = ".debug"</code> sẽ <strong>làm vỡ instrumented test có sẵn</strong> của project. File
-		<code>{F}/app/src/androidTest/java/com/kodeco/chat/ExampleInstrumentedTest.kt</code> (dòng 47–55) hard-code package name:
-	</div>
-	<Code code={instrumentedTestCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Instrumented test luôn chạy trên build variant <code>debug</code>. Sau khi thêm suffix,
-		<code>appContext.packageName</code> trả về <code>"com.kodeco.chat.debug"</code>, còn dòng
-		<code>assertEquals</code> vẫn mong đợi <code>"com.kodeco.chat"</code> → test <strong>fail</strong>. Cách sửa: so sánh với
-		<code>"com.kodeco.chat.debug"</code>, hoặc dùng <code>BuildConfig.APPLICATION_ID</code> thay vì chuỗi cứng. Đây là ví dụ
-		điển hình cho việc <em>một thay đổi ở tầng build có thể làm vỡ code test mà không ai sửa dòng code nào</em>.
-	</p>
-	<p>
-		Để đối chiếu, unit test (chạy trên JVM) thì không bị ảnh hưởng, vì nó không biết gì về package của app:
-	</p>
-	<p class="src">Nguồn: <code>{F}/app/src/test/java/com/kodeco/chat/ExampleUnitTest.kt</code> (dòng 44–49)</p>
-	<Code code={unitTestCode} lang="kotlin" theme="github-dark" />
-	<div class="hint">
-		<strong>Note của sách, tránh một nhầm lẫn hay gặp:</strong> mọi app chạy trên <em>emulator</em> của Android Studio đều
-		được coi là debuggable, <strong>bất kể</strong> <code>isDebuggable</code> đặt thế nào trong build type. Nghĩa là bạn
-		<em>vẫn</em> có thể build, run <em>và</em> debug app ở chế độ release trên emulator dù
-		<code>isDebuggable = false</code>. Đừng kết luận "release build vẫn debug được" cho máy thật.
-	</div>
-	<h3>Sync: bước nhỏ nhưng bỏ qua là mất thời gian vô ích</h3>
-	<p>
-		Sau khi sửa <code>build.gradle.kts</code>, một banner hiện ở đầu editor yêu cầu <strong>sync</strong> project với
-		Gradle. Sync đảm bảo script có đủ mọi thứ cần để build — ví dụ khi bạn thêm dependency, Gradle tải chúng về trong lúc
-		sync.
-	</p>
-	<div class="notice">
-		<strong>Câu quan trọng nhất của phần này:</strong> nếu bạn <em>không</em> sync (hoặc bấm bỏ qua thay đổi) rồi build,
-		Gradle sẽ dùng <strong>cấu hình hợp lệ trước đó</strong>. App vẫn build ra được — chỉ là nó không mang thay đổi bạn vừa
-		gõ. Rất dễ mất cả buổi để tìm hiểu "vì sao sửa mà không thấy tác dụng". Hãy sync mỗi lần đổi file Gradle.
-	</div>
-	<h2 id="dependencies">9. <code>dependencies { }</code>: configuration, ba loại dependency, và BOM</h2>
-	<p>
-		Khối cuối của file module là <code>dependencies {'{ }'}</code> — nơi khai báo <strong>mọi thư viện và module</strong> mà
-		module này cần. Điểm mà sách nhấn: bạn không chỉ khai "cần thư viện X", bạn còn chọn chính xác
-		<strong>configuration</strong> mà thư viện đó thuộc về.
-	</p>
-	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 51–67, toàn bộ khối)</p>
+	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 72–88, toàn bộ khối)</p>
 	<Code code={starterDependenciesCode} lang="kotlin" theme="github-dark" />
-	<h3>Bốn configuration xuất hiện trong project này</h3>
+	<p>
+		Điểm mấu chốt mà khối này dạy: bạn không chỉ khai "cần thư viện X" — bạn còn chọn
+		<strong>configuration</strong>, tức là <em>bản build nào được phép chứa nó</em>. Bốn từ khoá xuất
+		hiện trong file này:
+	</p>
 	<table class="api">
-		<thead>
-			<tr><th>Configuration</th><th>Nghĩa là gì</th><th>Ghi chú của sách</th></tr>
-		</thead>
+		<thead><tr><th>Configuration</th><th>Nghĩa là gì</th><th>Ghi chú</th></tr></thead>
 		<tbody>
-			<tr>
-				<td><code>implementation</code></td>
-				<td>Thư viện cần cho chính app.</td>
-				<td>Phổ biến nhất — mặc định dùng cái này.</td>
-			</tr>
-			<tr>
-				<td><code>testImplementation</code></td>
-				<td>Thư viện cho <strong>unit test</strong> chạy trên JVM.</td>
-				<td><strong>Kế thừa</strong> mọi thứ từ <code>implementation</code>.</td>
-			</tr>
-			<tr>
-				<td><code>androidTestImplementation</code></td>
-				<td>Thư viện cho <strong>instrumented test</strong> (chạy trên thiết bị).</td>
-				<td>Cũng kế thừa từ <code>implementation</code>.</td>
-			</tr>
-			<tr>
-				<td><code>debugImplementation</code></td>
-				<td>Thư viện <strong>chỉ</strong> thêm vào build type <code>debug</code>.</td>
-				<td>Configuration đặc biệt.</td>
-			</tr>
+			<tr><td><code>implementation</code></td><td>Thư viện cần cho chính app, mọi bản build.</td><td>Phổ biến nhất — mặc định dùng cái này.</td></tr>
+			<tr><td><code>testImplementation</code></td><td>Thư viện cho <strong>unit test</strong> chạy trên máy tính (JVM).</td><td>Kế thừa mọi thứ từ <code>implementation</code>.</td></tr>
+			<tr><td><code>androidTestImplementation</code></td><td>Thư viện cho <strong>test chạy trên thiết bị</strong> (instrumented test).</td><td>Cũng kế thừa từ <code>implementation</code>.</td></tr>
+			<tr><td><code>debugImplementation</code></td><td>Thư viện <strong>chỉ</strong> thêm vào bản debug.</td><td>Bản release hoàn toàn không chứa nó.</td></tr>
 		</tbody>
 	</table>
-	<p>
-		Sách cũng nói rõ: Gradle còn nhiều configuration khác, nhưng thực tế đa số công việc chỉ xoay quanh
-		<code>implementation</code> và hai configuration test.
+	<p class="hint">
+		<strong>Vì sao <code>debugImplementation</code> tồn tại — nhìn chính project là hiểu:</strong> hai
+		dòng <code>debugImplementation</code> ở đây là <code>ui-tooling</code> (công cụ dựng bản xem trước
+		<code>@Preview</code>) và <code>ui-test-manifest</code> — công cụ dành cho lập trình viên, không
+		phải tính năng cho người dùng. Khai bằng <code>implementation</code> thì chúng bị đóng gói vào
+		bản release và làm app phình ra vô ích; khai bằng <code>debugImplementation</code> thì bản release
+		không chứa chúng. Cùng lý luận đó: thư viện test không bao giờ nằm trong app đưa cho người dùng.
 	</p>
-	<div class="hint">
-		<strong>Vì sao <code>debugImplementation</code> tồn tại — nhìn vào chính project là hiểu:</strong> hai dòng
-		<code>debugImplementation</code> ở đây là <code>ui-tooling</code> (công cụ dựng <code>@Preview</code>) và
-		<code>ui-test-manifest</code>. Đây là công cụ dành cho lập trình viên, <em>không</em> phải tính năng cho người dùng. Nếu
-		khai bằng <code>implementation</code>, chúng sẽ bị đóng gói vào bản release và làm app phình ra vô ích. Khai bằng
-		<code>debugImplementation</code> thì bản release hoàn toàn không chứa chúng.
-	</div>
-	<h3>Ba loại dependency: remote binary, local binary, local module</h3>
-	<p>
-		Một điểm sách nhắc mà rất dễ trôi qua: mọi dependency trong project này đều là <em>remote binary</em> — thư viện tải từ
-		internet. Nhưng Gradle còn hai loại nữa. Với remote binary, bạn phải chỉ rõ <strong>group</strong>,
-		<strong>name</strong> và <strong>version</strong>: khi bạn viết <code>implementation("androidx.core:core-ktx:1.12.0")</code>
-		thì đó là version <code>1.12.0</code> của binary tên <code>core-ktx</code> thuộc group <code>androidx.core</code>.
-	</p>
+	<h3>Ba cách viết một dependency</h3>
 	<Code code={dependencyFormsCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Sách nói thêm: dạng dài (dạng 2) và dạng gọn (dạng 1) hoàn toàn tương đương, nhưng <strong>xu hướng chung là chọn dạng
-		gọn</strong>.
+		Với thư viện tải từ internet, bạn chỉ rõ <strong>group</strong>, <strong>name</strong> và
+		<strong>version</strong>: <code>"androidx.core:core-ktx:1.12.0"</code> đọc là version
+		<code>1.12.0</code> của binary tên <code>core-ktx</code> thuộc group <code>androidx.core</code>.
+		Dạng gọn và dạng dài tương đương nhau; thực tế gần như luôn dùng dạng gọn. Dạng thứ ba —
+		<code>project(":moduleName")</code> — là tham chiếu tới một module khác trong cùng project
+		(module đó phải được <code>include</code> trong <code>settings.gradle.kts</code> như mục 2 đã nói).
 	</p>
-	<div class="notice">
-		<strong>Sách in thiếu một chi tiết cú pháp:</strong> trong đoạn nói về local module, sách viết
-		<code>implementation(project(:moduleName))</code> — <strong>thiếu dấu ngoặc kép</strong>. Viết đúng như vậy vào file sẽ
-		<em>không compile được</em>, vì Kotlin DSL cần một chuỗi. Dạng đúng là
-		<code>implementation(project(":moduleName"))</code>. Bài này ghi lại chỗ này để bạn khỏi mất thời gian nếu gõ theo sách.
-	</div>
-	<h3>Bill of Materials (BOM): vì sao dependency Compose không có version</h3>
+
+	<h2 id="bom">6. BOM: vì sao thư viện Compose không có số version</h2>
 	<p>
-		Quay lại khối dependency và để ý: các dòng Compose như <code>implementation("androidx.compose.ui:ui")</code>
-		<strong>không có số version</strong>. Chuyện này không phải sơ suất — nó là hệ quả của một dòng duy nhất:
+		Quay lại khối dependency ở mục 5 và để ý một điều lạ: các dòng Compose như
+		<code>implementation("androidx.compose.ui:ui")</code> <strong>không có số version</strong>.
+		Đó là hệ quả của một dòng duy nhất — xuất hiện <strong>hai lần</strong> trong file:
 	</p>
-	<p class="src">
-		Nguồn: <code>{S}/app/build.gradle.kts</code> — cùng một chuỗi BOM xuất hiện <strong>hai lần</strong>, dòng 55 và dòng 63.
-	</p>
+	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 75 và dòng 83)</p>
 	<Code code={bomLinesCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Dòng này thêm <strong>Bill of Materials (BOM)</strong> của Compose làm dependency. BOM là một <em>platform</em> — vì thế
-		mới có từ khoá <code>platform(...)</code> bọc bên ngoài — một loại dependency đặc biệt dùng để lấy
-		<strong>bộ version được khuyến nghị</strong> cho các thư viện Compose.
+		Dòng này thêm <strong>Bill of Materials (BOM)</strong> của Compose làm dependency. BOM là một
+		<em>platform</em> — vì thế có từ khoá <code>platform(...)</code> bọc bên ngoài — một loại
+		dependency đặc biệt không thêm code nào vào app, chỉ cấp <strong>một bộ version đã được test
+		cùng nhau</strong> cho cả họ thư viện Compose.
 	</p>
-	<p>Cách dùng BOM, đúng theo cách sách diễn đạt:</p>
 	<ol class="chain">
 		<li>Bạn <strong>vẫn phải</strong> khai từng thư viện Compose mình muốn dùng.</li>
 		<li>Nhưng <strong>không cần</strong> ghi version cho chúng — BOM cung cấp.</li>
-		<li>
-			Nếu bạn <em>vẫn</em> ghi version cho một thư viện, con số của bạn <strong>ghi đè</strong> con số BOM đề xuất.
-		</li>
-		<li>
-			Nâng BOM lên bản mới = <strong>tự động nâng toàn bộ</strong> dependency Compose. Một dòng thay vì mười dòng.
-		</li>
+		<li>Nếu bạn <em>vẫn</em> ghi version cho một thư viện, con số của bạn <strong>ghi đè</strong> con số BOM đề xuất.</li>
+		<li>Nâng BOM lên bản mới = <strong>tự động nâng toàn bộ</strong> họ Compose. Một dòng thay vì mười dòng.</li>
 	</ol>
-	<p>
-		Giá trị thật của BOM, theo sách: nó bảo đảm mọi version <em>hợp nhau</em>. Và sách kết luận thẳng: dùng BOM là
-		<strong>cách được khuyến nghị</strong> để quản lý dependency Compose trong mọi project Compose.
+	<p class="hint">
+		<strong>Vì sao "bộ version hợp nhau" là vấn đề thật:</strong> Compose không phải một thư viện mà
+		là một <em>họ</em> nhiều mảnh (<code>ui</code>, <code>ui-graphics</code>, <code>material3</code>,
+		<code>foundation</code>…) phát hành theo nhịp riêng và gọi API nội bộ của nhau. Trộn lẫn version
+		không hợp nhau thường không lỗi lúc compile mà lỗi <em>lúc chạy</em>, với thông báo rất khó hiểu.
+		BOM là danh sách "bộ đã test cùng nhau" do Google công bố — và là cách được khuyến nghị để quản
+		version Compose trong mọi project. Compose sẽ xuất hiện trở lại ở phần Jetpack Compose; ở đây
+		chỉ cần nhận ra BOM là gì khi gặp nó.
 	</p>
-	<div class="hint">
-		<strong>Vì sao "hợp nhau" là vấn đề thật</strong> (bổ sung): Compose không phải một thư viện mà là một họ nhiều artifact
-		(<code>ui</code>, <code>ui-graphics</code>, <code>material3</code>, <code>foundation</code>, <code>runtime</code>…) phát
-		hành theo nhịp riêng và gọi API nội bộ của nhau. Trộn lẫn version không tương thích thường không lỗi lúc compile mà lỗi
-		lúc chạy, với thông báo rất khó hiểu. BOM là danh sách "bộ version đã được test cùng nhau" do Google công bố.
-	</div>
-	<div class="notice">
-		<strong>Chỗ sách in khác project mẫu (thứ năm):</strong> sách in BOM <code>2023.10.01</code>, project thật dùng
-		<strong><code>2023.10.00</code></strong> (đã kiểm dòng 55 và 63). Khác biệt nhỏ, không ảnh hưởng bài học, nhưng nếu bạn
-		copy từ sách thì file sẽ không giống <code>final</code>.
-	</div>
-	<div class="hint">
-		<strong>Chi tiết đáng để ý mà sách không chỉ ra:</strong> chuỗi BOM bị viết <strong>hai lần</strong> trong cùng một file
-		(dòng 55 cho code chính, dòng 63 cho instrumented test). Đây chính là loại trùng lặp mà mục tiếp theo —
-		<em>Version Catalog</em> — sinh ra để dẹp: sau khi chuyển sang catalog, cả hai chỗ đều trỏ về
-		<code>libs.androidx.compose.bom</code>, và số version chỉ còn tồn tại ở đúng một nơi.
-	</div>
-	<h2 id="version-catalog">10. Version Catalog: dồn mọi số version về một file</h2>
-	<h3>Vấn đề mà Version Catalog sinh ra để giải</h3>
+	<p class="hint">
+		<strong>Chi tiết đáng để ý:</strong> chuỗi BOM bị viết lại lần thứ hai cho phần test (dòng 83).
+		Đây chính là loại trùng lặp mà mục kế tiếp — Version Catalog — sinh ra để dẹp.
+	</p>
+
+	<h2 id="version-catalog">7. Version Catalog: dồn mọi số version về một file</h2>
 	<p>
-		Compose đã có BOM lo phần version. Nhưng những dependency <em>không</em> thuộc Compose thì bạn phải tự bảo trì: định kỳ
-		kiểm bản mới để không bỏ mất tính năng hay bản sửa lỗi. Sách lấy một ví dụ rất thuyết phục — một app dùng thư viện
-		<em>CameraX</em>:
+		BOM đã lo version cho <em>họ Compose</em>. Nhưng những thư viện khác thì sao? Hình dung một app
+		dùng thư viện CameraX:
 	</p>
 	<Code code={cameraXCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Bốn dòng, cùng một con số <code>1.3.0</code>, và mỗi lần CameraX ra bản mới bạn phải sửa <strong>tay</strong> cả bốn chỗ.
-		Project càng lớn thì càng nhiều bộ như thế: bạn quên cập nhật vài cái, hoặc quên xoá dependency không còn dùng vì nó lẫn
-		giữa hàng chục dòng khác.
+		Bốn dòng, cùng một con số <code>1.3.0</code>. CameraX ra bản mới là phải sửa <strong>tay</strong>
+		cả bốn chỗ — và rất dễ sót một dòng. Project càng lớn, số version càng rải khắp nhiều file module
+		và càng khó biết cái nào còn dùng.
 	</p>
-	<div class="callout note">
-		<p>
-			Sách nêu một quy luật chung của phát triển phần mềm mà tôi nghĩ đáng ghi lại nguyên ý:
-			<strong>code càng lộn xộn và phức tạp thì càng ít người muốn động vào</strong>. Thời gian trôi qua, bạn còn lại hàng
-			chục — thậm chí hàng trăm — dependency cũ hoặc đã deprecated; và tới lúc quyết định cập nhật thì bạn kích hoạt một
-			cơn "cập nhật dây chuyền" cực kỳ mệt.
-		</p>
-	</div>
+	<p class="hint">
+		<strong>Mental model:</strong> Version Catalog là một <em>danh bạ số version dùng chung</em> đặt ở
+		một chỗ. Thay vì mỗi file build tự ghi con số, mọi file đều trỏ về danh bạ này và gọi theo tên.
+		Sửa số ở một nơi, cả project đổi theo.
+	</p>
 	<p>
-		<strong>Version Catalogs</strong> là bước tiến mới nhất của Gradle về quản lý dependency. Nó cho phép bảo trì dependency
-		và plugin của project phức tạp theo cách gọn gàng và mở rộng được: <em>mọi</em> module trong app đều trỏ về cùng một
-		"catalog" và lấy dependency theo kiểu <strong>type-safe</strong> (được kiểm tra kiểu, có code completion).
+		File danh bạ đó là <code>gradle/libs.versions.toml</code> — đúng thư mục <code>gradle/</code> đã
+		thấy trong bản đồ file (mục 2). Tên <code>libs.versions.toml</code> là <strong>tên đặc biệt</strong>:
+		Gradle tự tìm file theo đúng tên đó trong thư mục <code>gradle/</code>, bạn không cần khai ở đâu
+		để trỏ tới nó. Trong project mẫu, file này xuất hiện ở bản <code>final</code> và có bốn section:
 	</p>
-	<h3>Tạo file: cái tên phải đúng chính xác</h3>
-	<p>
-		Cấu hình ban đầu: tìm thư mục <code>gradle</code> ở gốc project → chuột phải → <em>New</em> → <em>File</em> → đặt tên
-		<code>libs.versions.toml</code>. Sách nhấn đúng chỗ quan trọng: <strong><code>libs.versions.toml</code> là một cái tên
-		đặc biệt</strong> mà Gradle dùng để tự tìm file trong thư mục <code>gradle</code>. Không phải bạn cấu hình để trỏ tới nó
-		— Gradle tìm theo đúng tên đó.
-	</p>
-	<div class="hint">
-		<strong>Vì sao lại là thư mục <code>gradle</code>, chỗ đã có <code>wrapper/</code>?</strong> Đây chính là thư mục bạn gặp
-		ở mục 3 khi xem <code>gradle-wrapper.properties</code>. Thư mục <code>gradle/</code> là nơi Gradle đặt các file
-		"hạ tầng" của project, và catalog là một trong số đó — nên đường dẫn đầy đủ là
-		<code>{F}/gradle/libs.versions.toml</code> (đã kiểm: file thật dài 47 dòng).
-	</div>
-	<h3>Section 1 — <code>[versions]</code>: chỉ có con số, không có tên thư viện</h3>
+	<h3>Section 1 — <code>[versions]</code>: chỉ có con số</h3>
 	<p class="src">Nguồn: <code>{F}/gradle/libs.versions.toml</code> (dòng 1–17)</p>
 	<Code code={versionsSectionCode} lang="toml" theme="github-dark" />
 	<p>
-		Sách nói rõ ngay từ đầu: file này có <strong>tổng cộng bốn section có thể dùng</strong>, và đây là section thứ nhất. Nội
-		dung của nó chỉ là các cặp <em>tên → số version</em>, cho <strong>cả</strong> dependency lẫn plugin. Chú ý cách project
-		dùng comment (<code>#</code>) để nhóm theo mục đích: plugin, dependency, instrumented test, unit test. Đó không phải cú
-		pháp bắt buộc, chỉ là thói quen tốt để file còn đọc được khi dài ra.
+		Nội dung chỉ là các cặp <em>tên → số version</em>, cho cả dependency lẫn plugin. Các dòng
+		<code>#</code> là comment nhóm cho dễ đọc, không phải cú pháp bắt buộc. Đây là nơi
+		<strong>duy nhất</strong> con số version tồn tại.
 	</p>
-	<h3>Section 2 — <code>[libraries]</code>: khai thư viện, lấy version bằng <code>version.ref</code></h3>
-	<p class="src">Nguồn: <code>{F}/gradle/libs.versions.toml</code> (dòng 19–36)</p>
+	<h3>Section 2 — <code>[libraries]</code>: khai thư viện, version lấy qua <code>version.ref</code></h3>
+	<p class="src">Nguồn: <code>{F}/gradle/libs.versions.toml</code> (dòng 19–36, trích các dòng tiêu biểu)</p>
 	<Code code={librariesSectionCode} lang="toml" theme="github-dark" />
-	<ol>
+	<ul>
 		<li>
-			Đây là nơi liệt kê <strong>mọi dependency</strong>. Có nhiều cách khai, ở đây chọn cách nói rõ <code>group</code> và
-			<code>name</code> của từng cái. Còn version thì <strong>không viết trực tiếp</strong> — nó được lấy từ section
-			<code>[versions]</code> qua <code>version.ref</code>. Đây chính là cơ chế làm cho mỗi con số chỉ tồn tại ở
-			<em>một</em> nơi.
+			Mỗi dòng khai một thư viện bằng <code>group</code> + <code>name</code>. Version
+			<strong>không viết trực tiếp</strong> — nó tham chiếu tới <code>[versions]</code> qua
+			<code>version.ref</code>. Đó chính là cơ chế "mỗi số chỉ tồn tại một nơi".
 		</li>
 		<li>
-			<strong>Dùng kebab-case</strong> (ngăn cách bằng <code>-</code>) cho tên dependency thì <strong>code completion tốt
-			hơn</strong>. Đây không phải chuyện thẩm mỹ, xem giải thích ngay dưới.
+			Thư viện Compose <strong>không có</strong> <code>version.ref</code> (như
+			<code>androidx-compose-material3</code> chỉ có <code>group</code> + <code>name</code>) — vì BOM
+			cấp version cho chúng, đúng như mục 6.
 		</li>
-		<li>Khai BOM của Compose <strong>giống y như</strong> khai một dependency bình thường — không có gì đặc biệt ở tầng này.</li>
-		<li>
-			Nhờ có BOM, các thư viện Compose <strong>không cần</strong> <code>version.ref</code>. Nhìn vào file là thấy ngay:
-			<code>androidx-compose-material3</code> chỉ có <code>group</code> và <code>name</code>.
-		</li>
-	</ol>
-	<div class="hint">
-		<strong>Dấu <code>-</code> biến thành dấu <code>.</code> — quy tắc cần nắm để đọc được code:</strong> Gradle sinh ra
-		"accessor" (bộ truy cập) từ tên trong file TOML, và nó <strong>đổi mỗi <code>-</code> thành một dấu chấm</strong>. Nên:
-		<br />
-		<code>androidx-core-ktx</code> trong TOML → <code>libs.androidx.core.ktx</code> trong Kotlin DSL.
-		<br />
-		<code>android-application</code> → <code>libs.plugins.android.application</code>.
-		<br />
-		Đó cũng là lý do tên dài kiểu <code>androidx-compose-ui-ui-graphics</code> nhìn lặp chữ <code>ui</code> hai lần: một
-		<code>ui</code> đến từ group <code>androidx.compose.ui</code>, một <code>ui</code> đến từ tên artifact.
-	</div>
-	<h3>Section 3 — <code>[plugins]</code>: và <code>alias()</code> ở file top-level</h3>
+	</ul>
+	<h3>Section 3 — <code>[plugins]</code>: khai plugin, dùng bằng <code>alias()</code></h3>
 	<p class="src">Nguồn: <code>{F}/gradle/libs.versions.toml</code> (dòng 38–40)</p>
 	<Code code={pluginsSectionCode} lang="toml" theme="github-dark" />
 	<p>
-		Ở đây bạn khai <strong>plugin ID</strong> (đúng những ID đã gặp ở file top-level trong mục 4) kèm version tương ứng. Sau
-		khi sync, quay lại <code>build.gradle.kts</code> ở gốc và sửa thành:
+		Plugin ID (đúng hai ID đã gặp ở file gốc trong mục 3) kèm version. Sau khi có các section này,
+		file gốc chuyển sang gọi plugin qua catalog — chính là đoạn
+		<code>alias(libs.plugins.android.application) apply false</code> bạn đã thấy ở mục 3.
 	</p>
-	<p class="src">Nguồn: <code>{F}/build.gradle.kts</code> (dòng 1–5, toàn bộ file)</p>
-	<Code code={finalRootBuildCode} lang="kotlin" theme="github-dark" />
+	<h3>Truy ngược <code>libs.…</code> về TOML — quy tắc <code>-</code> thành <code>.</code></h3>
 	<p>
-		Hàm <code>alias(...)</code> ánh xạ plugin từ các accessor mà Gradle <strong>tự tạo</strong> từ catalog. So sánh với bản
-		<code>starter</code> ở mục 4 để thấy điều đã đạt được: <strong>số version đã biến mất khỏi file build</strong> — giờ nó
-		chỉ nằm trong TOML.
+		Gradle tự sinh "accessor" (bộ truy cập) từ tên trong file TOML, và nó <strong>đổi mỗi dấu
+		<code>-</code> thành một dấu chấm</strong>. Đây là quy tắc bắt buộc nắm để đọc được code:
 	</p>
-	<div class="ba">
-		<div class="ba-col">
-			<div class="ba-head bad">Trước (starter)</div>
-			<Code code={starterRootBuildCode} lang="kotlin" theme="github-dark" />
-		</div>
-		<div class="ba-col">
-			<div class="ba-head good">Sau (final)</div>
-			<Code code={finalRootBuildCode} lang="kotlin" theme="github-dark" />
-		</div>
-	</div>
-	<h3>Chuyển <code>dependencies { }</code> sang catalog — và mẹo IDE của sách</h3>
-	<p>
-		Mở file module-level, bạn sẽ thấy các dependency trong <code>dependencies {'{ }'}</code> bị <strong>highlight</strong>.
-		Đưa chuột lên một dòng sẽ có tooltip gợi ý thay bằng bản catalog. Phím tắt sách cho:
-		<strong>Alt-Shift-Enter</strong> (Windows) / <em>Option-Shift-Enter</em> (macOS) để thay ngay; hoặc
-		<strong>Alt-Enter</strong> / <em>Option-Enter</em> để mở context menu rồi chọn.
-	</p>
-	<p>Hai ngoại lệ mà sách chỉ rõ — đây là chỗ dễ bị kẹt nếu chỉ bấm phím tắt:</p>
-	<ul>
-		<li>
-			Các dependency Compose <strong>không có version</strong> thì không cần (và không có gợi ý) chuyển theo cách này.
-		</li>
-		<li>
-			Dòng <strong>BOM không có tooltip nào cả</strong> — bạn phải chuyển <strong>bằng tay</strong>.
-		</li>
+	<ul class="chain">
+		<li><code>androidx-core-ktx</code> trong TOML → <code>libs.androidx.core.ktx</code> trong file build.</li>
+		<li><code>android-application</code> trong <code>[plugins]</code> → <code>libs.plugins.android.application</code>.</li>
 	</ul>
 	<p>
-		Cách chuyển BOM: khai <code>platform</code> thành một biến trong <code>dependencies {'{ }'}</code>, rồi dùng biến đó ở
-		từng configuration cần:
+		Từ đó, khối dependency trong file module chuyển từ ghi chuỗi thẳng sang gọi tên từ danh bạ:
 	</p>
-	<Code
-		code={`dependencies {
-  val composeBom = platform(libs.androidx.compose.bom)
-  // ...
-  implementation(composeBom)
-  // ...
-  androidTestImplementation(composeBom)
-}`}
-		lang="kotlin"
-		theme="github-dark"
-	/>
-	<p>
-		Đây là chỗ khác biệt tinh tế giữa hai cách viết: ở bản <code>starter</code>, chuỗi BOM được gõ lại hai lần (dòng 55 và
-		63). Bây giờ nó là <strong>một biến Kotlin</strong> dùng lại được. Kết quả sau khi chuyển hết:
+	<p class="src">Nguồn: <code>{F}/app/build.gradle.kts</code> (dòng 63–75, lược phần test cho gọn)</p>
+	<Code code={catalogDependenciesCode} lang="kotlin" theme="github-dark" />
+	<p class="hint">
+		<strong>Chuỗi BOM lặp hai lần nay gọn thành một biến:</strong> dòng
+		<code>val composeBom = platform(libs.androidx.compose.bom)</code> khai một <em>biến chỉ-đọc</em>
+		(<code>val</code> là từ khoá Kotlin cho biến không gán lại được), rồi chỗ nào cần BOM — cả code
+		chính lẫn test — đều dùng lại biến đó. Nhờ catalog, chuỗi version BOM chỉ còn tồn tại ở đúng một
+		nơi trong TOML.
 	</p>
-	<p class="src">Nguồn: sách, listing kết quả của mục Version Catalogs (chưa dùng bundles)</p>
-	<Code code={bookCatalogDependenciesCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Sách kết thúc mục bằng một nhận xét về trải nghiệm: chỉ riêng việc <strong>có code completion</strong> khi gõ dependency
-		đã là một thế giới khác so với thời Gradle chưa có gì cả.
+	<p class="hint">
+		<strong>Vì sao catalog đáng giá thật:</strong> gõ sai
+		<code>implementation("androidx.core:core-ktxx:1.12.0")</code> thì bạn chỉ biết sai
+		<em>khi Gradle sync và không tải được</em>. Gõ sai <code>libs.androidx.core.ktxx</code> thì IDE
+		gạch đỏ <em>ngay khi gõ</em> — accessor đó không tồn tại. Lỗi được phát hiện sớm hơn nhiều bước.
+		Android Studio còn hỗ trợ chuyển: nó highlight dependency cũ kèm gợi ý thay bằng bản catalog
+		(Alt-Shift-Enter trên Windows, Option-Shift-Enter trên macOS); riêng dòng BOM không có gợi ý,
+		phải sửa tay theo mẫu biến ở trên.
 	</p>
-	<div class="hint">
-		<strong>Vì sao "type-safe" ở đây là lợi ích thật:</strong> viết sai <code>implementation("androidx.core:core-ktxx:1.12.0")</code>
-		thì bạn chỉ biết mình sai <em>khi Gradle sync và không tải được</em>. Còn viết sai <code>libs.androidx.core.ktxx</code>
-		thì IDE gạch đỏ ngay khi bạn vừa gõ, vì accessor đó không tồn tại. Lỗi được phát hiện sớm hơn nhiều bước.
-	</div>
-	<h3>Section 4 — <code>[bundles]</code>: gọn hơn, nhưng có cái giá</h3>
-	<p>
-		Nhiều dependency ở trên có thể gom thành nhóm. Với Version Catalogs, bạn tạo <strong>bundle</strong> — một dòng
-		dependency kéo theo <em>cả một nhóm</em> thư viện cùng lúc. Thêm section thứ tư và cuối cùng vào đáy file TOML:
-	</p>
-	<p class="src">Nguồn: <code>{F}/gradle/libs.versions.toml</code> (dòng 42–47)</p>
-	<Code code={bundlesSectionCode} lang="toml" theme="github-dark" />
-	<p>
-		Năm bundle này được đặt theo <em>các nhóm mà từng dependency có thể thuộc về</em>. Sách thừa nhận thẳng một khó khăn thực
-		tế: <strong>đặt tên bundle khá khó</strong>, vì bạn phải tìm cái tên phản ánh đúng những gì nó gói bên trong.
-	</p>
-	<p>Quay lại file module-level, khối dependency rút xuống còn:</p>
-	<p class="src">Nguồn: <code>{F}/app/build.gradle.kts</code> (dòng 63–75, toàn bộ khối)</p>
-	<Code code={finalDependenciesCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Từ 15 dòng xuống 8 dòng. Nhưng sách <strong>không</strong> dừng ở lời khen — và đây là phần đáng nhớ nhất của mục:
-	</p>
-	<div class="notice">
-		<strong>Trade-off của bundles, theo đúng ý sách:</strong> bundles giữ script Gradle đơn giản hơn, nhưng đồng thời làm
-		<strong>khó biết chắc mình đang kéo vào những dependency nào</strong>. Đọc dòng
-		<code>implementation(libs.bundles.compose)</code> thì bạn <em>không</em> thấy được nó gồm 4 thư viện gì — phải mở file
-		TOML mới biết. Vì thế sách nhắc lại lần nữa: hãy đầu tư vào việc <strong>đặt tên bundle cho đúng</strong>.
-	</div>
-	<div class="hint">
-		<strong>Khi nào nên và không nên dùng bundle</strong> (bổ sung, dựa trên chính trade-off trên): bundle hợp lý khi các
-		thư viện trong nhóm <em>luôn đi cùng nhau</em> và <em>luôn cùng mục đích</em> — như 4 artifact Compose UI hoặc bộ thư
-		viện test. Không nên gom những thư viện chỉ "tình cờ" đang cùng có mặt, vì sau này bỏ một cái ra sẽ phải sửa bundle và
-		ảnh hưởng mọi module đang dùng nó.
-	</div>
-	<div class="notice">
-		<strong>Ba chỗ sách in khác project mẫu trong mục này (thứ sáu):</strong> trong listing <code>[versions]</code>, sách in
-		<code>android-gradle-plugin = "8.1.4"</code>, <code>activity-compose = "1.8.0"</code>,
-		<code>androidx-compose-bom = "2023.10.01"</code>. File thật của <code>final</code> ghi
-		<strong><code>8.2.0</code></strong>, <strong><code>1.8.2</code></strong>, <strong><code>2023.10.00</code></strong>. Toàn
-		bộ đều chỉ là con số — cấu trúc file và cách hoạt động giống hệt nhau.
-	</div>
-	<div class="hint">
-		<strong>Một quan sát về chính project mẫu:</strong> bundle <code>instrumented-tests</code> chứa
-		<code>androidx-espresso-core</code> và <code>androidx-compose-ui-ui-test-junit4</code>, nhưng đã kiểm toàn bộ code
-		androidTest của chapter: <strong>không có test nào dùng tới hai thư viện đó</strong> —
-		<code>ExampleInstrumentedTest.kt</code> chỉ kiểm package name. Chúng là dependency do template sinh sẵn. Điều này minh
-		hoạ đúng cái mà sách vừa cảnh báo ở trên: bundle làm dependency không dùng tới dễ nằm im mà không ai để ý.
-	</div>
-	<h2 id="signing">11. Ký app cho bản release: certificate, keystore, và thứ tự khai báo</h2>
-	<p>
-		Để <em>cài</em> một app lên thiết bị, Android đòi một <strong>certificate</strong> (chứng thư) khẳng định app là thật.
-		Việc gắn certificate đó vào app gọi là <strong>app signing</strong> (ký app).
-	</p>
-	<p>Ba câu của sách đủ dựng nên toàn bộ bức tranh:</p>
-	<ol class="chain">
-		<li>Không có signature thì <strong>không publish được</strong>, vì đó là cách xác minh bạn là chủ app.</li>
-		<li>Bản <strong>debug</strong> bạn <em>không cần</em> tự ký — Android Studio ký hộ.</li>
-		<li>Bản <strong>release</strong> thì <strong>bắt buộc</strong> phải ký trước khi phát hành.</li>
-	</ol>
-	<div class="hint">
-		<strong>Đây là lý do bạn chưa từng nghĩ tới việc ký app:</strong> suốt chapter 2 và 3 bạn bấm Run và app cài lên emulator
-		bình thường — vì variant đang chạy là <code>debug</code>, và Android Studio đã ký sẵn bằng một keystore debug tự tạo. Việc
-		ký chỉ hiện ra khi bạn bắt đầu nghĩ đến chuyện phát hành.
-	</div>
-	<div class="callout note">
-		<p>
-			<strong>Note của sách — phạm vi chapter:</strong> để làm tiếp bạn phải <em>tự sinh keystore</em> cho bản release. Sách
-			<strong>không</strong> dạy bước này trong chapter, mà dẫn sang một tutorial riêng của Kodeco ("Android App Distribution
-			Tutorial: From Zero to Google Play Store") và một cuốn sách riêng ("Android App Distribution"). Nói cách khác, phần
-			bạn thực sự gõ ở đây là <em>cấu hình Gradle để dùng keystore</em>, không phải tạo keystore.
-		</p>
-	</div>
-	<h3>Khai <code>signingConfigs</code> — và một câu về thứ tự dễ bị bỏ qua</h3>
-	<p>
-		Khi keystore đã sẵn sàng, thêm code dưới đây vào <strong>trong khối <code>android {'{ }'}</code></strong> và
-		<strong>phía trên khối <code>buildTypes {'{ }'}</code></strong>:
-	</p>
-	<Code code={bookSigningConfigsCode} lang="kotlin" theme="github-dark" />
-	<div class="notice">
-		<strong>"Thứ tự khai báo có ảnh hưởng" — sách viết đúng một câu ngoặc đơn cho chỗ này, nhưng nó quan trọng:</strong>
-		<code>signingConfigs</code> phải nằm <em>trước</em> <code>buildTypes</code>. Lý do: Kotlin DSL là code Kotlin chạy tuần
-		tự từ trên xuống. Khối <code>buildTypes</code> sẽ gọi <code>signingConfigs.getByName("release")</code> — nếu tới thời
-		điểm đó config <code>release</code> chưa được <code>create</code>, Gradle báo lỗi không tìm thấy. Đây là một trong ít chỗ
-		trong file Gradle mà <strong>đảo thứ tự là vỡ build</strong>. Đã kiểm project thật:
-		<code>{F}/app/build.gradle.kts</code> đặt <code>signingConfigs</code> ở dòng 27–34, <code>buildTypes</code> ở dòng
-		35–47 — đúng thứ tự đó.
-	</div>
-	<p>Hai lời khuyên cụ thể của sách về khối này:</p>
-	<ul>
-		<li>
-			<strong>Đặt tên config theo build type mà nó ký</strong> để tránh nhầm. Vì thế config tên <code>"release"</code> —
-			trùng tên build type <code>release</code> — không phải trùng ngẫu nhiên.
-		</li>
-		<li>
-			<strong>Chú ý đường dẫn tới keystore:</strong> nó được tính <em>tương đối với thư mục module</em>, không phải thư mục
-			gốc project. Ví dụ của sách rất rõ: keystore đặt trong thư mục module tên <code>keystore.jks</code> thì viết
-			<code>storeFile = file("keystore.jks")</code>.
-		</li>
-	</ul>
-	<p>Rồi cập nhật <code>buildTypes</code> để bản release thật sự dùng config đó:</p>
-	<Code code={bookReleaseSigningCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Đây là điểm nối hai khối: <code>signingConfigs</code> <em>định nghĩa</em> thông tin ký, còn dòng
-		<code>signingConfig = ...</code> trong <code>release</code> mới là chỗ <em>áp dụng</em> nó. Định nghĩa mà không áp dụng
-		thì bản release vẫn không được ký. So sánh kết quả cuối:
-	</p>
-	<div class="ba">
-		<div class="ba-col">
-			<div class="ba-head bad">starter (dòng 22–30)</div>
-			<Code code={starterBuildTypesCode} lang="kotlin" theme="github-dark" />
-		</div>
-		<div class="ba-col">
-			<div class="ba-head good">final (dòng 35–47)</div>
-			<Code code={finalBuildTypesCode} lang="kotlin" theme="github-dark" />
-		</div>
-	</div>
-
-	<h2 id="secrets">12. Giữ secret an toàn: <code>keys.properties</code> + <code>.gitignore</code></h2>
-	<p>Sách dừng lại nhắc hai điều về file keystore, và cả hai đều là loại sai một lần thì không sửa được:</p>
-	<div class="callout note">
-		<ol>
-			<li>
-				Sau khi app đã publish lên Play Store, <strong>mọi lần nộp bản mới đều phải dùng đúng keystore và mật khẩu
-				đó</strong>. Mất nó là mất khả năng cập nhật app của chính mình.
-			</li>
-			<li>
-				<strong>ĐỪNG</strong> commit mật khẩu keystore vào hệ thống quản lý version như GitHub. Ai lấy được thông tin ký
-				đều có thể nhận mình là chủ app.
-			</li>
-		</ol>
-	</div>
-	<p>
-		Có nhiều cách tránh đẩy secret lên repo. Cách sách chọn — đơn giản nhưng hiệu quả — là để chúng trong một file
-		<strong>không commit</strong>. Tạo file <code>keys.properties</code> ở <strong>gốc project</strong> và chuyển toàn bộ
-		thông tin ký sang đó:
-	</p>
-	<p class="src">Nguồn: <code>{F}/keys.properties</code> (dòng 33–36; dòng 1–32 là license header của Kodeco)</p>
-	<Code code={keysPropertiesCode} lang="properties" theme="github-dark" />
-	<p>
-		Rồi ở file module-level, <strong>giữa</strong> khối <code>plugins {'{ }'}</code> và khối <code>android {'{ }'}</code>,
-		thêm phần đọc file — kèm hai <code>import</code> ở đầu file:
-	</p>
-	<p class="src">Nguồn: <code>{F}/app/build.gradle.kts</code> (import dòng 1–2, phần đọc file dòng 9–12)</p>
-	<Code code={keysLoadCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Code này tìm file ở gốc project và <strong>map nội dung của nó vào <code>keysProperties</code></strong>. Chú ý
-		<code>rootProject.file(...)</code>: nó trỏ tới gốc <em>project</em>, khác với <code>file(...)</code> trong
-		<code>storeFile</code> ở mục 11 — cái đó tương đối với <em>module</em>. Hai hàm giống tên nhưng gốc quy chiếu khác nhau.
-	</p>
-	<div class="hint">
-		<strong>Vì sao ở đây lại là code Java thuần?</strong> <code>Properties</code> và <code>FileInputStream</code> là class
-		của thư viện chuẩn Java. Đây là minh chứng cụ thể cho điều đã nói ở mục 2: file <code>.kts</code> là
-		<em>code Kotlin thật</em>, chạy trên JVM, nên bạn dùng được toàn bộ thư viện JVM trong file build — kể cả đọc file, gọi
-		API, tính toán. Đây là sức mạnh mà cũng là cái bẫy: logic phức tạp trong file build rất khó debug.
-	</div>
-	<p>Với dữ liệu đã đọc được, <code>signingConfigs</code> chuyển sang lấy giá trị từ key thay vì ghi cứng:</p>
-	<p class="src">Nguồn: <code>{F}/app/build.gradle.kts</code> (dòng 27–34)</p>
-	<Code code={finalSigningConfigsCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Các key (<code>keyAlias</code>, <code>keyPassword</code>, <code>storeFile</code>, <code>storePassword</code>) chính là
-		tên đã đặt trong <code>keys.properties</code>. Phần <code>as String</code> là ép kiểu, vì
-		<code>Properties</code> trả về <code>Any?</code>.
-	</p>
-	<h3>Bước cuối: loại file khỏi git</h3>
-	<p>
-		Mở <code>.gitignore</code> ở gốc project và thêm tên file secret vào cuối. Đây là <strong>toàn bộ thay đổi</strong> của
-		file này giữa <code>starter</code> (9 dòng) và <code>final</code> (12 dòng):
-	</p>
-	<p class="src">Nguồn: <code>{F}/.gitignore</code> (dòng 1–12; hai dòng cuối là phần thêm mới)</p>
-	<Code code={gitignoreCode} lang="bash" theme="github-dark" />
-	<p>Sync project, và bạn đã có thể build bản release mà secret vẫn nằm yên trên máy mình.</p>
-	<div class="notice">
-		<strong>Bẫy thật, đã kiểm — sách nói một đằng, project mẫu làm một nẻo (thứ bảy):</strong> sách vừa dặn <em>"ĐỪNG commit
-		thông tin ký"</em>, nhưng file <code>{F}/keys.properties</code> <strong>đang được git theo dõi</strong> trong chính repo
-		<code>aaf-materials</code>. Vì sao vẫn ổn ở đây: nội dung của nó chỉ là placeholder (<code>"your store password"</code>…),
-		không phải secret thật. Nhưng đây là ví dụ sống cho một sai lầm rất phổ biến: thêm tên file vào <code>.gitignore</code>
-		<strong>không</strong> làm git ngừng theo dõi file đã được commit trước đó. <code>.gitignore</code> chỉ tác động tới file
-		<em>chưa</em> được track. Muốn bỏ hẳn phải chạy <code>git rm --cached keys.properties</code> rồi commit.
-	</div>
-	<div class="notice">
-		<strong>Bẫy thứ hai của mục này — nó sẽ xảy ra với chính bạn:</strong> dòng
-		<code>keysProperties.load(FileInputStream(keysPropertiesFile))</code> <strong>không kiểm tra file có tồn tại hay
-		không</strong>. Hệ quả: ai clone project <code>final</code> mà không có <code>keys.properties</code> thì
-		<strong>Gradle sync fail ngay</strong> với <code>FileNotFoundException</code> — app chưa build được một dòng nào. Và vì
-		file này lẽ ra <em>không</em> nên nằm trong repo, tình huống đó là bình thường, không phải ngoại lệ. Cách vá chỉ mất ba
-		dòng:
-	</div>
-	<Code code={safeKeysLoadCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Với bản này, thiếu file thì <code>keysProperties</code> chỉ rỗng — bản <code>debug</code> vẫn build bình thường, chỉ khi
-		build <code>release</code> mới báo lỗi. Đó là hành vi hợp lý hơn nhiều. Đây là <strong>kiến thức bổ sung</strong> của
-		bài, không có trong sách.
-	</p>
-	<h2 id="starter-vs-final">13. Đối chiếu <code>starter</code> ↔ <code>final</code>: đúng những gì đã đổi</h2>
-	<p>
-		Mục này không có trong sách. Nó là kết quả so sánh trực tiếp hai project của chapter, để bạn tự kiểm được công việc của
-		mình và để thấy rõ một điều: chapter này thật sự chỉ động tới tầng build.
-	</p>
-	<table class="api">
-		<thead>
-			<tr><th>File</th><th>Thay đổi</th></tr>
-		</thead>
-		<tbody>
-			<tr>
-				<td><code>gradle/libs.versions.toml</code></td>
-				<td><strong>File mới</strong> — 47 dòng, đủ 4 section.</td>
-			</tr>
-			<tr>
-				<td><code>keys.properties</code></td>
-				<td><strong>File mới</strong> — 4 dòng giá trị (dòng 33–36) sau license header.</td>
-			</tr>
-			<tr>
-				<td><code>build.gradle.kts</code> (gốc)</td>
-				<td><code>id(...) version "..."</code> → <code>alias(libs.plugins....)</code>.</td>
-			</tr>
-			<tr>
-				<td><code>app/build.gradle.kts</code></td>
-				<td>
-					67 → 75 dòng. Thêm 2 import + đọc <code>keys.properties</code> + <code>signingConfigs</code> +
-					<code>debug {'{ }'}</code>; xoá <code>vectorDrawables</code> và <code>packaging</code>; chuyển toàn bộ dependency
-					sang bundles.
-				</td>
-			</tr>
-			<tr>
-				<td><code>.gitignore</code></td>
-				<td>9 → 12 dòng: thêm comment + <code>keys.properties</code>.</td>
-			</tr>
-			<tr>
-				<td><code>settings.gradle.kts</code></td>
-				<td><strong>Không đổi</strong> — giống hệt nhau hai bên.</td>
-			</tr>
-			<tr>
-				<td>
-					<code>gradle.properties</code>, <code>gradle-wrapper.properties</code>, <code>proguard-rules.pro</code>, mọi file
-					<code>.kt</code>
-				</td>
-				<td><strong>Không đổi</strong> về nội dung.</td>
-			</tr>
-			<tr>
-				<td><code>app/src/main/AndroidManifest.xml</code></td>
-				<td>
-					Đổi <strong>1 thuộc tính</strong> — sách không hề yêu cầu. Xem ngay dưới.
-				</td>
-			</tr>
-		</tbody>
-	</table>
-	<h3>Thay đổi source duy nhất của chapter — và sách không nhắc tới nó</h3>
-	<p class="src">Nguồn: <code>{S}/app/src/main/AndroidManifest.xml</code> (activity dòng 47–51, 60 dòng)</p>
-	<Code code={manifestActivityCode} lang="xml" theme="github-dark" />
-	<p>
-		Ở <code>final</code> (activity dòng 47–50, 59 dòng), dòng
-		<code>android:label="@string/app_name"</code> <strong>bị xoá</strong>. Không có bước nào trong chapter yêu cầu việc này.
-		Hệ quả thực tế thì rất nhẹ: khi <code>&lt;activity&gt;</code> không khai <code>label</code>, nó
-		<strong>kế thừa label của <code>&lt;application&gt;</code></strong> — vốn cũng là <code>@string/app_name</code>. Nên tên
-		hiện trong danh sách app không đổi. Đây gần như chắc chắn là một lần dọn code của tác giả, không phải nội dung bài học.
-	</p>
-	<div class="hint">
-		<strong>Vì sao vẫn nên biết:</strong> khi bạn học bằng cách "làm theo sách rồi diff với <code>final</code>", những thay
-		đổi kiểu này gây hoang mang — bạn tưởng mình bỏ sót một bước. Quy tắc chung: <em>diff</em> với project mẫu là công cụ tốt,
-		nhưng project mẫu cũng do người viết, và có những sửa đổi không thuộc bài học.
-	</div>
-	<h3>Hai file "chủ đề" mà chapter này không chạm — nhưng liên quan tới bản release</h3>
-	<p>
-		Còn một chỗ đáng biết vì nó nối với việc phát hành: app này có <strong>hai</strong> hệ thống theme song song, và chapter 4
-		không nói về cái nào.
-	</p>
-	<p class="src">Nguồn: <code>{F}/app/src/main/res/values/themes.xml</code> (dòng 36)</p>
-	<Code code={themesXmlCode} lang="xml" theme="github-dark" />
-	<p class="src">
-		Nguồn: <code>{F}/app/src/main/java/com/kodeco/chat/ui/theme/Theme.kt</code> (<code>KodecoChatTheme</code> ở dòng 74)
-	</p>
-	<Code code={themeCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Theme XML (<code>Theme.KodecoChat</code>, kế thừa <code>Theme.Material.Light.NoActionBar</code>) là thứ hệ thống Android
-		dùng cho <em>cửa sổ</em> Activity — nó có tác dụng <strong>trước khi</strong> Compose kịp vẽ gì. Còn
-		<code>KodecoChatTheme</code> là theme của Compose, quyết định màu/typography cho các composable. Bạn sẽ học kỹ phần
-		Compose theme ở chapter sau; ở đây chỉ cần biết cả hai đều tồn tại, và cả hai đều nằm trong file
-		<code>.apk</code>/<code>.aab</code> mà chapter này vừa dạy bạn cách đóng gói.
+	<p class="hint">
+		<strong>Một section thứ tư của file này, chỉ cần nhận ra:</strong> <code>[bundles]</code> gom nhiều
+		thư viện thành một cái tên chung, để <code>implementation(libs.bundles.compose)</code> một dòng
+		kéo vào cả một nhóm. Tiện nhưng có cái giá: đọc dòng đó bạn <em>không</em> thấy nó gồm những gì,
+		phải mở TOML mới biết — dependency thừa vì thế dễ nằm im mà không ai để ý. Người mới nên đọc được
+		bundle, chưa cần tự tạo.
 	</p>
 
-	<h2 id="ghi-chu-phien-ban">14. Ghi chú phiên bản: sách viết 2023, hôm nay là 2026</h2>
+	<h2 id="build-types">8. Debug và release: một project, hai bản build</h2>
 	<p>
-		Toàn bộ chapter dùng Gradle 8.2, AGP 8.2.0, Kotlin 1.9.10 — bộ số của cuối 2023 (file
-		<code>gradle-wrapper.properties</code> ghi timestamp tháng 10/2023). Phần này ghi lại những thay đổi lớn đã xảy ra từ đó,
-		để bạn không bị bối rối khi mở một project Android mới tạo hôm nay và thấy file Gradle <em>khác</em> hẳn bài học.
-		<strong>Concept trong sách vẫn đúng nguyên</strong> — chỉ cú pháp và con số đổi.
+		Mở file <code>starter</code>, khối <code>buildTypes {'{ }'}</code> chỉ có đúng một build type:
+		<code>release</code>. Nhưng nếu mở cửa sổ <em>Build Variants</em> ở thanh bên trái Android Studio,
+		variant đang được chọn lại là <strong><code>debug</code></strong> — một cái tên không hề xuất hiện
+		trong file. Vì sao?
 	</p>
-	<table class="api">
-		<thead>
-			<tr><th>Thứ</th><th>Trong sách / project (2023)</th><th>Hiện nay (8/2026)</th></tr>
-		</thead>
-		<tbody>
-			<tr>
-				<td>Gradle</td>
-				<td><code>8.2</code></td>
-				<td>bản stable <code>9.7.0</code></td>
-			</tr>
-			<tr>
-				<td>AGP</td>
-				<td><code>8.2.0</code></td>
-				<td><code>9.3.x</code> stable (yêu cầu Gradle ≥ 9.5.0, JDK 17)</td>
-			</tr>
-			<tr>
-				<td>Compose compiler</td>
-				<td><code>composeOptions {'{ kotlinCompilerExtensionVersion }'}</code></td>
-				<td>
-					Không còn dùng cách này. Từ Kotlin 2.0 trở đi, thêm plugin
-					<code>org.jetbrains.kotlin.plugin.compose</code> và <strong>xoá</strong> khối <code>composeOptions</code>.
-				</td>
-			</tr>
-			<tr>
-				<td>Compose BOM</td>
-				<td><code>2023.10.00</code></td>
-				<td><code>2026.08.00</code></td>
-			</tr>
-			<tr>
-				<td>Version Catalog</td>
-				<td>Phải tự tạo file TOML</td>
-				<td>Android Studio <strong>tạo sẵn</strong> cho mọi project mới.</td>
-			</tr>
-		</tbody>
-	</table>
-	<h3>Thay đổi lớn nhất: từ AGP 9.0, Kotlin đã "có sẵn" trong AGP</h3>
+	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 44–52)</p>
+	<Code code={starterBuildTypesCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Đây là chỗ khiến code trong sách <em>không chạy được</em> nếu bạn dùng AGP 9.x, nên đáng biết trước. AGP 9.0 mang Kotlin
-		vào bên trong (built-in Kotlin) và kéo theo hai hệ quả trực tiếp lên đúng những dòng bạn vừa học:
+		Giải thích là chìa khoá của mục này: build system <strong>luôn</strong> có sẵn
+		<strong>hai</strong> build type, dù bạn có viết chúng ra hay không:
 	</p>
 	<ul>
-		<li>
-			Plugin <code>org.jetbrains.kotlin.android</code> <strong>bị bỏ</strong> — không khai nó nữa, ở cả file top-level lẫn
-			file module. Nghĩa là khối <code>plugins</code> ở mục 6 rút xuống còn một dòng.
-		</li>
-		<li>
-			Khối <code>android {'{ kotlinOptions {} }'}</code> ở mục 7.3 <strong>không còn tồn tại</strong>, chuyển sang
-			<code>kotlin {'{ compilerOptions {} }'}</code> ở cấp cao nhất của file.
-		</li>
+		<li><code>debug</code> — bản để <em>phát triển và kiểm thử</em> trên máy/emulator của bạn: có thể
+			debug, không tối ưu, Android Studio ký hộ để bấm Run là cài được.</li>
+		<li><code>release</code> — bản <em>dành để phát hành</em> cho người dùng thật: không debuggable,
+			có thể tối ưu, và phải được cấu hình thêm trước khi phát hành.</li>
 	</ul>
-	<Code code={modernCompilerOptionsCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Trong <code>compilerOptions</code> mới, các giá trị dùng <em>enum có kiểu</em> thay vì chuỗi, và
-		<code>jvmTarget</code> thường <strong>không cần khai</strong> nữa vì nó tự lấy theo
-		<code>android.compileOptions.targetCompatibility</code>. Điều này khiến khối <code>compileOptions</code> — cái mà sách bảo
-		bạn xoá ở mục 7.4 — hoá ra lại <em>quan trọng hơn</em> so với hồi 2023. Thêm một lý do nữa để giữ nó như project
-		<code>final</code> đã làm.
+		Vậy khai chúng trong <code>build.gradle.kts</code> <em>không phải</em> để "tạo ra", mà để
+		<strong>tuỳ biến thuộc tính</strong> — thuộc tính nào không đổi thì giữ mặc định. Đây là mental
+		model dùng lại nhiều lần trong Gradle: <em>khối cấu hình thường là "chỉnh cái đã có", không phải
+		"khai sinh cái mới"</em>. File chỉ ghi <code>release</code> vì Android Studio muốn chỉnh
+		<em>một</em> thứ trong đó — còn <code>debug</code> thì mặc định đã đủ dùng.
 	</p>
+	<p>
+		Một thuộc tính mà người mới thường gặp trong khối release là
+		<code>isMinifyEnabled = false</code> — công tắc <em>tối ưu/rút gọn code</em> cho bản release.
+		Nó để <code>false</code> mặc định vì một lý do an toàn: bật sai có thể làm app <strong>crash
+		lúc chạy trên máy người dùng thật</strong> chứ không phải trên máy bạn. Cách cấu hình signing,
+		tạo bản release và tối ưu code là <strong>chủ đề của phần phụ lục về phát hành</strong> — bạn
+		chỉ cần biết chúng tồn tại và biết đấy là lý do khối release sinh ra.
+	</p>
+	<p>
+		Một tuỳ biến build type rất dễ hiểu bằng chính project này: thêm ngay dưới khối
+		<code>release {'{ }'}</code>:
+	</p>
+	<Code code={debugSuffixCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>applicationIdSuffix</code> nối thêm <code>.debug</code> vào <code>applicationId</code>
+		(mục 4): bản debug có ID <code>com.kodeco.chat.debug</code>, bản release vẫn là
+		<code>com.kodeco.chat</code>. Lợi ích rất thực tế: khi nộp lên Play Store thấy ID có
+		<code>.debug</code> ở cuối là biết ngay mình vừa build nhầm bản; và vì ID khác nhau, Android coi
+		đây là hai app khác nhau nên bản debug và bản release <strong>cùng tồn tại trên một máy</strong>
+		không ghi đè nhau.
+	</p>
+	<h3>Sync: bước nhỏ nhưng bỏ qua là mất thời gian vô ích</h3>
+	<p>
+		Sau khi sửa <em>bất kỳ</em> file Gradle nào, một banner hiện ở đầu editor yêu cầu
+		<strong>sync</strong> project với Gradle. Sync làm cho IDE đọc lại cấu hình — thêm dependency thì
+		tải thư viện về lúc sync. Nếu bạn bỏ qua (hoặc bấm bỏ qua thay đổi) rồi build, Gradle sẽ dùng
+		<strong>cấu hình hợp lệ trước đó</strong>: app vẫn build ra được, chỉ là nó không mang thay đổi
+		bạn vừa gõ. Rất dễ mất cả buổi tìm hiểu "vì sao sửa mà không thấy tác dụng". Hãy sync mỗi lần
+		đổi file Gradle.
+	</p>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>Những chỗ làm mất thời gian của người mới nhất khi chạm vào tầng build.</p>
 	<div class="notice">
-		<strong>Một điểm rất thực tế nếu bạn tính phát hành app:</strong> từ <strong>31/08/2026</strong>, Google Play yêu cầu app
-		mới và bản cập nhật phải <code>targetSdk</code> ≥ <strong>36</strong> (app đã có trên store: ≥ 35). Project của chapter
-		đặt <code>targetSdk = 34</code>, nên nếu đem đúng cấu hình này đi nộp hôm nay thì <strong>bị từ chối</strong>. Cách hoạt
-		động của <code>targetSdk</code> mà bạn học ở mục 7.2 không đổi — chỉ có con số tối thiểu mà Google chấp nhận là tăng theo
-		từng năm.
+		<strong>Bẫy 1 — bỏ qua sync thì thay đổi "như chưa từng có".</strong> Sửa
+		<code>build.gradle.kts</code> mà bỏ qua banner sync: IDE vẫn hiển thị code theo cấu hình cũ, thư
+		viện mới chưa được tải, và bạn gõ tên class của thư viện đó thì bị báo
+		<em>"unresolved reference"</em> dù đã khai dependency. Bấm <em>Sync Now</em> trước khi kết luận có lỗi.
 	</div>
-	<div class="hint">
-		<strong>Nên làm gì với bài học này?</strong> Cứ học theo sách với đúng project mẫu (AGP 8.2.0) — mọi thứ chạy được và
-		concept là cái bạn cần. Khi nào tạo project mới bằng Android Studio bản mới, hãy đọc file Gradle nó sinh ra và đối chiếu
-		với bảng trên: bạn sẽ nhận ra từng khối, chỉ khác chỗ Kotlin và Compose compiler được khai bằng cú pháp mới.
+	<div class="notice">
+		<strong>Bẫy 2 — dấu <code>+=</code> và <code>=</code> không thay thế được cho nhau.</strong> Trong
+		file module có khối <code>packaging {'{ }'}</code> viết
+		<code>excludes += "/META-INF/&#123;AL2.0,LGPL2.1&#125;"</code>. <code>+=</code> nghĩa là <em>thêm vào</em>
+		danh sách loại trừ sẵn có; đổi thành <code>=</code> là <em>thay thế toàn bộ</em> — xoá sạch các
+		loại trừ mặc định. Hậu quả (lỗi đóng gói do file trùng tên) xuất hiện muộn, ở bước build cuối,
+		rất khó lần ngược về dòng này.
+	</div>
+	<div class="notice">
+		<strong>Bẫy 3 — thêm <code>.debug</code> làm vỡ test có sẵn.</strong> Nếu thêm
+		<code>applicationIdSuffix = ".debug"</code> như mục 8, file test chạy-trên-thiết-bị có sẵn của
+		project sẽ fail: nó so sánh package name với chuỗi cứng <code>"com.kodeco.chat"</code>, trong khi
+		package thực tế lúc chạy test là <code>com.kodeco.chat.debug</code>. Đây là ví dụ điển hình:
+		<em>một thay đổi ở tầng build có thể làm vỡ code test mà không ai sửa dòng code nào</em>. Khi gặp
+		test fail sau khi đổi cấu hình build, hãy kiểm tra chuỗi package hard-code trong test trước.
+	</div>
+	<div class="notice">
+		<strong>Bẫy 4 — hai file <code>gradle.properties</code> khác nhau.</strong> File trong project và
+		file cùng tên trong thư mục Gradle của máy bạn (<code>~/.gradle/</code>) là hai file khác nhau, và
+		bản của máy <strong>ghi đè</strong>. Nếu build của bạn hành xử khác đồng nghiệp dù cùng một
+		project, đây là chỗ đầu tiên nên nhìn.
+	</div>
+	<div class="notice">
+		<strong>Lỗi thời — Groovy (<code>build.gradle</code>) trong tài liệu cũ.</strong> Nhiều hướng dẫn
+		trên mạng dùng file không có <code>.kts</code> và cú pháp Groovy (dấu nháy đơn, ít dấu
+		<code>=</code>). Nên dùng cái nào? Với project mới: <strong>Kotlin DSL (<code>.kts</code>)</strong> —
+		mặc định của Android Studio hiện nay, IDE hỗ trợ tốt hơn. Khi gặp code Groovy, cứ hiểu đó là cách
+		cũ diễn đạt cùng ý.
+	</div>
+	<div class="notice">
+		<strong>Lỗi thời — các con số version.</strong> Project mẫu dùng bộ số cuối 2023: Gradle 8.2, AGP
+		8.2.0, Kotlin 1.9.10, Compose BOM 2023.10.00. Bản hiện nay đã sang Gradle 9.x, AGP 9.x, Compose
+		BOM mới hơn; Android Studio giờ tự tạo sẵn <code>libs.versions.toml</code> cho project mới.
+		<strong>Concept trong bài không đổi</strong> — chỉ con số và một ít cú pháp đổi: cứ học với đúng
+		bộ số của project mẫu, và khi mở project mới tạo, đối chiếu file nó sinh ra với bản đồ ở mục 2 —
+		bạn sẽ nhận ra từng khối.
+	</div>
+	<div class="notice">
+		<strong>Nhận biết — template sinh sẵn chưa chắc là code cần thiết.</strong> File
+		<code>starter</code> có khối <code>vectorDrawables {'{ useSupportLibrary = true }'}</code> — thư
+		viện hỗ trợ này chỉ cần cho API <strong>dưới 24</strong>, mà project đặt <code>minSdk = 30</code>.
+		Dòng đó <em>không bao giờ</em> có tác dụng; nó tồn tại chỉ vì template Android Studio tự thêm.
+		Đó là một thói quen đáng học: template sinh ra không đồng nghĩa với code cần giữ.
 	</div>
 
-	<h2 id="key-points">15. Key Points — 5 điểm sách chốt lại</h2>
-	<ol class="keypoints">
-		<li>
-			<strong>Gradle là một build system mạnh và tuỳ biến được.</strong> Nó không biết gì về Android; phần biết Android là
-			AGP chạy bên trên.
-		</li>
-		<li>
-			<strong>Bạn định nghĩa được nhiều build type</strong> để build app theo những bộ thuộc tính khác nhau tuỳ nhu cầu —
-			và <code>debug</code>/<code>release</code> vốn đã tồn tại, bạn chỉ tuỳ biến chúng.
-		</li>
-		<li>
-			<strong>Version Catalogs</strong> cho phép quản lý dependency một cách có tổ chức và mở rộng được: mỗi số version chỉ
-			nằm ở một chỗ, truy cập type-safe, gom nhóm được bằng bundles.
-		</li>
-		<li>
-			<strong>Ký app là điều kiện bắt buộc để phát hành.</strong> Debug thì Android Studio ký hộ; release thì bạn phải tự
-			cấu hình.
-		</li>
-		<li>
-			<strong>Giữ thông tin ký an toàn là cực kỳ quan trọng.</strong> Tách ra <code>keys.properties</code>, thêm vào
-			<code>.gitignore</code>, và nhớ rằng mất keystore là mất luôn khả năng cập nhật app đã publish.
-		</li>
-	</ol>
-	<div class="callout diff">
-		<strong>Ba thứ bài này thêm vào so với sách — nhớ để phân biệt nguồn</strong>
-		<ul>
-			<li>
-				<strong>Ba file sách không nhắc:</strong> <code>gradle.properties</code>,
-				<code>gradle-wrapper.properties</code>, <code>gradlew</code> (mục 3). Sách không nói tới chúng, nhưng bạn sẽ gặp
-				ngay lần đầu tự tạo project.
-			</li>
-			<li>
-				<strong>Bảy chỗ sách lệch với project mẫu</strong> (AGP 8.1.4↔8.2.0, Java 1.8↔17, Compose compiler 1.5.1↔1.5.3,
-				BOM 2023.10.01↔2023.10.00, activity-compose 1.8.0↔1.8.2, <code>compileOptions</code> bị xoá↔được giữ,
-				<code>keys.properties</code> dặn đừng commit↔đã commit) — tất cả đều được ghi rõ tại chỗ, không âm thầm sửa.
-			</li>
-			<li>
-				<strong>Ba bẫy đã kiểm bằng code thật:</strong> <code>.debug</code> làm vỡ
-				<code>ExampleInstrumentedTest.kt</code>; thiếu <code>keys.properties</code> làm sync fail; và
-				<code>.gitignore</code> không có tác dụng với file đã được git track.
-			</li>
-		</ul>
-	</div>
+	<h2 id="key-points">Tóm tắt</h2>
+	<ul class="keypoints">
+		<li><strong>Gradle</strong> là điều phối viên build, không biết gì về Android; <strong>AGP</strong>
+			là lớp biết-Android chạy bên trên; <strong>Kotlin DSL</strong> là ngôn ngữ của file
+			<code>.kts</code>; Android Studio chỉ là giao diện gọi dây chuyền đó.</li>
+		<li>Mỗi file build trả lời một câu hỏi: <code>settings.gradle.kts</code> (module nào, tải từ đâu),
+			<code>build.gradle.kts</code> gốc (plugin nào có sẵn), <code>app/build.gradle.kts</code> (cấu
+			hình thật của app), <code>gradle-wrapper.properties</code> (bản Gradle nào),
+			<code>libs.versions.toml</code> (version nằm ở đâu).</li>
+		<li><strong>Cấp gốc cung cấp, cấp module sử dụng:</strong> <code>apply false</code> chuẩn bị plugin
+			cho toàn project mà không bật ở gốc; module gọi lại plugin không kèm version.</li>
+		<li>Khối <code>android {'{ }'}</code> quyết định app chạy được ở đâu: ba con số SDK
+			(<code>compileSdk</code> = được gọi API bản nào, <code>minSdk</code> = máy cũ nhất được hỗ trợ,
+			<code>targetSdk</code> = bản cao nhất đã test), <code>applicationId</code>,
+			<code>versionCode</code>/<code>versionName</code>.</li>
+		<li>Configuration trong <code>dependencies {'{ }'}</code> quyết định thư viện đi vào bản build
+			nào: <code>implementation</code> (app), <code>debugImplementation</code> (chỉ bản debug), các
+			configuration test.</li>
+		<li><strong>BOM</strong> cấp bộ version đồng bộ cho cả họ Compose — khai thư viện không cần version,
+			nâng một dòng là nâng cả bộ.</li>
+		<li><strong>Version Catalog</strong> (<code>libs.versions.toml</code>) dồn mọi version về một chỗ;
+			đọc code bằng quy tắc <code>-</code> trong TOML thành <code>.</code> trong
+			<code>libs.…</code>.</li>
+		<li><code>debug</code> và <code>release</code> <strong>luôn tồn tại</strong>; khai trong
+			<code>buildTypes</code> chỉ để tuỳ biến. Ký app và tối ưu bản release là chủ đề phần phụ lục
+			về phát hành — học khi bạn thật sự cần phát hành ứng dụng.</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul class="src-list">
+		<li>Giáo trình gốc: <em>Android Fundamentals by Tutorials</em> (Kodeco), Chapter 4 — "Gradle
+			Basics: A Look Behind the Curtain" (<code>content/book/ch04-gradle-basics-a-look-behind-the-curtain.md</code>).</li>
+		<li>Code thật bản <code>starter</code>: <code>{S}/settings.gradle.kts</code> (dòng 1–17),
+			<code>{S}/build.gradle.kts</code> (dòng 1–5),
+			<code>{S}/app/build.gradle.kts</code> (khối plugins dòng 35–38, khối android dòng 40–70,
+			khối dependencies dòng 72–88, buildTypes dòng 44–52).</li>
+		<li>Code thật bản <code>final</code>: <code>{F}/gradle/libs.versions.toml</code> (47 dòng —
+			<code>[versions]</code> 1–17, <code>[libraries]</code> 19–36, <code>[plugins]</code> 38–40,
+			<code>[bundles]</code> 42–47); <code>{F}/build.gradle.kts</code> (dòng 1–5);
+			<code>{F}/app/build.gradle.kts</code> (dòng 63–75);
+			<code>{F}/gradle/wrapper/gradle-wrapper.properties</code> (dòng 36).</li>
+		<li>Tài liệu chính thức: <em>Gradle User Manual — Build Script Basics, The Settings File,
+			Version Catalogs</em> (docs.gradle.org); <em>Android Developers — Configure your build,
+			Compose BOM</em> (developer.android.com).</li>
+	</ul>
 </section>
