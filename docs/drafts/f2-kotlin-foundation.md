@@ -550,7 +550,7 @@ data class Failed(
 
 fun describe(state: ChatUiState): String =
     if (state is Loaded) {
-        val (messages, _) = state                 // F2: destructuring
+        val messages = state.messages             // is-kiểm tra rồi truy cập thuộc tính
         val mine = messages.filter { it.isMine }  // F1: filter + it
         "${messages.size} tin — ${mine.size} của tôi"
     } else if (state is Failed) {
@@ -575,9 +575,10 @@ fun demo() {
 ```
 
 Đọc lại và tự điểm danh: data class, sealed họ, `object` biến thể rỗng, `List<Message>`,
-destructuring, `copy`, so sánh theo giá trị — và từ F1: tham số có kiểu, expression body, `is`-kiểm
-tra nhẹ (gloss 1 câu: `state is Loaded` hỏi "giá trị có thuộc biến thể Loaded không"; toán tử `is`
-sẽ được dùng lại ở các bài sau), lambda + `it`, string template. Không một dòng nào cần Android.
+`copy`, so sánh theo giá trị — và từ F1: tham số có kiểu, expression body, lambda + `it`,
+string template, `size`. Hai cấu trúc Kotlin nhỏ được gloss một câu: `state is Loaded`
+(toán tử `is` — "giá trị có thuộc biến thể Loaded không") và `emptyList()` (hàm tạo List rỗng,
+cùng họ với `listOf` đã biết). Không một dòng nào cần Android.
 
 ---
 
@@ -603,7 +604,7 @@ data class Note(
 )
 
 fun noteTitleOf(state: NoteUiState): String? =
-    if (state is Ready && state.notes.isNotEmpty()) state.notes[0].title else null
+    if (state is Ready && state.notes.size > 0) state.notes[0].title else null
 
 fun notesScreen() {
     var state by remember { mutableStateOf<NoteUiState>(Loading) }
@@ -611,11 +612,12 @@ fun notesScreen() {
     val firstTitle: String? = noteTitleOf(state)
 
     Button(onClick = {
-        val current = state as? Ready ?: return@Button
-        val updated = current.copy(
-            notes = current.notes.filter { !it.done }
-        )
-        state = updated
+        if (state is Ready) {
+            val current = state as Ready
+            state = current.copy(
+                notes = current.notes.filter { !it.done }
+            )
+        }
     }) {
         Text(text = firstTitle ?: "Chưa có ghi chú")
     }
@@ -627,35 +629,28 @@ fun notesScreen() {
 - **Kotlin (F2):** `sealed interface NoteUiState`; `object Loading`; `data class` `Ready`, `Note`;
   `:` nghĩa "thuộc họ kiểu" tại hai chỗ khai biến thể; `List<Note>` và `mutableStateOf<NoteUiState>`
   (generic recognition); `by` (uỷ quyền đọc/ghi `state` cho object Compose); `copy(...)` tạo state
-  mới; destructuring không xuất hiện ở đây nhưng các thành phần tương tự đã quen; `val (a, b)` không
-  dùng — đúng, không ép cho có.
+  mới.
 - **Kotlin (F1):** `var`/`val`, kiểu trả về `String?`, nullability `?:`, lambda `{ ... }` làm tham số,
   trailing lambda (`Button(...) { Text(...) }`), `it`, `filter`, string template, expression body,
-  `if`/`else if`.
+  `if`/`else if`, index `notes[0]`, `size`.
 - **Compose (chưa học — sẽ học ở Stage Compose):** `@Composable` (ẩn trong chữ ký thật của
   `notesScreen`), `remember`, `mutableStateOf`, `Button`, `Text`, `onClick` như một thuộc tính kiểu
   `() -> Unit`.
 
-Hai mảnh được gloss đúng một câu ngay trong bài, không mở rộng: `is` (`state is Ready` — "thuộc biến
-thể nào") và `as?` + `return@Button` ở dòng `val current = state as? Ready ?: return@Button` — đọc
-được đủ: *"nếu state đang là Ready thì gán vào `current`, không thì thoát khỏi lambda này"*. Cú pháp
-`return@Button` (nhãn return) là Kotlin thật nhưng nằm ngoài nền tảng — nếu bạn muốn snippet **sạch
-tuyệt đối**, thay dòng đó bằng bản tương đương dễ hơn, vẫn mọi cấu trúc đã học:
+Hai mảnh Kotlin nhỏ xuất hiện lần đầu và được gloss đúng một câu ngay trong đoạn, không mở rộng:
 
-```kotlin
-    Button(onClick = {
-        if (state is Ready) {
-            val current = state as Ready
-            state = current.copy(
-                notes = current.notes.filter { !it.done }
-            )
-        }
-    }) {
-```
+- `state is Ready` — **toán tử `is`**: hỏi *"giá trị này có thuộc biến thể `Ready` không?"* (đúng
+  hay sai). Nó là công cụ tự nhiên khi đọc sealed state; khoá sẽ dùng lại nó ở các bài sau, và
+  `when` đi kèm sẽ được gloss tại chỗ dùng đầu tiên — `is` không phải mục tiêu học mới của bài này.
+- `state as Ready` — **toán tử `as`**: *chuyển cách nhìn* giá trị sang biến thể đó, để truy cập được
+  `current.notes`. Cặp `is`-kiểm-tra-then-`as` (kiểm tra rồi mới chuyển) là cách đọc an toàn; các
+  biến thể khác của `as` (như `as?`) không dùng ở đây và chưa cần biết.
 
-Bản chất kiểm tra: **bạn không cần hiểu Compose làm gì, nhưng phải gọi đúng tên từng cấu trúc
-Kotlin.** Nếu làm được, F1 + F2 đã hoàn thành việc của chúng — phần còn lại của code Android là
-khái niệm, và khái niệm sẽ được dạy ở từng bài riêng.
+Đó là **toàn bộ** số cấu trúc Kotlin của đoạn — không có `let`, `run`, `apply`, `also`, `ifEmpty`,
+`takeIf`, `as?`, `return@`, `when`, hay extension function nào. Bản chất kiểm tra: **bạn không cần
+hiểu Compose làm gì, nhưng phải gọi đúng tên từng cấu trúc Kotlin.** Nếu làm được, F1 + F2 đã hoàn
+thành việc của chúng — phần còn lại của code Android là khái niệm, và khái niệm sẽ được dạy ở từng
+bài riêng.
 
 ---
 
@@ -723,20 +718,24 @@ bất kỳ tầng kiến trúc nào.
 
 > **Nội dung biên tập nội bộ — KHÔNG đưa vào bài học cho người học.**
 
-- `when` = **STAY JIT, KHÔNG phải F2.** Bài này chỉ dùng nó một câu trong Phần 10 để nói "công cụ
-  rẽ nhánh tự nhiên đi kèm", có gloss nhận diện, không dạy cú pháp. Đối chiếu F1: bản nháp F1 cũng
-  đã không dạy `when` — nhất quán.
+- `when` = **STAY JIT, KHÔNG phải F2.** Bài này KHÔNG dạy `when` và KHÔNG dùng `when` trong ví dụ;
+  nó chỉ được nhắc tên một lần trong Phần 10/12 như "công cụ rẽ nhánh tự nhiên đi kèm sealed state,
+  khoá sẽ gloss tại chỗ dùng". Đối chiếu F1: F1 cũng không dạy `when` — nhất quán.
 - Inheritance deep-dive = **ngoài Foundation.** `:` chỉ được gloss đúng một ý trong Phần 10:
   "kiểu bên trái thuộc/triển khai họ kiểu bên phải". Không dạy hierarchy/overriding/polymorphism/
   abstract.
 - Extension functions/properties = **STAY JIT.** `val Context.dataStore` được dán nhãn rõ "đây là
   extension property — sẽ gloss khi dùng thật ở phần Dữ liệu cục bộ", không giải thích cơ chế.
 - Scope functions (`let`, `run`, `apply`, `also`) = **STAY JIT.** Không xuất hiện trong bài học và
-  không xuất hiện trong snippet kiểm tra cuối.
-- `ifEmpty` = **JIT tại lần dùng thật đầu tiên**, không phải chủ đề Foundation. (F1 snippet preview
-  có nhắc với nhãn "chưa học" — hợp lệ vì đó là *preview có chủ đích*; snippet F2 thì không chứa.)
-- `is`/`as?`/`return@`: dùng tối thiểu với gloss 1 câu ở Phần 11–12; gọi tên rõ là "ngoài phạm vi
-  nền tảng" và cung cấp biến thể snippet không cần `return@`. Không đưa vào mục tiêu học.
+  không xuất hiện trong canonical snippet Phần 12.
+- `ifEmpty` = **JIT tại lần dùng thật đầu tiên**, không phải chủ đề Foundation. (F1 preview có nhắc
+  với nhãn "chưa học" — hợp lệ vì đó là preview có chủ đích; F2 canonical snippet không chứa.)
+- `is`/`as` = **recognition-level, gloss 1 câu có nhãn** trong Phần 11–12 vì sealed-state kiểm tra
+  tự nhiên cần chúng; KHÔNG mở rộng (`as?`, `!is`, `when`-subject không dùng); không đưa vào mục
+  tiêu học chính thức.
+- `return@`/labeled return = **STAY JIT.** Bản canonical của snippet kiểm tra không dùng — được rút
+  trong đợt Foundation-pair gate (trước đây bản nháp dùng `as? Ready ?: return@Button`; đã thay
+  bằng `is`-kiểm tra + `as`, mọi cấu trúc còn lại thuộc F1/F2).
 
 ## Editorial migration notes
 
@@ -799,7 +798,7 @@ data class, `by`, sealed, generics — thay vì gloss lại; tương tự F1 cho
 
 ## Final readability-test inventory
 
-> **Kiểm tra nội bộ của snippet Phần 12 (bản chính có `return@Button` lẫn bản thay thế sạch).**
+> **Kiểm tra nội bộ của snippet Phần 12 (bản canonical — sạch, KHÔNG dùng `as?`/`return@`).**
 > Yêu cầu: 0 cấu trúc Kotlin chưa dạy.
 
 | Cấu trúc trong snippet | Phân loại |
@@ -813,26 +812,24 @@ data class, `by`, sealed, generics — thay vì gloss lại; tương tự F1 cho
 | `by` trong `var state by remember {...}` | F2 (Phần 7–8) |
 | `copy(notes = ...)` | F2 (Phần 4) |
 | `var`/`val`, expression body, kiểu `String?` | F1 (Phần 1–3) |
-| `if (state is Ready && ...)` — `is` | gloss 1 câu trong bài (Phần 11) — ngoài nền tảng nhưng đã gloss |
-| `&&` (and logic) | ⚠️ xem ghi chú dưới |
-| `state.notes[0]` — index | F1 (Phần 4) |
-| `filter { !it.done }` — lambda/it/`!` | F1 (Phần 4–5); `!` phủ định logic là toán tử cơ bản được dùng từ ví dụ `!it.isMine` ở Phần 11 |
-| `?:` | F1 (Phần 3) |
-| trailing lambda `Button(...) { Text(...) }` | F1 (Phần 5) |
-| `as?`, `return@Button` | ngoài nền tảng — có **bản thay thế sạch** loại bỏ chúng; bản chính giữ với gloss 1 câu |
+| `if (state is Ready && ...)` — `is` | gloss 1 câu trong bài (Phần 12) — ngoài nền tảng nhưng được gloss có nhãn |
+| `state as Ready` — `as` | gloss 1 câu trong bài (Phần 12) — được dạy như cặp is-then-as; `as?` KHÔNG dùng |
+| `&&` (and logic) | gloss 1 câu trong bài (Phần 12) — "và; cả hai điều kiện cùng đúng" |
+| `notes[0]`, `size`, `filter { !it.done }` | F1 (Phần 4–5); `!` phủ định logic xuất hiện từ ví dụ `!it.isMine` |
+| `?:`, trailing lambda, lambda/it, string template, `if`/`else` | F1 (Phần 3–6) |
 | `remember`, `mutableStateOf`, `Button`, `Text`, `onClick`, `@Composable` | Compose-specific — dán nhãn rõ, không phải Kotlin nền |
 
-**Ghi chú hai điểm nhỏ** (để minh bạch): (1) `&&` xuất hiện trong `if (state is Ready && ...)`.
-Đây là phép *and* logic phổ quát, nhưng F1/F2 chưa gọi tên nó — xử lý: dùng trong ví dụ kèm 1 câu
-gloss ("`&&` = và; cả hai điều kiện cùng đúng") hoặc thay bằng hai `if` lồng; không mở rộng thành
-bài toán tử. (2) `emptyList()` và `isNotEmpty()` ở Phần 11–12 là hàm thư viện List bề mặt — cùng
-họ với `listOf`/`size` đã dùng; nếu muốn sạch tuyệt đối có thể thay bằng `listOf()`/`notes.size > 0`.
-Cả hai điểm nằm trong ngưỡng "recognition + 1 câu gloss", không phải cấu trúc mới cần dạy — nhưng
-được ghi nhận đầy đủ thay vì để lọt.
+**Danh sách loại trừ được xác minh:** đoạn canonical KHÔNG chứa `let`, `run`, `apply`, `also`,
+`ifEmpty`, `takeIf`, `as?`, `return@`/labeled return, `when`, extension function/property,
+operator overloading, coroutine syntax. Hai ví dụ trước (bản nháp đầu của Phần 12 và Phần 11)
+đã được rút gọn trong đợt đối soát Foundation-pair để đoạn kiểm tra đạt chuẩn "0 cấu trúc chưa
+dạy" mà không phải mở rộng phạm vi F1/F2 (chỉ thay `isNotEmpty()` → `size > 0`, bỏ `as?`/`return@`
+trong Phần 12, bỏ destructuring một-dòng trong Phần 11 — thay bằng truy cập thuộc tính trực tiếp
+sau `is`-kiểm tra).
 
 **Verify criterion:** người học đọc snippet Phần 12 và gọi đúng tên **từng** cấu trúc Kotlin
-(F1 + F2 + 2 gloss 1 câu có nhãn), tách bạch phần Compose → **PASS** với bản thay thế sạch
-(0 cấu trúc Kotlin chưa dạy/chưa gloss); bản chính PASS với điều kiện giữ 2 gloss đã ghi trong bài.
+(F1 + F2 + `is`/`as`/`&&` được gloss đúng một câu có nhãn ngay trong bài), tách bạch phần
+Compose → **PASS**.
 
 ## Sources for future Nguồn block
 
