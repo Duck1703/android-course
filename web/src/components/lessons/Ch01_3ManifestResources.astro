@@ -135,7 +135,7 @@ const dataExtractionCode = `<data-extraction-rules>
 
 <section class="lesson">
 	<div class="callout goals">
-		<strong>Bạn sẽ học được gì trong chương này</strong>
+		<strong>Bạn sẽ học được gì trong bài này</strong>
 		<ul>
 			<li>
 				<strong>App Manifest</strong> — file khai báo mà hệ thống Android đọc <em>trước</em> khi chạy một dòng code nào của bạn,
@@ -152,31 +152,32 @@ const dataExtractionCode = `<data-extraction-rules>
 				<strong>Quên khai báo component</strong> — vì sao lỗi này không bị bắt lúc build mà nổ lúc chạy, và phản xạ đúng khi gặp.
 			</li>
 			<li>
-				<strong>App Resources</strong> — mọi thứ không phải code: ảnh, màu, chuỗi chữ, theme. Cái nào chỉ cần bỏ file vào, cái nào
-				phải viết bằng XML.
-			</li>
-			<li>
-				<strong>Cơ chế hậu tố thư mục</strong> — cách một cái tên duy nhất <code>@string/app_name</code> tự đổi theo ngôn ngữ và
-				mật độ màn hình mà bạn không viết dòng <code>if</code> nào.
-			</li>
-			<li>
-				<strong>Chuỗi tham chiếu nhiều tầng</strong> — lần theo icon app đi qua ba tầng resource trong project thật.
+				<strong>App Resources</strong> — mọi thứ không phải code: ảnh, màu, chuỗi chữ, theme. Cơ chế hậu tố thư mục giúp app tự
+				đổi theo ngôn ngữ và thiết bị, và chuỗi tham chiếu nhiều tầng lần theo trong code thật.
 			</li>
 		</ul>
 		<p>
-			Đây là chương thứ ba trong bốn chương nhỏ của Chương 1. <strong>Chương 1.4</strong> khép lại bằng Gradle — công cụ biến toàn
-			bộ code và resource nói ở đây thành một file app cài được — cùng tấm bản đồ dẫn sang phần còn lại của khoá học.
+			<strong>Tại sao quan trọng:</strong> manifest là file đầu tiên hệ thống đọc của app bạn; gần như mọi lỗi "app crash khi mở
+			màn hình" của người mới quay về đây. Resource là cách app hỗ trợ nhiều ngôn ngữ/thiết bị mà không sửa code.
+		</p>
+		<p>
+			<strong>Cần biết trước:</strong> bài 1.1 (security sandbox, permission) và bài 1.2 (component là entry point, hệ thống gọi
+			bạn). Bài này trả lời câu hỏi mà bài 1.2 để lại: hệ thống biết component nào để gọi bằng cách nào.
+		</p>
+		<p>
+			Bài này là bài thứ ba của Chương 1. <strong>Bài 1.4</strong> khép lại bằng Gradle — công cụ biến toàn bộ code và resource nói ở đây
+			thành một file app cài được — cùng tấm bản đồ dẫn sang phần còn lại của khoá học.
 		</p>
 	</div>
 	<div class="callout">
-		<strong>Nối tiếp Chương 1.2</strong>
+		<strong>Nối tiếp bài 1.2</strong>
 		<p>
-			Ở Chương 1.2 bạn đã biết bốn app component đều là <em>entry point</em> (điểm vào), và điểm quan trọng nhất: <strong>bạn
+			Ở bài 1.2 bạn đã biết bốn app component đều là <em>entry point</em> (điểm vào), và điểm quan trọng nhất: <strong>bạn
 			không tự gọi chúng — hệ thống gọi</strong>. Câu đó để lại một câu hỏi chưa trả lời: hệ thống <em>biết</em> app của bạn có
 			những component nào bằng cách nào?
 		</p>
 		<p>
-			Chương này trả lời đúng câu đó, rồi đi tiếp sang nửa thứ hai của bức tranh: những thứ trong app <em>không phải</em> code —
+			Bài này trả lời đúng câu đó, rồi đi tiếp sang nửa thứ hai của bức tranh: những thứ trong app <em>không phải</em> code —
 			ảnh, màu, chuỗi chữ, theme — nằm ở đâu và được gọi ra kiểu gì.
 		</p>
 	</div>
@@ -188,7 +189,7 @@ const dataExtractionCode = `<data-extraction-rules>
 		đầy đủ trong project là <code>AndroidManifest.xml</code>.
 	</p>
 	<p>
-		Để ý logic nối thẳng với Chương 1.2, mục 5: vì component là entry point và <em>hệ thống</em> là bên đi gọi chúng, thì hệ thống
+		Để ý logic nối thẳng với bài 1.2, mục 5: vì component là entry point và <em>hệ thống</em> là bên đi gọi chúng, thì hệ thống
 		phải biết trước có những gì để gọi. Manifest chính là danh sách đó. Trong manifest, bạn khai <strong>mọi component app
 		có</strong>, kèm <strong>tất cả khả năng (capability) của chúng</strong>.
 	</p>
@@ -219,8 +220,8 @@ const dataExtractionCode = `<data-extraction-rules>
 
 	<h3>6.2 — Đối chiếu: manifest thật của project trông thế nào</h3>
 	<p>
-		Đây là chỗ mở được code thật có giá trị. Dưới đây là <strong>toàn bộ</strong> file manifest của app Kodeco Chat (Chương 2)
-		— đủ 28 dòng, không lược:
+		Đây là chỗ mở được code thật có giá trị. Dưới đây là <strong>toàn bộ</strong> file manifest của app mẫu (project "Kodeco
+		Chat" bạn sẽ tạo ở phần thực hành kế tiếp) — đủ 28 dòng, không lược:
 	</p>
 	<Code code={realManifestCode} lang="xml" theme="github-dark" />
 	<p>So hai đoạn, bạn thấy ngay <strong>bộ xương giống hệt nhau</strong>:</p>
@@ -295,14 +296,14 @@ const dataExtractionCode = `<data-extraction-rules>
 	<p>Còn đây là khai báo quyền thật — ví dụ duy nhất trong cả 11 project của khoá học:</p>
 	<pre class="tree">&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</pre>
 	<p>
-		Đúng như đã nói ở Chương 1.1, mục 3: app cần lên mạng để tải dữ liệu công thức nấu ăn, mà sandbox không cho ra ngoài, nên phải
+		Đúng như đã nói ở bài 1.1, mục 3: app cần lên mạng để tải dữ liệu công thức nấu ăn, mà sandbox không cho ra ngoài, nên phải
 		<em>xin</em> — bằng đúng một dòng đặt <strong>ngang cấp với <code>&lt;application&gt;</code></strong> (dòng 5 so với dòng 6),
 		không phải bên trong nó. Đó là điểm cú pháp dễ sai nhất khi bạn tự thêm quyền lần đầu: đặt lọt vào trong
 		<code>&lt;application&gt;</code> thì quyền không có tác dụng.
 	</p>
 
 	<div class="callout">
-		<strong>Tổng kết Chương 1.3 — phần Manifest</strong>
+		<strong>Tổng kết bài 1.3 — phần Manifest</strong>
 		<ul>
 			<li><strong>Vai trò:</strong> manifest là danh sách component mà hệ thống đọc để biết có gì mà gọi.</li>
 			<li><strong>Thời điểm đọc:</strong> lúc cài app, trước khi code chạy — nên không khai báo được lúc đang chạy.</li>
@@ -368,11 +369,11 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 			<code>if</code> nào cho chuyện này.
 		</p>
 		<p>
-			Đây là phần bổ sung ngoài giáo trình gốc (Chương 1 chưa đi vào cú pháp), nhưng nó là mảnh còn thiếu để câu "app tự động dùng
+			Đây là phần bổ sung ngoài phạm vi bài học (Chương 1 không đi vào cú pháp resource), nhưng nó là mảnh còn thiếu để câu "app tự động dùng
 			đúng cái" trở nên có nghĩa thay vì nghe như phép thuật.
 		</p>
 	</div>
-	<p>Đây là toàn bộ thư mục <code>res/</code> thật của project Kodeco Chat — 19 file, không nhiều như bạn tưởng:</p>
+	<p>Đây là toàn bộ thư mục <code>res/</code> thật của app mẫu — 19 file, không nhiều như bạn tưởng:</p>
 	<pre class="tree">app/src/main/res/
 ├── drawable/
 │   ├── ic_launcher_background.xml      ← hình nền của icon (XML, vẽ bằng vector)
@@ -390,7 +391,7 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
     └── data_extraction_rules.xml        ← quy tắc sao lưu dữ liệu</pre>
 	<p class="notice">
 		<strong>Một điều đáng để ý ngay trong cây trên:</strong> không có thư mục <code>res/layout/</code>. Trong Android kiểu cũ, đó
-		là nơi bố cục từng màn hình được vẽ bằng XML — và nó là thư mục quan trọng nhất của cả <code>res/</code>. Đã tìm khắp 11
+		là nơi bố cục từng màn hình được vẽ bằng XML — và nó là thư mục quan trọng nhất của cả <code>res/</code>. Đã tìm khắp các
 		project của khoá học: <strong>không project nào có <code>res/layout/</code></strong>, và không chỗ nào gọi
 		<code>setContentView(R.layout.…)</code>. Lý do là toàn bộ giao diện được dựng bằng Jetpack Compose trong Kotlin. Ghi nhận
 		chuyện này từ bây giờ, vì phần lớn tài liệu Android bạn tìm được trên mạng vẫn giả định thư mục đó tồn tại.
@@ -400,8 +401,7 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 	<p>
 		Đây chính là <code>@string/app_name</code> mà manifest ở mục 6.2 trỏ tới (dòng 10 và 18 của manifest). Muốn app có tên tiếng
 		Việt, bạn không sửa manifest — bạn thêm <code>values-vi/strings.xml</code>.
-	</p>
-	<Code code={themesXmlCode} lang="xml" theme="github-dark" />
+	</p>	<Code code={themesXmlCode} lang="xml" theme="github-dark" />
 	<p>
 		Và đây là <code>@style/Theme.KodecoChat</code> mà manifest trỏ tới. Để ý nó <strong>rỗng</strong> — chỉ khai một style kế thừa
 		<code>android:Theme.Material.Light.NoActionBar</code>, không tuỳ biến gì. Lý do: app này dùng Jetpack Compose, nên giao diện
@@ -448,7 +448,7 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 
 	<h3>7.3 — Hai nơi định nghĩa màu, và một trong hai là code chết</h3>
 	<p>
-		Project Chương 2 có <strong>hai</strong> nơi định nghĩa màu, và so hai nơi này giải thích được nhiều thứ về Android hiện tại.
+		Project mẫu có <strong>hai</strong> nơi định nghĩa màu, và so hai nơi này giải thích được nhiều thứ về Android hiện tại.
 	</p>
 	<div class="ba">
 		<div class="ba-col">
@@ -472,7 +472,7 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 	<p>
 		<code>colors.xml</code> tồn tại vì Android Studio <strong>tự sinh</strong> nó khi tạo project mới — nó là di sản từ thời giao
 		diện làm bằng XML. Với một app Compose thuần, file đó có thể xoá mà không ảnh hưởng gì. Vì sao chuyện này đáng biết, và nó đặt
-		bạn vào tình thế gì khi đi tìm câu trả lời trên mạng: xem <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a> ở cuối chương.
+		bạn vào tình thế gì khi đi tìm câu trả lời trên mạng: xem <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a> ở cuối bài.
 	</p>
 	<p>
 		Còn một ví dụ nữa cùng loại: <code>res/xml/data_extraction_rules.xml</code>, được manifest trỏ tới ở dòng 7. Mở ra thì
@@ -497,22 +497,21 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 	</p>
 	<p class="hint">
 		<strong>Đây không phải lỗi, mà là một lựa chọn dạy học — nhưng nên biết là mình đang thấy gì.</strong> Đoạn code này do Android
-		Studio sinh ra cho project mới, và Chương 2 giữ nguyên nó vì mục đích chỉ là "có chữ gì hiện lên màn hình". Trong app thật, mọi
+		Studio sinh ra cho project mới, và được giữ nguyên vì mục đích chỉ là "có chữ gì hiện lên màn hình". Trong app thật, mọi
 		chuỗi người dùng đọc được đều nên nằm ở <code>strings.xml</code> — nếu không thì lúc muốn dịch app sang tiếng Việt, bạn phải đi
 		sửa từng dòng code. Còn <code>@string/app_name</code> ở manifest thì <em>đã</em> làm đúng cách. Cùng một project, hai cách làm
 		— thêm một biểu hiện của chuyện "hai hệ cùng tồn tại" ở mục 7.3.
 	</p>
 	<p class="notice">
-		<strong>Và project tự sửa chuyện này ở chương sau.</strong> Đã mở <code>strings.xml</code> của các chương tiếp theo để kiểm:
-		Chương 2 có <strong>đúng 1</strong> chuỗi (<code>app_name</code>), Chương 3 lên <strong>5</strong> chuỗi
-		(<code>chat_display_default</code>, <code>chat_entry_default</code>, <code>send_button</code>,
-		<code>chat_entry_label</code>), rồi Chương 5–7 lên <strong>24–25</strong> chuỗi. Cùng lúc đó, code Kotlin bắt đầu gọi
+		<strong>Và project tự dọn chuyện này dần về sau.</strong> Đã mở <code>strings.xml</code> của các project tiếp theo để kiểm:
+		project đầu tiên có <strong>đúng 1</strong> chuỗi (<code>app_name</code>), project ở phần Android cơ bản lên <strong>5</strong>
+		chuỗi, rồi ở phần giao diện lên <strong>24–25</strong> chuỗi. Cùng lúc đó, code Kotlin bắt đầu gọi
 		<code>stringResource(id = R.string.…)</code> đúng như cách nên làm. Nói cách khác: cái hardcode bạn thấy ở đây là điểm khởi
 		đầu, và bạn sẽ thấy nó được dọn ngay khi app bắt đầu có chữ thật để hiển thị.
 	</p>
 
 	<div class="callout">
-		<strong>Tổng kết Chương 1.3 — phần Resources</strong>
+		<strong>Tổng kết bài 1.3 — phần Resources</strong>
 		<ul>
 			<li><strong>Định nghĩa:</strong> resource là mọi thứ trong app không phải code — ảnh, âm thanh, màu, chuỗi chữ, theme.</li>
 			<li><strong>Quy tắc XML:</strong> thứ nào không có định dạng file riêng thì khai bằng XML; ảnh và âm thanh chỉ cần bỏ file vào.</li>
@@ -524,7 +523,7 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 				<strong>Resource trỏ resource:</strong> manifest → <code>@mipmap/ic_launcher</code> → hai <code>@drawable/…</code> → hình
 				vector. Ba tầng, mỗi tầng chỉ biết tầng kế tiếp.
 			</li>
-			<li><strong>Không có <code>res/layout/</code>:</strong> cả 11 project đều không có, vì giao diện dựng bằng Compose trong Kotlin.</li>
+			<li><strong>Không có <code>res/layout/</code>:</strong> các project đều không có, vì giao diện dựng bằng Compose trong Kotlin.</li>
 			<li>
 				<strong>File có mặt ≠ file có tác dụng:</strong> <code>colors.xml</code> và <code>data_extraction_rules.xml</code> do công
 				cụ sinh sẵn, không ai dùng.
@@ -532,14 +531,14 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 		</ul>
 	</div>
 	<p>
-		<strong>Tiếp theo — Chương 1.4:</strong> bạn đã có code (Chương 1.2) và resource (chương này), cùng bản khai báo để hệ thống đọc.
-		Nhưng ba thứ đó vẫn đang nằm rời rạc trong thư mục project. Chương 1.4 nói về <strong>Gradle</strong> — công cụ gom tất cả lại
+		<strong>Tiếp theo — bài 1.4:</strong> bạn đã có code (bài 1.2) và resource (bài này), cùng bản khai báo để hệ thống đọc.
+		Nhưng ba thứ đó vẫn đang nằm rời rạc trong thư mục project. Bài 1.4 nói về <strong>Gradle</strong> — công cụ gom tất cả lại
 		thành một file app cài được — cùng bốn con số phiên bản định vị project, và tấm bản đồ dẫn sang phần còn lại của khoá học.
 	</p>
 
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
-		Hai chủ đề của chương này — manifest và resource — là nơi tài liệu Android cũ còn sót lại nhiều nhất. Ba điểm dưới đây đáng đọc
+		Hai chủ đề của bài này — manifest và resource — là nơi tài liệu Android cũ còn sót lại nhiều nhất. Ba điểm dưới đây đáng đọc
 		trước khi bạn đi tìm câu trả lời trên mạng.
 	</p>
 	<p class="notice">
@@ -552,12 +551,10 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 	</p>
 	<p class="notice">
 		<strong>2. Đừng copy đoạn manifest mẫu bạn thấy ở nơi khác vào project này.</strong> Nhiều ví dụ minh hoạ cú pháp manifest
-		dùng <code>android:theme="@style/SplashTheme"</code> — một tên nghe rất hợp cảnh cho "chỗ này khai theme". Đã tra khắp 11
-		project: <code>SplashTheme</code> <strong>có thật</strong>, nhưng nằm ở <code>res/values/styles.xml</code> của
-		<strong>Chương 5, 6 và 7</strong> (theme cho splash screen — màn hình chờ lúc mở app), <em>không</em> có ở Chương 2. Và ngay cả
-		ở những chương đó, manifest vẫn khai <code>Theme.KodecoChat</code> cho <code>&lt;activity&gt;</code>. Copy tên theme không tồn
-		tại vào manifest thì build báo lỗi <em>không tìm thấy resource</em> — một lỗi rất khó đoán nếu bạn không biết mình vừa mượn tên
-		từ đâu.
+		dùng <code>android:theme="@style/SplashTheme"</code> — một tên nghe rất hợp cảnh cho "chỗ này khai theme". Tên này
+		<strong>có thật</strong> trong một số app (theme cho splash screen — màn hình chờ lúc mở app), nhưng nó là của
+		<em>project khác</em>, không phải của project bạn đang mở. Copy tên resource không tồn tại trong project của bạn vào manifest
+		thì build báo lỗi <em>không tìm thấy resource</em> — một lỗi rất khó đoán nếu bạn không biết mình vừa mượn tên từ đâu.
 	</p>
 	<p class="notice">
 		<strong>3. Lỗi manifest không hiện ra lúc build.</strong> Đây là cạm bẫy tốn thời gian nhất của cả chương. Thiếu khai báo
@@ -569,12 +566,13 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<ul>
 		<li>
-			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 53 (hệ thống cần biết mọi component, nếu không sẽ không biết khởi
-			chạy cái nào) · dòng 55–76 (đoạn manifest mẫu, gồm cả <code>SplashTheme</code>) · dòng 78–82 (ba chú thích số về
-			<code>&lt;application&gt;</code>, <code>&lt;activity&gt;</code>, <code>&lt;intent-filter&gt;</code>) · dòng 84 (quên khai báo
-			thì một cú crash sẽ cho bạn biết) · dòng 86 (manifest khai permission + hardware feature; ví von nhãn thành phần trên gói
-			bánh) · dòng 90 (định nghĩa app resources) · dòng 92 (ba tính chất: XML, gọi được qua code, resource trỏ resource) · dòng 94
-			(vì sao resource "thực sự quan trọng": đa ngôn ngữ và đa kích thước màn hình).
+			<strong>Giáo trình gốc:</strong> <em>Android Fundamentals by Tutorials</em> (Kodeco), Chương 1 — <code>{BOOK}</code> — dòng
+			53 (hệ thống cần biết mọi component, nếu không sẽ không biết khởi chạy cái nào) · dòng 55–76 (đoạn manifest mẫu, gồm cả
+			<code>SplashTheme</code>) · dòng 78–82 (ba chú thích số về <code>&lt;application&gt;</code>, <code>&lt;activity&gt;</code>,
+			<code>&lt;intent-filter&gt;</code>) · dòng 84 (quên khai báo thì một cú crash sẽ cho bạn biết) · dòng 86 (manifest khai
+			permission + hardware feature; ví von nhãn thành phần trên gói bánh) · dòng 90 (định nghĩa app resources) · dòng 92 (ba tính
+			chất: XML, gọi được qua code, resource trỏ resource) · dòng 94 (vì sao resource "thực sự quan trọng": đa ngôn ngữ và đa kích
+			thước màn hình).
 		</li>
 		<li>
 			<strong>Code thật đã đối chiếu:</strong> <code>{FINAL}/app/src/main/AndroidManifest.xml</code> (dòng 1–28, toàn bộ file; dòng
@@ -585,7 +583,7 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 			<code>{RES}/xml/data_extraction_rules.xml</code> (dòng 6–19, đã lược phần comment bản quyền đầu file) ·
 			<code>{SRC}/ui/theme/Color.kt</code> (dòng 5–10) · <code>{SRC}/MainActivity.kt</code> (dòng 32–46, hàm
 			<code>Greeting</code> và <code>GreetingPreview</code>) · <code>{CH08}/AndroidManifest.xml</code> (dòng 5 —
-			<code>uses-permission</code> duy nhất của cả khoá học, đặt ngang cấp với <code>&lt;application&gt;</code> ở dòng 6).
+			<code>uses-permission</code>, đặt ngang cấp với <code>&lt;application&gt;</code> ở dòng 6).
 			Các kết quả tìm kiếm trên toàn bộ 11 project: <code>res/layout</code> → 0 thư mục · <code>setContentView(R.layout</code> →
 			0 kết quả · <code>values-*</code> (hậu tố ngôn ngữ) → 0 thư mục · <code>@color/</code> và <code>R.color.</code> trong project
 			Chương 2 → 0 kết quả · <code>SplashTheme</code> → chỉ ở <code>styles.xml</code> của Chương 5, 6, 7 · số chuỗi trong

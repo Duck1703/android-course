@@ -80,7 +80,7 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 
 <section class="lesson">
 	<div class="callout goals">
-		<strong>Bạn sẽ học được gì trong chương này</strong>
+		<strong>Bạn sẽ học được gì trong bài này</strong>
 		<ul>
 			<li>
 				<strong>Gradle</strong> — công cụ biến code, resource và manifest rời rạc thành một file app cài được, và vì sao nó nổi tiếng
@@ -94,34 +94,38 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 				thì dán code từ mạng vào là lỗi ngay.
 			</li>
 			<li>
-				<strong>Bản release</strong> — <code>isMinifyEnabled</code>, obfuscate, ProGuard: cái gì bật, cái gì tắt, và vì sao project
-				học lại tắt.
-			</li>
-			<li>
 				<strong>Bốn file build của một project</strong> — mỗi file một việc, đủ để bạn mở project lạ mà không hoang mang.
 			</li>
 			<li>
-				<strong>Bốn con số phiên bản</strong> định vị project vào cuối 2023, cái gì đã đổi kể từ đó và cái gì vẫn đúng nguyên.
+				<strong>Bốn con số phiên bản</strong> định vị project mẫu vào cuối 2023, cái gì đã đổi kể từ đó và cái gì vẫn đúng nguyên.
 			</li>
 			<li>
-				<strong>Bản đồ toàn khoá học</strong> — chương nào dạy gì, hai app bạn sẽ xây, và bạn đã trả lời được những câu hỏi nào sau
-				Chương 1.
+				<strong>Bản đồ toàn khoá học</strong> — khoá học đi qua những giai đoạn nào theo thứ tự nào, và bạn đã trả lời được những
+				câu hỏi nào sau Chương 1.
 			</li>
 		</ul>
 		<p>
-			Đây là chương nhỏ cuối cùng của Chương 1. Hết chương này, Chương 1 khép lại và <strong>Chương 2</strong> chuyển hẳn sang thực
+			<strong>Tại sao quan trọng:</strong> Gradle là nơi người mới gặp nhiều lỗi khó hiểu nhất — hiểu bản đồ build file giúp bạn
+			phân biệt "code cũ" với "mình làm sai".
+		</p>
+		<p>
+			<strong>Cần biết trước:</strong> bài 1.2 (component, code) và bài 1.3 (resource, manifest). Bài này gom ba thứ đó thành một
+			file cài được.
+		</p>
+		<p>
+			Đây là bài cuối cùng của Chương 1. Hết bài này, Chương 1 khép lại và khoá học chuyển hẳn sang thực
 			hành: cài Android Studio, tạo project thật, chạy app đầu tiên.
 		</p>
 	</div>
 	<div class="callout">
-		<strong>Nối tiếp Chương 1.3</strong>
+		<strong>Nối tiếp bài 1.3</strong>
 		<p>
-			Ba chương nhỏ vừa rồi đã dựng đủ ba mảnh của một app: <strong>code</strong> tổ chức thành component (Chương 1.2),
-			<strong>resource</strong> cho mọi thứ không phải code, và <strong>manifest</strong> để hệ thống đọc trước khi chạy (Chương 1.3).
+			Ba bài vừa rồi đã dựng đủ ba mảnh của một app: <strong>code</strong> tổ chức thành component (bài 1.2),
+			<strong>resource</strong> cho mọi thứ không phải code, và <strong>manifest</strong> để hệ thống đọc trước khi chạy (bài 1.3).
 		</p>
 		<p>
 			Nhưng ba mảnh đó vẫn đang là các file rời trong một thư mục. Điện thoại không cài được một thư mục — nó cài một <em>file</em>.
-			Chương này nói về công cụ thu hẹp khoảng cách đó.
+			Bài này nói về công cụ thu hẹp khoảng cách đó.
 		</p>
 	</div>
 
@@ -148,7 +152,7 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 		</p>
 		<p>
 			Vì sao nó "đáng sợ": nó có ngôn ngữ khai báo riêng, thông báo lỗi dài, và khi sai thì lỗi không nằm ở code bạn viết —
-			bạn không có dòng nào để đặt breakpoint vào. Đó là lý do <strong>Chương 4</strong> dành riêng cho nó.
+			bạn không có dòng nào để đặt breakpoint vào. Phần Android cơ bản của khoá học có một bài riêng dành cho Gradle.
 		</p>
 	</div>
 
@@ -181,14 +185,14 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 	<Code code={appPluginsCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Khối <code>android &#123; ... &#125;</code> đó <strong>là</strong> "các tính năng riêng cho Android" mà plugin thêm vào — Gradle
-		thuần không hiểu <code>compileSdk</code> hay <code>minSdk</code> là gì. Chương 4 sẽ giải thích từng dòng; ở đây chỉ cần thấy
-		nguyên tắc trên có hình hài cụ thể.
+		thuần không hiểu <code>compileSdk</code> hay <code>minSdk</code> là gì. Bài Gradle chuyên sâu sẽ giải thích từng dòng; ở đây chỉ cần
+		thấy nguyên tắc trên có hình hài cụ thể.
 	</p>
 	<p class="notice">
 		<strong>Ba con số dễ lẫn nhau — phân biệt ngay từ bây giờ:</strong> <code>compileSdk = 34</code> là bản Android <em>dùng để biên
 		dịch</em> (bạn gọi được API tới mức nào); <code>targetSdk = 34</code> là bản bạn <em>đã kiểm và nhắm tới</em> (hệ thống dựa vào nó
 		để quyết định có bật các hành vi mới hay giữ hành vi cũ cho bạn); <code>minSdk = 30</code> là bản <em>thấp nhất</em> máy cài được
-		app. Đã kiểm cả 11 project: <code>minSdk = 30</code> ở tất cả — tức app không cài được lên máy Android 10 trở về trước. Với
+		app. Đã kiểm các project mẫu: <code>minSdk = 30</code> ở tất cả — tức app không cài được lên máy Android 10 trở về trước. Với
 		project học thì đó là lựa chọn hợp lý, nhưng app thương mại thường hạ thấp hơn để với được nhiều máy.
 	</p>
 
@@ -223,10 +227,10 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 	<p class="hint">
 		<strong>Cách nhận ra bạn đang xem loại nào:</strong> nhìn <em>phần mở rộng của tên file</em>.
 		<code>build.gradle.kts</code> = Kotlin (<code>.kts</code> là "Kotlin script"); <code>build.gradle</code> không có
-		<code>.kts</code> = Groovy. Đã kiểm cả 11 project: <strong>không project nào</strong> có file <code>build.gradle</code> kiểu
+		<code>.kts</code> = Groovy. Đã kiểm các project mẫu: <strong>không project nào</strong> có file <code>build.gradle</code> kiểu
 		Groovy — tất cả đều <code>.kts</code>. Mẹo nhanh hơn nữa: thấy dấu <code>=</code> trong khai báo (như
 		<code>compileSdk = 34</code>) thì đó là Kotlin; Groovy viết <code>compileSdk 34</code>, không có dấu bằng. Vì sao mẹo này đáng
-		nhớ: xem <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a> ở cuối chương.
+		nhớ: xem <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a> ở cuối bài.
 	</p>
 
 	<h3>8.3 — Bản release: bước cuối để phát hành</h3>
@@ -267,8 +271,7 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 	<p class="notice">
 		<strong>Về "một file" sinh ra ở cuối:</strong> file đó thực tế có hai dạng — <code>.apk</code> (cài trực tiếp lên máy được) và
 		<code>.aab</code> (Android App Bundle, định dạng Google Play yêu cầu từ tháng 8/2021). Nói "một file" thì không sai, nhưng nếu
-		bạn thật sự đem app lên Google Play thì bạn sẽ nộp <code>.aab</code>, không phải <code>.apk</code>. Đây là phần bổ sung ngoài
-		giáo trình gốc, ghi lại để bạn không bất ngờ.
+		bạn thật sự đem app lên Google Play thì bạn sẽ nộp <code>.aab</code>, không phải <code>.apk</code>.
 	</p>
 
 	<h3>8.4 — Bốn file build của một project, mỗi file một việc</h3>
@@ -321,18 +324,18 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 		Mỗi dòng là <strong>một thư viện</strong> Gradle sẽ tải về giúp bạn. Ba chữ đầu dòng nói <em>thư viện đó có mặt lúc nào</em>:
 		<code>implementation</code> = có trong app thật; <code>testImplementation</code> = chỉ khi chạy test;
 		<code>debugImplementation</code> = chỉ trong bản debug, không đi vào bản phát hành. Còn
-		<code>platform("androidx.compose:compose-bom:2023.10.00")</code> là một thứ đặc biệt gọi là <em>BOM</em> (bill of materials —
-		bảng kê vật liệu): nó khai một bộ phiên bản Compose <em>đã được kiểm là khớp nhau</em>, nên những dòng Compose bên dưới
-		(<code>ui</code>, <code>material3</code>) không cần ghi số phiên bản nữa. Chương 4 đi kỹ vào toàn bộ chuyện này.
-	</p>
+			<code>platform("androidx.compose:compose-bom:2023.10.00")</code> là một thứ đặc biệt gọi là <em>BOM</em> (bill of materials —
+			bảng kê vật liệu): nó khai một bộ phiên bản Compose <em>đã được kiểm là khớp nhau</em>, nên những dòng Compose bên dưới
+			(<code>ui</code>, <code>material3</code>) không cần ghi số phiên bản nữa. Bài Gradle chuyên sâu đi kỹ vào toàn bộ chuyện này.
+		</p>
 
 	<div class="callout">
-		<strong>Tổng kết Chương 1.4 — phần Gradle</strong>
+		<strong>Tổng kết bài 1.4 — phần Gradle</strong>
 		<ul>
 			<li><strong>Vai trò:</strong> Gradle gom code + resource + manifest + thư viện thành một file cài được.</li>
 			<li><strong>Cách nó biết về Android:</strong> qua Android Gradle plugin (<code>com.android.application</code>), khai ở file build gốc, áp dụng ở module <code>app</code>.</li>
 			<li><strong>Ngôn ngữ:</strong> Kotlin DSL (<code>.kts</code>) — nhận ra bằng dấu <code>=</code>; Groovy không có dấu bằng.</li>
-			<li><strong>Ba con số SDK:</strong> <code>compileSdk</code> (biên dịch bằng bản nào), <code>targetSdk</code> (nhắm tới bản nào), <code>minSdk</code> (máy thấp nhất cài được — cả 11 project đều là 30).</li>
+			<li><strong>Ba con số SDK:</strong> <code>compileSdk</code> (biên dịch bằng bản nào), <code>targetSdk</code> (nhắm tới bản nào), <code>minSdk</code> (máy thấp nhất cài được — các project mẫu đều là 30).</li>
 			<li><strong>Bản release:</strong> <code>isMinifyEnabled</code> bật minify + obfuscate; project học để <code>false</code> có lý do riêng.</li>
 			<li><strong>Bốn file build:</strong> gốc (bản plugin) · <code>app/</code> (cấu hình + thư viện) · <code>settings</code> (module + repository) · <code>wrapper</code> (bản Gradle).</li>
 		</ul>
@@ -340,7 +343,7 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 
 	<h2 id="bon-so">9. Bốn con số định vị project vào cuối năm 2023</h2>
 	<p>
-		Giáo trình gốc được viết cho một thời điểm cụ thể, và điều đó nằm ngay trong các file build. Đã mở từng file để lấy đúng con số —
+		Project mẫu được tạo ra ở một thời điểm cụ thể, và điều đó nằm ngay trong các file build. Đã mở từng file để lấy đúng con số —
 		đây là bảng để bạn biết mình đang học trên nền công nghệ nào:
 	</p>
 	<table class="api">
@@ -392,60 +395,64 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 		<p>
 			Nói cách khác: những gì <em>đã đổi</em> đều là con số phiên bản và tên gọi. Kiến thức nền của Chương 1 vẫn đúng nguyên. Danh
 			sách những thứ <em>đã</em> đổi — và cách nhận ra chúng — nằm ở <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a> cuối
-			chương.
+			bài.
 		</p>
 	</div>
 
-	<h2 id="whats-in-book">10. Khoá học sẽ dạy gì — bản đồ tới các chương khác</h2>
+	<h2 id="whats-in-book">10. Khoá học sẽ dạy gì — bản đồ tới các giai đoạn</h2>
 	<p>
 		Trước khi khép Chương 1, có một việc đáng làm: trấn an và vạch đường. Đúng, nhiều thứ phải đi qua thật, và dễ bị lạc —
 		<strong>nhất là khi bạn bắt đầu đào sâu hơn</strong>. Nhưng đó chính là lý do lộ trình dưới đây tồn tại.
 	</p>
-	<p>Đã đối chiếu từng mục với mục lục thật để chỉ đúng chương:</p>
+	<p>
+		Khoá học được tổ chức thành <strong>phần Nền tảng Kotlin</strong> (cú pháp Kotlin vừa đủ để đọc code Android) rồi
+		<strong>7 giai đoạn chính</strong>, mỗi giai đoạn là một nhóm bài học theo chủ đề. Bảng dưới đây cho biết mỗi chủ đề rơi vào
+		giai đoạn nào:
+	</p>
 	<table class="api">
 		<thead>
-			<tr><th>Chủ đề</th><th>Ở chương</th></tr>
+			<tr><th>Chủ đề</th><th>Ở đâu trong khoá học</th></tr>
 		</thead>
 		<tbody>
-			<tr><td>Cài đặt Android Studio</td><td><strong>Chương 2</strong></td></tr>
+			<tr><td>Nền tảng Kotlin — cú pháp vừa đủ để đọc code Android (biến, hàm, null safety, class…)</td><td><strong>Nền tảng</strong> — 2 bài, ngay trước giai đoạn 1</td></tr>
 			<tr>
-				<td>Nền tảng của một app Android: <em>lifecycle</em>, <em>view</em>, và đào sâu hơn vào manifest, resource, Intent</td>
-				<td><strong>Chương 3</strong></td>
+				<td>Nền tảng của một app Android: <em>lifecycle</em>, <em>view</em>, cài đặt Android Studio, đào sâu manifest, resource, Intent</td>
+				<td><strong>Giai đoạn 1 — Android cơ bản</strong></td>
 			</tr>
-			<tr><td>Xử lý dependency và cấu hình hệ thống build Gradle</td><td><strong>Chương 4</strong></td></tr>
+			<tr><td>Xử lý dependency và cấu hình hệ thống build Gradle</td><td><strong>Giai đoạn 1</strong>, bài Gradle riêng</td></tr>
 			<tr>
-				<td>Dựng giao diện bằng <strong>Jetpack Compose</strong> — bộ công cụ UI "làm lập trình viên Android khắp thế giới hào hứng
-					với UI trở lại", vì nó <em>thay thế</em> bộ dựa trên XML nguyên bản</td>
-				<td><strong>Chương 5</strong></td>
+				<td>Dựng giao diện bằng <strong>Jetpack Compose</strong> — bộ công cụ UI hiện đại <em>thay thế</em> bộ dựa trên XML nguyên bản của Android</td>
+				<td><strong>Giai đoạn 2 — Jetpack Compose</strong></td>
 			</tr>
-			<tr><td>Quản lý <em>state</em> (trạng thái) của một màn hình</td><td><strong>Chương 6</strong></td></tr>
-			<tr><td>Điều hướng (navigate) giữa các màn hình</td><td><strong>Chương 7</strong></td></tr>
-			<tr><td>Gọi network để làm giàu app bằng dữ liệu bên ngoài</td><td><strong>Chương 8</strong></td></tr>
-			<tr><td>Lưu dữ liệu, và giữ dữ liệu an toàn</td><td><strong>Chương 9, 10, 11</strong></td></tr>
+			<tr><td>Quản lý <em>state</em> (trạng thái) của màn hình, ViewModel, kiến trúc app</td><td><strong>Giai đoạn 3 — State &amp; kiến trúc</strong></td></tr>
+			<tr><td>Điều hướng (navigate) giữa các màn hình</td><td><strong>Giai đoạn 4 — Điều hướng</strong></td></tr>
+			<tr><td>Gọi network để làm giàu app bằng dữ liệu bên ngoài</td><td><strong>Giai đoạn 5 — Mạng</strong></td></tr>
+			<tr><td>Lưu dữ liệu cục bộ (DataStore, database Room)</td><td><strong>Giai đoạn 6 — Dữ liệu cục bộ</strong></td></tr>
+			<tr><td>Chủ đề real-world: file system, bảo mật dữ liệu</td><td><strong>Giai đoạn 7 — Real-world</strong></td></tr>
 			<tr>
 				<td><em>Best practice</em> — cả về <strong>kiến trúc app</strong> lẫn về viết code nói chung</td>
-				<td>Rải khắp khoá học, đậm nhất ở <strong>Chương 6 và 7</strong></td>
+				<td>Rải khắp các giai đoạn, đậm nhất ở giai đoạn kiến trúc</td>
 			</tr>
 		</tbody>
 	</table>
 	<p>
-		Một điều nữa về cách các project được tổ chức, hữu dụng khi bạn học: <strong>đôi khi chương sau xây tiếp trên app của chương
-		trước, đôi khi bạn làm một app hoàn toàn mới</strong> — nhưng mỗi lần, app bạn làm sẽ khớp với chủ đề bạn đang học.
+		Một điều nữa về cách các project được tổ chức, hữu dụng khi bạn học: <strong>đôi khi bài sau xây tiếp trên app của bài trước,
+		đôi khi bạn làm một app hoàn toàn mới</strong> — nhưng mỗi lần, app bạn làm sẽ khớp với chủ đề bạn đang học.
 	</p>
 	<div class="callout journey">
-		<strong>Đã kiểm bằng project thật: có đúng 2 app trong cả khoá học</strong>
+		<strong>Đã kiểm bằng project thật: khoá học đi qua 2 app</strong>
 		<ul>
 			<li>
-				<strong>Kodeco Chat</strong> — Chương 2 đến 7. Một app chat, xây dần: tạo project (2), lifecycle (3), Gradle (4), giao diện
-				Compose (5), state và ViewModel (6), navigation và kiến trúc (7).
+				<strong>Kodeco Chat</strong> — một app chat, xây dần từ đầu: tạo project, lifecycle, Gradle, giao diện
+				Compose, state và ViewModel, navigation và kiến trúc. Đây là app của các giai đoạn đầu.
 			</li>
 			<li>
-				<strong>Recipe Finder</strong> — Chương 8 đến 11. Một app tìm công thức nấu ăn: gọi mạng (8), DataStore (9), Room (10), lưu
-				trữ an toàn (11).
+				<strong>Recipe Finder</strong> — một app tìm công thức nấu ăn: gọi mạng, DataStore, Room, lưu
+				trữ an toàn. Đây là app của các giai đoạn sau.
 			</li>
 		</ul>
 		<p>
-			Biết trước điều này giúp bạn đặt kỳ vọng đúng: khi tới Chương 8, đừng tìm app chat nữa — bạn chuyển sang app khác, và
+			Biết trước điều này giúp bạn đặt kỳ vọng đúng: khi chuyển sang app mới, đừng tìm app chat nữa — và
 			<code>package</code> đổi từ <code>com.kodeco.chat</code> sang <code>com.kodeco.recipefinder</code>.
 		</p>
 	</div>
@@ -456,8 +463,7 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 
 	<h2 id="key-points">11. Năm điểm chính của Chương 1 — và đối chiếu với những gì đã kiểm</h2>
 	<p>
-		Năm điểm dưới đây là phần cốt của cả Chương 1 (gồm cả bốn chương nhỏ 1.1–1.4). Mỗi điểm kèm phần đã kiểm được từ code thật — vì
-		có vài điểm đúng ở mức lý thuyết mà thực tế project khác đi:
+		Năm điểm dưới đây là phần cốt của cả Chương 1 (gồm cả bốn bài 1.1–1.4). Mỗi điểm kèm phần đã kiểm được từ code thật — vì		có vài điểm đúng ở mức lý thuyết mà thực tế project khác đi:
 	</p>
 	<ol class="keypoints">
 		<li>
@@ -465,7 +471,7 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 			Flutter.</strong>
 			<br />
 			<span class="hint" style="display: block; margin-top: 0.4rem;">
-				Khoá học chọn Kotlin, và lý do đầy đủ ở <strong>Chương 1.1, mục 2</strong>. Điều cần nhớ nhất: chính framework Android
+				Khoá học chọn Kotlin, và lý do đầy đủ ở <strong>bài 1.1, mục 2</strong>. Điều cần nhớ nhất: chính framework Android
 				<em>là</em> hỗn hợp của cả Java và Kotlin — nên chọn Kotlin không có nghĩa là bạn sẽ không bao giờ thấy Java.
 			</span>
 		</li>
@@ -473,9 +479,9 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 			<strong>App Android có thể gồm các component sau: Activity, Service, Content Provider và Broadcast Receiver.</strong>
 			<br />
 			<span class="hint" style="display: block; margin-top: 0.4rem;">
-				Đã kiểm toàn bộ manifest của 11 project: chỉ <strong>Activity</strong> xuất hiện, và luôn đúng một cái
+				Đã kiểm toàn bộ manifest của các project mẫu: chỉ <strong>Activity</strong> xuất hiện, và luôn đúng một cái
 				<code>MainActivity</code>. Ba loại còn lại: 0 kết quả. Học để nhận diện, không để thực hành — xem
-				<strong>Chương 1.2, mục 4.5</strong>.
+				<strong>bài 1.2, mục 4.5</strong>.
 			</span>
 		</li>
 		<li>
@@ -483,8 +489,8 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 			cần.</strong>
 			<br />
 			<span class="hint" style="display: block; margin-top: 0.4rem;">
-				Manifest thật của Kodeco Chat dài 28 dòng — đã đọc trọn ở <strong>Chương 1.3, mục 6.2</strong>. Trong cả khoá học chỉ có
-				<strong>một</strong> khai báo permission thật: <code>INTERNET</code> ở project Chương 8, dòng 5. Không project nào khai báo
+				Manifest thật của app mẫu dài 28 dòng — đã đọc trọn ở <strong>bài 1.3, mục 6.2</strong>. Trong các project mẫu chỉ có
+				<strong>một</strong> khai báo permission thật: <code>INTERNET</code> ở project mạng, dòng 5. Không project nào khai báo
 				tính năng phần cứng.
 			</span>
 		</li>
@@ -492,9 +498,9 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 			<strong>Ngoài code thông thường, app còn chứa resource như ảnh, âm thanh, animation và màu sắc.</strong>
 			<br />
 			<span class="hint" style="display: block; margin-top: 0.4rem;">
-				<code>res/</code> của project có 19 file, và <strong>không có thư mục <code>layout/</code></strong>. Đáng chú ý:
+				<code>res/</code> của project mẫu có 19 file, và <strong>không có thư mục <code>layout/</code></strong>. Đáng chú ý:
 				<code>colors.xml</code> (7 màu) <strong>không được dùng ở đâu cả</strong> — màu thật nằm ở <code>Color.kt</code>. Dấu vết
-				của việc Android đang chuyển từ XML sang Compose, xem <strong>Chương 1.3, mục 7.3</strong>.
+				của việc Android đang chuyển từ XML sang Compose, xem <strong>bài 1.3, mục 7.3</strong>.
 			</span>
 		</li>
 		<li>
@@ -515,14 +521,14 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 			còn ngập ngừng thì mục tương ứng đáng đọc lại:
 		</p>
 		<ol>
-			<li>Vì sao framework Android buộc phải to, và cách học nó lành mạnh là gì? <em>(Chương 1.1, mục 1)</em></li>
-			<li>Vì sao khoá học chọn Kotlin, và đánh đổi của framework đa nền tảng là gì? <em>(Chương 1.1, mục 2)</em></li>
-			<li>Security sandbox nói gì, và vì sao nó là gốc của mọi chuyện về permission? <em>(Chương 1.1, mục 3)</em></li>
-			<li>Bốn component là gì, và vì sao "một Activity nhiều màn hình" mới là kiến trúc nên dùng? <em>(Chương 1.2, mục 4)</em></li>
-			<li>"Mọi component đều là entry point" nghĩa là gì với cách bạn viết code? <em>(Chương 1.2, mục 5)</em></li>
-			<li>Manifest làm gì, và quên khai báo component thì lỗi xuất hiện lúc nào? <em>(Chương 1.3, mục 6)</em></li>
-			<li>Resource là gì, và Android chọn đúng bản cho từng thiết bị/ngôn ngữ bằng cách nào? <em>(Chương 1.3, mục 7)</em></li>
-			<li>Gradle làm gì, và <code>isMinifyEnabled</code> quyết định điều gì? <em>(mục 8 của chương này)</em></li>
+			<li>Vì sao framework Android buộc phải to, và cách học nó lành mạnh là gì? <em>(bài 1.1, mục 1)</em></li>
+			<li>Vì sao khoá học chọn Kotlin, và đánh đổi của framework đa nền tảng là gì? <em>(bài 1.1, mục 2)</em></li>
+			<li>Security sandbox nói gì, và vì sao nó là gốc của mọi chuyện về permission? <em>(bài 1.1, mục 3)</em></li>
+			<li>Bốn component là gì, và vì sao "một Activity nhiều màn hình" mới là kiến trúc nên dùng? <em>(bài 1.2, mục 4)</em></li>
+			<li>"Mọi component đều là entry point" nghĩa là gì với cách bạn viết code? <em>(bài 1.2, mục 5)</em></li>
+			<li>Manifest làm gì, và quên khai báo component thì lỗi xuất hiện lúc nào? <em>(bài 1.3, mục 6)</em></li>
+			<li>Resource là gì, và Android chọn đúng bản cho từng thiết bị/ngôn ngữ bằng cách nào? <em>(bài 1.3, mục 7)</em></li>
+			<li>Gradle làm gì, và <code>isMinifyEnabled</code> quyết định điều gì? <em>(mục 8 của bài này)</em></li>
 		</ol>
 	</div>
 	<p>
@@ -531,8 +537,8 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 		mô tả bản <em>hiện tại</em>, còn project của khoá học đứng ở cuối 2023 — chỗ nào lệch thì mục Cạm bẫy dưới đây đã ghi lại.
 	</p>
 	<p>
-		<strong>Tiếp theo — Chương 2:</strong> chuyển hẳn sang thực hành. Cài Android Studio, tạo project Kodeco Chat, tạo máy ảo, chạy
-		app đầu tiên. Toàn bộ code minh hoạ bạn vừa xem trong Chương 1 chính là project của chương đó — nên bạn sẽ gặp lại chúng, lần
+		<strong>Tiếp theo:</strong> khoá học chuyển hẳn sang thực hành. Cài Android Studio, tạo project, tạo máy ảo, chạy
+		app đầu tiên. Toàn bộ code minh hoạ bạn vừa xem trong Chương 1 chính là project bạn sẽ tạo — nên bạn sẽ gặp lại chúng, lần
 		này với đầy đủ ngữ cảnh và tự tay gõ.
 	</p>
 
@@ -540,8 +546,7 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 	<p>
 		Gradle là nơi tài liệu lỗi thời gây tốn thời gian nhất, vì lỗi build không chỉ ra dòng code nào của bạn sai. Bốn điểm dưới đây
 		đáng đọc trước khi bạn dán bất cứ đoạn cấu hình nào từ mạng vào project.
-	</p>
-	<p class="notice">
+	</p>	<p class="notice">
 		<strong>1. Đoạn cấu hình từ mạng thường viết bằng Groovy, project này dùng Kotlin.</strong> Đây là cạm bẫy phổ biến nhất với
 		người mới. Rất nhiều câu trả lời trên các diễn đàn được viết trước khi Kotlin DSL phổ biến, nên chúng dùng cú pháp Groovy — dán
 		vào file <code>.kts</code> là lỗi cú pháp ngay, và thông báo lỗi không hề nói "bạn dán sai ngôn ngữ". Cách kiểm trong 2 giây:
@@ -559,7 +564,7 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 		(<code>org.jetbrains.kotlin.plugin.compose</code>) — khối <code>composeOptions</code> với dòng
 		<code>kotlinCompilerExtensionVersion</code> không còn cần nữa. Nếu bạn tạo project mới bằng Android Studio bản hiện tại rồi so
 		với project của khoá học, đây là chỗ lệch dễ thấy nhất. Đừng cố "sửa" project cho giống bản mới — nó đang khớp với Kotlin
-		<code>1.9.10</code> mà nó ghim, và nó build được. Chương 4 nói kỹ hơn.
+		<code>1.9.10</code> mà nó ghim, và nó build được. Bài Gradle chuyên sâu nói kỹ hơn.
 	</p>
 	<p class="notice">
 		<strong>3. Con số <code>compileSdk = 34</code> trông cũ, nhưng đó không phải lỗi cần sửa.</strong> Android đã ra thêm nhiều bản
@@ -573,19 +578,18 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 		— giờ được gộp vào <strong>Jetpack</strong>, và trang kiến trúc chính thức mang tên "Guide to app architecture". Nội dung vẫn là
 		thứ đó, chỉ khác nhãn. Biết cả hai tên giúp bạn không bỏ sót tài liệu tốt chỉ vì nó dùng tên cũ.
 	</p>
-
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<ul>
 		<li>
-			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 98 (điều kiện "code sẵn sàng, resource đã nạp, component đã khai
-			báo" → biên dịch bằng Gradle; Gradle "as scary as it is powerful") · dòng 100 (Android Gradle plugin là cách dễ nhất, thêm
-			tính năng riêng cho Android, vẫn viết script riêng được) · dòng 102 (Groovy hoặc Kotlin; chọn Kotlin theo khuyến nghị của
-			Google; ba lợi thế IDE support / compile-time checking / better readability) · dòng 104 (bản release: code được biên dịch và
-			lý tưởng là obfuscate thành một file để tự phân phối hoặc qua app store) · dòng 108 ("that's a lot of stuff to go through" —
-			trấn an người học) · dòng 110–114 (lộ trình chương: Android Studio, nền tảng app, Gradle, Compose, state, navigation,
-			network, lưu dữ liệu, best practice; và cách các project nối tiếp nhau) · dòng 118–120 (lời hứa về nền vững sau khi học hết)
-			· dòng 124–128 (năm điểm chính; bản gốc điểm 2 in sai chính tả "Receviers") · dòng 132–136 (gợi ý nguồn đào sâu: thư viện nội
-			dung Kodeco, <code>developer.android.com/docs</code>, <code>kotlinlang.org/docs</code>).
+			<strong>Giáo trình gốc:</strong> <em>Android Fundamentals by Tutorials</em> (Kodeco), Chương 1 — <code>{BOOK}</code> — dòng 98
+			(điều kiện "code sẵn sàng, resource đã nạp, component đã khai báo" → biên dịch bằng Gradle; Gradle "as scary as it is
+			powerful") · dòng 100 (Android Gradle plugin là cách dễ nhất, thêm tính năng riêng cho Android, vẫn viết script riêng được) ·
+			dòng 102 (Groovy hoặc Kotlin; chọn Kotlin theo khuyến nghị của Google; ba lợi thế IDE support / compile-time checking / better
+			readability) · dòng 104 (bản release: code được biên dịch và lý tưởng là obfuscate thành một file để tự phân phối hoặc qua app
+			store) · dòng 108 ("that's a lot of stuff to go through" — trấn an người học) · dòng 110–114 (lộ trình học: Android Studio, nền
+			tảng app, Gradle, Compose, state, navigation, network, lưu dữ liệu, best practice; và cách các project nối tiếp nhau) · dòng
+			118–120 (lời hứa về nền vững sau khi học hết) · dòng 124–128 (năm điểm chính) · dòng 132–136 (gợi ý nguồn đào sâu:
+			<code>developer.android.com/docs</code>, <code>kotlinlang.org/docs</code>).
 		</li>
 		<li>
 			<strong>Code thật đã đối chiếu:</strong> <code>{FINAL}/build.gradle.kts</code> (dòng 1–5, toàn bộ file; dòng 3 = AGP

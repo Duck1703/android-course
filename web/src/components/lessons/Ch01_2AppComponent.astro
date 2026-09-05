@@ -32,30 +32,32 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 
 <section class="lesson">
 	<div class="callout goals">
-		<strong>Bạn sẽ học được gì trong chương này</strong>
+		<strong>Bạn sẽ học được gì trong bài này</strong>
 		<ul>
 			<li><strong>Bốn app component</strong> — Activity, Service, Content Provider, Broadcast Receiver — mỗi loại giải
 				quyết kiểu nhu cầu nào, và vì sao chúng không phải bốn cách làm cùng một việc.</li>
 			<li><strong>Activity đã thay đổi lịch sử ra sao</strong>: từ "một Activity = một màn hình" sang "nhiều màn hình trong
 				một Activity", và lý do kỹ thuật đứng sau sự đổi hướng đó.</li>
-			<li>Vì sao <strong>cả 11 project của khoá học chỉ có đúng một Activity</strong> — và điều đó nói gì về tài liệu
-				Android cũ bạn có thể gặp trên mạng.</li>
-			<li><strong>Đối chiếu lý thuyết với code thật:</strong> tìm cả bốn loại component trong mọi
-				<code>AndroidManifest.xml</code> của khoá học, kết quả là gì, và nên đặt kỳ vọng học tới đâu cho mỗi loại.</li>
-			<li><strong>"Mọi component đều là entry point"</strong> — câu dễ đọc trôi qua nhưng là câu quan trọng nhất của Chương
-				1, cùng khái niệm <strong>inversion of control</strong> mà nó ngụ ý.</li>
+			<li><strong>"Mọi component đều là entry point"</strong> — cùng khái niệm <strong>inversion of control</strong> mà nó
+				ngụ ý: hệ thống gọi bạn, không phải bạn gọi hệ thống.</li>
 			<li><strong>Intent</strong> và <strong>Content Resolver</strong>: hai cơ chế liên lạc, dùng cái nào là do loại
 				component quyết định chứ không phải bạn chọn.</li>
-			<li>Vì sao Intent được mô tả là "tin nhắn gửi cho <em>hệ thống</em>" chứ không phải "cái mở Activity" — và mối liên hệ
-				trực tiếp với security sandbox ở Chương 1.1.</li>
-			<li>Hai chữ <strong>"Intent"</strong> hoàn toàn khác nhau trong khoá học này, ghi trước để tới Chương 6 không bị lẫn.</li>
+			<li>Hai chữ <strong>"Intent"</strong> hoàn toàn khác nhau trong khoá học này, ghi trước để đỡ lẫn về sau.</li>
 		</ul>
+		<p>
+			<strong>Tại sao quan trọng:</strong> "component" và "entry point" là cách Android tổ chức mọi app — hiểu sai từ đầu
+			thì mọi chương sau đều đọc lệch.
+		</p>
+		<p>
+			<strong>Cần biết trước:</strong> bài 1.1 — security sandbox và hai chiều cô lập của nó. Hai khái niệm đó được dùng
+			trực tiếp ở mục 5.
+		</p>
 	</div>
 
 	<div class="callout">
-		<strong>Chương 1.1 đã dựng nền cho chương này:</strong> mỗi app bị khoá trong <strong>security sandbox</strong> riêng,
+		<strong>Nối tiếp bài 1.1:</strong> mỗi app bị khoá trong <strong>security sandbox</strong> riêng,
 		và mọi giao tiếp ra ngoài phải đi qua hệ thống Android. Giờ tới câu hỏi kế tiếp: bên trong cái hộp đó, app được ghép từ
-		những mảnh gì? Chương 1.2 trả lời bằng bốn <strong>app component</strong>, rồi chỉ ra cơ chế để chúng gọi nhau —
+		những mảnh gì? Bài này trả lời bằng bốn <strong>app component</strong>, rồi chỉ ra cơ chế để chúng gọi nhau —
 		<strong>Intent</strong> — chính là hệ quả trực tiếp của chuyện sandbox.
 	</div>
 
@@ -91,9 +93,9 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 	<div class="callout">
 		<strong>Vì sao chi tiết lịch sử này quan trọng đến vậy</strong>
 		<p>
-			Nó giải thích một điều bạn sẽ thấy suốt cả khoá học và có thể thấy lạ: <strong>cả 11 project chỉ có đúng một
-			Activity</strong>, tên <code>MainActivity</code>. App chat ở Chương 5–7 có nhiều màn hình (danh sách hội thoại, khung
-			chat…) nhưng vẫn chỉ một Activity duy nhất.
+			Nó giải thích một điều bạn sẽ thấy suốt cả khoá học và có thể thấy lạ: <strong>các project mẫu chỉ có đúng một
+			Activity</strong>, tên <code>MainActivity</code>. App chat đi kèm phần sau của khoá học có nhiều màn hình (danh sách
+			hội thoại, khung chat…) nhưng vẫn chỉ một Activity duy nhất.
 		</p>
 		<p>
 			Nếu bạn từng đọc tài liệu Android cũ (hoặc code Android từ khoảng 2015), bạn sẽ gặp kiểu "mỗi màn hình một Activity, khai
@@ -101,13 +103,16 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 			resource-heavy ở trên chính là lời giải thích cho việc kiến trúc đã đổi.
 		</p>
 		<p>
-			Còn "nhiều màn hình trong một Activity" thì được thực hiện thế nào? Bằng <strong>navigation</strong> — chuyển màn hình
-			bên trong Compose, nội dung của <strong>Chương 8</strong>.
+			Còn "nhiều màn hình trong một Activity" thì được thực hiện thế nào? Bằng <strong>navigation</strong> (điều hướng) —
+			chuyển màn hình bên trong Compose, một phần sẽ học ở phần kiến trúc của khoá học.
 		</p>
 	</div>
-	<p>Đây là Activity duy nhất của app Kodeco Chat, dạng đơn giản nhất mà bạn sẽ gặp:</p>
+	<p>Đây là Activity duy nhất của app mẫu, dạng đơn giản nhất mà bạn sẽ gặp:</p>
 	<Code code={mainActivityCode} lang="kotlin" theme="github-dark" />
-	<p>Chưa cần hiểu từng dòng — Chương 2 và 5 sẽ mổ kỹ. Bây giờ chỉ cần thấy ba điều:</p>
+	<p>
+		Đoạn này chứa cú pháp Kotlin và Compose mà bạn chưa được học — đó là bình thường, vì đây mới là bài 1.2. Chỉ cần thấy ba
+		điều, đủ để hiểu Activity trông ra sao:
+	</p>
 	<ul>
 		<li>
 			<code>class MainActivity : ComponentActivity()</code> — đây là <em>một</em> Activity, được khai bằng cách kế thừa
@@ -118,8 +123,8 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 			Đây là biểu hiện cụ thể của câu "component là entry point" ở mục 5.
 		</li>
 		<li>
-			<code>setContent &#123; ... &#125;</code> là chỗ giao diện bắt đầu. Mọi thứ trong cặp ngoặc đó là Jetpack Compose — thứ
-			Chương 5 dạy đầy đủ.
+			<code>setContent &#123; ... &#125;</code> là chỗ giao diện bắt đầu. Mọi thứ trong cặp ngoặc đó là Jetpack Compose —
+			bộ công cụ giao diện mà khoá học sẽ dạy đầy đủ ở phần giao diện.
 		</li>
 	</ul>
 	<h3>4.2 — Service: giữ app làm việc khi bạn không nhìn</h3>
@@ -153,15 +158,16 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 	</p>
 	<div class="callout journey">
 		<strong>"Những cách khác" đó là gì, và học ở đâu</strong>
-		<p>Ba chương cuối của khoá học đúng là để trả lời câu đó:</p>
+		<p>Phần sau của khoá học đúng là để trả lời câu đó:</p>
 		<ul>
-			<li><strong>Chương 9</strong> — <code>DataStore</code>: lưu các thiết lập nhỏ, dạng khoá–giá trị.</li>
-			<li><strong>Chương 10</strong> — <code>Room</code>: cơ sở dữ liệu trên máy, cho dữ liệu có cấu trúc và nhiều bản ghi.</li>
-			<li><strong>Chương 11</strong> — Advanced Storage: lưu dữ liệu có bảo mật.</li>
+			<li><strong>DataStore</strong>: lưu các thiết lập nhỏ, dạng khoá–giá trị.</li>
+			<li><strong>Room</strong>: cơ sở dữ liệu trên máy, cho dữ liệu có cấu trúc và nhiều bản ghi.</li>
+			<li><strong>Advanced Storage</strong>: lưu dữ liệu có bảo mật.</li>
 		</ul>
 		<p>
-			Nghĩa là caveat trên không phải một câu nói cho có: nó là <em>bản đồ đường</em> tới 3 chương cuối. Và nó cũng giải
-			thích vì sao bạn sẽ <strong>không</strong> gặp Content Provider ở đâu trong khoá học này — xem bảng ở mục 4.5.
+			Nghĩa là caveat trên không phải một câu nói cho có: nó là <em>bản đồ đường</em> tới các bài lưu dữ liệu cuối khoá. Và
+			nó cũng giải thích vì sao bạn sẽ <strong>không</strong> gặp Content Provider ở đâu trong khoá học này — xem bảng ở mục
+			4.5.
 		</p>
 	</div>
 
@@ -183,8 +189,8 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 
 	<h3>4.5 — Đối chiếu với thực tế: lý thuyết dạy 4, project dùng 1</h3>
 	<p>
-		Đây là chỗ khoá học đi xa hơn lý thuyết được, vì đã mở được toàn bộ project đi kèm. Kết quả tìm kiếm trên
-		<strong>tất cả file <code>AndroidManifest.xml</code> của cả 11 chương</strong>:
+		Đây là chỗ khoá học đi xa hơn lý thuyết: đã mở toàn bộ project mẫu đi kèm để kiểm. Kết quả tìm kiếm trên
+		<strong>tất cả file <code>AndroidManifest.xml</code> của các project</strong>:
 	</p>
 	<table class="api">
 		<thead>
@@ -204,7 +210,7 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 			<tr>
 				<td><strong>Content Provider</strong></td>
 				<td><code>&lt;provider&gt;</code></td>
-				<td><strong>Không có ở đâu cả</strong> (0 kết quả) — bị thay hoàn toàn bởi DataStore và Room ở Chương 9–11.</td>
+				<td><strong>Không có ở đâu cả</strong> (0 kết quả) — bị thay hoàn toàn bởi DataStore và Room ở phần lưu dữ liệu cuối khoá.</td>
 			</tr>
 			<tr>
 				<td><strong>Broadcast Receiver</strong></td>
@@ -216,15 +222,15 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 	<div class="callout diff">
 		<strong>Bốn component được trình bày ngang nhau, nhưng bạn sẽ chỉ thực hành 1</strong>
 		<p>
-			Danh sách bốn component — và phần Key Points nhắc lại lần nữa — xếp chúng như bốn thứ ngang hàng. Điều đó
-			đúng về mặt <em>kiến thức nền tảng Android</em>. Nhưng về mặt <em>bạn sẽ gõ code cái nào</em>, thực tế lệch hẳn: cả khoá
-			học chỉ dùng Activity.
+			Danh sách bốn component — như mọi tài liệu nền tảng Android đều xếp — coi chúng như bốn thứ ngang hàng. Điều đó
+			đúng về mặt <em>kiến thức nền tảng Android</em>. Nhưng về mặt <em>bạn sẽ gõ code cái nào</em>, thực tế lệch hẳn: các
+			project của khoá học chỉ dùng Activity.
 		</p>
 		<p><strong>Vì vậy hãy đặt kỳ vọng đúng ngay từ đầu:</strong></p>
 		<ul>
 			<li>
-				<strong>Activity</strong> — học để <em>dùng</em>. Bạn sẽ gặp nó ở mọi chương, và Chương 3 dạy vòng đời (lifecycle)
-				của nó.
+				<strong>Activity</strong> — học để <em>dùng</em>. Bạn sẽ gặp nó ở mọi bài sau, và phần Android cơ bản sẽ dạy vòng đời
+				(lifecycle — vòng sống từ lúc tạo ra đến lúc bị huỷ) của nó.
 			</li>
 			<li>
 				<strong>Service, Content Provider, Broadcast Receiver</strong> — học để <em>nhận diện</em>. Đủ để bạn hiểu khi đọc
@@ -239,10 +245,9 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 	</div>
 	<h2 id="entry-point-intent">5. Entry point, Intent và Content Resolver: các component gọi nhau thế nào</h2>
 	<p>
-		Sau khi liệt kê bốn component, có một câu tổng kết dễ đọc trôi qua nhưng thực ra là câu quan trọng nhất của cả Chương 1:
-		<strong>tất cả component đều là <em>entry point</em> (điểm vào) của app</strong>.
-	</p>
-	<p>
+		Sau khi liệt kê bốn component, có một câu tổng kết dễ đọc trôi qua nhưng thực ra là câu quan trọng nhất của cả Chương 1
+		này: <strong>tất cả component đều là <em>entry point</em> (điểm vào) của app</strong>.
+	</p>	<p>
 		Ý nghĩa của nó: hệ thống Android <strong>có khả năng khởi chạy app của bạn</strong>, hoặc chí ít là
 		<strong>tạo một process cho nó</strong>, để thi hành bất cứ component nào nó đang muốn chạy. Chuyện này xảy ra trong
 		<strong>hai tình huống</strong>:
@@ -278,7 +283,7 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 		<p>
 			Đây gọi là <strong>inversion of control</strong> (đảo ngược quyền điều khiển) — bạn viết code để <em>được gọi</em>, không
 			phải để <em>gọi</em>. Chi tiết cụ thể nhất của ý này là hàm <code>onCreate()</code> ở mục 4.1: bạn viết nó nhưng không bao
-			giờ tự gọi nó. Chương 3 sẽ đi hết một vòng đời (lifecycle) đầy đủ của chuyện này.
+			giờ tự gọi nó. Phần Android cơ bản sẽ đi hết một vòng đời (lifecycle) đầy đủ của chuyện này.
 		</p>
 	</div>
 
@@ -308,7 +313,7 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 	<p>
 		Chú ý cách mô tả Intent: <strong>không</strong> phải "Intent mở Activity", mà Intent là tin nhắn <em>gửi cho hệ
 		thống</em>, và hệ thống mới là bên đi mở component. Sự phân biệt này chính là hệ quả trực tiếp của security sandbox ở
-		Chương 1.1, mục 3 — app không tự tay chạm vào app khác, mọi thứ đi qua hệ thống.
+		bài 1.1, mục 3 — app không tự tay chạm vào app khác, mọi thứ đi qua hệ thống.
 	</p>
 	<p>Intent có hai công dụng, xếp từ gần tới xa:</p>
 	<ul>
@@ -330,7 +335,7 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 	</p>
 
 	<div class="callout">
-		<strong>Tổng kết Chương 1.2</strong>
+		<strong>Tổng kết bài 1.2</strong>
 		<ul>
 			<li><strong>Bốn app component, bốn kiểu nhu cầu khác nhau:</strong> <strong>Activity</strong> (giao diện cho người dùng
 				tương tác) · <strong>Service</strong> (làm việc ở chế độ nền, không có giao diện) · <strong>Content Provider</strong>
@@ -338,11 +343,11 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 				thường chỉ chuyển việc cho component khác).</li>
 			<li><strong>Activity: một màn hình → nhiều màn hình.</strong> Thời đầu Android, một Activity là một màn hình. Nay kiến
 				trúc được ưu tiên là nhiều màn hình trong một Activity, vì tạo và duy trì Activity tốn tài nguyên. Chuyển màn hình bên
-				trong một Activity làm bằng navigation (Chương 8).</li>
-			<li><strong>Chỉ tạo Content Provider khi thật sự muốn chia sẻ dữ liệu.</strong> Chỉ cần lưu thì dùng DataStore (Chương 9),
-				Room (Chương 10) hoặc các cách bảo mật hơn (Chương 11).</li>
-			<li><strong>Đối chiếu code thật: lý thuyết 4, thực hành 1.</strong> Tìm trên mọi <code>AndroidManifest.xml</code> của 11
-				project: chỉ có <code>&lt;activity&gt;</code>; <code>&lt;service&gt;</code>, <code>&lt;provider&gt;</code>,
+				trong một Activity làm bằng navigation trong Compose.</li>
+			<li><strong>Chỉ tạo Content Provider khi thật sự muốn chia sẻ dữ liệu.</strong> Chỉ cần lưu thì dùng DataStore, Room
+				hoặc các cách bảo mật hơn — những phần này ở cuối khoá học.</li>
+			<li><strong>Đối chiếu code thật: lý thuyết 4, thực hành 1.</strong> Tìm trên mọi <code>AndroidManifest.xml</code> của các
+				project mẫu: chỉ có <code>&lt;activity&gt;</code>; <code>&lt;service&gt;</code>, <code>&lt;provider&gt;</code>,
 				<code>&lt;receiver&gt;</code> đều 0 kết quả. Học Activity để <em>dùng</em>, ba loại kia để <em>nhận diện</em>.</li>
 			<li><strong>Mọi component đều là entry point.</strong> App không có một <code>main()</code> duy nhất; hệ thống gọi bạn,
 				không phải bạn gọi hệ thống — đó là <strong>inversion of control</strong>, và <code>onCreate()</code> là ví dụ cụ thể
@@ -354,9 +359,9 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 		</ul>
 	</div>
 	<p>
-		<strong>Tiếp theo — Chương 1.3:</strong> bạn vừa biết hệ thống có thể khởi chạy bất cứ component nào của app. Nhưng
+		<strong>Tiếp theo — bài 1.3:</strong> bạn vừa biết hệ thống có thể khởi chạy bất cứ component nào của app. Nhưng
 		<em>làm sao hệ thống biết app bạn có những component nào?</em> Câu trả lời là một file khai báo:
-		<code>AndroidManifest.xml</code>. Chương 1.3 mở file manifest thật ra đọc từng dòng, rồi sang
+		<code>AndroidManifest.xml</code>. Bài 1.3 mở file manifest thật ra đọc từng dòng, rồi sang
 		<strong>app resources</strong> — cách Android tách hình ảnh, chuỗi chữ, màu sắc ra khỏi code, kèm một chuỗi tham chiếu
 		resource 3 tầng lần theo trong code thật.
 	</p>
@@ -370,7 +375,7 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 		vẫn dạy mô hình một-Activity-một-màn-hình, kèm cả chục thẻ <code>&lt;activity&gt;</code> trong manifest và
 		<code>startActivity()</code> để chuyển màn hình. Code đó <em>vẫn chạy</em>, nên bạn sẽ không thấy lỗi gì — đó mới là chỗ
 		bẫy. Vấn đề là mỗi Activity là một component nặng của hệ thống, và kiến trúc được khuyến nghị hiện nay là
-		<strong>một Activity duy nhất</strong> chứa nhiều màn hình, chuyển qua lại bằng navigation trong Compose (Chương 8). Nếu
+		<strong>một Activity duy nhất</strong> chứa nhiều màn hình, chuyển qua lại bằng navigation trong Compose. Nếu
 		bạn theo tutorial cũ, bạn sẽ viết một app nặng hơn cần thiết rồi sau này phải làm lại toàn bộ.
 	</p>
 	<p class="notice">
@@ -380,12 +385,11 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 		đó bằng <strong>Jetpack Compose + navigation</strong>, nên bạn sẽ không gặp <code>Fragment</code> ở bất kỳ đâu.
 		<code>Fragment</code> chưa bị xoá khỏi Android và vẫn có project thật dùng nó, nên biết tên là tốt — chỉ đừng tưởng mình
 		bỏ sót một phần bắt buộc.
-	</p>
-	<p class="notice">
+	</p>	<p class="notice">
 		<strong>3. Hai chữ "Intent" hoàn toàn khác nhau — nhớ trước để đỡ nhầm về sau.</strong> Chữ <em>Intent</em> sẽ xuất hiện
-		lại ở <strong>Chương 6</strong> trong kiến trúc <strong>MVI</strong> (Model-View-Intent). Hai thứ này
-		<strong>không liên quan gì đến nhau</strong>, chỉ trùng tên: <code>android.content.Intent</code> — của Chương 1 này — là
-		một <em>đối tượng</em> của Android để mở component; còn <strong>"Intent" trong MVI</strong> — của Chương 6 — mang nghĩa
+		lại ở phần kiến trúc của khoá học trong pattern <strong>MVI</strong> (Model-View-Intent — một kiểu tổ chức code app). Hai
+		thứ này <strong>không liên quan gì đến nhau</strong>, chỉ trùng tên: <code>android.content.Intent</code> — của bài này —
+		là một <em>đối tượng</em> của Android để mở component; còn <strong>"Intent" trong MVI</strong> mang nghĩa
 		tiếng Anh thông thường, "<em>ý định của người dùng</em>", kiểu "người dùng muốn gửi tin nhắn này", và trong code nó chỉ là
 		một lời gọi hàm bình thường. Đây là một trong những chỗ gây nhầm nhiều nhất khi tự học.
 	</p>
@@ -393,14 +397,14 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<ul>
 		<li>
-			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 33 (định nghĩa component, bốn loại) · dòng 35 (Activity và
-			sự thay đổi lịch sử) · dòng 36 (Service) · dòng 37 (Content Provider và caveat chỉ-tạo-khi-muốn-chia-sẻ) · dòng 38
-			(Broadcast Receiver) · dòng 40 (mọi component là entry point) · dòng 42–43 (hai tình huống hệ thống khởi chạy app) ·
-			dòng 45–49 (Intent và Content Resolver) · dòng 125 (Key Points nhắc lại bốn component).
+			<strong>Giáo trình gốc:</strong> <em>Android Fundamentals by Tutorials</em> (Kodeco), Chương 1 — <code>{BOOK}</code> —
+			dòng 33 (định nghĩa component, bốn loại) · dòng 35 (Activity và sự thay đổi lịch sử) · dòng 36 (Service) · dòng 37
+			(Content Provider và caveat chỉ-tạo-khi-muốn-chia-sẻ) · dòng 38 (Broadcast Receiver) · dòng 40 (mọi component là entry
+			point) · dòng 42–43 (hai tình huống hệ thống khởi chạy app) · dòng 45–49 (Intent và Content Resolver).
 		</li>
 		<li>
 			<strong>Code thật đã đối chiếu:</strong> <code>{SRC}/MainActivity.kt</code> (dòng 15–30) — Activity duy nhất của app
-			Kodeco Chat · đã tìm <code>&lt;activity&gt;</code> / <code>&lt;service&gt;</code> / <code>&lt;provider&gt;</code> /
+			mẫu · đã tìm <code>&lt;activity&gt;</code> / <code>&lt;service&gt;</code> / <code>&lt;provider&gt;</code> /
 			<code>&lt;receiver&gt;</code> trên toàn bộ <code>AndroidManifest.xml</code> của 11 project để dựng bảng ở mục 4.5.
 		</li>
 		<li>

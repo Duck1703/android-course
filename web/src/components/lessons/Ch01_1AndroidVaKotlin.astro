@@ -28,61 +28,54 @@ const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/
 
 <section class="lesson">
 	<div class="callout goals">
-		<strong>Bạn sẽ học được gì trong chương này</strong>
+		<strong>Bạn sẽ học được gì trong bài này</strong>
 		<ul>
 			<li>Vì sao framework Android <em>bắt buộc</em> phải khổng lồ — và vì sao bạn không cần biết hết nó mới viết được app.</li>
-			<li>Chiến lược học duy nhất khả thi với một framework cỡ này, và vì sao cảm giác ngợp là bình thường.</li>
-			<li>Bốn lựa chọn công nghệ để làm app Android, và năm lý do khoá học này chọn <strong>Kotlin</strong>.</li>
+			<li>Chiến lược học "học tới đâu cần tới đó", và vì sao cảm giác ngợp là bình thường.</li>
+			<li>Bốn đường làm app Android, và năm lý do khoá học này chọn <strong>Kotlin</strong>.</li>
 			<li><strong>Security sandbox</strong>: mỗi app sống trong một vùng cô lập — đây là gốc rễ của mọi chuyện về quyền (permission) sau này.</li>
 			<li>Vì sao hiểu sandbox làm cho <code>AndroidManifest.xml</code> và <code>Intent</code> thôi trông rườm rà vô nghĩa.</li>
-			<li>Chỗ <em>duy nhất</em> trong cả khoá học thực sự xin quyền hệ thống, và vì sao nó xuất hiện đúng ở chương đó.</li>
 		</ul>
 		<p>
-			Ba chương nhỏ tiếp theo dạy phần còn lại của Chương 1, để bạn biết trước lộ trình:
-			<strong>Chương 1.2</strong> — bốn <strong>app component</strong> (Activity, Service, Content Provider, Broadcast
-			Receiver), mỗi cái làm gì, loại nào thực sự được dùng trong 11 project của khoá học, rồi
-			<strong>Intent</strong> và <strong>Content Resolver</strong> — cách các component gọi nhau, kể cả gọi sang app
-			khác. <strong>Chương 1.3</strong> — đọc được file <code>AndroidManifest.xml</code> thật dòng nào ra dòng nào, và
-			<strong>app resources</strong> là gì, kèm một chuỗi tham chiếu resource 3 tầng lần theo trong code thật.
-			<strong>Chương 1.4</strong> — <strong>Gradle</strong> làm gì trong bức tranh tổng thể, bốn con số trong build file
-			định vị project vào năm nào, và bản đồ toàn bộ 11 chương phía trước.
+			<strong>Tại sao quan trọng:</strong> đây là bài mở màn — nó không xây app nào, nhưng mọi khái niệm của nó (sandbox,
+			permission, Manifest, Intent) quay lại ở gần như toàn bộ phần còn lại của khoá học.
+		</p>
+		<p>
+			<strong>Cần biết trước:</strong> không có gì — bạn chỉ cần biết dùng máy tính. Bài này không đòi hỏi biết lập trình hay
+			biết Kotlin.
+		</p>
+		<p>
+			Ba bài tiếp theo của Chương 1, để bạn biết trước lộ trình: <strong>1.2</strong> — bốn app component và cách chúng gọi
+			nhau; <strong>1.3</strong> — đọc file <code>AndroidManifest.xml</code> và app resources; <strong>1.4</strong> —
+			<code>Gradle</code> làm gì, và bản đồ toàn khoá học phía trước.
 		</p>
 	</div>
 
 	<div class="callout">
-		<strong>Chương 1 làm gì trong cả khoá học:</strong> đây là chương <em>mở màn</em> — nó không xây app nào, không có
+		<strong>Bài này làm gì trong cả khoá học:</strong> đây là bài <em>mở màn</em> — nó không xây app nào, không có
 		bước nào để làm theo. Nhiệm vụ duy nhất của nó là <strong>vẽ bản đồ</strong>: một Android app gồm những mảnh gì, các
 		mảnh nói chuyện với nhau ra sao, và cái gì ghép chúng thành một file cài được.
 		<br /><br />
-		Nó <strong>chưa</strong> làm gì cả: chưa cài Android Studio (Chương 2), chưa viết một dòng Kotlin nào, chưa dựng giao
-		diện (Chương 5). Nhưng gần như mọi khái niệm bạn gặp ở đây sẽ quay lại — Activity ở Chương 3, Gradle ở Chương 4,
-		Compose ở Chương 5, permission ở Chương 8, lưu dữ liệu ở Chương 9–11. Vì vậy chương này đáng đọc chậm.
+		Nó <strong>chưa</strong> làm gì cả: chưa cài Android Studio, chưa viết một dòng Kotlin nào, chưa dựng giao diện. Nhưng
+		gần như mọi khái niệm bạn gặp ở đây sẽ quay lại — sandbox và permission xuyên suốt, Activity ở phần Android cơ bản,
+		Compose ở phần giao diện, mạng ở phần sau. Vì vậy bài này đáng đọc chậm.
 	</div>
 
 	<div class="callout journey">
-		<strong>Chương 1 không có project — và khoá học xử lý chuyện đó thế nào</strong>
+		<strong>Bài này không có project — và khoá học xử lý chuyện đó thế nào</strong>
 		<p>
-			Mọi chương khác đều đi kèm project <code>starter</code> (điểm bắt đầu) và <code>final</code> (đáp án). Chương 1
-			thì <strong>không</strong>. Đã mở thư mục thật để kiểm: cả 4 file trong thư mục chương 1 đều là file
-			<code>.keep</code> <strong>rỗng 0 byte</strong> — tức chỉ tồn tại để Git giữ lại thư mục trống, không có một dòng code
-			nào.
+			Mọi bài sau này đều đi kèm project mẫu để bạn làm theo. Bài này thì <strong>không</strong> — vì nó thuần lý thuyết, chưa
+			cài công cụ gì cả. Thay vào đó, bài làm hai việc:
 		</p>
-		<pre class="tree">01-welcome-to-android-and-kotlin/
-├── assets/.keep                 ← 0 byte
-└── projects/
-    ├── starter/.keep            ← 0 byte
-    ├── final/.keep              ← 0 byte
-    └── challenge/.keep          ← 0 byte</pre>
-		<p>Nên chương này làm hai việc thay thế, và nói rõ mỗi lần làm:</p>
 		<ul>
 			<li>
-				Với phần lý thuyết: đi hết tám khối kiến thức nền của chương, <strong>giải thích lại</strong> bằng tiếng Việt
+				Với phần lý thuyết: đi hết các khối kiến thức nền, <strong>giải thích lại</strong> bằng tiếng Việt
 				kèm mô hình tư duy (mental model) cho từng khái niệm.
 			</li>
 			<li>
-				Với phần code: mượn project <strong>Kodeco Chat</strong> của <strong>Chương 2</strong> làm ví dụ minh hoạ. Đây là
-				<em>tham chiếu tới trước</em> (forward reference) — chương luôn ghi rõ code đến từ chương khác, không giả vờ
-				Chương 1 có project.
+				Với phần code: mượn file thật từ project mẫu của khoá học làm ví dụ minh hoạ. Đây là
+				<em>tham chiếu tới trước</em> (forward reference) — bài luôn ghi rõ code đến từ project nào, để bạn không tưởng
+				đây là project mình sẽ tạo ngay bây giờ.
 			</li>
 		</ul>
 		<p>
@@ -149,7 +142,7 @@ const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/
 	<div class="callout">
 		<strong>Mô hình tư duy cho cả khoá học</strong>
 		<p>
-			Câu trên nhìn như một lời động viên, nhưng thực ra nó quyết định <em>cách bạn nên đọc 10 chương còn lại</em>. Android
+			Câu trên nhìn như một lời động viên, nhưng thực ra nó quyết định <em>cách bạn nên đọc phần còn lại của khoá học</em>. Android
 			có hàng nghìn class. Nếu bạn cố học theo kiểu "đọc hết tài liệu rồi mới làm", bạn sẽ không bao giờ tới được lúc làm.
 		</p>
 		<p>Cách đọc mà lời khuyên này ngụ ý:</p>
@@ -159,7 +152,7 @@ const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/
 				không cần học hết mọi tham số của nó.
 			</li>
 			<li>
-				Thấy một mục nói "bạn sẽ học ở chương sau" → tin nó và đi tiếp. Thứ tự các chương là cố ý; nhảy trước thường tốn
+				Thấy một mục nói "bạn sẽ học ở bài sau" → tin nó và đi tiếp. Thứ tự các bài là cố ý; nhảy trước thường tốn
 				thời gian hơn.
 			</li>
 			<li>
@@ -173,8 +166,7 @@ const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/
 	<p>
 		Trước khi nói về cấu tạo app, phải trả lời một câu hỏi thực tế: <em>viết app Android bằng cái gì?</em> Có
 		<strong>nhiều đường</strong>, chia thành hai nhóm rõ rệt.
-	</p>
-	<table class="api">
+	</p>	<table class="api">
 		<thead>
 			<tr><th>Hướng</th><th>Là gì</th><th>Đánh giá</th></tr>
 		</thead>
@@ -245,9 +237,10 @@ const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/
 		</p>
 	</div>
 	<p class="notice">
-		<strong>Chương 1 không dạy cú pháp Kotlin.</strong> Cả chương không có một dòng code Kotlin nào — chỉ có đúng một đoạn
-		XML (ở Chương 1.3). Kotlin ở đây xuất hiện thuần với vai trò <em>một quyết định công nghệ</em>. Bạn chưa cần biết
-		<code>val</code>, <code>fun</code> hay <code>class</code> là gì để đọc hết chương này.
+		<strong>Chương 1 không dạy cú pháp Kotlin.</strong> Cả Chương 1 không có một dòng code Kotlin nào — chỉ có vài đoạn
+		XML (bắt đầu từ bài 1.3). Kotlin ở đây xuất hiện thuần với vai trò <em>một quyết định công nghệ</em>. Bạn chưa cần biết
+		<code>val</code>, <code>fun</code> hay <code>class</code> là gì để đọc hết bài này. Cú pháp Kotlin sẽ có riêng một phần
+		nền tảng trước khi khoá học vào giao diện.
 	</p>
 	<h2 id="security-sandbox">3. Security sandbox: chuyện gì xảy ra trong app, ở lại trong app</h2>
 	<p>
@@ -314,16 +307,16 @@ const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/
 	<h3>Vì sao mục này được đặt ngay đầu, trước cả phần giới thiệu component</h3>
 	<p>
 		Vị trí của security sandbox là một quyết định trình bày đáng chú ý: nó đứng <strong>trước</strong> cả phần giới thiệu
-		component. Lý do là sandbox là <em>tiền đề</em> để hai chương nhỏ sau có nghĩa:
+		component. Lý do là sandbox là <em>tiền đề</em> để hai bài sau có nghĩa:
 	</p>
 	<ol class="chain">
 		<li>
 			Vì app bị cô lập, hệ thống <strong>phải biết trước</strong> app có những thành phần nào và muốn làm gì. Đó là lý do tồn
-			tại của file <strong>Manifest</strong> (Chương 1.3, mục 6) — bản khai báo mà app đưa cho hệ thống đọc.
+			tại của file <strong>Manifest</strong> (bài 1.3, mục 6) — bản khai báo mà app đưa cho hệ thống đọc.
 		</li>
 		<li>
 			Vì app không tự cầm tay gọi app khác được, mọi giao tiếp phải <strong>đi qua hệ thống</strong>. Đó là lý do tồn tại của
-			<strong>Intent</strong> (Chương 1.2, mục 5) — bạn gửi yêu cầu cho hệ thống, hệ thống mới mở component giúp bạn.
+			<strong>Intent</strong> (bài 1.2, mục 5) — bạn gửi yêu cầu cho hệ thống, hệ thống mới mở component giúp bạn.
 		</li>
 	</ol>
 	<p>
@@ -333,30 +326,29 @@ const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/
 
 	<h3>Nguyên tắc này biến thành code ở đâu</h3>
 	<p>
-		Manifest cũng là chỗ khai báo quyền (xem Chương 1.3, mục 6). Nhưng trong <strong>toàn bộ 11 project</strong> của khoá
-		học, chỉ có <strong>đúng một</strong> chỗ thực sự xin quyền hệ thống — và nó ở Chương 8:
+		Manifest cũng là chỗ khai báo quyền (bài 1.3 sẽ đọc file thật). Trong các project mẫu của khoá học, chỗ thực sự xin quyền
+		hệ thống đầu tiên xuất hiện ở phần <strong>mạng</strong> (Stage 5):
 	</p>
 	<Code code={permissionCode} lang="xml" theme="github-dark" />
 	<p>
 		Dòng <code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code> chính là app nói với hệ thống:
-		<em>"tôi cần một cánh cửa ra internet"</em>. Chương 8 là chương gọi mạng để lấy dữ liệu công thức nấu ăn, nên nó là
-		chương đầu tiên cần bước ra khỏi sandbox thật sự.
+		<em>"tôi cần một cánh cửa ra internet"</em>. App này gọi mạng để lấy dữ liệu công thức nấu ăn, nên nó là nơi đầu tiên
+		trong khoá học cần bước ra khỏi sandbox thật sự.
 	</p>
 	<p class="hint">
 		<strong>Điểm đáng chú ý:</strong> để ý là app <em>khai báo</em> quyền internet trong manifest, chứ không hiện hộp thoại
 		hỏi bạn. Android chia quyền thành nhiều mức; internet thuộc loại chỉ cần khai báo là được cấp, còn máy ảnh hay vị trí thì
-		phải hỏi người dùng lúc chạy. Chương 1 chưa phân biệt hai loại này — nhưng biết trước thì bạn không bị bối rối khi thấy
-		"khai quyền" mà không thấy hộp thoại nào.
+		phải hỏi người dùng lúc chạy. Biết trước điều này thì bạn không bị bối rối khi thấy "khai quyền" mà không thấy hộp thoại nào.
 	</p>
 
 	<div class="callout">
-		<strong>Tổng kết Chương 1.1</strong>
+		<strong>Tổng kết bài 1.1</strong>
 		<ul>
 			<li><strong>Framework Android khổng lồ là chuyện bắt buộc</strong>, không phải lỗi thiết kế: app phải chạm tới định vị,
 				âm thanh, video, mạng… nên bộ code nền phải đỡ được hết. Cộng thêm phần tiện ích cho lập trình viên, nó lớn tới mức
 				người làm nhiều năm cũng có lúc ngợp.</li>
 			<li><strong>Chiến lược học duy nhất khả thi: "học tới đâu cần tới đó".</strong> Gặp API lạ thì hiểu nó giải quyết vấn đề
-				gì và vì sao xuất hiện ở đây, không học hết mọi tham số. Thấy hẹn "chương sau" thì tin và đi tiếp.</li>
+				gì và vì sao xuất hiện ở đây, không học hết mọi tham số. Thấy hẹn "bài sau" thì tin và đi tiếp.</li>
 			<li><strong>Bốn đường làm app Android</strong>, chia hai nhóm: native (Java, Kotlin) và framework bên ngoài (React
 				Native, Flutter). Nhóm sau được lợi làm 2 nền tảng cùng lúc nhưng đánh đổi hiệu năng và độ sẵn có của API.</li>
 			<li><strong>Năm lý do chọn Kotlin:</strong> Google khuyến nghị chính thức từ 2019 · ngôn ngữ hiện đại, có cả OOP và
@@ -366,14 +358,14 @@ const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/
 				(hệ thống quyết định). Mô hình căn hộ + ban quản lý giữ được cả hai chiều.</li>
 			<li><strong>Sandbox là gốc rễ của Manifest và Intent.</strong> App bị cô lập nên hệ thống phải đọc được bản khai báo
 				(Manifest), và mọi lời gọi component phải đi qua hệ thống (Intent).</li>
-			<li><strong>Chương 1 không có project và không có code Kotlin</strong> — nó vẽ bản đồ. Code minh hoạ mượn từ Chương 2,
-				luôn ghi rõ nguồn.</li>
+			<li><strong>Bài này không có project và không có code Kotlin</strong> — nó vẽ bản đồ. Code minh hoạ mượn từ project mẫu
+				của khoá học, luôn ghi rõ nguồn.</li>
 		</ul>
 	</div>
 	<p>
-		<strong>Tiếp theo — Chương 1.2:</strong> bạn đã biết mỗi app bị khoá trong sandbox riêng. Giờ tới câu hỏi kế tiếp: bên
-		trong cái hộp đó, app được ghép từ những mảnh gì? Chương 1.2 giới thiệu <strong>bốn app component</strong> — Activity,
-		Service, Content Provider, Broadcast Receiver — mỗi cái làm gì, loại nào thực sự được dùng trong 11 project của khoá
+		<strong>Tiếp theo — bài 1.2:</strong> bạn đã biết mỗi app bị khoá trong sandbox riêng. Giờ tới câu hỏi kế tiếp: bên
+		trong cái hộp đó, app được ghép từ những mảnh gì? Bài 1.2 giới thiệu <strong>bốn app component</strong> — Activity,
+		Service, Content Provider, Broadcast Receiver — mỗi cái làm gì, loại nào thực sự được dùng trong project mẫu của khoá
 		học, rồi <strong>Intent</strong>: cơ chế để các component gọi nhau qua hệ thống, kể cả gọi sang app của người khác.
 	</p>
 
@@ -383,12 +375,11 @@ const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/
 		tồn tại.
 	</p>
 	<p class="notice">
-		<strong>1. "Chương mở đầu dạy Kotlin thuần trên Kotlin Playground" — không đúng.</strong> Có mô tả cho rằng chương mở đầu
-		không kèm project vì nó dạy cú pháp Kotlin trên <em>Kotlin Playground</em> (trang web chạy thử code Kotlin ngay trên
-		trình duyệt). Đã kiểm lại toàn bộ 137 dòng nội dung gốc của chương: <strong>không có</strong> phần nào dạy cú pháp Kotlin
-		và <strong>không hề nhắc</strong> Kotlin Playground (tìm chữ "playground" cho ra 0 kết quả). Lý do thật đơn giản hơn: đây
-		là chương <em>tổng quan bằng văn bản</em>, không có phần thực hành nào nên không cần project. Điều này quan trọng với bạn
-		vì nếu tin mô tả kia, bạn sẽ đi tìm bài tập Kotlin không tồn tại và tưởng mình bỏ sót một phần.
+		<strong>1. Đừng tìm bài tập Kotlin ở phần mở đầu của các giáo trình Android.</strong> Một số mô tả giáo trình gợi ý rằng
+		phần mở đầu dạy cú pháp Kotlin trên <em>Kotlin Playground</em> (trang web chạy thử code Kotlin ngay trên
+		trình duyệt). Phần mở đầu của khoá học này thì <strong>không</strong> — nó là phần <em>tổng quan bằng văn bản</em>, không có
+		phần thực hành nào nên không cần project. Điều này quan trọng với bạn vì nếu tin mô tả kia, bạn sẽ đi tìm bài tập Kotlin không tồn tại và tưởng mình bỏ sót một phần. Cú pháp Kotlin sẽ được học riêng ở phần
+		<strong>Nền tảng Kotlin</strong> của khoá học, ngay trước khi vào giao diện.
 	</p>
 	<p class="notice">
 		<strong>2. Đừng chờ hộp thoại xin quyền khi khai <code>INTERNET</code>.</strong> Rất nhiều hướng dẫn nói chung chung rằng
@@ -396,29 +387,29 @@ const permissionCode = `<manifest xmlns:android="http://schemas.android.com/apk/
 		Thực tế Android chia quyền thành nhiều mức: <em>normal permission</em> như <code>INTERNET</code> chỉ cần khai trong
 		manifest là hệ thống cấp luôn lúc cài, không hỏi gì; còn <em>dangerous / runtime permission</em> như máy ảnh, micro, vị
 		trí thì <strong>phải</strong> hỏi người dùng lúc chạy bằng code. Nếu bạn khai <code>INTERNET</code> rồi ngồi chờ hộp
-		thoại xuất hiện để test, bạn sẽ chờ mãi. Chương 1 chưa phân biệt hai loại này, nên ghi ở đây trước.
+		thoại xuất hiện để test, bạn sẽ chờ mãi. Phân biệt hai loại quyền này sẽ được dạy kỹ ở phần permission của Chương 1;
+		ở đây chỉ cần biết trước để không bối rối.
 	</p>
 
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<ul>
 		<li>
-			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 11–15 (bối cảnh 50 năm điện thoại di động, quy mô app
-			store) · dòng 17 (vì sao framework buộc phải khổng lồ) · dòng 21 ("learn it as you need it") · dòng 23–25 (bốn lựa
-			chọn công nghệ và năm lý do chọn Kotlin) · dòng 27–29 (security sandbox hai chiều) · dòng 86 (manifest khai báo
-			quyền).
+			<strong>Giáo trình gốc:</strong> <em>Android Fundamentals by Tutorials</em> (Kodeco), Chương 1 "Welcome to Android &amp;
+			Kotlin" — <code>{BOOK}</code> — dòng 11–15 (bối cảnh 50 năm điện thoại di động, quy mô app store) · dòng 17 (vì sao
+			framework buộc phải khổng lồ) · dòng 21 ("learn it as you need it") · dòng 23–25 (bốn lựa chọn công nghệ và năm lý do
+			chọn Kotlin) · dòng 27–29 (security sandbox hai chiều) · dòng 86 (manifest khai báo quyền).
 		</li>
 		<li>
-			<strong>Code thật đã đối chiếu:</strong> <code>{CH01}/</code> — đã đo dung lượng từng file, cả 4 file
-			<code>.keep</code> đều 0 byte, xác nhận chương 1 không có project ·
-			<code>{CH08}/AndroidManifest.xml</code> (dòng 1–16; dòng <strong>5</strong> là dòng
-			<code>uses-permission</code> duy nhất của cả khoá học) · đã tìm <code>uses-permission</code> trên
-			<code>AndroidManifest.xml</code> của cả 11 project để xác nhận tính duy nhất đó.
+			<strong>Code thật đã đối chiếu:</strong> <code>{CH01}/</code> — cả 4 file <code>.keep</code> đều 0 byte, xác nhận chương
+			nguồn không có project · <code>{CH08}/AndroidManifest.xml</code> (dòng 1–16; dòng <strong>5</strong> là dòng
+			<code>uses-permission</code>) · đã tìm <code>uses-permission</code> trên <code>AndroidManifest.xml</code> của cả 11
+			project để xác nhận đó là ví dụ đầu tiên xuất hiện.
 		</li>
 		<li>
 			<strong>Phần bổ sung ngoài giáo trình:</strong> giải thích khái niệm "framework", "native", "API", "sandbox" cho người
 			mới · mô hình tư duy căn hộ – ban quản lý · phân tích bố cục lập luận 5 lý do chọn Kotlin · lý do sandbox được đặt
-			trước phần component · phân biệt normal permission và runtime permission · đính chính mô tả "chương mở đầu dạy Kotlin
-			Playground".
+			trước phần component · phân biệt normal permission và runtime permission · làm rõ phần mở đầu không dạy Kotlin
+			Playground.
 		</li>
 	</ul>
 </section>
