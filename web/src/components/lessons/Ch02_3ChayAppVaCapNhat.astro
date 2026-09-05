@@ -62,27 +62,22 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 			sang Chương 3.
 		</p>
 	</div>
-	<div class="callout">
+		<div class="callout">
 		<strong>Bắc cầu từ Chương 2.2</strong>
 		<p>
-			Hết Chương 2.2 bạn đã có hai thứ: <strong>một chỗ để chạy app</strong> — máy ảo AVD dựng ở mục 5, hoặc điện thoại
-			thật đã bật USB Debugging ở mục 6 — và <strong>một project mà bạn đọc hiểu được từng file</strong>, sau khi mục 7 mở
-			lần lượt <code>MainActivity.kt</code>, <code>AndroidManifest.xml</code>, ba file trong <code>ui/theme/</code>, hai
-			file Gradle, <code>strings.xml</code> và <code>settings.gradle.kts</code>.
-		</p>
-		<p>
-			Nhưng tới giờ bạn vẫn <em>chưa</em> chạy app lần nào. Toàn bộ những gì đã đọc còn là chữ nằm trong editor. Chương
-			2.3 làm ba việc để đóng lại Chương 2: bấm <strong>Run App</strong> và xem chuỗi việc thật xảy ra phía sau, sửa một
-			dòng chữ để app chào chính bạn, rồi học cách giữ cho bộ công cụ không lạc hậu về sau.
+			Hết Chương 2.2 bạn đã có <strong>một chỗ để chạy app</strong> (máy ảo AVD hoặc máy thật đã bật USB Debugging) và
+			<strong>một project mà bạn đọc hiểu được từng file</strong>. Nhưng tới giờ bạn vẫn <em>chưa</em> chạy app lần nào —
+			toàn bộ những gì đã đọc còn là chữ nằm trong editor. Chương 2.3 làm ba việc để đóng lại Chương 2: bấm
+			<strong>Run App</strong> và xem chuỗi việc thật xảy ra phía sau, sửa một dòng chữ để app chào chính bạn, rồi học
+			cách giữ cho bộ công cụ không lạc hậu về sau.
 		</p>
 	</div>
 	<div class="callout note">
 		<strong>Bản ghim của khoá học và bản hiện hành — đọc cho khỏi nhầm.</strong> Mọi số phiên bản trong khoá học (Android
-		Studio Hedgehog, AGP 8.2.0, Kotlin 1.9.10, Gradle 8.2, Compose BOM 2023.10.00) là <strong>bản ghim của project
-		mẫu cuối 2023</strong> — chúng dùng để đối chiếu code thật, không phải con số "mới nhất" và cũng không phải thứ bạn
-		cần cài theo. Về phía Google: Android Studio và Android SDK vẫn được phát hành liên tục, mỗi năm vài bản. Cả hai
-		thứ cùng tồn tại một cách bình thường — mục 10 sẽ cho thấy vì sao bạn vẫn học được toàn bộ khoá này bằng bộ công cụ
-		hôm nay, dù nó mới hơn project mẫu.
+		Studio Hedgehog, AGP 8.2.0, Kotlin 1.9.10, Gradle 8.2, Compose BOM 2023.10.00) là <strong>bản ghim của project mẫu
+		cuối 2023</strong> — chúng dùng để đối chiếu code thật, không phải con số "mới nhất" và cũng không phải thứ bạn cần
+		cài theo. Về phía Google: Android Studio và Android SDK vẫn được phát hành liên tục, mỗi năm vài bản. Vì sao hai thứ
+		cùng tồn tại bình thường và bạn vẫn học được toàn bộ khoá này bằng bộ công cụ hôm nay — mục 10 sẽ cho thấy.
 	</div>
 
 	<h2 id="chay-app">8. Chạy app và sửa chữ thấy đổi ngay</h2>
@@ -117,8 +112,8 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 			<li><strong>Đóng gói.</strong> DEX cộng toàn bộ resource (<code>strings.xml</code>, icon, theme) cộng
 				<code>AndroidManifest.xml</code> được nén thành <strong>một file APK</strong> duy nhất.</li>
 			<li><strong>Ký.</strong> Android từ chối cài app không có chữ ký, nên Android Studio tự ký APK bằng một
-				<em>debug key</em> sinh sẵn trên máy bạn. Đây là lý do bạn chưa phải làm gì về chữ ký ở chương này — Chương 4.3,
-				mục 11 mới nói tới việc ký bản phát hành thật.</li>
+				<em>debug key</em> sinh sẵn trên máy bạn. Đây là lý do bạn chưa phải làm gì về chữ ký ở chương này — phần Gradle
+				chuyên sâu của khoá học mới nói tới việc ký bản phát hành thật.</li>
 			<li><strong>Cài và mở.</strong> APK được đẩy sang thiết bị qua <code>adb</code> rồi cài. Sau đó hệ điều hành mở
 				<em>đúng</em> Activity nào được đánh dấu là điểm vào trong Manifest — chính thẻ
 				<code>&lt;intent-filter&gt;</code> bạn đã thấy ở Chương 2.2, mục 7.2.</li>
@@ -183,8 +178,8 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 	<div class="callout">
 		<strong>Dòng chữ đó đi đường nào ra tới màn hình</strong>
 		<p>
-			Bạn vừa sửa một tham số chuỗi, nhưng nó đi qua bốn chặng trước khi thành pixel. Nắm chặng này bây giờ giúp Chương 5
-			nhẹ hơn rất nhiều:
+			Bạn vừa sửa một tham số chuỗi, nhưng nó đi qua bốn chặng trước khi thành pixel. Nắm chặng này bây giờ giúp phần
+			Jetpack Compose của khoá học nhẹ hơn rất nhiều:
 		</p>
 		<ol class="chain">
 			<li><code>Greeting("Fuad")</code> — bạn <em>gọi</em> một hàm và truyền vào một chuỗi.</li>
@@ -260,13 +255,13 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 			</tr>
 		</tbody>
 	</table>
-	<p>
-		Đây là lý do Compose đổi hẳn cảm giác làm giao diện: vòng lặp "sửa → thấy kết quả" rút từ vài chục giây xuống gần như
-		tức thì. Nhưng Live Edit có giới hạn rõ ràng, và biết trước sẽ tiết kiệm cho bạn nhiều lần bối rối: nó xử lý tốt
-		<strong>thay đổi bên trong thân một hàm composable</strong>, còn ba loại thay đổi sau thì vẫn phải build lại — đổi
-		<em>chữ ký</em> hàm (thêm hay bớt tham số), thêm class hoặc hàm mới, và sửa file Gradle. Chương 5, mục 7 sẽ dùng
-		<code>@Preview</code> làm công cụ chính, nên hãy giữ sự phân biệt này trong đầu.
-	</p>
+		<p>
+			Đây là lý do Compose đổi hẳn cảm giác làm giao diện: vòng lặp "sửa → thấy kết quả" rút từ vài chục giây xuống gần như
+			tức thì. Nhưng Live Edit có giới hạn rõ ràng, và biết trước sẽ tiết kiệm cho bạn nhiều lần bối rối: nó xử lý tốt
+			<strong>thay đổi bên trong thân một hàm composable</strong>, còn ba loại thay đổi sau thì vẫn phải build lại — đổi
+			<em>chữ ký</em> hàm (thêm hay bớt tham số), thêm class hoặc hàm mới, và sửa file Gradle. Phần Jetpack Compose của
+			khoá học sẽ dùng <code>@Preview</code> làm công cụ chính, nên hãy giữ sự phân biệt này trong đầu.
+		</p>
 	<p>
 		Cuối phần chạy app có một quan sát nhỏ mà rất nhiều người thắc mắc: <strong>nút Run App đã đổi từ tam giác Play xanh
 		thành hình mũi tên vòng (repeat) xanh</strong>. Nó không phải lỗi hiển thị, và câu trả lời không cần hoãn tới chương
@@ -286,20 +281,18 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 	<p>Đi kèm là một sự thật kỹ thuật giải toả lo lắng lớn nhất của người mới:</p>
 	<p>
 		<strong>Google đã tách rời phiên bản Android Studio khỏi phiên bản Android.</strong> Nghĩa là một Android Studio duy
-		nhất build được app cho <em>bất kỳ</em> phiên bản hệ điều hành Android, kể cả các bản SDK ra sau này.
-	</p>
-	<p class="hint">
-		<strong>Vì sao điều này quan trọng với bạn:</strong> nó chính là lý do bạn <em>vẫn học được</em> toàn bộ khoá học này
-		bằng một Android Studio đời 2026, dù project mẫu được ghim ở cuối 2023. Bản Studio mới hơn không làm code cũ hết chạy;
-		nó chỉ cần bạn <em>khai</em> đúng bản SDK trong Gradle (Chương 2.2, mục 7.4). Đó cũng là lý do khoá học chọn cách ghi
-		chú chỗ giao diện đã thay đổi, thay vì viết lại kiến thức — kiến thức không đổi, chỉ đường đi trong menu đổi.
+		nhất build được app cho <em>bất kỳ</em> phiên bản hệ điều hành Android, kể cả các bản SDK ra sau này. Nó chính là lý do
+		bạn <em>vẫn học được</em> toàn bộ khoá học này bằng một Android Studio đời 2026, dù project mẫu được ghim ở cuối 2023:
+		bản Studio mới hơn không làm code cũ hết chạy; nó chỉ cần bạn <em>khai</em> đúng bản SDK trong Gradle (Chương 2.2, mục
+		7.4). Đó cũng là lý do khoá học chọn cách ghi chú chỗ giao diện đã thay đổi, thay vì viết lại kiến thức — kiến thức
+		không đổi, chỉ đường đi trong menu đổi.
 	</p>
 	<p class="hint">
 		<strong>Về tên gọi các bản Android Studio hôm nay:</strong> tên động vật vẫn là cách Google gọi các bản phát hành
 		(Hedgehog là <code>2023.1.1</code>, và mỗi bản kế tiếp mang một con vật theo thứ tự chữ cái cùng số hiệu năm tương
 		ứng), nên trên trang tải và trong tài liệu bạn có thể gặp cả hai cách ghi — <em>tên con vật</em> và <em>số hiệu</em> —
-		cùng chỉ về một bản. Không cần nhớ danh sách tên: chỉ cần biết đó là một <em>nickname</em>, và bản bạn cần luôn là bản
-		<strong>Stable</strong> mới nhất mà trang tải đang cung cấp.
+		cùng chỉ về một bản. Không cần nhớ danh sách tên: bản bạn cần luôn là bản <strong>Stable</strong> mới nhất mà trang tải
+		đang cung cấp.
 	</p>
 	<h3>Hai đường cập nhật</h3>
 	<p>
@@ -357,7 +350,7 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 		<code>app/build.gradle.kts</code> (dòng 8) là một <em>yêu cầu</em>, không phải một lựa chọn tuỳ ý. Nó nói "hãy biên dịch
 		app này bằng bộ API của Android 14". Nếu máy bạn chưa tải Platform 34 trong tab <em>SDK Platforms</em> thì Gradle không
 		có gì để biên dịch cùng, và build đứt ngay. Ngược lại, tải thêm Platform mới hơn <em>không</em> tự động đổi
-		<code>compileSdk</code> — con số đó chỉ đổi khi bạn tự sửa file. Chương 4.2, mục 7 sẽ mổ kỹ ba con số
+		<code>compileSdk</code> — con số đó chỉ đổi khi bạn tự sửa file. Bài Gradle chuyên sâu sau này sẽ mổ kỹ ba con số
 		<code>compileSdk</code>, <code>minSdk</code>, <code>targetSdk</code> và hệ quả của từng cái.
 	</p>
 	<h2 id="version">10. Project mẫu ghim bản nào, hôm nay khác gì</h2>
@@ -381,11 +374,11 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 			<tr>
 				<td>Tên bản Android Studio</td>
 				<td><strong>Hedgehog</strong> — tên động vật kèm số hiệu theo năm (<code>2023.1.1</code>)</td>
-				<td>Android Studio <strong>vẫn dùng tên động vật</strong> cho các bản mới, và tên vẫn đi cùng số hiệu theo năm
-					(Hedgehog là <code>2023.1.1</code>; các bản về sau tiếp theo thứ tự chữ cái với số hiệu <code>2024.x</code>,
-					<code>2025.x</code>…). Cách ghi gọn: <em>tên con vật + số hiệu năm cùng chỉ một bản</em>.</td>
+				<td>Android Studio <strong>vẫn dùng tên động vật</strong>, đi cùng số hiệu theo năm (các bản về sau tiếp theo
+					thứ tự chữ cái với số hiệu <code>2024.x</code>, <code>2025.x</code>…). <em>Tên con vật + số hiệu cùng chỉ một
+					bản.</em></td>
 				<td>Không ảnh hưởng nội dung — chỉ khiến bạn không tìm thấy bản tên "Hedgehog" trên trang tải. Tải bản Stable
-					mới nhất, cho dù tên nó ghi theo con vật hay theo số hiệu.</td>
+					mới nhất.</td>
 			</tr>
 			<tr>
 				<td>Bước <strong>"Enable new UI"</strong></td>
@@ -456,8 +449,7 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 			<strong>Stable</strong> (menu <em>Check for Updates</em> ở mục 9) là việc nên làm: bản Stable đã qua kiểm thử, và
 			Studio mới vẫn mở được project cũ. Còn <strong>Beta/Canary</strong> và việc nâng <code>AGP</code>/<code>Gradle</code>
 			được Studio đề nghị khi mở project — cứ để project mẫu ghim ở cuối 2023 nếu nó vẫn build: <em>nâng khi có nhu cầu
-			thật, không nâng chỉ vì "có bản mới"</em>. Người mới nên giữ một biến số ít nhất trong lúc học (bộ công cụ), để khi
-			có lỗi thì càng ít nghi ngờ code mình viết sai.
+			thật, không nâng chỉ vì "có bản mới"</em>.
 		</p>
 	<div class="callout">
 		<strong>Tổng kết Chương 2.3</strong>
@@ -500,8 +492,7 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 		<li>
 			<strong>Tải và cài Android Studio.</strong> Kèm một điều giải thích được nhiều thứ về sau: nó là IDE dựng trên
 			<em>IntelliJ Platform</em> của JetBrains (Chương 2.1, mục 1) — nên nhiều phím tắt và menu thực ra là của JetBrains,
-			không phải của Android. Và ba nhánh phiên bản Stable / Beta / Canary có mục đích khác nhau; người mới học chọn
-			Stable.
+			không phải của Android. Người mới học chọn bản <strong>Stable</strong> chính thức.
 		</li>
 		<li>
 			<strong>Tạo project mới cho app đầu tiên.</strong> Với 6 ô thông tin đã được giải thích từng cái ở Chương 2.1, mục
@@ -521,7 +512,8 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 		</li>
 		<li>
 			<strong>Đổi chữ trên màn hình để app chào chính bạn.</strong> Cụ thể là tham số <code>name</code> của composable
-			<code>Greeting</code>, và chữ đổi ngay nhờ Live Edit — vòng lặp "sửa → thấy" mà Chương 5 sẽ khai thác triệt để.
+			<code>Greeting</code>, và chữ đổi ngay nhờ Live Edit — vòng lặp "sửa → thấy" mà phần Jetpack Compose sẽ khai thác
+			triệt để.
 		</li>
 		<li>
 			<strong>Cập nhật Android Studio và các SDK/tool nó dựa vào.</strong> Kèm hai sự thật quan trọng nhất của mục 9:
@@ -538,7 +530,7 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 	<p>
 		App hiện tại chỉ hiện một dòng chữ, nhưng bạn đã có đủ ba thứ cần cho mọi chương còn lại: <strong>công cụ chạy
 		được</strong>, <strong>một thiết bị để test</strong>, và <strong>một project hiểu được từng file</strong>. Nếu Chương
-		2.2, mục 7 có cảm giác hơi nhiều thì không cần nhớ hết ngay — quay lại đọc nó sau Chương 3, 4 và 5, mỗi lần sẽ hiểu thêm
+		2.2, mục 7 có cảm giác hơi nhiều thì không cần nhớ hết ngay — quay lại đọc nó sau vài chương, mỗi lần sẽ hiểu thêm
 		một tầng.
 	</p>
 	<p>
@@ -548,8 +540,8 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 		<code>R</code> — vì sao chuỗi văn bản không nên nằm trong code Kotlin; <strong>Intent</strong> như một "việc sẽ làm"
 		dưới dạng object; <strong>permission</strong> và cách app xin quyền; rồi cách <strong>debug</strong> — chạy app theo một
 		cách khác để nhìn thấy bên trong lúc nó đang chạy. Hai câu còn lại tới sau: file <code>build.gradle.kts</code> và
-		Version Catalog ở <strong>Chương 4</strong>, còn <code>setContent</code>, <code>@Composable</code>,
-		<code>Surface</code>, <code>Modifier</code> ở <strong>Chương 5</strong>.
+		Version Catalog ở phần Gradle chuyên sâu, còn <code>setContent</code>, <code>@Composable</code>,
+		<code>Surface</code>, <code>Modifier</code> ở phần Jetpack Compose.
 	</p>
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
