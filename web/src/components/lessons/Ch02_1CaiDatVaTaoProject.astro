@@ -11,6 +11,7 @@
 //   + 10 file XML trong src/main; quét cả aaf-materials có 19 file app/build.gradle.kts (10 chương có project
 //   thật, starter + final) và tất cả đều ghi minSdk = 30; 0 file build.gradle kiểu Groovy.
 // Mẩu Groovy trong chương này do khoá học tự viết để đối chiếu — project mẫu không có file build.gradle kiểu Groovy.
+// (Lần sửa 2026-09: khối Groovy minh hoạ rút khỏi thân bài, chỉ giữ mô tả nhận biết trong hint — Quiz Ch02.1 giữ nguyên.)
 
 import { Code } from "astro:components";
 
@@ -38,23 +39,10 @@ const kotlinDslSnippet = `android {
   }
   // … còn buildTypes, compileOptions, kotlinOptions, buildFeatures, composeOptions, packaging
 }`;
-
-const groovySnippet = `android {
-  namespace 'com.kodeco.chat'
-  compileSdk 34
-
-  defaultConfig {
-    applicationId "com.kodeco.chat"
-    minSdk 30
-    targetSdk 34
-    versionCode 1
-    versionName "1.0"
-  }
-}`;
 ---
 
 <section class="lesson">
-	<div class="callout goals">
+		<div class="callout goals">
 		<strong>Bạn sẽ học được gì trong chương này</strong>
 		<ul>
 			<li>Android Studio là gì, vì sao nó <em>không</em> phải "một editor code" mà là cả một bộ công cụ gộp lại — và câu định nghĩa nào giải thích được gần hết những thứ lạ bạn sẽ gặp trong nó.</li>
@@ -62,7 +50,6 @@ const groovySnippet = `android {
 			<li>Cách chọn đúng bản tải theo hệ điều hành và loại chip, và vì sao bước cài đặt tải lâu hơn bạn tưởng rất nhiều.</li>
 			<li>Bước cấu hình <strong>New UI</strong> — nó là gì, vì sao nhiều tài liệu bắt bạn bật nó, và vì sao hôm nay bạn không cần làm gì cả.</li>
 			<li><strong>6 thông tin</strong> phải điền khi tạo project mới, và <em>hệ quả về sau</em> của từng cái: ô nào quyết định tên thư mục chứa code, ô nào là danh tính duy nhất của app trên Google Play, ô nào bạn sẽ gặp lại ở Chương 4.1.</li>
-			<li>Kotlin DSL so với Groovy: khác nhau ở cái gì, tên file đổi ra sao, và nhìn cùng một khối cấu hình viết bằng hai ngôn ngữ.</li>
 			<li>Hai vùng đầu tiên của Android Studio bạn cần định vị được — <strong>Editor</strong> và <strong>Project navigator</strong> — cộng một chi tiết về Project navigator hay làm người mới đi tìm sai thư mục.</li>
 			<li>Vì sao câu "đợi Gradle Sync xong đã" cứu bạn khỏi một buổi tối đi tìm lỗi không tồn tại.</li>
 		</ul>
@@ -100,6 +87,10 @@ const groovySnippet = `android {
 			dòng code chưa hiểu — đó là chuyện đã tính trước, không phải bạn học sai. Từng thứ trong đó sẽ được mổ ra ở
 			<strong>Chương 5.1, mục 2</strong> (hàm Composable — thứ đang vẽ dòng chữ chào đó) và
 			<strong>Chương 6.1, mục 2</strong> (state — thứ làm giao diện biết thay đổi).
+		</p>
+		<p>
+			Chương bạn đang đọc kết thúc ở đúng chỗ này: <strong>bạn có một project trên đĩa và hiểu mình đã chọn gì trong
+			wizard</strong>. Chạy app là việc của hai chương sau.
 		</p>
 	</div>
 	<div class="callout journey">
@@ -174,12 +165,8 @@ const groovySnippet = `android {
 	<p>
 		Địa chỉ tải là <code>developer.android.com/studio#downloads</code>. Bấm Download sẽ không tải ngay: trang điều khoản
 		hiện ra trước. Cuộn xuống hết trang, tick ô đồng ý, rồi chọn bản đúng với <strong>hệ điều hành và loại chip</strong>
-		của máy bạn.
-	</p>
-	<p class="hint">
-		<strong>"Loại chip" nghĩa là gì và vì sao nó quan trọng.</strong> Trên máy Mac có hai bản khác nhau: bản cho chip
-		Apple silicon (M1, M2, M3…) và bản cho chip Intel. Trên Windows thường là bản 64-bit. Tải sai loại chip thì hoặc
-		không cài được, hoặc cài được nhưng chạy qua lớp giả lập nên chậm rõ rệt — đặc biệt là máy ảo Android sẽ chậm tới
+		của máy bạn. Trên máy Mac có hai bản: cho chip Apple silicon (M1, M2, M3…) và cho chip Intel; trên Windows thường là
+		bản 64-bit. Tải sai loại chip thì hoặc không cài được, hoặc chạy chậm rõ rệt — đặc biệt máy ảo Android sẽ chậm tới
 		mức khó dùng. Nếu không rõ máy mình chip gì: trên Mac xem <em>About This Mac</em>, trên Windows xem
 		<em>Settings ▸ System ▸ About</em>.
 	</p>
@@ -187,8 +174,10 @@ const groovySnippet = `android {
 		Project mẫu của khoá học được dựng trên <strong>Android Studio Hedgehog</strong>. "Hedgehog" (con nhím) là
 		<strong>nickname</strong> — tên gọi thân mật của phiên bản đó. Google đặt tên các bản Android Studio theo thứ tự chữ
 		cái, mỗi tên là một con vật: Hedgehog → Iguana → Jellyfish → Koala → Ladybug… giống cách trước đây họ đặt tên các
-		bản Android theo món tráng miệng (Lollipop, Marshmallow, Nougat, Oreo, Pie). Bạn không cần tìm đúng bản Hedgehog để
-		học: hãy tải bản Stable hiện tại, tên nó sẽ là một con vật ở xa hơn trong bảng chữ cái.
+		bản Android theo món tráng miệng (Lollipop, Marshmallow, Nougat, Oreo, Pie). Từ Hedgehog, mỗi bản còn kèm một
+		<strong>số hiệu theo năm</strong> — Hedgehog là <code>2023.1.1</code> — nên trên trang tải bạn sẽ thấy cả tên con vật
+		lẫn số hiệu của cùng một bản. Bạn không cần tìm đúng bản Hedgehog để học: hãy tải bản Stable hiện tại, tên nó sẽ là
+		một con vật ở xa hơn trong bảng chữ cái.
 	</p>
 	<p>
 		Ngoài bản mặc định, trang tải còn có mục <em>preview</em> ở phía trên, dẫn tới hai nhánh khác. Ba nhánh này khác
@@ -242,24 +231,18 @@ const groovySnippet = `android {
 			</li>
 		</ul>
 	</div>
-	<h2 id="cau-hinh">2. Cấu hình sau khi cài: chuyện gì đã xảy ra với "New UI"</h2>
+	<h2 id="cau-hinh">2. Cấu hình sau khi cài: một việc nên làm, một việc bỏ qua</h2>
 	<p>
-		Có một bước cấu hình mà rất nhiều hướng dẫn Android đặt ngay ở đây, <em>trước</em> khi tạo project: bật
-		<strong>New UI</strong>. Đường đi thường được ghi là mở Android Studio → menu <em>Android Studio</em> →
-		<em>Settings</em> (trên Windows: <em>File ▸ Settings</em>) → mở <em>Appearance &amp; Behavior</em> → chọn
-		<em>New UI</em> → tick ô <em>Enable new UI</em>.
-	</p>
-	<p>
-		Lý do bước này từng được coi là bắt buộc rất thực dụng: mọi ảnh chụp màn hình trong các tài liệu thời đó đều theo New
-		UI, nên nếu bạn để giao diện cũ thì ảnh trong tài liệu không khớp với máy bạn, và bạn sẽ đi tìm những cái nút không
-		nằm ở chỗ được chỉ.
+		Nhiều hướng dẫn Android đặt ngay ở đây — <em>trước</em> khi tạo project — một bước cấu hình: bật <strong>New
+		UI</strong> qua đường đi <em>Settings</em> (trên Windows: <em>File ▸ Settings</em>) ▸ <em>Appearance &amp;
+		Behavior</em> ▸ <em>New UI</em> ▸ tick ô <em>Enable new UI</em>. Lý do bước này từng được coi là bắt buộc rất thực
+		dụng: mọi ảnh chụp màn hình trong các tài liệu thời đó đều theo New UI, nên nếu bạn để giao diện cũ thì ảnh trong
+		tài liệu không khớp với máy bạn, và bạn sẽ đi tìm những cái nút không nằm ở chỗ được chỉ.
 	</p>
 	<p class="hint">
 		<strong>"New UI" là gì?</strong> Đó là bản thiết kế lại giao diện của chính Android Studio: thanh công cụ gọn hơn,
 		các nút được gom lại, thanh bên trái chỉ còn icon, khoảng trắng nhiều hơn. Nó <em>không</em> đổi bất cứ điều gì về
 		cách code chạy hay cách build app — chỉ là chỗ đặt các nút thay đổi. Giao diện cũ được gọi là <em>Classic UI</em>.
-		Kênh <em>Android Developers</em> có một video giới thiệu riêng về New UI, quay từng thay đổi trên giao diện; xem nó
-		hữu ích nếu bạn muốn biết trước cái gì đã dịch chỗ, nhưng không cần thiết để học tiếp chương này.
 	</p>
 	<p>
 		<strong>Nhưng nếu bạn mở Android Studio hôm nay, cái ô tick đó không còn.</strong> New UI đã trở thành giao diện mặc
@@ -359,7 +342,7 @@ const groovySnippet = `android {
 			<tr>
 				<td><strong>Build configuration language</strong></td>
 				<td>Giữ mặc định <strong>Kotlin DSL</strong></td>
-				<td>Ngôn ngữ dùng để viết các file cấu hình Gradle. Ô này được dành riêng một phần bên dưới vì nó có cả một câu chuyện lịch sử.</td>
+				<td>Ngôn ngữ dùng để viết các file cấu hình Gradle — giải thích gọn ngay dưới bảng.</td>
 			</tr>
 			<tr>
 				<td><strong>Finish</strong></td>
@@ -381,7 +364,8 @@ const groovySnippet = `android {
 	<p>
 		Dòng <code>include(":app")</code> nói rằng project này có đúng một module tên <code>app</code>. Đó là lý do trong
 		Project navigator bạn thấy một mục tên <code>app</code> — không phải Android Studio tự bày ra, mà vì file này khai
-		như vậy. <strong>Chương 4.1, mục 4 và mục 5</strong> sẽ mổ kỹ hai file Gradle cấp cao này.
+		như vậy. Hai file Gradle này là hai trong số những file mà <strong>Chương 2.2, mục 7</strong> sẽ mở ra đọc; còn
+		<strong>Chương 4</strong> mới mổ kỹ từng dòng của chúng.
 	</p>
 	<h3>Ô "Minimum SDK" — ba con số hay bị gộp làm một</h3>
 	<p>
@@ -428,57 +412,19 @@ const groovySnippet = `android {
 		"tính năng này cần API 31 trở lên" là một câu máy kiểm tra được, còn "cần Android Snow Cone trở lên" thì không. Từ
 		Android 10 Google bỏ hẳn tên món tráng miệng công khai, nên với các bản mới bạn chỉ còn hai cách gọi.
 	</p>
-
-	<h3>Ô "Build configuration language" — vì sao ô này được giải thích dài nhất</h3>
-	<p>
-		Trong sáu ô, đây là ô duy nhất đáng một đoạn giải thích riêng, và lý do thuộc về lịch sử. Trước đây bạn
-		<em>buộc</em> phải dùng Groovy để viết file cấu hình Gradle; nay ngôn ngữ mặc định của Gradle đã là Kotlin. Kết quả:
-		bạn dùng được <strong>một ngôn ngữ duy nhất cho toàn bộ việc phát triển Android</strong> — code app viết bằng Kotlin,
-		file cấu hình build cũng Kotlin.
-	</p>
-	<p>
-		Về mặt file, lựa chọn này thấy được ngay ở phần đuôi tên: chọn Kotlin DSL thì các file cấu hình có đuôi
-		<code>.gradle.kts</code>; chọn Groovy thì đuôi là <code>.gradle</code>. Toàn bộ project mẫu của khoá học đều dùng
-		Kotlin DSL — đã quét cả 19 bản project (mỗi chương có project thật thì có cả <code>starter</code> và
-		<code>final</code>): <strong>không có một file <code>build.gradle</code> kiểu Groovy nào</strong>.
-	</p>
-	<p>
-		Khác biệt trong cách viết cũng nhỏ hơn bạn tưởng. Cùng một khối cấu hình, bản Kotlin DSL dùng dấu <code>=</code> để
-		gán và bọc chuỗi trong dấu ngoặc kép:
-	</p>
-	<Code code={kotlinDslSnippet} lang="kotlin" theme="github-dark" />
-	<p>
-		Còn bản Groovy tương đương thì bỏ dấu <code>=</code>, viết giá trị ngay sau tên, và cho phép dùng dấu nháy đơn:
-	</p>
-	<Code code={groovySnippet} lang="groovy" theme="github-dark" />
-	<p>
-		Nội dung y hệt, chỉ khác cú pháp. Nhưng Kotlin DSL có một lợi thế thực tế đáng chọn cho người mới: vì nó là Kotlin
-		thật, Android Studio <strong>gợi ý tên thiết lập và báo lỗi ngay lúc bạn gõ</strong>. Với Groovy, gõ sai tên một
-		thuộc tính thường phải chờ tới lúc build thất bại mới biết. Đoạn Groovy ở trên đưa vào đây chỉ để bạn nhận ra khi
-		gặp tài liệu cũ, không phải để dùng.
-	</p>
-	<p>
-		Cùng ô này còn cho bạn chọn dùng <strong>Gradle Version Catalogs</strong> hay không. Cách làm đúng lúc này là
-		<strong>giữ mặc định</strong> — nó có nhiều lợi ích, nhưng lợi ích đó chỉ hiện ra khi project đã có nhiều thư viện.
-		Cả Gradle lẫn Version Catalog là nội dung của <strong>Chương 4</strong> — Version Catalog cụ thể là
-		<strong>Chương 4.3, mục 10</strong>. Có một chi tiết thú vị đáng biết trước:
-		project mẫu của Chương 2 <em>không</em> có Version Catalog — nó khai từng thư viện kèm số phiên bản trực tiếp trong
-		file build. Version Catalog chỉ xuất hiện từ project của Chương 4 trở đi, đúng lúc số thư viện bắt đầu nhiều lên. Đó
-		là minh hoạ sống cho việc: công cụ được thêm vào khi có vấn đề cần nó, không phải thêm cho đủ bộ.
-	</p>
 	<p class="hint">
-		<strong>Một câu để hiểu Gradle trước khi tới Chương 4.1, mục 1.</strong> Gradle là chương trình <em>biến code của bạn
-		thành file app cài được</em>. Muốn làm việc đó, nó cần biết: dùng những thư viện nào, bản bao nhiêu, nhắm bản Android
-		nào, ký app bằng khoá nào. Các câu trả lời đó nằm trong file <code>build.gradle.kts</code>. Còn "DSL" viết đủ là
-		<em>Domain-Specific Language</em> — "ngôn ngữ dùng riêng cho một việc". Ở đây việc đó là khai báo cấu hình build.
-	</p>
-
-	<h3>Sau khi bấm Finish</h3>
-	<p>
-		Android Studio lấy các thông tin bạn vừa điền, <strong>tải các thư viện và tài nguyên cần thiết, rồi sinh ra project
-		mới</strong>. Tuỳ đường mạng, bước này có thể lâu — lần đầu tiên trên một máy mới thường lâu nhất, vì chưa có gì được
-		tải sẵn về máy. Xong thì project mở ra với <strong><code>MainActivity.kt</code> đã sẵn trên editor</strong>: đó là
-		file chứa màn hình duy nhất của app.
+		<strong>Hai ô còn lại, mỗi ô một câu.</strong> <strong>Build configuration language</strong> — giữ mặc định
+		<strong>Kotlin DSL</strong>. Trước đây file cấu hình Gradle bắt buộc viết bằng Groovy, nay mặc định đã là Kotlin, nên
+		bạn dùng được một ngôn ngữ duy nhất cho toàn bộ việc phát triển Android: code app viết bằng Kotlin, file build cũng
+		Kotlin. Về mặt file, Kotlin DSL cho đuôi <code>.gradle.kts</code>, Groovy cho đuôi <code>.gradle</code> — toàn bộ 19
+		bản project mẫu của khoá học đều Kotlin DSL, không có một file Groovy nào. Gặp hướng dẫn cũ viết bằng Groovy (không
+		có dấu <code>=</code> giữa tên và giá trị, chuỗi bọc trong nháy đơn) thì nội dung y hệt, chỉ khác cú pháp —
+		<em>dịch</em> trong đầu, đừng bỏ. Cùng ô này còn hỏi có dùng <strong>Gradle Version Catalogs</strong> hay không:
+		giữ mặc định, vì lợi ích của nó chỉ hiện ra khi project có nhiều thư viện — Chương 4 (Version Catalog cụ thể là
+		<strong>Chương 4.3, mục 10</strong>) mới dạy tử tế. Chỉ cần biết trước một chi tiết: project mẫu Chương 2
+		<em>không</em> có Version Catalog, nó khai từng thư viện kèm số phiên bản trực tiếp trong file build; Version Catalog
+		chỉ xuất hiện từ project Chương 4 trở đi. <strong>Finish</strong> — bấm khi đã điền xong; Android Studio bắt đầu tải
+		thư viện và sinh project.
 	</p>
 	<p class="notice">
 		<strong>Câu quan trọng nhất của cả mục 3, và nó chỉ dài một dòng: thấy <em>"Gradle Sync in Progress"</em> hoặc các
@@ -548,18 +494,13 @@ const groovySnippet = `android {
 		khoá học này viết thuần Kotlin, nhưng cái tên thư mục thì được giữ lại để tương thích với các project cũ. Đây là một
 		ví dụ nhỏ của điều bạn sẽ gặp nhiều trong Android: <em>tên gọi thường già hơn công nghệ.</em>
 	</p>
-	<p>
-		Còn một điểm nữa nên biết trước khi sang Chương 2.2: tài liệu hướng dẫn thường trấn an rằng "chưa cần lo về các file
-		này". Khoá học này làm ngược lại — <strong>Chương 2.2, mục 7 sẽ mở từng file trong Project navigator và giải thích nó
-		làm gì</strong>. Lý do rất cụ thể: project vừa sinh ra là project Android <strong>nhỏ nhất bạn sẽ gặp trong cả khoá
-		học</strong>. Phần code thật của nó chỉ có <strong>4 file Kotlin</strong> — <code>MainActivity.kt</code> cộng ba file
-		trong <code>ui/theme/</code> — thêm vài file cấu hình, và hai file test mẫu mà template sinh kèm nhưng chương này
-		không dùng tới. Hiểu trọn một project cỡ đó bây giờ là việc khả thi trong một buổi, và đó là cơ hội chỉ có đúng một
-		lần: về sau bạn sẽ luôn học file mới trong một project bạn <em>đã</em> quen, chứ không bao giờ được nhìn toàn bộ một
-		project từ con số không nữa. Con số tăng nhanh hơn bạn tưởng — đã đếm trên project mẫu của Chương 5:
-		bản <code>final</code> có <strong>20 file Kotlin</strong>, gấp năm lần project hôm nay, và
-		<strong>Chương 5.3, mục 10</strong> sẽ chỉ mổ những file liên quan tới UI tin nhắn chứ không đọc lại từng file nữa.
-		Bốn file bây giờ là kích cỡ vừa đủ để đọc hết mà không kiệt sức.
+	<p class="hint">
+		<strong>Lời trấn an cho phần còn lại của cửa sổ:</strong> ngoài hai vùng trên, Android Studio còn nhiều bảng, menu và
+		nút mà bạn chưa biết dùng để làm gì — không cần đi tìm hiểu hết bây giờ. File trong project cũng vậy: project vừa sinh
+		ra có sẵn khoảng một chục file bạn không viết dòng nào, và <strong>Chương 2.2, mục 7 sẽ mở từng file và giải thích nó
+		làm gì</strong> — đây là lúc project còn <strong>nhỏ nhất của cả khoá học</strong> (chỉ 4 file Kotlin), nên hiểu trọn
+		bộ xương của nó là việc khả thi trong một buổi, và cơ hội nhìn toàn bộ một project từ con số không chỉ có đúng một
+		lần này. Chưa cần nhớ ngay — quay lại đọc mục đó sau Chương 3, 4 và 5, mỗi lần sẽ hiểu thêm một tầng.
 	</p>
 
 	<div class="callout">
@@ -596,9 +537,10 @@ const groovySnippet = `android {
 				Project mẫu: <code>minSdk = 30</code>, <code>targetSdk = 34</code>, <code>compileSdk = 34</code>.
 			</li>
 			<li>
-				<strong>Kotlin DSL so với Groovy:</strong> đuôi file <code>.gradle.kts</code> so với <code>.gradle</code>; cú
-				pháp khác ở dấu <code>=</code> và dấu nháy; nội dung như nhau. Kotlin DSL được gợi ý tên thiết lập và báo lỗi
-				ngay lúc gõ. Mọi project mẫu của khoá học đều dùng Kotlin DSL, không có file Groovy nào.
+				<strong>Kotlin DSL so với Groovy:</strong> đuôi file <code>.gradle.kts</code> so với <code>.gradle</code>; Groovy
+				không có dấu <code>=</code> và cho phép nháy đơn — nội dung như nhau, chỉ khác cú pháp. Kotlin DSL được gợi ý tên
+				thiết lập và báo lỗi ngay lúc gõ. Mọi project mẫu của khoá học đều dùng Kotlin DSL, không có file Groovy nào —
+				gặp hướng dẫn viết bằng Groovy thì dịch trong đầu, đừng bỏ.
 			</li>
 			<li>
 				<strong>Gradle Sync đang chạy thì đợi.</strong> Code gạch đỏ, nút Run mờ, gợi ý chưa hoạt động — tất cả là trạng
@@ -737,11 +679,13 @@ const groovySnippet = `android {
 			<strong>Phần bổ sung ngoài giáo trình:</strong> giải thích "IDE" là gì và khi nào thật sự cần một IDE · vì sao phải
 			chọn đúng loại chip khi tải · lý do cụ thể khiến người mới nên tránh nhánh Canary · giải thích "New UI" là gì và mẹo
 			dùng ô tìm kiếm trong Settings thay vì học đường dẫn menu · phân biệt ba con số <code>minSdk</code> /
-			<code>targetSdk</code> / <code>compileSdk</code> và khái niệm "API level" · ví dụ cùng một khối cấu hình viết bằng
-			Kotlin DSL và bằng Groovy để so sánh cú pháp (mẩu Groovy do khoá học tự viết — project mẫu không có file Groovy nào)
+			<code>targetSdk</code> / <code>compileSdk</code> và khái niệm "API level" · mô tả nhận biết cú pháp Groovy so với
+			Kotlin DSL (mẩu Groovy minh hoạ do khoá học tự viết — project mẫu không có file Groovy nào)
 			· giải thích Gradle Sync thật ra làm gì và vì sao code bị gạch đỏ lúc đang sync · chế độ hiển thị
 			<em>Android</em> so với <em>Project</em> trong Project navigator và lý do nhánh code mang tên
-			<code>kotlin+java</code> · toàn bộ năm điểm trong mục Cạm bẫy &amp; tài liệu lỗi thời, gồm việc template đã bị đổi
+			<code>kotlin+java</code> · tên con vật đi cùng số hiệu theo năm (Hedgehog = <code>2023.1.1</code>), đối chiếu trang
+			chính thức <code>developer.android.com/studio/releases/studio-release-names</code> · toàn bộ năm điểm trong mục
+			Cạm bẫy &amp; tài liệu lỗi thời, gồm việc template đã bị đổi
 			tên và việc <code>composeOptions</code> không còn cần từ Kotlin 2.0.
 		</li>
 	</ul>

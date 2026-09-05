@@ -3,6 +3,20 @@
 // Ranh giới tách + hợp đồng đặt tên: docs/CHAPTER_SPLIT_MAP.md
 // Nội dung diễn giải lại bằng tiếng Việt, không copy nguyên văn nguồn.
 // Code trích nguyên văn từ aaf-materials/ theo Quyết định #7 (docs/PROJECT_PLAN.md) — ghi rõ file + dòng ở mục nguon.
+//
+// ⚠️ SPLIT-READY (lần sửa 2026-09) — bài này là HAI đơn vị học trong MỘT route sống:
+//   • ĐƠN VỊ 1 (tương lai A6 — "Chạy thử: máy ảo & máy thật") = mục 5 + mục 6
+//     + Tóm tắt đơn vị 1 (chốt unit A6) + cạm bẫy 1–3.
+//   • ĐƠN VỊ 2 (tương lai A7 — "Giải mã project mẫu") = mục 7
+//     + Tóm tắt đơn vị 2 (chốt unit A7) + cạm bẫy 4–6.
+//   Ranh giới tách chính xác: từ <h2 id="doc-project"> tới hết mục 7 và "Tóm tắt đơn vị 2"
+//   thuộc A7; mọi thứ từ đầu file tới "Tóm tắt đơn vị 1" thuộc A6 (cạm bẫy 1–3 đi với A6,
+//   cạm bẫy 4–6 đi với A7, khối "Nguồn tham khảo" tách theo trích dẫn của từng mục).
+//   Khi migrate: copy từng đơn vị nguyên khối sang file lesson mới (kèm quiz tương ứng
+//   được tách theo đúng ranh giới này) — không phải viết lại đoạn nào.
+//   Route sống hiện tại PHẢI giữ nguyên toàn bộ nội dung cho tới khi split thật sự diễn ra
+//   (plan: IMP-031, SPLIT_MAP mode fan-out-keep-source — docs/COURSE_REDESIGN_IMPLEMENTATION_PLAN.md §12.3).
+//
 // Đã mở từng file thật trong 02-getting-started-with-android-studio/projects/final/ để kiểm số dòng:
 //   MainActivity.kt (46 dòng) · ui/theme/Theme.kt (70 dòng) · ui/theme/Color.kt (11 dòng) · ui/theme/Type.kt (34 dòng)
 //   app/src/main/AndroidManifest.xml (28 dòng) · app/build.gradle.kts (69 dòng) · build.gradle.kts (5 dòng)
@@ -203,8 +217,14 @@ val Pink40 = Color(0xFF7D5260)`;
 ---
 
 <section class="lesson">
-	<div class="callout goals">
+		<div class="callout goals">
 		<strong>Bạn sẽ học được gì trong chương này</strong>
+		<p class="intro" style="margin-bottom:0.5rem;">
+			Chương này gồm <strong>hai đơn vị học</strong> nằm cạnh nhau: <strong>Đơn vị 1 — Chạy thử: máy ảo &amp; máy
+			thật</strong> (mục 5–6) và <strong>Đơn vị 2 — Đọc project vừa sinh ra</strong> (mục 7). Mỗi đơn vị có mục tiêu,
+			phần tổng kết và các câu cạm bẫy riêng.
+		</p>
+		<p style="margin-bottom:0.25rem;"><strong>Đơn vị 1 — máy ảo &amp; máy thật (mục 5–6):</strong></p>
 		<ul>
 			<li><strong>Máy ảo Android (AVD)</strong> là gì, nó thật tới mức nào, và ba màn hình của wizard tạo máy ảo —
 				mỗi màn hình quyết định một thứ khác nhau, và người mới rất hay nhầm hai trong số đó với nhau.</li>
@@ -214,6 +234,9 @@ val Pink40 = Color(0xFF7D5260)`;
 			<li>Vì sao Android gọi USB Debugging là một <strong>lỗ hổng bảo mật</strong> — lỗ hổng đó nằm chính xác ở đâu, và
 				khi nào bạn nên tắt nó đi.</li>
 			<li><strong>RSA key fingerprint</strong> là gì và hộp thoại xác nhận nó đang bảo vệ bạn khỏi chuyện gì.</li>
+		</ul>
+		<p style="margin-bottom:0.25rem;"><strong>Đơn vị 2 — đọc project vừa sinh ra (mục 7):</strong></p>
+		<ul>
 			<li>Đọc hiểu <strong>chín file cốt lõi</strong> mà Android Studio vừa tự sinh ra: một file Kotlin chứa cả màn
 				hình, một file XML giới thiệu app với hệ điều hành, ba file theme, ba file Gradle và một file tài nguyên chuỗi.</li>
 			<li>Bốn con số định vị mọi project Android — <code>compileSdk</code>, <code>minSdk</code>, <code>targetSdk</code>,
@@ -227,21 +250,31 @@ val Pink40 = Color(0xFF7D5260)`;
 			app thật lên thiết bị bằng nút <em>Run App</em>, sửa một dòng chữ và thấy nó đổi ngay trên máy nhờ
 			<strong>Live Edit</strong>, rồi hướng dẫn cách cập nhật Android Studio, Android SDK và các build tool về sau.
 		</p>
+		<p>
+			Hai đơn vị của chương này <strong>đọc được độc lập</strong>: chỉ cần máy ảo thì bỏ mục 6, chỉ cần máy thật thì bỏ
+			mục 5, và ai muốn đọc trước về project thì có thể nhảy thẳng tới mục 7 rồi quay lại. Cách đọc tuần tự 5 → 6 → 7
+			cũng hoàn toàn ổn.
+		</p>
 	</div>
 
 	<div class="callout">
 		<strong>Bạn đang đứng ở đâu.</strong> Hết Chương 2.1, trên máy bạn có hai thứ: một bản Android Studio đã cài và cấu
 		hình xong, và một project trống tên <em>Kodeco Chat</em> (package <code>com.kodeco.chat</code>) mà Android Studio vừa
 		sinh ra. Project đó chưa chạy được ở đâu, vì bạn <em>chưa có thiết bị</em> — mã nguồn nằm trên máy tính, còn app
-		Android thì phải chạy trên một máy Android. Đó là việc thứ nhất của chương này.
+		Android thì phải chạy trên một máy Android. Đó là việc thứ nhất của chương này (Đơn vị 1, mục 5–6).
 		<p>
-			Việc thứ hai quan trọng không kém: project vừa sinh ra <em>không</em> trống thật. Nó có sẵn khoảng một chục file
-			mà bạn không viết dòng nào. Chương này mở từng file ra đọc. Lý do rất thực tế: project của Chương 2 là project
-			Android <strong>nhỏ nhất</strong> của cả khoá học — bốn file Kotlin và vài file cấu hình. Đến Chương 5 nó đã
+			Việc thứ hai quan trọng không kém (Đơn vị 2, mục 7): project vừa sinh ra <em>không</em> trống thật. Nó có sẵn khoảng
+			một chục file mà bạn không viết dòng nào. Mục 7 sẽ mở từng file ra đọc. Lý do rất thực tế: project của Chương 2 là
+			project Android <strong>nhỏ nhất</strong> của cả khoá học — bốn file Kotlin và vài file cấu hình. Đến Chương 5 nó đã
 			phình lên hơn hai chục file Kotlin. Hiểu bộ xương bây giờ tốn khoảng mười phút; để dành hiểu sau thì tốn nhiều
 			hơn thế, vì lúc đó bộ xương đã bị che bởi code của chính bạn.
 		</p>
 	</div>
+
+	<!-- ================================================================ -->
+	<!-- ĐƠN VỊ 1 (tương lai A6): MÁY ẢO & MÁY THẬT — mục 5 + mục 6       -->
+	<!-- Ranh giới tách A6/A7 nằm ngay trước <h2 id="doc-project"> (mục 7) -->
+	<!-- ================================================================ -->
 
 	<h2 id="may-ao">5. Máy ảo (AVD) — chạy Android ngay trên máy tính</h2>
 	<p>
@@ -413,6 +446,39 @@ val Pink40 = Color(0xFF7D5260)`;
 		chọn thiết bị ở thanh trên cùng — tên máy bạn phải xuất hiện ở đó. Nếu chưa thấy, ba nguyên nhân thường gặp theo thứ
 		tự: cáp chỉ sạc chứ không truyền dữ liệu · chưa bấm Allow trên điện thoại · trên Windows chưa cài USB driver.
 	</p>
+
+	<!-- ⬆️ KẾT THÚC ĐƠN VỊ 1 (A6). Mọi thứ phía trên từ đầu Đơn vị 1 (mục 5) tới đây là "Chạy thử: máy ảo & máy thật". -->
+
+	<div class="callout note">
+		<strong>Tóm tắt Đơn vị 1 — bạn đã có một thiết bị để chạy app</strong>
+		<ul>
+			<li><strong>Phải có thiết bị mới chạy được app</strong> — thật hoặc ảo, chọn một là đủ. Máy ảo
+				(<strong>AVD</strong>) là một thiết bị Android chạy trong một cửa sổ trên máy tính, đủ dùng cho cả 11 chương
+				của khoá học.</li>
+			<li><strong>Wizard tạo AVD có ba bước, trả lời ba câu khác nhau:</strong> Select Hardware chọn <em>kiểu máy</em> ·
+				System Image chọn <em>phiên bản Android</em> (tab Recommended bị mờ vì chưa tải, bấm Download ở cột Release Name,
+				quy tắc là lấy API cao nhất) · Summary chỉ để đặt tên và bấm Finish.</li>
+			<li><strong>Đừng nhầm hai con số:</strong> <code>Minimum SDK = API 28</code> là sàn tương thích của app;
+				<code>API 34</code> (hoặc cao hơn — lấy cao nhất có trong bảng) là hệ điều hành của máy ảo. App
+				<code>minSdk</code> thấp chạy được trên máy mới, không có chiều ngược lại.</li>
+			<li><strong>Máy thật cần ba bước mở cửa:</strong> bấm liên tục vào <em>Build number</em> để thành developer → mở
+				<em>Developer Options</em> → bật <strong>USB Debugging</strong>. Trên Windows thêm bước cài USB driver.</li>
+			<li><strong>USB Debugging là một lỗ hổng có chủ ý:</strong> nó mở kênh <code>adb</code> cho phép cài app, đọc log,
+				chụp màn hình, đọc dữ liệu app. Chỉ bật khi cần, không bấm Allow trên máy lạ, xong việc thì tắt.
+				<strong>RSA fingerprint</strong> là chứng minh thư rút gọn của máy tính; điện thoại ghi nhớ nó để chặn máy khác.</li>
+		</ul>
+		<p style="margin-bottom:0;">
+			<strong>Checkpoint Đơn vị 1:</strong> mở Android Studio và chỉ ra dropdown thiết bị — máy ảo hoặc máy thật của bạn
+			phải có tên trong đó. Có rồi thì bạn đã đủ điều kiện sang Đơn vị 2: đọc hiểu project sẽ được cài lên chính thiết bị
+			đó.
+		</p>
+	</div>
+
+	<!-- ================================================================ -->
+	<!-- ĐƠN VỊ 2 (tương lai A7): ĐỌC PROJECT VỪA SINH RA — mục 7         -->
+	<!-- Đơn vị tự chứa: người học ở đây chỉ cần "có một project" (2.1)   -->
+	<!-- và "có một thiết bị" (Đơn vị 1) — không cần đọc lại 5–6.         -->
+	<!-- ================================================================ -->
 
 	<h2 id="doc-project">7. Đọc toàn bộ project vừa sinh ra</h2>
 	<p>
@@ -827,22 +893,9 @@ val Pink40 = Color(0xFF7D5260)`;
 		đó thành một app cài được. Chín file, không file nào là dư.
 	</p>
 
-	<div class="callout">
-		<strong>Tổng kết Chương 2.2</strong>
+	<div class="callout note">
+		<strong>Tóm tắt Đơn vị 2 — không file nào trong project còn xa lạ</strong>
 		<ul>
-			<li><strong>Phải có thiết bị mới chạy được app</strong> — thật hoặc ảo, chọn một là đủ. Máy ảo
-				(<strong>AVD</strong>) là một thiết bị Android chạy trong một cửa sổ trên máy tính, đủ dùng cho cả 11 chương.</li>
-			<li><strong>Wizard tạo AVD có ba bước, trả lời ba câu khác nhau:</strong> Select Hardware chọn <em>kiểu máy</em> ·
-				System Image chọn <em>phiên bản Android</em> (tab Recommended bị mờ vì chưa tải, bấm Download ở cột Release Name,
-				quy tắc là lấy API cao nhất) · Summary chỉ để đặt tên và bấm Finish.</li>
-			<li><strong>Đừng nhầm hai con số:</strong> <code>Minimum SDK = API 28</code> là sàn tương thích của app;
-				<code>API 34</code> là hệ điều hành của máy ảo. App <code>minSdk</code> thấp chạy được trên máy mới, không có
-				chiều ngược lại.</li>
-			<li><strong>Máy thật cần ba bước mở cửa:</strong> bấm liên tục vào <em>Build number</em> để thành developer → mở
-				<em>Developer Options</em> → bật <strong>USB Debugging</strong>. Trên Windows thêm bước cài USB driver.</li>
-			<li><strong>USB Debugging là một lỗ hổng có chủ ý:</strong> nó mở kênh <code>adb</code> cho phép cài app, đọc log,
-				chụp màn hình, đọc dữ liệu app. Chỉ bật khi cần, không bấm Allow trên máy lạ, xong việc thì tắt.
-				<strong>RSA fingerprint</strong> là chứng minh thư rút gọn của máy tính; điện thoại ghi nhớ nó để chặn máy khác.</li>
 			<li><strong>Project "trống" thật ra có chín file cốt lõi:</strong> <code>MainActivity.kt</code> (ba khối: Activity ·
 				composable <code>Greeting</code> · <code>@Preview</code>) · <code>AndroidManifest.xml</code> (tên, icon, theme
 				khởi động, khai Activity, cặp <code>MAIN</code> + <code>LAUNCHER</code> làm app hiện ở launcher) · ba file
@@ -857,9 +910,17 @@ val Pink40 = Color(0xFF7D5260)`;
 			<li><strong>Project mẫu ghim ở cuối 2023:</strong> AGP 8.2.0, Kotlin 1.9.10, Gradle 8.2. Biết mốc thời gian này giúp
 				bạn hiểu vì sao vài chỗ trong hướng dẫn không còn khớp với Android Studio hôm nay.</li>
 		</ul>
+		<p style="margin-bottom:0;">
+			<strong>Checkpoint Đơn vị 2:</strong> mở Project navigator và lần được từng nhóm file — code Kotlin ở
+			<code>java/com/kodeco/chat/</code>, Manifest ở <code>src/main/</code>, tài nguyên ở <code>res/</code>, cấu hình ở
+			nhóm <em>Gradle Scripts</em>. Làm được vậy là hai đơn vị của chương này đã khép lại: bạn có <em>thiết bị</em> (Đơn vị
+			1) và có <em>project hiểu được từng file</em> (Đơn vị 2). Còn thiếu đúng một thứ — bấm nút để app thật sự chạy — đó
+			là việc của Chương 2.3.
+		</p>
 	</div>
 	<p>
-		<strong>Tiếp theo — Chương 2.3:</strong> thiết bị đã có, project đã đọc hiểu, giờ tới lúc bấm nút. Chương 2.3 chọn thiết
+		<strong>Tiếp theo — Chương 2.3:</strong> thiết bị đã có (Đơn vị 1), project đã đọc hiểu (Đơn vị 2), giờ tới lúc bấm
+		nút. Chương 2.3 chọn thiết
 		bị trong dropdown và bấm <strong>Run App</strong> để build rồi cài <em>Kodeco Chat</em> lên máy, sửa
 		<code>Greeting("Fuad")</code> thành tên của bạn và thấy chữ trên màn hình đổi <em>ngay lập tức</em> nhờ
 		<strong>Live Edit</strong> (kèm cách bật lại tính năng đó nếu nó không tự chạy), rồi hướng dẫn cách cập nhật Android
@@ -872,30 +933,31 @@ val Pink40 = Color(0xFF7D5260)`;
 		Chương này là chương "bấm chuột" nhiều nhất của khoá học, nên cũng là chương dễ lệch nhất theo thời gian: Android Studio
 		đổi giao diện mỗi năm vài lần, và số hiệu API thì tăng đều. Sáu điểm dưới đây là những chỗ hướng dẫn từng bước sẽ không
 		còn khớp với những gì bạn thấy trên máy, cộng vài chỗ project mẫu và lý thuyết nói khác nhau. Đọc trước để không mất
-		buổi tối đi tìm một cái nút đã bị xoá hoặc một lỗi không tồn tại.
+		buổi tối đi tìm một cái nút đã bị xoá hoặc một lỗi không tồn tại. Cạm bẫy <strong>1–3 thuộc Đơn vị 1</strong> (máy ảo /
+		máy thật), cạm bẫy <strong>4–6 thuộc Đơn vị 2</strong> (project và các file của nó).
 	</p>
 	<p class="notice">
-		<strong>1. Số hiệu API cao nhất trong bảng System Image không còn là 34.</strong> Project mẫu của khoá học ghim ở cuối
+		<strong>1. (Đơn vị 1) Số hiệu API cao nhất trong bảng System Image không còn là 34.</strong> Project mẫu của khoá học ghim ở cuối
 		2023, thời điểm bản Android mới nhất là <em>UpsideDownCake</em> / API 34. Từ đó tới nay đã có Vanilla Ice Cream (API 35),
 		Baklava (API 36) và các bản sau, nên bảng System Image trên máy bạn sẽ hiện những con số cao hơn nhiều. Hãy theo
 		<em>quy tắc</em> — chọn API Level cao nhất có trong bảng — chứ đừng đi tìm đúng con số 34. Nếu bạn cố ý chọn API 34 để
 		"giống hướng dẫn" thì cũng chạy được, chỉ là bạn đang test app trên một hệ điều hành cũ hơn máy của người dùng thật.
 	</p>
 	<p class="notice">
-		<strong>2. Pixel 7 Pro có thể không còn trong danh sách hardware mặc định.</strong> Danh sách thiết bị giả lập được cập
+		<strong>2. (Đơn vị 1) Pixel 7 Pro có thể không còn trong danh sách hardware mặc định.</strong> Danh sách thiết bị giả lập được cập
 		nhật theo các máy Pixel mới, và các đời cũ dần bị dồn xuống mục khác hoặc bỏ hẳn. Bất kỳ Pixel đời gần đây đều thay thế
 		được. Điều duy nhất chương này cần ở chiếc máy ảo là nó có kích thước một chiếc điện thoại — đừng chọn tablet, TV hay
 		đồng hồ, vì layout của app sẽ trông khác hẳn những gì bài học mô tả.
 	</p>
 	<p class="notice">
-		<strong>3. Device Manager đã được làm lại, nút "+" có thể không còn ở chỗ đó.</strong> Các bản Android Studio mới gộp
+		<strong>3. (Đơn vị 1) Device Manager đã được làm lại, nút "+" có thể không còn ở chỗ đó.</strong> Các bản Android Studio mới gộp
 		bước và đổi cách gọi tên: thay vì nút <strong>+</strong> ở đầu bảng, bạn có thể thấy một mục kiểu "Add a new device", và
 		ba màn hình của wizard có khi bị gộp thành một trang duy nhất với danh sách thiết bị bên trái, cấu hình bên phải. Ba
 		việc bạn phải làm thì không đổi: <em>chọn kiểu máy → chọn và tải phiên bản Android → xác nhận</em>. Khi hướng dẫn nói
 		"bấm nút ở góc", hãy đọc nó thành "tìm chỗ thêm thiết bị mới".
 	</p>
 	<p class="notice">
-		<strong>4. Hướng dẫn tạo project yêu cầu <code>Minimum SDK = API 28</code>, nhưng project mẫu khai
+		<strong>4. (Đơn vị 2) Hướng dẫn tạo project yêu cầu <code>Minimum SDK = API 28</code>, nhưng project mẫu khai
 		<code>minSdk = 30</code>.</strong> Đây là điểm lệch thật, đã kiểm bằng cách mở
 		<code>app/build.gradle.kts</code> dòng 12 của project mẫu: con số ở đó là 30 (Android 11), không phải 28 (Android 9
 		"Pie"). Đáng biết thêm là <em>cả mười project</em> có file build trong bộ project mẫu của khoá học đều khai
@@ -906,7 +968,7 @@ val Pink40 = Color(0xFF7D5260)`;
 		tự xử lý những API mới chưa có ở bản cũ.
 	</p>
 	<p class="notice">
-		<strong>5. Tên hàm theme và package chứa nó đổi giữa Chương 2 và Chương 5 — đừng copy code qua lại.</strong> Ở Chương 2,
+		<strong>5. (Đơn vị 2) Tên hàm theme và package chứa nó đổi giữa Chương 2 và Chương 5 — đừng copy code qua lại.</strong> Ở Chương 2,
 		theme tên <code>KodecoChatTheme</code> (chữ <strong>C</strong> hoa) và nằm trong package
 		<code>com.kodeco.chat.ui.theme</code>, file <code>Theme.kt</code>. Ở Chương 5, theme tên
 		<code>KodecochatTheme</code> (chữ <strong>c</strong> nhỏ) và nằm trong package <code>com.kodeco.chat.theme</code> — bỏ
@@ -917,7 +979,7 @@ val Pink40 = Color(0xFF7D5260)`;
 		ghi rõ mỗi khác biệt như vậy thay vì âm thầm sửa cho khớp.
 	</p>
 	<p class="notice">
-		<strong>6. Nếu bạn tạo project mới hôm nay, cấu hình Compose trong Gradle sẽ khác project mẫu.</strong> Project mẫu khai
+		<strong>6. (Đơn vị 2) Nếu bạn tạo project mới hôm nay, cấu hình Compose trong Gradle sẽ khác project mẫu.</strong> Project mẫu khai
 		một khối <code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code> trong
 		<code>app/build.gradle.kts</code>, vì ở thời Kotlin 1.9 thì Compose compiler là một thư viện riêng phải ghim phiên bản
 		khớp với bản Kotlin. Từ Kotlin 2.0, Compose compiler đi kèm luôn với Kotlin và được bật bằng plugin
