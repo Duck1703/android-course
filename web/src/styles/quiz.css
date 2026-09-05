@@ -68,6 +68,43 @@
 	font-weight: 400;
 }
 
+/* "Câu x/N" — nhãn tiến độ câu hỏi (Redesign spec §13). Chèn bằng harness
+   web/src/scripts/quiz.ts, ẩn với screen reader vì số thứ tự đã có trong legend. */
+.quiz legend .q-num {
+	display: block;
+	font-size: var(--fs-2xs);
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--text-3);
+	margin-bottom: 0.1rem;
+}
+
+/* Nut "Lam lai" (harness IMP-001) — secondary, khong phai nut cham bai */
+.quiz #quiz-retry {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	margin-top: var(--s4);
+	margin-left: var(--s2);
+	padding: 0.62rem 1.3rem;
+	border: 1px solid var(--outline);
+	border-radius: var(--r-full);
+	background: var(--surface);
+	color: var(--text-2);
+	font-family: var(--font-display);
+	font-size: var(--fs-sm);
+	font-weight: 650;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.quiz #quiz-retry:hover {
+	background: var(--surface-2);
+	border-color: var(--primary);
+	color: var(--primary);
+}
+
 /* Da tra loi dung */
 .quiz fieldset.correct {
 	border-color: var(--success-outline);
@@ -495,9 +532,14 @@
 	}
 
 	.quiz button[type="submit"],
-	.quiz #check-order {
+	.quiz #check-order,
+	.quiz #quiz-retry {
 		width: 100%;
 		justify-content: center;
+	}
+
+	.quiz #quiz-retry {
+		margin-left: 0;
 	}
 
 	.quiz .order-list li {
