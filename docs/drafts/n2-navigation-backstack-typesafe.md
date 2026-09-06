@@ -33,8 +33,9 @@
 > **từ Navigation 2.8.0**; bản ổn định hiện tại là **2.10.0** (26/08/2026). Project mẫu của khoá dùng
 > **2.7.2** (2023) — **không** có API type-safe. Nghĩa là ví dụ type-safe trong bài *không compile được
 > trên project mẫu* — bài nói thẳng điều đó, và Phần 9 là ghi chú phiên bản duy nhất của bài.
-> **Navigation 3 đã ổn định** (1.0.0 ngày 19/11/2025; bản ổn định mới nhất 1.1.4) — bài chỉ có đúng
-> **một** ghi chú về nó, đúng khuôn của spec §9.
+> **Navigation 3 đã ổn định** (1.0.0 ngày 19/11/2025; bản ổn định hiện tại 1.1.7, 26/08/2026 — dữ kiện
+> tra cứu phiên bản, không phải khái niệm của bài) — bài chỉ có đúng **một** ghi chú về nó, đúng khuôn
+> của spec §9.
 
 ---
 
@@ -509,6 +510,8 @@ sai kiểu thì biên dịch đã kêu".
 > - **Về Navigation 3:** một thư viện điều hướng thế hệ sau cho Compose **đã ổn định** trong hệ sinh thái
 >   Android hiện tại. Khoá này vẫn dạy mô hình route type-safe của Navigation 2 ở đây, vì đó là lộ trình
 >   nâng cấp rõ ràng nhất từ code Navigation 2 của project mẫu; API Navigation 3 không thuộc bài này.
+>   Bản phát hành hiện hành được ghi trong phần tra cứu phiên bản của khoá — con số đó là dữ liệu tra
+>   cứu, không phải khái niệm cần nhớ của bài.
 
 Đó là toàn bộ nội dung "phiên bản" của bài. Tại sao nó phải nằm đây mà không chui vào Phần 14: vì nếu
 không, người học có quyền ngỡ rằng ví dụ type-safe **nên** dán vào project mẫu 2.7.2 — và không compile
@@ -1102,7 +1105,7 @@ Mã: **A** = TEACH → N2 · **B** = OLD-STYLE example (đọc, không bắt ch�
 | `popBackStack()` = "cố gắng bỏ destination hiện hành, về destination trước đó"; trả Boolean; `false` khi pop đến rỗng | `/guide/navigation/backstack` | ✅ |
 | `navigate()` mặc định push lên đỉnh; Back/Up pop đỉnh; back stack là LIFO | `/guide/navigation/backstack` | ✅ |
 | `popBackStack(id/route, inclusive)` và `popUpTo` (+`saveState`/`restoreState`) tồn tại | `/guide/navigation/backstack` | ✅ — chỉ nêu "tồn tại, thuộc tra cứu", không dạy |
-| **Navigation 3 ổn định**: 1.0.0 ngày 19/11/2025; bản ổn định mới nhất **1.1.4** (01/07/2026); thư viện riêng `androidx.navigation3` | `/jetpack/androidx/releases/navigation3` | ✅ — một ghi chú duy nhất ở Phần 9 |
+| **Navigation 3 ổn định**: 1.0.0 ngày 19/11/2025; bản ổn định hiện tại **1.1.7** (26/08/2026); thư viện riêng `androidx.navigation3` | `/jetpack/androidx/releases/navigation3?hl=en` (verify lại 2026-09-06 trong phiên N2B) | ✅ — một ghi chú duy nhất ở Phần 9; con số chỉ sống trong ghi chú phiên bản/AP3 |
 
 Điểm cần giữ khi review: **không** nâng khẳng định type-safe thành "xoá mọi lỗi runtime" — tài liệu
 migration guide nói nó "eliminate runtime crashes caused by typos or incorrect argument types" (tức đúng
@@ -1125,7 +1128,7 @@ thiết kế" (Phần 7, cạm bẫy c).
 |---|---|---|
 | `navigation-compose` **2.7.2** (08, 09, 10) và **2.7.4** (11) vs bản ổn định hiện tại **2.10.0** | `gradle/libs.versions.toml` dòng 17 mỗi project | Hàng AP3: "2.7.x = trước route type-safe; 2.8.0+ mới hỗ trợ" — chi tiết cho người học đã nằm N2 Phần 9 |
 | Route type-safe: có từ 2.8.0; cần plugin serialization + json dependency | docs type-safety + type-safe-destinations | Cùng hàng trên |
-| Navigation 3 — ổn định 1.0.0 (19/11/2025), ổn định mới nhất 1.1.4 | `/jetpack/androidx/releases/navigation3` | Hàng AP3 riêng; N2 giữ đúng một ghi chú (Phần 9) |
+| Navigation 3 — ổn định 1.0.0 (19/11/2025); bản ổn định hiện tại 1.1.7 (26/08/2026, verify 2026-09-06) | `/jetpack/androidx/releases/navigation3?hl=en` | Hàng AP3 riêng; N2 giữ đúng một ghi chú không nhắc số (Phần 9) |
 | `Icons.Default.ArrowBack` | `ui/RecipeDetails.kt` dòng 169 | Đã ghi trong N1 (F) — N2 không thêm gì |
 | `scope.launch { … }` rồi `popBackStack()` ngay sau | `ui/RecipeDetails.kt` 180–191 | **Không phải drift phiên bản** — là vấn đề thứ tự/vòng đời; đích: **W1** (mục F) |
 
@@ -1201,11 +1204,14 @@ kết hợp chưa có công cụ" — không dạy nửa vời, không kết lu�
 6. **Bảng "bốn chỗ code mẫu làm khác" của N1 (Phần 15) cố tình KHÔNG lặp lại ở N2** — đúng đề xuất N1
    open question #7: N2 chỉ có bảng old→new khái niệm (Phần 14 + migration notes D) và ghi chú phiên bản
    (Phần 9). Nếu review thấy cần bảng tổng hợp N1+N2, dồn vào AP3 thay vì nhân bản trong bài.
-7. **Navigation 3 — đã verify trong phiên này** (khác N1 open question #3): ổn định 1.0.0 ngày
-   19/11/2025, ổn định mới nhất 1.1.4 (01/07/2026). Ghi chú duy nhất của bài (Phần 9) dùng wording
-   "đã ổn định trong hệ sinh thái hiện tại" + lý do khoá vẫn dạy Nav-2 type-safe (lộ trình nâng cấp từ
-   code mẫu Nav 2). Nếu Nav 3 có thay đổi trạng thái trước khi dựng trang, kiểm lại nguồn trước khi
-   giữ nguyên chữ.
+7. **Navigation 3 — đã verify (bản N2 ngày 2026-09-06, kiểm lại trong phiên N2B cùng ngày):** ổn định
+   1.0.0 ngày 19/11/2025; bản ổn định hiện tại 1.1.7 (26/08/2026) — bản N2 từng ghi "mới nhất 1.1.4
+   (01/07/2026)", đã sửa trong N2B. Cảnh cáo kỹ thuật khi verify lại: fetch lần đầu của phiên N2B
+   (không có `?hl=en`) trả về **bản cache cũ** của trang releases vẫn hiện 1.1.4; fetch `?hl=en` mới trả
+   về dữ liệu đúng. Khi dựng trang hoặc ghi AP3, verify bằng URL `?hl=en` (hoặc Maven metadata
+   `dl.google.com/android/maven2/…`) trước khi ghi số. Ghi chú duy nhất của bài (Phần 9) cố tình
+   **không nhắc số phiên bản** — chỉ phát biểu "đã ổn định"; con số sống trong ghi chú phiên bản/AP3.
+   Nếu Nav 3 có thay đổi trạng thái trước khi dựng trang, kiểm lại nguồn trước khi giữ nguyên chữ.
 8. **Hai khối trích nguyên văn** (Phần 14: MainActivity 86–95; ShowRecipeList 112–117) và Phần 15
    (RecipeDetails 167–173, 180–191) — dòng code không sửa so với project; số dòng đã kiểm bằng đọc file
    trong phiên này. Khi dựng trang, dùng đúng header "file + dòng x–y" của kit.
@@ -1326,9 +1332,10 @@ nhật 2026-02-26) — nguồn của ghi chú phiên bản/dependency (Phần 9)
   2.8.0 (04/09/2024). Dependency ví dụ: `androidx.navigation:navigation-compose:$nav_version` +
   `org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3`.
 
-*Navigation 3 releases* (`/jetpack/androidx/releases/navigation3`) — dữ kiện duy nhất của ghi chú Nav 3
-(Phần 9): Navigation 3 **ổn định** (1.0.0 ngày 19/11/2025); bản ổn định mới nhất **1.1.4** (01/07/2026);
-thư viện riêng `androidx.navigation3` (`navigation3-runtime`, `navigation3-ui`).
+*Navigation 3 releases* (`/jetpack/androidx/releases/navigation3?hl=en`) — dữ kiện duy nhất của ghi chú
+Nav 3 (Phần 9): Navigation 3 **ổn định** (1.0.0 ngày 19/11/2025); bản ổn định hiện tại **1.1.7**
+(26/08/2026) — verify 2026-09-06 (phiên N2B); thư viện riêng `androidx.navigation3`
+(`navigation3-runtime`, `navigation3-ui`).
 
 *Navigate to a destination* (`/guide/navigation/use-graph/navigate`) — kế thừa từ N1: quy tắc callback
 `() -> Unit` ở biên composable (Phần 2, 7 dùng lại, không dạy lại).
