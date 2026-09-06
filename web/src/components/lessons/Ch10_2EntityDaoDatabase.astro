@@ -164,7 +164,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 			lúc build để bắt lỗi SQL thay bạn — chỉ xảy ra nếu bạn viết đúng cấu trúc ba class đó.
 		</p>
 		<p>
-			<strong>Cần biết trước.</strong> <strong>Chương 10.1</strong> — ba vai Entity/DAO/Database ở mức nhận diện,
+			<strong>Cần biết trước.</strong> <strong>bài "Vì sao cần database &amp; đưa Room vào project"</strong> — ba vai Entity/DAO/Database ở mức nhận diện,
 			thư viện Room đã khai xong qua Version Catalog với <code>ksp(libs.room.compiler)</code>, và ẩn dụ nhà hàng
 			(thực đơn — bồi bàn — nhà hàng). <strong>S1</strong> — <code>suspend</code> nghĩa là gì và <em>không</em>
 			nghĩa là gì. <strong>Chương 8</strong> — annotation (<code>@GET</code>, <code>@Query</code>) và KSP. 
@@ -174,7 +174,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 
 	<h2 id="room-classes">7. Room Classes — Room biến class của bạn thành bảng như thế nào</h2>
 	<p>
-		Ở Chương 10.1 bạn đã có bức tranh lớn: SQLite là engine thật, Room là lớp bọc phía trên, và có ba vai cần viết.
+		Ở bài "Vì sao cần database &amp; đưa Room vào project" bạn đã có bức tranh lớn: SQLite là engine thật, Room là lớp bọc phía trên, và có ba vai cần viết.
 		Giờ là lúc viết code thật. Việc xảy ra sau hậu trường gói vào một câu: <strong>Room lấy cấu trúc class của bạn
 		và tạo ra một database SQLite kèm các bảng và định nghĩa cột tương ứng.</strong>
 	</p>
@@ -226,7 +226,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 			<tr>
 				<td>1</td>
 				<td><code>@Parcelize</code></td>
-				<td>Đã gặp ở Chương 10.1: annotation này bảo plugin <code>kotlin-parcelize</code> tự sinh phần cài đặt
+				<td>Đã gặp ở bài "Vì sao cần database &amp; đưa Room vào project": annotation này bảo plugin <code>kotlin-parcelize</code> tự sinh phần cài đặt
 					<code>Parcelable</code> — giao ước của Android để gói/mở object khi truyền giữa các thành phần của app.
 					<strong>Không liên quan gì tới Room.</strong></td>
 			</tr>
@@ -355,7 +355,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 		Và đây là một câu rất cần nhớ: <strong>mọi truy cập tới dữ liệu recipe sẽ đi qua interface này.</strong> Bạn được
 		quyền đặt tên hàm tuỳ ý — sức mạnh thật nằm ở các <em>annotation</em>: <code>@Query</code>, <code>@Insert</code>,
 		<code>@Update</code>, <code>@Delete</code> cung cấp cho Room thông tin về thao tác, và Room dùng thông tin đó để
-		<em>sinh ra phần cài đặt</em> lúc biên dịch — đúng cơ chế KSP đã nói ở Chương 10.1. Lưu ý trạng thái "không có thân
+		<em>sinh ra phần cài đặt</em> lúc biên dịch — đúng cơ chế KSP đã nói ở bài "Vì sao cần database &amp; đưa Room vào project". Lưu ý trạng thái "không có thân
 		hàm" của mọi hàm trong interface: chúng là <em>khai báo</em>, không phải <em>bản cài đặt</em>.
 
 	</p>
@@ -511,7 +511,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 
 	<h2 id="database-class">10. Database — mảnh cuối, nối mọi thứ thành một cửa vào</h2>
 	<p>
-		Mảnh cuối để hoàn tất bộ class Room là chính lớp Database. Nếu giữ ẩn dụ nhà hàng của Chương 10.1: Entity là thực
+		Mảnh cuối để hoàn tất bộ class Room là chính lớp Database. Nếu giữ ẩn dụ nhà hàng của bài "Vì sao cần database &amp; đưa Room vào project": Entity là thực
 		đơn, DAO là bồi bàn, thì <strong><code>@Database</code> là cả nhà hàng</strong> — nơi biết có những bàn nào và giao
 		cho bạn đúng bồi bàn. Tạo <code>RecipeDatabase.kt</code> trong <code>data/database</code>:
 	</p>

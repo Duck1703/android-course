@@ -41,15 +41,15 @@
 //    22 URL hiện tại = 14 giữ nguyên + 8 chết. KHÔNG dùng số "15/22" cũ.
 //
 // G. SCHEMA_VERSION là phiên bản CẤU TRÚC SLUG của tiến độ — không phải version
-//    app, nội dung, hay registry. Hiện tại 4. Version 5 = batch migration thật
-//    ĐẦU TIÊN sau registry (pilot). Mỗi batch có entry mới tăng đúng 1 lần
-//    TRONG CÙNG commit đó (atomic) — không gán cứng sẵn dãy version tương lai.
+//    app, nội dung, hay registry. Hiện tại 5 = batch migration THẬT ĐẦU TIÊN
+//    sau registry (pilot Ch10: ch10-1 → R1). Mỗi batch có entry mới tăng đúng 1
+//    lần TRONG CÙNG commit đó (atomic) — không gán cứng sẵn dãy version tương lai.
 // ────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "hoc-android-tv:progress";
 const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
 
 // Phiên bản cấu trúc chương hiện tại. Tăng lên 1 mỗi lần tách/gộp chương.
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 // Khi một chương lớn được tách thành nhiều chương nhỏ, slug cũ trong localStorage
 // của người học không còn ứng với trang nào — tiến độ của họ sẽ "bốc hơi".
@@ -68,7 +68,7 @@ const SPLIT_MAP: Record<string, string[]> = {
     "ch01-1-android-va-kotlin",
     "ch01-2-app-component",
     "ch01-3-manifest-resources",
-    "ch01-4-gradle-va-ban-do",
+    "ch01-4-gradle-ban-do",
   ],
   "ch02-getting-started-with-android-studio": [
     "ch02-1-cai-dat-va-tao-project",
@@ -87,6 +87,9 @@ const SPLIT_MAP: Record<string, string[]> = {
     "ch10-3-repository-viewmodel",
     "ch10-4-giao-dien-va-cam-bay",
   ],
+  // IMP-020 (v5) — pilot: old R1 slug chết, đổi thành slug registry R1.
+  // Credit ch10-1 cũ → R1 ONLY (S5 là bài mới, không tự done — chính sách §D).
+  "ch10-1-vi-sao-can-database": ["ch10-room-la-gi-va-sqlite"],
 };
 
 /** Đọc thô mảng slug, không chuyển đổi gì — dùng nội bộ để tránh gọi vòng. */
@@ -107,13 +110,17 @@ function readRaw(): string[] {
  * nguyên tiến độ người học đã có. Đã chạy rồi thì chỉ tốn một lần đọc
  * localStorage, nên gọi bao nhiêu lần cũng không sao.
  *
- * Thuật toán (giữ nguyên từ v4, đã chứng minh đủ cho cả 2 mode — xem mô phỏng
- * IMP-013 case B–F):
- *   – duyệt từng slug trong done; nếu có trong SPLIT_MAP thì push NGUYÊN mảng
- *     thay thế (entry keep-source chứa old slug → old được giữ lại), nếu không
- *     giữ nguyên slug;
- *   – dedup bằng Set: chạy lại bao nhiêu lần cũng ổn định tại một tập (old
- *     không nhân đôi, con không nhân đôi);
+ * Thuật toán (IMP-020 — dùng fixed-point thay cho 1 lượt duyệt):
+ *   – mỗi lượt: slug có trong SPLIT_MAP thì push nguyên mảng thay thế (entry
+ *     keep-source chứa old slug → old được giữ lại), không thì giữ nguyên;
+ *   – LẶP cho đến khi tập ổn định (fixed-point, giới hạn an toàn = số entry
+ *     của map) — cần thiết vì chuỗi migration nhiều bước: người học bỏ lỡ các
+ *     version trước (vd storage còn chứa monolith "ch10-room-database" từ v4
+ *     mà chưa từng migrate) phải đi hết chuỗi
+ *     ch10-room-database → ch10-1… → R1 mới trong MỘT lần chạy;
+ *   – dedup bằng Set: kết quả luôn là một tập ổn định, old/con không nhân đôi;
+ *   – entry keep-source tự nhiên hội tụ (old được giữ, không tái map vô hạn —
+ *     visited-set ở dưới chặn vòng lặp nếu một mapping nào đó tự trỏ);
  *   – slug không liên quan đi qua nguyên vẹn (không bị đụng).
  */
 export function migrateProgress(): void {
@@ -121,17 +128,22 @@ export function migrateProgress(): void {
   try {
     if (Number(localStorage.getItem(MIGRATION_KEY)) >= SCHEMA_VERSION) return;
 
-    const current = readRaw();
-    const next: string[] = [];
-    for (const slug of current) {
-      const replacement = SPLIT_MAP[slug];
-      if (replacement) next.push(...replacement);
-      else next.push(slug);
+    let current = readRaw();
+    const maxPasses = Object.keys(SPLIT_MAP).length + 1;
+    for (let pass = 0; pass < maxPasses; pass++) {
+      const next: string[] = [];
+      for (const slug of current) {
+        const replacement = SPLIT_MAP[slug];
+        if (replacement) next.push(...replacement);
+        else next.push(slug);
+      }
+      const deduped = [...new Set(next)];
+      const changed =
+        deduped.length !== current.length || deduped.some((s, i) => s !== current[i]);
+      if (!changed) break;
+      current = deduped;
     }
-    const deduped = [...new Set(next)];
-    const changed =
-      deduped.length !== current.length || deduped.some((s, i) => s !== current[i]);
-    if (changed) localStorage.setItem(STORAGE_KEY, JSON.stringify(deduped));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
     localStorage.setItem(MIGRATION_KEY, String(SCHEMA_VERSION));
   } catch {
     // localStorage bị chặn: bỏ qua, tiến độ chỉ không được chuyển đổi.

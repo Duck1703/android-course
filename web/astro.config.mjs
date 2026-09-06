@@ -18,7 +18,8 @@ import { defineConfig } from "astro/config";
 //
 // Hiện tại: TRỐNG — chưa có redirect nào được kích hoạt.
 const COURSE_REDIRECTS = {
-  // populated atomically by migration batches (see docs/TARGET_REGISTRY_v5.md)
+  // IMP-020 (pilot): old R1 slug chết tại batch này → redirect 1 đích sang R1.
+  "ch10-1-vi-sao-can-database": "/chapters/ch10-room-la-gi-va-sqlite/",
 };
 
 export default defineConfig({

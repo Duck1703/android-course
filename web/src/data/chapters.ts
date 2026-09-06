@@ -335,10 +335,10 @@ export const SECTIONS: SectionInfo[] = [
       {
         number: 10,
         subNumber: 1,
-        slug: "ch10-1-vi-sao-can-database",
+        slug: "ch10-room-la-gi-va-sqlite",
         title: "Vì sao cần database & đưa Room vào project",
         parentTitle: "Room Database",
-        summaryVi: "SQLite, ranh giới DataStore vs database, kiến trúc 5 lớp, thêm Room + KSP.",
+        summaryVi: "Vì sao dữ liệu có cấu trúc cần database, SQLite là gì, ranh giới DataStore vs database, và Room — lớp bọc compile-time-checked trên SQLite.",
         aafFolder: "10-room-db",
         hasProject: true,
         stageId: "data",

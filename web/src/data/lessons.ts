@@ -82,7 +82,7 @@ export const LESSONS: Partial<Record<string, LessonEntry>> = {
   "ch08-networking": { Lesson: Ch08Networking, Quiz: Ch08Quiz },
   "ch09-data-store": { Lesson: Ch09DataStore, Quiz: Ch09Quiz },
   // Chương 10 đã tách thành 4 chương nhỏ — mỗi chương nhỏ có quiz riêng ngay sau nội dung.
-  "ch10-1-vi-sao-can-database": { Lesson: Ch10_1RoomLaGi, Quiz: Ch10_1Quiz },
+  "ch10-room-la-gi-va-sqlite": { Lesson: Ch10_1RoomLaGi, Quiz: Ch10_1Quiz },
   "ch10-2-entity-dao-database": { Lesson: Ch10_2EntityDaoDatabase, Quiz: Ch10_2Quiz },
   "ch10-3-repository-viewmodel": { Lesson: Ch10_3RepositoryViewModel, Quiz: Ch10_3Quiz },
   "ch10-4-giao-dien-va-cam-bay": { Lesson: Ch10_4GiaoDienVaCamBay, Quiz: Ch10_4Quiz },
