@@ -1,129 +1,170 @@
 ---
-// Quiz + bài tập nhỏ cho Chương 10.1. Câu hỏi bám nội dung Ch10_1RoomLaGi.astro.
-// Cả 7 câu MCQ đều viết mới cho phạm vi mục 1–6; KHÔNG chuyển câu nào từ quiz gộp cũ sang
-// (các câu cũ về @Dao, ORM, ba annotation, Room-vs-SharedPreferences thuộc phạm vi Chương 10.2 trở đi).
-// Quiz chấm bằng vanilla JS phía client; file này không có bài sắp thứ tự nên script chỉ chấm phần MCQ.
+// Quiz + bài tập nhỏ cho Chương 10.1. Câu hỏi bám nội dung Ch10_1RoomLaGi.astro (bản live hiện tại,
+// sau khi rút phần giáo trình S5 cũ khỏi bài học — quiz bám theo bài, không bám theo bài cũ).
+// 8 câu MCQ, mỗi câu đúng 4 đáp án, vị trí đáp án đúng chia đều 2/2/2/2 cho a/b/c/d.
+// Giữ và mở rộng từ bộ 7 câu cũ (mỗi câu tăng từ 3 lên 4 lựa chọn): câu 1 (SQLite một file), câu 2
+// (ranh giới DataStore/database theo kiểu câu hỏi), câu 6 (ksp vs implementation), câu 7
+// (kotlin-parcelize). Thay 3 câu cũ rò rỉ giáo trình S5 đã rút khỏi bài (quy tắc gọi-xuống giữa
+// các lớp, lợi ích tách nhiều lớp, làm-theo-miếng) bằng 4 câu mới đúng learning job của R1: Room nằm
+// TRÊN SQLite, Room mua gì so với SQLite thô, database không thay thế DataStore, nhận diện ba vai
+// Entity/DAO/RoomDatabase ở mức bài học dạy (nhận ra khi gặp — viết code là việc của Chương 10.2).
+// Chấm bài do harness chung web/src/scripts/quiz.ts (IMP-001) phụ trách qua initQuiz().
 ---
 
 <section class="quiz" id="quiz">
 	<h2>Quiz nhanh</h2>
 	<p class="intro">
-		7 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn
+		8 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn
 		làm đúng, nên đọc hết.
 	</p>
 
 	<form id="quiz-form">
 		<fieldset data-answer="b">
 			<legend>1. SQLite là gì, và nó nằm ở đâu?</legend>
-			<label><input type="radio" name="q1" value="a" /> Một dịch vụ database chạy trên server của Google, app phải có mạng mới đọc được dữ liệu đã lưu</label>
-			<label><input type="radio" name="q1" value="b" /> Một hệ database rất gọn, có sẵn trong hệ điều hành Android; cả database chỉ là <em>một file duy nhất</em> nằm trong vùng dữ liệu riêng của app</label>
-			<label><input type="radio" name="q1" value="c" /> Một thư viện bạn phải khai vào Gradle rồi mới dùng được, giống <code>Retrofit</code></label>
+			<label><input type="radio" name="q1" value="a" /> Một dịch vụ database chạy trên server của Google: app phải có mạng mới đọc/ghi được dữ liệu, và mất kết nối thì phần lưu trữ của app ngừng hoạt động</label>
+			<label><input type="radio" name="q1" value="b" /> Một database quan hệ gọn nằm sẵn trong hệ điều hành Android: không cần server, toàn bộ database chỉ là <em>một file duy nhất</em> trong vùng dữ liệu riêng của app</label>
+			<label><input type="radio" name="q1" value="c" /> Tên gọi khác của ngôn ngữ SQL — một ngôn ngữ ra lệnh cho database dạng gần như tiếng Anh, không phải là một chỗ lưu dữ liệu</label>
+			<label><input type="radio" name="q1" value="d" /> Một thư viện phải khai vào Gradle qua Version Catalog rồi mới dùng được, giống <code>Retrofit</code> ở Chương 8; thiếu nó thì project không build nổi</label>
 			<p class="explain" hidden>
-				SQLite không cần server chạy riêng và không cần mạng. Android đóng gói nó sẵn trong hệ điều hành, nên bạn
-				không phải cài thêm gì — việc duy nhất phải học là cách nói chuyện với nó bằng <strong>SQL</strong>. Vì cả
-				database chỉ là một file trong vùng dữ liệu riêng của app, dữ liệu sống sót sau khi tắt app và app khác không
-				đọc được. Thứ phải khai vào Gradle là <strong>Room</strong> — lớp bọc bên trên SQLite — chứ không phải bản
-				thân SQLite.
+				SQLite là một <em>database</em> (chỗ lưu), không phải ngôn ngữ: <strong>SQL</strong> mới là ngôn ngữ ra lệnh —
+				cách app "nói chuyện" với SQLite. Android đóng gói SQLite sẵn trong hệ điều hành, nên không cần server chạy
+				riêng, không cần mạng, không phải cài thêm gì; toàn bộ database chỉ là một file duy nhất trong vùng dữ liệu
+				riêng của app — vì vậy dữ liệu sống sót sau khi tắt app và app khác không đọc được. Đáp án a là database kiểu
+				server trên cloud — SQLite thì ngược lại: <em>embedded</em>, nằm sẵn trong hệ điều hành, không cần mạng. Đáp
+				án d: thứ phải khai vào Gradle là <strong>Room</strong> — lớp bọc bên trên SQLite — chứ không phải bản thân
+				SQLite.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="c">
 			<legend>2. Đâu là điểm quyết định để biết DataStore là đủ hay buộc phải dùng database?</legend>
-			<label><input type="radio" name="q2" value="a" /> Số lượng dữ liệu: dưới 100 bản ghi thì DataStore, nhiều hơn thì database</label>
-			<label><input type="radio" name="q2" value="b" /> App có cần internet hay không: có mạng thì dùng DataStore, offline thì dùng database</label>
-			<label><input type="radio" name="q2" value="c" /> Bạn có cần <em>hỏi có điều kiện</em> hay không: DataStore chỉ trả về giá trị ứng với một key, còn database trả lời được "cho tôi mọi nguyên liệu thuộc công thức số 715538"</label>
+			<label><input type="radio" name="q2" value="a" /> Số lượng dữ liệu: vài chục bản ghi thì DataStore còn gánh được, nhiều hơn thì phải chuyển sang database</label>
+			<label><input type="radio" name="q2" value="b" /> Mức độ quan trọng của dữ liệu: cài đặt vặt thì DataStore, dữ liệu quan trọng thì database</label>
+			<label><input type="radio" name="q2" value="c" /> Kiểu câu hỏi app phải đặt ra: DataStore chỉ trả về giá trị ứng với một key biết trước, còn database trả lời được câu <em>hỏi có điều kiện</em> — "cho tôi mọi nguyên liệu thuộc công thức số 715538"</label>
+			<label><input type="radio" name="q2" value="d" /> Dữ liệu có cần sống sót sau khi tắt app hay không: DataStore mất khi app tắt, database lưu bền trên ổ đĩa</label>
 			<p class="explain" hidden>
-				Rất dễ nhớ nhầm rằng ranh giới là "nhiều dữ liệu quá". Không phải — bạn hoàn toàn có thể nhồi hàng trăm mục
-				vào một chuỗi DataStore, chỉ là vô dụng. Vấn đề thật là <strong>kiểu câu hỏi</strong>: với DataStore bạn đưa
-				một key và nhận về đúng giá trị của key đó, không lọc, không ghép. Với database bạn hỏi được câu có điều kiện
-				(<code>WHERE</code>), và đó chính xác là câu app Recipe Finder cần hỏi để dựng danh sách đi chợ từ các công
-				thức đã bookmark. Chương 9 đã phải dùng mẹo <code>joinToString(",")</code> cho danh sách từ khoá — với
-				bookmark (mỗi công thức có id, tên, ảnh, hướng dẫn, thời gian nấu, số phần ăn, cộng một danh sách nguyên liệu
-				con) thì mẹo đó là ngõ cụt.
+				Ranh giới là <strong>hình dạng dữ liệu và cách app cần hỏi</strong>, không phải kích thước hay độ quý: bạn có
+				thể nhồi hàng trăm mục vào một chuỗi DataStore — chỉ là mọi thao tác sửa/xoá thành "phẫu thuật chuỗi"; và một
+				app có rất ít bản ghi vẫn có thể cần database vì cần <em>hỏi có điều kiện</em>. Câu mà Recipe Finder cần
+				("mọi nguyên liệu thuộc công thức 715538") đúng là câu DataStore không trả lời được — nó chỉ đưa ra giá trị của
+				key bạn gọi tên, không lọc, không ghép. Đáp án a và b là hai tiêu chí tưởng mà bài học đã chặn thẳng: "nhìn
+				hình dạng, không nhìn kích thước". Đáp án d sai về sự thật: DataStore cũng lưu bền — tab đang chọn và từ khoá
+				tìm kiếm của Chương 9 đều sống sót qua lần mở app sau; database không mua thêm độ bền, nó mua cách hỏi và sửa
+				từng bản ghi riêng lẻ.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="a">
-			<legend>3. Theo quy tắc giao tiếp <em>một chiều</em> của kiến trúc 5 lớp, phát biểu nào đúng?</legend>
-			<label><input type="radio" name="q3" value="a" /> Composable chỉ được biết về ViewModel; ViewModel biết Repository và Model; Repository biết DAO và Model — không lớp nào gọi ngược lên lớp trên</label>
-			<label><input type="radio" name="q3" value="b" /> Composable được gọi thẳng DAO cho các truy vấn đơn giản, chỉ truy vấn phức tạp mới phải đi qua Repository</label>
-			<label><input type="radio" name="q3" value="c" /> Repository được giữ tham chiếu tới ViewModel để thông báo cho nó mỗi khi dữ liệu đổi</label>
+			<legend>3. Câu nào diễn đạt đúng quan hệ giữa Room và SQLite?</legend>
+			<label><input type="radio" name="q3" value="a" /> Room là thư viện của Google (thuộc AndroidX) phủ một lớp lên trên chính SQLite — bên dưới, thứ thật sự lưu file và chạy truy vấn vẫn là SQLite của hệ điều hành</label>
+			<label><input type="radio" name="q3" value="b" /> Room là một engine database mới do Google viết ra để thay thế SQLite; app dùng Room thì không cần — và không được — đụng tới SQLite nữa</label>
+			<label><input type="radio" name="q3" value="c" /> Room và SQLite là hai tên gọi của cùng một thứ — khai Room vào Gradle là đồng nghĩa với khai SQLite, không có tầng nào ở giữa</label>
+			<label><input type="radio" name="q3" value="d" /> Room mang theo một engine database riêng của nó trong thư viện; còn SQLite là engine của hệ điều hành, Android sẽ tự tắt SQLite đi khi app khai báo Room</label>
 			<p class="explain" hidden>
-				Mỗi lớp chỉ được gọi <em>xuống</em> lớp ngay dưới nó, và không lớp nào được gọi ngược lên. Vì thế UI hoàn toàn
-				độc lập với mọi lớp khác trừ ViewModel, còn ViewModel không biết gì về UI. Bạn kiểm được điều này bằng mắt
-				trong code thật: <code>viewmodels/RecipeViewModel.kt</code> không import một Composable hay
-				<code>Modifier</code> nào, và <code>ui/recipes/ShowBookmarks.kt</code> không import
-				<code>RecipeDao</code> hay <code>RecipeDatabase</code> — nó chỉ gọi
-				<code>viewModel.getBookmarks()</code>. Một Composable gọi thẳng vào DAO là dấu hiệu kiến trúc đã bị phá.
+				Bài học chốt câu này bằng chữ in đậm: <strong>Room nằm TRÊN SQLite — không thay SQLite</strong>, và nói rõ đây
+				"là chỗ người mới hay hiểu sai nhất". Room là tầng giữa: bạn mô tả dữ liệu và thao tác bằng class Kotlin, Room
+				sinh code dịch chúng thành SQL cho SQLite chạy, rồi chuyển dòng kết quả về object — một chiều đi xuống
+				(Kotlin → SQL), một chiều đi lên (dòng dữ liệu → object). Đáp án b chính là hiểu lầm đó. Đáp án c và d đều
+				phủ nhận vai "tầng giữa": Room không trùng với SQLite (nó thêm mô tả bằng Kotlin, sinh code hộ, bắt lỗi lúc
+				biên dịch) và cũng không mang engine riêng — engine chạy thật vẫn là SQLite có sẵn trong Android.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>4. Vì sao không gọi SQLite trực tiếp? Đâu là phát biểu ĐÚNG về điều Room mang lại?</legend>
+			<label><input type="radio" name="q4" value="a" /> Room tự thiết kế các bảng, cột và khoá chính thay bạn — bạn chỉ cần nói app muốn làm gì, còn lại Room lo</label>
+			<label><input type="radio" name="q4" value="b" /> Room xoá bỏ SQL — từ khi có Room, bạn không phải viết một câu SQL nào nữa</label>
+			<label><input type="radio" name="q4" value="c" /> Room bảo đảm mọi lỗi database không thể xảy ra — app không bao giờ chết vì dữ liệu</label>
+			<label><input type="radio" name="q4" value="d" /> Room cho mô tả dữ liệu và thao tác bằng class Kotlin gắn annotation, sinh hộ phần cơ học (chuyển row ↔ object, thực thi SQL) lúc build, và bắt nhiều lỗi SQL/schema ngay lúc biên dịch</label>
+			<p class="explain" hidden>
+				Vấn đề của SQLite thô: câu SQL là <em>chuỗi text</em> — gõ sai tên bảng hay sai cột thì không ai báo, tới lúc
+				app chạy mới chết; và bạn phải tự viết code chuyển từng dòng kết quả thành object Kotlin rồi chiều ngược lại
+				khi ghi. Room gánh đúng phần cơ học đó bằng bốn thứ: mô tả bằng Kotlin + annotation (cùng cơ chế
+				<code>@GET</code>/<code>@Query</code> của Retrofit), sinh code lúc build (KSP, như Moshi ở Chương 8), kiểm tra
+				lúc biên dịch, và hợp với <code>suspend</code>/Flow. Ba đáp án còn lại là những lời hứa quá mức mà bài học đã
+				chặn: Room <strong>không tự thiết kế database thay bạn</strong> — vẫn là bạn quyết định bảng nào, cột gì, khoá
+				chính là gì (a); Room <strong>không xoá bỏ SQL</strong> — Chương 10.2 bạn vẫn viết SQL trong annotation (b);
+				Room bắt <strong>nhiều</strong> lỗi loại sai tên bảng/cột ngay lúc build, chứ không phải <em>mọi</em> lỗi
+				database có thể xảy ra (c).
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="b">
-			<legend>4. Lợi ích <em>thật</em> của việc tách app thành 5 lớp là gì?</legend>
-			<label><input type="radio" name="q4" value="a" /> App chạy nhanh hơn vì mỗi lớp được hệ điều hành cấp riêng một luồng</label>
-			<label><input type="radio" name="q4" value="b" /> Đổi cách lưu dữ liệu mà UI không đổi một dòng · đổi hẳn giao diện mà tầng dữ liệu không đổi · test được mọi lớp bằng test thường, không cần mở emulator</label>
-			<label><input type="radio" name="q4" value="c" /> Room yêu cầu đúng 5 lớp, thiếu lớp nào thì code sinh lúc build sẽ lỗi</label>
+			<legend>5. Sau khi thêm Room cho bookmark, app Recipe Finder xử lý <code>Prefs.kt</code> (DataStore của Chương 9) thế nào?</legend>
+			<label><input type="radio" name="q5" value="a" /> Xoá hẳn — Room là database đầy đủ nên đã thay thế DataStore, giữ lại Prefs chỉ là code chết</label>
+			<label><input type="radio" name="q5" value="b" /> Giữ nguyên — Prefs vẫn lo tab đang chọn và từ khoá tìm kiếm, database chỉ bổ sung cho bookmark; hai data source anh em sống cạnh nhau trong <code>data/</code></label>
+			<label><input type="radio" name="q5" value="c" /> Chuyển toàn bộ dữ liệu trong Prefs vào một bảng SQLite cho đồng nhất — một app chỉ nên có đúng một công cụ lưu trữ, mọi đọc/ghi qua một cửa</label>
+			<label><input type="radio" name="q5" value="d" /> Đưa Prefs vào trong RoomDatabase — vì RoomDatabase là "cửa vào duy nhất" của database nên mọi dữ liệu của app đều phải đi qua Room</label>
 			<p class="explain" hidden>
-				Tách lớp không làm app nhanh hơn, và Room không hề bắt buộc kiến trúc nào. Ba lợi ích nhìn thấy được liền:
-				(1) muốn đổi Room sang Realm hay sang cache trên server thì chỉ sửa <code>data/database/</code> và
-				<code>RecipeRepository</code>, ViewModel và toàn bộ UI giữ nguyên; (2) viết lại toàn bộ giao diện mà tầng dữ
-				liệu không đổi; (3) test <code>RecipeRepository</code> hay <code>RecipeViewModel</code> bằng test thường vì
-				chúng không dính vào màn hình. Lợi ích (1) và (2) đến từ đúng cùng một thứ: giao tiếp một chiều làm các lớp
-				<em>loosely coupled</em>, sửa một lớp không gây tác dụng phụ lan sang lớp khác.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="c">
-			<legend>5. Vì sao dựng app "theo miếng" (mỗi tính năng xuyên đủ 5 lớp) tốt hơn "bóc theo lớp" (viết xong hết tầng database rồi mới sang Repository)?</legend>
-			<label><input type="radio" name="q5" value="a" /> Vì làm theo miếng viết ít code hơn hẳn cho cùng một tính năng</label>
-			<label><input type="radio" name="q5" value="b" /> Vì làm theo lớp sẽ phá quy tắc giao tiếp một chiều</label>
-			<label><input type="radio" name="q5" value="c" /> Vì xong một miếng là chạy thử được ngay, nên khi có lỗi thì lỗi nằm gọn trong một miếng nhỏ, thay vì viết hàng chục hàm rồi tới lúc nối lại mới biết sai mà không rõ sai ở lớp nào</label>
-			<p class="explain" hidden>
-				Hãy ví kiến trúc như một chiếc bánh nhiều lớp: không ai ăn bánh bằng cách bóc từng lớp một. Một "miếng" là
-				một tính năng cắt xuyên đủ năm lớp — ví dụ "bookmark một công thức": entity <code>RecipeDb</code> → hàm
-				<code>addRecipe</code> trong DAO → <code>insertRecipe</code> trong Repository → <code>bookmarkRecipe</code>
-				trong ViewModel → icon bookmark trong UI. Lượng code không đổi và quy tắc một chiều vẫn được tôn trọng ở cả
-				hai cách; cái đổi là <em>thời điểm bạn nhận được phản hồi</em>. Chú ý một điều dễ gây bối rối: bản thân Chương
-				10 lại được <em>dạy</em> theo kiểu lớp (dựng hết tầng Room, rồi Repository, rồi ViewModel, rồi UI) vì cần giới
-				thiệu khái niệm theo nhóm cho dễ hiểu. Khi tự làm project của mình, làm theo miếng.
+				Đây là điều thứ hai bài học chốt để không hiểu lệch: <strong>không phải "database thay thế DataStore"</strong>
+				— hai công cụ giải hai việc khác nhau. Chính app này vẫn giữ <code>Prefs</code> cho tab và từ khoá tìm kiếm
+				(những giá trị rời, hỏi đúng theo key), đồng thời <em>cộng thêm</em> database cho bookmark; trong bản đồ
+				project, <code>Prefs.kt</code> và thư mục <code>database/</code> là hai data source anh em trong cùng tầng dữ
+				liệu, repository điều phối phía trên. Đáp án a là chính hiểu lầm "thay thế". Đáp án c phản lại tiêu chí hình
+				dạng — dựng bảng cho một giá trị rời là "thêm rắc rối không cần thiết". Đáp án d đọc nhầm cụm "cửa vào duy
+				nhất": nó chỉ nói về đường vào <em>file SQLite</em> (RoomDatabase giữ các DAO), không phải mọi dữ liệu của app.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="a">
 			<legend>6. Vì sao <code>room-compiler</code> được khai bằng <code>ksp(libs.room.compiler)</code> chứ không phải <code>implementation(libs.room.compiler)</code>?</legend>
-			<label><input type="radio" name="q6" value="a" /> Vì nó chỉ làm việc <strong>lúc build</strong> — đọc annotation của bạn rồi sinh ra các class như <code>RecipeDao_Impl</code> — và không cần đi vào file APK</label>
-			<label><input type="radio" name="q6" value="b" /> Vì <code>ksp(</code> tải bản mới nhất của thư viện, còn <code>implementation(</code> khoá cứng theo version trong Version Catalog</label>
-			<label><input type="radio" name="q6" value="c" /> Vì <code>room-compiler</code> viết bằng Java nên phải khai bằng một từ khoá khác</label>
+			<label><input type="radio" name="q6" value="a" /> Vì nó chỉ làm việc <strong>lúc build</strong> — đọc annotation của bạn rồi sinh ra các class như <code>RecipeDao_Impl</code> — nên không đi vào file APK</label>
+			<label><input type="radio" name="q6" value="b" /> Vì <code>ksp(</code> luôn tải bản mới nhất của thư viện, còn <code>implementation(</code> khoá cứng theo version đã ghi trong Version Catalog</label>
+			<label><input type="radio" name="q6" value="c" /> Vì Gradle quy ước các thư viện chỉ dùng lúc phát triển phải khai bằng <code>ksp(</code> — <code>implementation</code> dành riêng cho thư viện chạy cùng app</label>
+			<label><input type="radio" name="q6" value="d" /> Vì <code>room-compiler</code> dung lượng quá lớn — khai bằng <code>implementation</code> sẽ làm file APK phình ra</label>
 			<p class="explain" hidden>
 				<strong>KSP</strong> (Kotlin Symbol Processing) là cơ chế cho một thư viện đọc code của bạn lúc biên dịch rồi
-				sinh thêm code Kotlin mới. Phân biệt hai từ khoá: <code>implementation(...)</code> = "gói này đi kèm app và
+				sinh thêm code Kotlin mới. Hai từ khoá khác hẳn nhau: <code>implementation(...)</code> = "gói này đi kèm app và
 				chạy cùng app"; <code>ksp(...)</code> = "gói này chỉ làm việc lúc build, không đi vào APK".
-				<code>room-compiler</code> thuộc loại thứ hai — nó xong việc trước khi app khởi động. Khai nhầm thành
+				<code>room-compiler</code> xong việc trước khi app khởi động, nên thuộc loại thứ hai — khai nhầm thành
 				<code>implementation</code> thì Room không sinh code, và app báo lỗi kiểu "cannot find implementation for
-				RecipeDatabase". Còn <code>room-ktx</code> và <code>room-runtime</code> đúng là dùng
-				<code>implementation(</code> vì chúng phải có mặt lúc app chạy. Bạn đã gặp cơ chế này ở Chương 8 với
-				<code>ksp(libs.moshiCodeGen)</code>.
+				RecipeDatabase". Ngược lại, <code>room-ktx</code> và <code>room-runtime</code> đúng là dùng
+				<code>implementation(</code> vì phải có mặt lúc app chạy. Đáp án b sai vì version vẫn do Version Catalog quản
+				hết. Đáp án c bịa ra một quy ước không tồn tại — cái quyết định là <em>nó có chạy cùng app hay không</em>, ví
+				dụ <code>ksp(libs.moshiCodeGen)</code> của Moshi ở Chương 8 hoạt động theo đúng nguyên lý này. Đáp án d trật
+				lý do: compiler không vào APK là vì nó <em>vô dụng</em> sau lúc build, không phải vì tiết kiệm dung lượng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>7. Plugin <code>kotlin-parcelize</code> giải quyết việc gì, và thiếu nó thì lỗi xuất hiện ở đâu?</legend>
+			<label><input type="radio" name="q7" value="a" /> Nó nén file database SQLite lại cho nhẹ; thiếu nó thì app vẫn chạy, chỉ tốn thêm dung lượng</label>
+			<label><input type="radio" name="q7" value="b" /> Nó cho phép DAO khai hàm <code>suspend</code> — nhờ vậy truy vấn database chạy nền được thay vì trên luồng chính; thiếu nó thì giao diện đứng hình khi đọc ghi dữ liệu</label>
+			<label><input type="radio" name="q7" value="c" /> Nó là bộ phận của Room lo việc sinh code; thiếu nó thì <code>room-compiler</code> không chạy được và annotation của Room thành vô dụng</label>
+			<label><input type="radio" name="q7" value="d" /> Nó tự sinh code gói/mở <code>Parcelable</code> cho class gắn <code>@Parcelize</code>; thiếu nó thì <code>@Parcelize</code> báo lỗi và build đứt ngay tại class đó</label>
+			<p class="explain" hidden>
+				<code>Parcelable</code> là giao ước của Android cho một object muốn được <em>gói lại</em> để chuyển giữa các
+				thành phần của app (truyền qua Intent giữa hai màn hình, hoặc cất tạm khi hệ thống huỷ Activity rồi dựng lại):
+				nó phải biết tự viết mình ra thành dữ liệu thô và tự đọc mình về. Viết tay phần đó rất dài dòng, nên bạn chỉ
+				gắn <code>@Parcelize</code> lên <code>data class</code> và để plugin sinh code lúc build. Class
+				<code>RecipeDb</code> mà Chương 10.2 sắp viết có gắn <code>@Parcelize</code> — vì vậy dòng
+				<code>id("kotlin-parcelize")</code> phải có trong khối plugins ngay từ Chương 10.1. Đáp án a không liên quan —
+				plugin này không đụng tới database. Đáp án b mô tả việc của <code>room-ktx</code> (phần Room cho Kotlin cho
+				phép DAO có hàm <code>suspend</code>), không phải của plugin. Đáp án c nhầm hai cơ chế sinh code độc lập: Room
+				cần plugin KSP, còn <code>kotlin-parcelize</code> chỉ lo <code>@Parcelize</code> — chúng hoạt động song song
+				trong cùng khối plugins chứ không lồng vào nhau.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="c">
-			<legend>7. Plugin <code>kotlin-parcelize</code> giải quyết việc gì, và thiếu nó thì lỗi xuất hiện ở đâu?</legend>
-			<label><input type="radio" name="q7" value="a" /> Nó nén file database SQLite lại cho nhỏ hơn; thiếu nó thì app vẫn chạy, chỉ tốn thêm dung lượng</label>
-			<label><input type="radio" name="q7" value="b" /> Nó cho phép DAO có hàm <code>suspend</code>; thiếu nó thì truy vấn chạy trên luồng chính và giao diện đứng hình</label>
-			<label><input type="radio" name="q7" value="c" /> Nó tự sinh code <code>Parcelable</code> cho class có gắn <code>@Parcelize</code>; thiếu nó thì build đứt ngay tại class đó</label>
+			<legend>8. Ở mức nhận diện ba vai của Room — cặp "vai ↔ trách nhiệm" nào ghép ĐÚNG?</legend>
+			<label><input type="radio" name="q8" value="a" /> <strong>Entity</strong> — liệt kê mọi thao tác được phép làm với dữ liệu: đọc, thêm, sửa, xoá</label>
+			<label><input type="radio" name="q8" value="b" /> <strong>DAO</strong> — mô tả một loại dữ liệu được lưu; mỗi object của class tương ứng một dòng của bảng</label>
+			<label><input type="radio" name="q8" value="c" /> <strong>RoomDatabase</strong> — cửa vào duy nhất của database: giữ các DAO và nối tới file SQLite</label>
+			<label><input type="radio" name="q8" value="d" /> <strong>RoomDatabase</strong> — tập các câu lệnh được phép chạy, ứng với cả cái file database</label>
 			<p class="explain" hidden>
-				<code>Parcelable</code> là giao ước của Android cho một object muốn được <em>gói lại</em> để chuyển giữa các
-				thành phần của app (truyền qua Intent giữa hai màn hình, hoặc cất tạm khi hệ thống huỷ Activity rồi dựng lại):
-				nó phải biết tự viết mình ra thành dữ liệu thô và tự đọc mình về. Viết tay phần đó rất dài dòng và dễ sai, nên
-				bạn chỉ gắn <code>@Parcelize</code> lên <code>data class</code> và để plugin sinh code lúc build. Đó là lý do
-				dòng <code>id("kotlin-parcelize")</code> phải có trong khối <code>plugins &#123; ... &#125;</code> ngay từ
-				Chương 10.1, dù class dùng nó (<code>RecipeDb</code>) mới xuất hiện ở Chương 10.2 — thiếu plugin thì
-				<code>@Parcelize</code> báo lỗi và build đứt. Việc "cho phép DAO có hàm <code>suspend</code>" ở đáp án b là
-				của <code>room-ktx</code>, không phải plugin này.
+				Bảng ba vai của bài: <strong>Entity</strong> mô tả <em>một loại dữ liệu</em> được lưu — một bảng, mỗi object là
+				một dòng (đó là phần bị ghép nhầm ở đáp án a lẫn b); <strong>DAO</strong> liệt kê <em>mọi thao tác</em> được
+				phép làm với dữ liệu — "tập các câu lệnh được phép chạy" ở đáp án d; <strong>RoomDatabase</strong> là <em>cửa
+				vào duy nhất</em>, giữ các DAO và nối tới file SQLite. Ẩn dụ nhà hàng cho dễ nhớ: Entity là <em>thực đơn</em>
+				mô tả từng món (chỉ mô tả hình dạng, không làm gì cả), DAO là <em>người bồi bàn</em> (bạn không được tự vào
+				bếp), RoomDatabase là <em>cả nhà hàng</em>. Mức cần ở đây là <em>nhận ra khi gặp</em> — viết code thật là việc
+				của Chương 10.2.
 			</p>
 		</fieldset>
 
 		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
 		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
 	</form>
 
@@ -249,33 +290,10 @@
 	</div>
 </section>
 <script>
-	const form = document.getElementById("quiz-form");
-	const scoreEl = document.getElementById("quiz-score");
+	// IMP-001: chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
 
-	form?.addEventListener("submit", (e) => {
-		e.preventDefault();
-		const fieldsets = form.querySelectorAll("fieldset");
-		let correct = 0;
-
-		fieldsets.forEach((fs) => {
-			const answer = fs.getAttribute("data-answer");
-			const name = fs.querySelector("input")?.getAttribute("name");
-			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
-			const explain = fs.querySelector(".explain");
-			explain?.removeAttribute("hidden");
-
-			fs.classList.remove("correct", "incorrect");
-			if (picked && picked.value === answer) {
-				correct++;
-				fs.classList.add("correct");
-			} else {
-				fs.classList.add("incorrect");
-			}
-		});
-
-		if (scoreEl) {
-			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
-			scoreEl.removeAttribute("hidden");
-		}
-	});
+	initQuiz();
 </script>

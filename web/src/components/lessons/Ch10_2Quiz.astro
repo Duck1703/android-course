@@ -1,9 +1,16 @@
 ---
 // Quiz + bài tập nhỏ cho Chương 10.2. Câu hỏi bám nội dung Ch10_2EntityDaoDatabase.astro.
-// Chuyển từ quiz cũ sang: câu 4 → câu 1, câu 2 → câu 2, câu 5 → câu 3, câu 1 → câu 4, câu 6 → câu 5,
-// câu 7 → câu 6, câu 8 → câu 8, câu 9 → câu 9, câu 3 → câu 10, câu 10 → câu 12, câu 11 → câu 13,
-// câu 14 → câu 14, câu 12 → câu 15, câu 13 → câu 16; ba bài tập cũ (đọc chữ ký DAO, @Volatile +
-// synchronized, làm hỏng câu SQL) → Bài 1/2/3. Câu 7 (@Ignore) và câu 11 (suspend) là câu mới.
+// R2 rebalance 16 → 12 câu, mỗi câu 4 lựa chọn (a–d), tỷ lệ đáp án 3/3/3/3 (b d c a c d a b a d c b).
+// Giữ & mở rộng 3 → 4 lựa chọn: Q1→1 (ORM) · Q5→3 (autoGenerate=false, natural key) · Q6→4 (recipeId, quan hệ 1-n)
+// · Q8→5 (tham số :id chống SQL injection) · Q10→7 (onConflict=IGNORE) · Q11→8 (suspend không tự chọn luồng)
+// · Q12→9 (bắt lỗi SQL lúc build + phạm vi: không bắt lỗi logic nghiệp vụ) · Q13→11 (@Volatile) · Q15→12 (getInstance là code chết).
+// Viết lại từ Q3→2 (bộ ba @Entity/@Dao/@Database, cân đối độ dài lựa chọn). Câu mới: 6 (@Update/@Delete định danh
+// dòng bằng khoá chính), 10 (version trong @Database là version schema, không phải version app/thư viện).
+// Cắt: Q2 (Room vs SharedPreferences — giá trị kiểm tra thấp), Q4 (@Dao làm gì — trùng câu 2/5 mới),
+// Q7 (@Ignore — chi tiết phụ, project không dùng), Q9 (kiểu trả về 1/danh sách — Bài 1 đã kiểm cùng kỹ năng),
+// Q14 (destructive migration — chuyển thành ghi chú trong giải thích câu 10), Q16 (tên file database — hệ quả
+// trực tiếp của Q15, lạm dụng khung "điểm lệch" project-specific).
+// Ba bài tập và ba snippet frontmatter giữ nguyên. Harness: import initQuiz + submit/retry/score không đổi.
 const daoSnippet = `@Query("SELECT * FROM recipes WHERE id = :id")
 suspend fun findRecipeById(id: Int): RecipeDb`;
 
@@ -42,215 +49,223 @@ interface RecipeDao {
 <section class="quiz" id="quiz">
 	<h2>Quiz nhanh</h2>
 	<p class="intro">
-		16 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn
+		12 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn
 		làm đúng, nên đọc hết.
 	</p>
 
 	<form id="quiz-form">
 		<fieldset data-answer="b">
-			<legend>1. "ORM" trong "Room là một ORM" nghĩa là gì?</legend>
-			<label><input type="radio" name="q1" value="a" /> Một loại database riêng của Google, thay thế SQLite</label>
-			<label><input type="radio" name="q1" value="b" /> Object Relational Mapper — lớp trung gian nối object trong code với bảng/dòng trong database quan hệ</label>
-			<label><input type="radio" name="q1" value="c" /> Một định dạng file để xuất dữ liệu ra JSON</label>
+			<legend>1. "ORM" trong câu "Room là một ORM" nghĩa là gì?</legend>
+			<label><input type="radio" name="q1" value="a" /> Một loại database riêng do Google viết, thay thế hoàn toàn SQLite — dữ liệu được lưu trong file riêng của Room chứ không phải bảng SQL</label>
+			<label><input type="radio" name="q1" value="b" /> Object-Relational Mapper — lớp trung gian dịch qua lại giữa object Kotlin mà bạn viết và bảng/dòng trong database quan hệ</label>
+			<label><input type="radio" name="q1" value="c" /> Online Repository Manager — thư viện cùng họ với Retrofit, chuyên tải dữ liệu từ mạng về máy</label>
+			<label><input type="radio" name="q1" value="d" /> Một định dạng file dùng để xuất dữ liệu trong app ra JSON</label>
 			<p class="explain" hidden>
-				Room <strong>không</strong> thay SQLite — nó chạy <em>trên</em> SQLite. Việc của nó là "mapping": biến
-				một <code>data class</code> Kotlin thành một bảng, biến một object thành một dòng, biến một dòng đọc lên
-				thành object. Nhờ vậy bạn viết Kotlin thay vì viết SQL rồi tự đọc từng cột ra biến.
+				Room <strong>không</strong> thay SQLite — nó chạy <em>trên</em> SQLite. Việc của Room là "mapping": biến một
+				<code>data class</code> Kotlin thành một bảng, một object thành một dòng, một dòng đọc lên thành object — nhờ
+				vậy bạn viết Kotlin thay vì tự viết SQL rồi đọc từng cột ra biến. Đáp án c nhầm Room với tầng mạng: Room
+				không biết gì về internet; dữ liệu từ API là do bạn tự đưa vào (Chương 10.3). Đáp án d sai vì Room là thư
+				viện code chạy trong app, không phải định dạng file.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>2. Muốn dựng một database Room hoàn chỉnh, bạn phải viết đủ ba mảnh nào — và mỗi mảnh đóng vai gì?</legend>
+			<label><input type="radio" name="q2" value="a" /> <code>@Composable</code>, <code>@Preview</code>, <code>@Parcelize</code> — bộ ba của Jetpack Compose và kotlin-parcelize, dùng để dựng giao diện và gói object khi truyền giữa các màn hình</label>
+			<label><input type="radio" name="q2" value="b" /> <code>@Query</code>, <code>@Insert</code>, <code>@Delete</code> — ba lệnh SQL chính dùng để đọc, thêm và xoá dữ liệu trong bảng</label>
+			<label><input type="radio" name="q2" value="c" /> <code>@PrimaryKey</code>, <code>@ColumnInfo</code>, <code>@Ignore</code> — ba annotation dùng để định hình từng cột bên trong một bảng</label>
+			<label><input type="radio" name="q2" value="d" /> <code>@Entity</code>, <code>@Dao</code>, <code>@Database</code> — class mô tả bảng, interface khai báo các thao tác, class gắn cả hai lại thành một cửa vào duy nhất</label>
+			<p class="explain" hidden>
+				<code>@Entity</code> biến một <code>data class</code> thành một bảng · <code>@Dao</code> là interface khai
+				báo các thao tác được phép với dữ liệu · <code>@Database</code> giữ danh sách entity, mở các DAO ra và ra
+				lệnh cho Room sinh code — thiếu một mảnh thì hai mảnh kia vô nghĩa. Ba đáp án còn lại đều là annotation có
+				thật nhưng ở tầng chi tiết hoặc ngoài phạm vi Room: đáp án b nằm <em>bên trong</em> DAO, đáp án c nằm bên
+				trong entity, còn đáp án a thuộc Compose/kotlin-parcelize — không phải của Room.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="c">
-			<legend>2. Room khác <code>SharedPreferences</code> ở điểm nào?</legend>
-			<label><input type="radio" name="q2" value="a" /> Room chỉ dùng được cho app không cần mạng internet</label>
-			<label><input type="radio" name="q2" value="b" /> <code>SharedPreferences</code> nhanh hơn Room trong mọi trường hợp</label>
-			<label><input type="radio" name="q2" value="c" /> Room lưu dữ liệu có cấu trúc, nhiều bản ghi và hỗ trợ truy vấn phức tạp; <code>SharedPreferences</code> chỉ hợp lưu vài cặp key-value đơn giản</label>
+			<legend>3. RecipeDb khai @PrimaryKey(autoGenerate = false). Vì sao project chọn false thay vì true?</legend>
+			<label><input type="radio" name="q3" value="a" /> Vì Room chỉ hỗ trợ tự sinh id cho kiểu Long, còn RecipeDb dùng kiểu Int</label>
+			<label><input type="radio" name="q3" value="b" /> Vì <code>autoGenerate = true</code> khiến mọi thao tác đọc/ghi chậm hẳn đi</label>
+			<label><input type="radio" name="q3" value="c" /> Vì id đã do API Spoonacular cấp từ trước: nếu Room tự đánh số mới, bạn mất liên kết với server và IngredientDb.recipeId cũng không còn trỏ đúng đâu</label>
+			<label><input type="radio" name="q3" value="d" /> Vì false là giá trị mặc định của Room — viết true là compiler báo lỗi ngay</label>
 			<p class="explain" hidden>
-				<code>SharedPreferences</code> hợp để lưu vài giá trị cài đặt đơn giản (ví dụ: đã bật dark mode hay
-				chưa). Còn muốn lưu <em>nhiều</em> công thức, mỗi công thức nhiều field, và cần lọc/tìm theo điều
-				kiện (ví dụ <code>WHERE id = :id</code>) thì Room phù hợp hơn hẳn — đó chính là lý do Recipe Finder
-				dùng Room để lưu bookmark thay vì <code>SharedPreferences</code>.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="c">
-			<legend>3. Ba annotation bắt buộc để dựng một database Room là gì?</legend>
-			<label><input type="radio" name="q3" value="a" /> <code>@Composable</code>, <code>@Preview</code>, <code>@Parcelize</code></label>
-			<label><input type="radio" name="q3" value="b" /> <code>@Query</code>, <code>@Insert</code>, <code>@Delete</code></label>
-			<label><input type="radio" name="q3" value="c" /> <code>@Database</code>, <code>@Entity</code>, <code>@Dao</code></label>
-			<p class="explain" hidden>
-				<code>@Entity</code> = một class thành một bảng · <code>@Dao</code> = interface khai báo các thao tác ·
-				<code>@Database</code> = cửa vào, giữ danh sách entity và số version. Các annotation ở đáp án b nằm
-				<em>bên trong</em> DAO — chúng là chi tiết, không phải ba trụ chính.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="b">
-			<legend>4. <code>@Dao</code> dùng để làm gì?</legend>
-			<label><input type="radio" name="q4" value="a" /> Vẽ giao diện danh sách công thức trên màn hình</label>
-			<label><input type="radio" name="q4" value="b" /> Định nghĩa các hàm truy vấn/thêm/sửa/xoá dữ liệu trong database</label>
-			<label><input type="radio" name="q4" value="c" /> Lưu ảnh công thức xuống bộ nhớ máy</label>
-			<p class="explain" hidden>
-				<code>@Dao</code> đánh dấu 1 interface là Data Access Object — nơi khai báo các hàm đọc/ghi dữ liệu
-				(<code>@Query</code>, <code>@Insert</code>, <code>@Update</code>, <code>@Delete</code>). Room tự sinh
-				code cài đặt thật cho các hàm này lúc build, bạn không phải tự viết.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="b">
-			<legend>5. Trong <code>RecipeDb</code>, vì sao code viết <code>@PrimaryKey(autoGenerate = false)</code> chứ không phải <code>true</code>?</legend>
-			<label><input type="radio" name="q5" value="a" /> Vì Room không hỗ trợ <code>autoGenerate</code> cho kiểu <code>Int</code></label>
-			<label><input type="radio" name="q5" value="b" /> Vì <code>id</code> đã do API Spoonacular cấp — nó là natural key, phải giữ đúng để còn khớp với server</label>
-			<label><input type="radio" name="q5" value="c" /> Vì bật <code>autoGenerate</code> sẽ làm app chạy chậm</label>
-			<p class="explain" hidden>
-				Đây cũng là <strong>điểm lệch #3</strong> trong chương này: phần lý thuyết giải thích
-				<code>autoGenerate</code> như thể đang bật nó và gọi đó là surrogate key, nhưng code thật để
-				<code>false</code>. Code đúng: nếu để Room tự sinh id mới, bạn sẽ mất liên kết giữa công thức lưu trong máy
-				và công thức trên API.
+				Mỗi công thức đã có sẵn <code>id</code> do nguồn bên ngoài cấp (ví dụ 715538). Để Room tự sinh số 1, 2, 3…
+				là mất khả năng tra ngược công thức trên server, và cột <code>recipeId</code> của bảng
+				<code>ingredients</code> cũng không còn trỏ đúng đâu. Quy tắc: id do nguồn ngoài cấp → <code>false</code>
+				(natural key); id chỉ tồn tại trong app → <code>true</code>. Đây là <strong>điểm lệch #3</strong> của
+				chương: lý thuyết gốc giảng <code>autoGenerate</code> như thể nó đang bật, còn code thật cố tình chọn
+				<code>false</code>. <code>autoGenerate</code> không bị giới hạn bởi kiểu Int, không đụng tới hiệu năng,
+				và <code>true</code> hoàn toàn hợp lệ — project viết <code>false</code> vì có chủ đích giữ <code>id</code>
+				của API, chứ không phải vì kiểu dữ liệu hay tốc độ. Đáp án d đúng nửa câu: <code>false</code> đúng là giá
+				trị mặc định của tham số <code>autoGenerate</code>, nhưng viết <code>true</code> là khai báo hoàn toàn hợp
+				lệ — compiler không báo lỗi gì cả.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="a">
-			<legend>6. <code>@ColumnInfo(name = "recipeId")</code> trong <code>IngredientDb</code> phục vụ việc gì?</legend>
-			<label><input type="radio" name="q6" value="a" /> Ghi nhớ nguyên liệu này thuộc công thức nào — nền tảng cho quan hệ một-nhiều</label>
-			<label><input type="radio" name="q6" value="b" /> Đặt tên hiển thị của nguyên liệu trên giao diện</label>
-			<label><input type="radio" name="q6" value="c" /> Bắt Room tạo khoá ngoại và tự xoá theo (cascade delete)</label>
+			<legend>4. Cột recipeId trong bảng ingredients (property recipeId: Int? của IngredientDb) có vai trò gì?</legend>
+			<label><input type="radio" name="q4" value="a" /> Ghi nhớ nguyên liệu này thuộc công thức nào — nhờ nó mà <code>findIngredientsByRecipe(id)</code> lọc đúng dòng</label>
+			<label><input type="radio" name="q4" value="b" /> Là khoá chính của bảng ingredients — Room dựa vào nó để phân biệt các nguyên liệu với nhau</label>
+			<label><input type="radio" name="q4" value="c" /> Khai báo một khoá ngoại: SQLite tự kiểm tra recipeId phải trỏ tới dòng có thật, và tự xoá nguyên liệu khi công thức bị xoá</label>
+			<label><input type="radio" name="q4" value="d" /> Lưu tên hiển thị của nguyên liệu để danh sách đi chợ ở Chương 10.4 đọc lên</label>
 			<p class="explain" hidden>
-				Nó chỉ là một <em>cột số</em> lưu id của công thức cha — nhờ nó mà
-				<code>findIngredientsByRecipe(id)</code> chạy được. Nhưng chú ý: project <strong>không</strong> khai
-				<code>foreignKeys</code>, nên SQLite không biết đây là quan hệ và <strong>không</strong> tự dọn nguyên liệu
-				khi xoá công thức. Đó là lý do phải có <code>deleteRecipeIngredients()</code> tự làm tay.
+				Bảng "nhiều" giữ khoá chính của bảng "một": <code>recipeId</code> chỉ là một cột số thường lưu
+				<code>RecipeDb.id</code> — đó là toàn bộ cơ chế quan hệ một-nhiều ở đây, và là lý do câu
+				<code>WHERE recipeId = :id</code> chạy được. Khoá chính của bảng là <code>id</code>, không phải
+				<code>recipeId</code>. Và chú ý: project <strong>không</strong> khai <code>foreignKeys</code>, nên database
+				<em>không</em> tự kiểm tra và <em>không</em> tự dọn nguyên liệu khi xoá công thức — đó là lý do Repository
+				phải có <code>deleteRecipeIngredients(recipeId)</code> và gọi nó bằng tay mỗi lần xoá bookmark.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="c">
-			<legend>7. Bạn thêm vào <code>RecipeDb</code> một property phụ chỉ để tính toán trong code (ví dụ một chuỗi mô tả ghép từ vài field khác). Nếu không muốn nó thành cột trong bảng, bạn làm gì?</legend>
-			<label><input type="radio" name="q7" value="a" /> Không cần làm gì — Room chỉ lấy các property có <code>@ColumnInfo</code> làm cột</label>
-			<label><input type="radio" name="q7" value="b" /> Khai nó là <code>private</code>, Room sẽ bỏ qua</label>
-			<label><input type="radio" name="q7" value="c" /> Đánh dấu nó bằng <code>@Ignore</code></label>
+			<legend>5. Vì sao trong @Query viết WHERE id = :id thay vì tự nối chuỗi Kotlin kiểu "WHERE id = " + id?</legend>
+			<label><input type="radio" name="q5" value="a" /> Chỉ là quy ước cho dễ đọc — Room cuối cùng cũng ghép giá trị vào SQL như nhau, nên không khác gì nhau về an toàn lẫn kiểm tra lỗi lúc build</label>
+			<label><input type="radio" name="q5" value="b" /> Vì nối chuỗi khiến câu SQL chạy chậm hơn trên thiết bị</label>
+			<label><input type="radio" name="q5" value="c" /> Vì Room đối chiếu tên :id với đối số id của hàm lúc build, và giá trị luôn được truyền như dữ liệu chứ không ghép thành câu lệnh</label>
+			<label><input type="radio" name="q5" value="d" /> Vì :id là một biến toàn cục do Room tự tạo, còn nối chuỗi thì không truy cập được nó</label>
 			<p class="explain" hidden>
-				Room xem <em>cả</em> đối số constructor <em>và</em> property của class để xác định các field của bảng —
-				chứ không phải chỉ những property có <code>@ColumnInfo</code>. Vậy nên thêm một property mà không nói gì,
-				Room sẽ tưởng đó là một cột và đòi có cột tương ứng. <code>@Ignore</code> là cách nói "property này chỉ
-				sống trong code Kotlin, đừng đưa vào bảng". Mức truy cập (<code>private</code> hay không) không liên quan
-				— nó là chuyện của Kotlin, không phải tín hiệu cho Room.
+				<code>:id</code> không phải biến Kotlin bị nội suy vào chuỗi — nó là <strong>chỗ giữ tham số</strong>
+				(parameter placeholder) mà Room nối với đối số <em>cùng tên</em> của hàm lúc chạy. Hai lợi ích cùng lúc:
+				(1) Room đối chiếu <code>:id</code> với <code>id: Int</code> ngay lúc biên dịch — đổi tên đối số thành
+				<code>recipeId</code> mà quên sửa câu query là build lỗi ngay; (2) giá trị luôn đứng ở vị trí
+				<em>dữ liệu</em>, không bao giờ được ghép thành một phần của <em>câu lệnh</em> — nhờ vậy SQL injection
+				(kẻ xấu nhập nội dung khiến câu SQL biến thành câu khác) không có cửa. Đáp án a chính là suy nghĩ mở cửa
+				cho lỗi kinh điển đó: hai cách <em>không</em> "như nhau".
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="c">
-			<legend>8. Vì sao trong câu <code>@Query</code> phải viết <code>WHERE id = :id</code> thay vì nối chuỗi Kotlin?</legend>
-			<label><input type="radio" name="q8" value="a" /> Chỉ vì nhìn gọn hơn, không có khác biệt về chức năng</label>
-			<label><input type="radio" name="q8" value="b" /> Vì nối chuỗi làm câu SQL chạy chậm hơn</label>
-			<label><input type="radio" name="q8" value="c" /> Vì Room kiểm được tên tham số lúc build, và cách bind này chặn SQL injection</label>
+		<fieldset data-answer="d">
+			<legend>6. Bạn tạo RecipeDb(id = 715538, title = "Supercup", image = null) — các field còn lại nhận giá trị mặc định — rồi gọi updateRecipeDetails() với object này. Dòng id = 715538 trong bảng sẽ thế nào?</legend>
+			<label><input type="radio" name="q6" value="a" /> Chỉ hai field id và title được cập nhật; mọi field còn lại của dòng giữ nguyên giá trị đang có trong database</label>
+			<label><input type="radio" name="q6" value="b" /> Room báo lỗi vì object truyền vào không đủ dữ liệu như một dòng của bảng — Room đòi đủ mọi cột trước khi cho update</label>
+			<label><input type="radio" name="q6" value="c" /> Room xoá dòng 715538 rồi chèn object này thành một dòng mới nằm sau các dòng hiện có</label>
+			<label><input type="radio" name="q6" value="d" /> Room tìm dòng qua khoá chính rồi ghi đè toàn bộ các cột: summary thành rỗng, các field số thành 0</label>
 			<p class="explain" hidden>
-				Hai lợi ích cùng lúc. Thứ nhất, Room đối chiếu <code>:id</code> với tham số <code>id: Int</code> của hàm
-				<em>ngay lúc biên dịch</em> — viết sai tên là build fail. Thứ hai, giá trị được truyền vào như
-				<em>dữ liệu</em>, không phải như phần của câu lệnh, nên không ai chèn được SQL độc hại qua đó.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="b">
-			<legend>9. Chỉ nhìn kiểu trả về, hàm nào sau đây khớp <em>nhiều</em> dòng?</legend>
-			<label><input type="radio" name="q9" value="a" /> <code>suspend fun findRecipeById(id: Int): RecipeDb</code></label>
-			<label><input type="radio" name="q9" value="b" /> <code>suspend fun findIngredientsByRecipe(id: Int): List&lt;IngredientDb&gt;</code></label>
-			<label><input type="radio" name="q9" value="c" /> <code>suspend fun deleteRecipeById(recipeId: Int)</code></label>
-			<p class="explain" hidden>
-				Quy tắc đọc DAO: <code>List&lt;T&gt;</code> = có thể nhiều dòng (hoặc rỗng), <code>T</code> = đúng một dòng.
-				Và Room kiểm chính điều này lúc build — khai <code>SELECT * FROM recipes</code> mà để kiểu trả về là
-				<code>RecipeDb</code> thì compiler báo lỗi ngay.
+				<code>@Update</code> không làm "cập nhật một phần". Room sinh code kiểu
+				<code>UPDATE recipes SET (mọi cột) WHERE id = ?</code>, với <code>?</code> là <strong>khoá chính của object
+				truyền vào</strong>: khoá chính quyết định dòng nào bị ghi, nhưng <em>mọi cột</em> đều nhận giá trị object
+				đang mang — kể cả giá trị mặc định "" và 0. Vì vậy phải lấy object mới nhất từ database ra rồi sửa trên
+				chính nó, thay vì dựng object nửa vời. <code>@Delete</code> cũng nhận diện dòng bằng khoá chính của object
+				— tức là điều <code>deleteRecipeById(recipeId)</code> làm tay bằng <code>WHERE id = :recipeId</code>.
+				Đáp án c mô tả <code>REPLACE</code> khi <em>insert</em> trùng khoá; đáp án b sai vì Room không đòi object
+				"đầy đủ" — nó ghi những gì object đang mang. Cơ chế "tìm dòng bằng khoá chính, khác nhau ở chỗ kho —
+				các field còn lại bị bỏ qua hay bị ghi đè" sẽ được Chương 10.3, mục 13.3 quay lại chi tiết.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="a">
-			<legend>10. <code>@Insert(onConflict = OnConflictStrategy.IGNORE)</code> làm gì khi thêm 1 recipe đã tồn tại sẵn (trùng <code>id</code>)?</legend>
-			<label><input type="radio" name="q10" value="a" /> Bỏ qua, giữ nguyên dòng cũ, không báo lỗi</label>
-			<label><input type="radio" name="q10" value="b" /> Ghi đè hoàn toàn dòng cũ bằng dữ liệu mới</label>
-			<label><input type="radio" name="q10" value="c" /> App bị crash vì vi phạm khoá chính (primary key)</label>
+			<legend>7. addRecipe() khai @Insert(onConflict = OnConflictStrategy.IGNORE). Người dùng bấm bookmark lại một công thức đã lưu từ trước (cùng id). Chuyện gì xảy ra?</legend>
+			<label><input type="radio" name="q7" value="a" /> Lệnh insert bị bỏ qua: dòng cũ giữ nguyên, không ghi đè, cũng không có lỗi nào được ném ra</label>
+			<label><input type="radio" name="q7" value="b" /> Dòng cũ bị xoá rồi dòng mới được chèn vào đúng chỗ đó — dữ liệu bookmark được làm mới từ API</label>
+			<label><input type="radio" name="q7" value="c" /> App bị crash vì vi phạm ràng buộc khoá chính, nếu người gọi không bọc try/catch</label>
+			<label><input type="radio" name="q7" value="d" /> Room tự đổi sang thao tác UPDATE và ghi đè những field khác nhau giữa bản cũ và bản mới</label>
 			<p class="explain" hidden>
-				<code>OnConflictStrategy.IGNORE</code> nghĩa là nếu đã có sẵn 1 dòng trùng khoá chính, Room sẽ bỏ qua
-				lệnh insert mới, không ghi đè và không ném lỗi. Đây là lựa chọn hợp lý cho <code>addRecipe()</code> —
-				bookmark lại 1 công thức đã bookmark rồi thì không cần làm gì thêm.
+				<code>IGNORE</code> chỉ làm một việc: bỏ qua lệnh insert va vào ràng buộc khoá chính — "bookmark lại thì im
+				lặng", đúng hành vi app này muốn. Đáp án b mô tả <code>REPLACE</code> (hợp với dữ liệu cần bản mới thắng
+				bản cũ, ví dụ đồng bộ từ server); đáp án c mô tả <code>ABORT</code> — chiến lược <em>mặc định</em> khi không
+				ghi <code>onConflict</code>, và đó là lý do dòng <code>onConflict = IGNORE</code> không phải trang trí;
+				đáp án d sai vì <code>IGNORE</code> không thông minh đến mức tự biến thành update. <code>onConflict</code>
+				là một <strong>quyết định chính sách</strong>: không có lựa chọn đúng tuyệt đối, chỉ có lựa chọn khớp hành
+				vi app mong muốn.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="b">
-			<legend>11. Mọi hàm trong <code>RecipeDao</code> và <code>IngredientDao</code> đều khai <code>suspend</code>. Từ khoá đó nói lên điều gì, và một mình nó đã quyết định hàm chạy trên luồng nào chưa?</legend>
-			<label><input type="radio" name="q11" value="a" /> <code>suspend</code> tự chuyển hàm sang luồng nền, nên không cần làm gì thêm ở tầng trên</label>
-			<label><input type="radio" name="q11" value="b" /> <code>suspend</code> chỉ là cam kết "hàm này được gọi từ trong một coroutine và có thể tạm dừng"; chỗ <em>quyết định</em> luồng nằm ở tầng trên</label>
-			<label><input type="radio" name="q11" value="c" /> <code>suspend</code> chỉ là quy ước đặt tên của Room, không có ý nghĩa kỹ thuật</label>
+			<legend>8. Mọi hàm trong RecipeDao và IngredientDao đều khai suspend. Từ khoá đó nghĩa là gì, và một mình nó đã quyết định hàm chạy trên luồng nào chưa?</legend>
+			<label><input type="radio" name="q8" value="a" /> <code>suspend</code> tự chuyển hàm sang luồng nền (Dispatchers.IO), nên người gọi không cần bận tâm chuyện chọn luồng nữa</label>
+			<label><input type="radio" name="q8" value="b" /> <code>suspend</code> chỉ cam kết "hàm này được gọi từ trong coroutine và có thể tạm dừng rồi tiếp tục sau mà không chặn thread đang chạy"; còn luồng nào thật sự chạy là do tầng trên quyết định</label>
+			<label><input type="radio" name="q8" value="c" /> <code>suspend</code> là quy ước đặt tên mà Room dựa vào để sinh code, không ảnh hưởng tới cách gọi hàm</label>
+			<label><input type="radio" name="q8" value="d" /> <code>suspend</code> ép hàm phải chạy trên main thread để mọi cập nhật dữ liệu đều an toàn với giao diện</label>
 			<p class="explain" hidden>
-				Lý do bắt buộc <code>suspend</code> ở DAO là đọc/ghi ổ đĩa mất thời gian: chạy trên main thread (luồng vẽ
-				giao diện) sẽ làm app đứng, và Room chủ động chặn — gọi hàm DAO không phải suspend trên main thread sẽ
-				crash kèm thông báo kiểu "Cannot access database on the main thread". Nhưng phải hiểu đúng phạm vi của từ
-				khoá này: <code>suspend</code> nghĩa là "hàm chỉ gọi được từ trong coroutine, và có thể tạm dừng rồi tiếp
-				tục sau mà không chặn thread đang chạy" — nó <em>không</em> tự đổi luồng. Nếu bạn gọi một hàm
-				<code>suspend</code> từ một coroutine đang chạy trên main thread, nó vẫn ở main thread. Chỗ thật sự chọn
-				luồng là <code>withContext(Dispatchers.IO)</code> ở tầng ViewModel — Chương 10.3.
+				Theo đúng mô hình S1: <code>suspend</code> nghĩa là "chỉ gọi được từ coroutine, và có thể tạm dừng rồi tiếp
+				tục sau mà không chặn thread đang chạy" — nó <strong>không</strong> tự chuyển hàm sang thread nền và
+				<strong>không</strong> tự chọn dispatcher; gọi từ một coroutine đang chạy trên main thread thì hàm vẫn nằm
+				trên main thread. Lý do DAO cần <code>suspend</code> nằm ở chiều ngược lại: đọc/ghi ổ đĩa mất thời gian,
+				nên Room <strong>chủ động chặn</strong> việc gọi database trên main thread — gọi hàm DAO không phải suspend
+				sẽ crash với thông báo kiểu "Cannot access database on the main thread". Chỗ thật sự chọn luồng thuộc về
+				tầng trên (<code>withContext(Dispatchers.IO)</code> — Chương 10.3), và đừng thêm nó chỉ vì hàm "chạm vào
+				database". Đáp án d nói ngược sự thật: nếu <code>suspend</code> ép chạy trên main thì Room chẳng còn gì để
+				chặn.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="a">
-			<legend>12. Đâu là lợi thế lớn nhất của Room so với tự viết SQLite bằng tay?</legend>
-			<label><input type="radio" name="q12" value="a" /> Câu SQL sai bị phát hiện lúc biên dịch, không phải lúc app đã chạy trên máy người dùng</label>
-			<label><input type="radio" name="q12" value="b" /> Room lưu được dữ liệu lớn hơn giới hạn của SQLite</label>
-			<label><input type="radio" name="q12" value="c" /> Room không cần quyền truy cập bộ nhớ, SQLite thì cần</label>
+			<legend>9. Đâu là phần thưởng lớn nhất của Room so với tự viết SQLite bằng tay?</legend>
+			<label><input type="radio" name="q9" value="a" /> Câu SQL gõ sai — tên bảng, tên cột, tên tham số — hay kiểu trả về lệch với câu query bị phát hiện ngay lúc biên dịch, trên máy của bạn</label>
+			<label><input type="radio" name="q9" value="b" /> Room lưu được khối lượng dữ liệu lớn hơn giới hạn vốn có của SQLite</label>
+			<label><input type="radio" name="q9" value="c" /> Room không cần xin quyền truy cập bộ nhớ, trong khi SQLite trực tiếp thì cần</label>
+			<label><input type="radio" name="q9" value="d" /> Room bắt được mọi loại lỗi của câu SQL, kể cả lỗi cú pháp hợp lệ nhưng sai logic — ví dụ SELECT quên mất WHERE cần thiết</label>
 			<p class="explain" hidden>
-				Viết SQL trong chuỗi thuần thì gõ sai tên bảng vẫn build thành công — app crash lúc chạy. Room đọc câu SQL
-				trong <code>@Query</code> lúc build, đối chiếu với schema bạn khai, và báo lỗi kiểu
-				<em>"There is a problem with the query: [SQLITE_ERROR] SQL error or missing database (no such table:
-				recipe)"</em>. Sai một chữ cũng biết ngay.
+				Trước Room, SQL chỉ là một chuỗi text: gõ sai tên bảng vẫn build thành công và nổ <em>lúc chạy</em> — đúng
+				vào nhánh bạn vô tình chưa thử. Room đọc câu SQL trong <code>@Query</code> lúc build, đối chiếu với schema
+				khai qua <code>@Entity</code>, và báo lỗi kiểu <em>"There is a problem with the query: [SQLITE_ERROR] …
+				(no such table: recipe)"</em>. Nhưng nói cho đúng phạm vi: Room kiểm sự <em>khớp giữa SQL và schema</em> —
+				tên bảng, tên cột, tên tham số, kiểu trả về. Nó <strong>không</strong> biết ý định nghiệp vụ của bạn: một
+				câu SQL hợp lệ nhưng sai logic (ví dụ WHERE thiếu điều kiện) vẫn build xanh — trách nhiệm đó thuộc về người
+				viết, đúng như đáp án d mô tả sai. Đáp án b, c sai từ gốc: bên dưới, Room vẫn chính là SQLite — engine
+				không hề to hơn hay có đặc quyền riêng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>10. Trong RecipeDatabase khai @Database(entities = [...], version = 1, exportSchema = false). Con số version = 1 nói lên điều gì?</legend>
+			<label><input type="radio" name="q10" value="a" /> Phiên bản của app — trùng khớp với versionCode và versionName khai trong build.gradle, Room đọc lại từ đó để hiển thị "phiên bản database"</label>
+			<label><input type="radio" name="q10" value="b" /> Phiên bản của thư viện Room mà project đang dùng qua Version Catalog — tăng lên mỗi lần bạn nâng dependencies</label>
+			<label><input type="radio" name="q10" value="c" /> Số lần cấu trúc bảng đã bị thay đổi kể từ lúc người dùng cài app</label>
+			<label><input type="radio" name="q10" value="d" /> Phiên bản của cấu trúc database (schema) — Room dùng nó để biết cấu trúc bảng có thay đổi hay không</label>
+			<p class="explain" hidden>
+				<code>version</code> là <strong>số phiên bản schema</strong> — version của <em>cấu trúc database</em>,
+				không liên quan gì tới <code>versionCode</code>/<code>versionName</code> của app hay version của thư viện
+				Gradle (đáp án a, b). Khi bạn thêm/đổi/xoá cột, bạn <em>tự tăng</em> số này để Room biết cần chuyển dữ liệu
+				— nó không phải bộ đếm tự động (đáp án c), và Room đối chiếu nó với version đã lưu trong file database trên
+				máy. Trong project này <code>version = 1</code> và chưa bao giờ tăng. Cần biết: nếu tăng version mà không
+				viết migration, với <code>fallbackToDestructiveMigration()</code> đang khai trong builder, Room sẽ
+				<strong>xoá sạch</strong> database rồi tạo lại — app không crash nhưng toàn bộ bookmark của người dùng biến
+				mất (xem mục "Cạm bẫy" của bài).
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="c">
-			<legend>13. <code>@Volatile</code> trên biến <code>INSTANCE</code> giải quyết vấn đề gì?</legend>
-			<label><input type="radio" name="q13" value="a" /> Làm biến đó không bị mất khi app bị đóng</label>
-			<label><input type="radio" name="q13" value="b" /> Giúp biến chiếm ít bộ nhớ hơn</label>
-			<label><input type="radio" name="q13" value="c" /> Buộc mọi luồng đọc/ghi thẳng vào bộ nhớ chung, không dùng bản sao riêng đã cache</label>
+			<legend>11. Trong khối singleton của RecipeDatabase, @Volatile trên biến INSTANCE giải quyết chuyện gì?</legend>
+			<label><input type="radio" name="q11" value="a" /> Giữ biến INSTANCE không bị mất khi hệ điều hành đóng app, để lần mở sau dùng lại</label>
+			<label><input type="radio" name="q11" value="b" /> Ngăn không cho hai thread cùng đi vào khối lệnh tạo database đúng tại cùng một thời điểm, nhờ đó trong mọi trường hợp đều không thể tạo ra hai instance database</label>
+			<label><input type="radio" name="q11" value="c" /> Buộc mọi thread đọc/ghi biến thẳng vào bộ nhớ chung, không dùng bản sao cache riêng — một thread gán INSTANCE thì thread khác thấy ngay</label>
+			<label><input type="radio" name="q11" value="d" /> Cho phép biến INSTANCE bị gán lại nhiều lần mà compiler không cảnh báo như với val</label>
 			<p class="explain" hidden>
-				Mỗi luồng có thể giữ một bản cache của biến. Luồng A tạo database và gán vào <code>INSTANCE</code>, luồng B
-				vẫn thấy <code>null</code> trong bản cache của nó → tạo thêm một database thứ hai.
-				<code>@Volatile</code> tắt cache đó đi. Còn <code>synchronized</code> lo việc khác: chỉ cho một luồng vào
-				khối tạo database mỗi lần.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="c">
-			<legend>14. <code>fallbackToDestructiveMigration()</code> làm gì khi số <code>version</code> của database tăng lên?</legend>
-			<label><input type="radio" name="q14" value="a" /> Tự động chuyển dữ liệu cũ sang schema mới, không mất gì</label>
-			<label><input type="radio" name="q14" value="b" /> Chặn app mở database cho tới khi bạn viết migration</label>
-			<label><input type="radio" name="q14" value="c" /> Xoá sạch database cũ rồi tạo lại từ đầu — dữ liệu người dùng mất hết</label>
-			<p class="explain" hidden>
-				Chữ <em>destructive</em> nói đúng việc nó làm. Chấp nhận được khi đang phát triển (bạn tự cài lại app),
-				<strong>rất tệ</strong> nếu app đã lên Play Store — người dùng mất hết bookmark sau một bản cập nhật. Cách
-				làm đúng cho app thật là viết migration, và đó chính là nội dung Chương 11. Bản Room mới còn buộc bạn ghi rõ
-				<code>fallbackToDestructiveMigration(dropAllTables = true)</code> để không bật nhầm.
+				Mỗi thread có thể giữ một bản cache của biến: thread A tạo database và gán vào <code>INSTANCE</code>, thread
+				B vẫn đọc thấy <code>null</code> trong bản cache của nó → tạo thêm một database thứ hai.
+				<code>@Volatile</code> tắt cache đó đi: giá trị của biến volatile không bao giờ bị cache lại, mọi lần
+				đọc/ghi đi thẳng vào main memory. Còn đáp án b mô tả việc của <code>synchronized</code> — <em>mỗi thời điểm
+				chỉ một thread được vào khối code</em>. Hai annotation này lo <strong>hai việc khác nhau</strong> và mẫu
+				singleton cần cả hai: thiếu <code>@Volatile</code>, thread B có thể vẫn thấy <code>null</code> sau khi
+				thread A tạo xong; thiếu <code>synchronized</code>, hai thread có thể chen vào giữa bước "kiểm tra null" và
+				bước "gán INSTANCE" rồi cùng tạo database. Đáp án a nhầm với lưu trữ bền vững, còn d nhầm với
+				<code>val</code>/<code>var</code> — <code>@Volatile</code> không dính tới chuyện đó.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="b">
-			<legend>15. Trong project <code>final</code>, hàm <code>RecipeDatabase.getInstance()</code> được gọi ở đâu?</legend>
-			<label><input type="radio" name="q15" value="a" /> Trong <code>MainActivity.onCreate()</code></label>
-			<label><input type="radio" name="q15" value="b" /> Không ở đâu cả — nó là code chết; <code>RecipeApp</code> tự gọi <code>Room.databaseBuilder(...)</code> trực tiếp</label>
-			<label><input type="radio" name="q15" value="c" /> Trong mỗi hàm của <code>RecipeRepository</code></label>
+			<legend>12. Trong project final, hàm RecipeDatabase.getInstance() được gọi ở đâu?</legend>
+			<label><input type="radio" name="q12" value="a" /> Trong MainActivity.onCreate(), ngay trước khi danh sách bookmark được hiển thị — chỉ Activity có Context để tạo database</label>
+			<label><input type="radio" name="q12" value="b" /> Không ở đâu cả — RecipeApp tự gọi Room.databaseBuilder(...) trực tiếp; khối getInstance() là code không bao giờ chạy</label>
+			<label><input type="radio" name="q12" value="c" /> Trong từng hàm của RecipeRepository: mỗi khi cần đọc hoặc ghi dữ liệu, repository lại tự gọi getInstance() để lấy database</label>
+			<label><input type="radio" name="q12" value="d" /> Trong RecipeApp.onCreate() — Application khởi tạo repository, và repository gọi getInstance() để lấy database</label>
 			<p class="explain" hidden>
-				Đây là <strong>điểm lệch #2</strong>, điểm đáng chú ý nhất về mặt code trong cả Chương 10. Phần lý thuyết dồn
-				5 trong 7 điểm giải thích cho khối singleton, rồi lại hướng dẫn <code>RecipeApp</code> tạo database theo cách
-				khác. Hệ quả: <code>@Volatile</code>, <code>synchronized</code>,
-				<code>fallbackToDestructiveMigration()</code> và tên <code>"recipe_database"</code> đều không bao giờ chạy.
-				Mẫu singleton vẫn đáng học — chỉ cần biết ở đây nó không được dùng.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="a">
-			<legend>16. File database thật trên thiết bị của app Recipe Finder tên là gì?</legend>
-			<label><input type="radio" name="q16" value="a" /> <code>Recipes</code> — vì đó là tên trong <code>RecipeApp.kt</code>, dòng code thật sự chạy</label>
-			<label><input type="radio" name="q16" value="b" /> <code>recipe_database</code> — vì đó là cái tên phần lý thuyết chốt</label>
-			<label><input type="radio" name="q16" value="c" /> <code>room.db</code> — tên mặc định của Room</label>
-			<p class="explain" hidden>
-				<strong>Điểm lệch #1.</strong> Phần lý thuyết chốt tên <code>recipe_database</code>, nhưng tên đó chỉ nằm trong
-				<code>getInstance()</code> — hàm không bao giờ được gọi. Tên thật đến từ
-				<code>RecipeApp.kt</code>: <code>Room.databaseBuilder(this, RecipeDatabase::class.java, "Recipes")</code>.
-				Về mặt học thì tên nào cũng chạy; biết điều này chỉ để bạn không hoang mang khi mở Device Explorer đi tìm file.
+				Đã tìm toàn bộ project: <strong>không có chỗ nào gọi</strong> <code>getInstance(</code>. Nơi database thật
+				sự được tạo là <code>RecipeApp.onCreate()</code> — nhưng bằng
+				<code>Room.databaseBuilder(this, RecipeDatabase::class.java, "Recipes")</code>, không qua
+				<code>getInstance()</code>. Đây là <strong>điểm lệch #2</strong> của chương: phần lớn công sức giải thích
+				dồn vào khối singleton, rồi lại không dùng tới. Hệ quả: <code>@Volatile</code>,
+				<code>synchronized</code>, <code>fallbackToDestructiveMigration()</code> và tên
+				<code>"recipe_database"</code> đều là code chết trong app này. App vẫn đúng — <code>onCreate()</code> của
+				<code>Application</code> chạy đúng một lần mỗi tiến trình, trước mọi màn hình, nên vẫn chỉ có một database;
+				đó cũng là một cách làm singleton, đơn giản hơn và không cần <code>@Volatile</code>/<code>synchronized</code>.
+				Bài học: code <em>đúng</em> và code <em>được dùng</em> là hai chuyện khác nhau — kiểm bằng cách tìm tên hàm
+				trong cả project. (Đáp án c sai thêm một chỗ: repository <em>nhận</em> database sẵn có, không tự tạo mỗi
+				lần.)
 			</p>
 		</fieldset>
 

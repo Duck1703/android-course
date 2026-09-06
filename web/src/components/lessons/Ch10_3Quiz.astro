@@ -1,7 +1,18 @@
 ---
 // Quiz + bài tập nhỏ cho Chương 10.3. Câu hỏi bám nội dung Ch10_3RepositoryViewModel.astro.
-// Chuyển từ quiz cũ sang: câu 15 → câu 1, câu 17 → câu 3, câu 18 → câu 4, câu 16 → câu 6 (đã sửa chỗ nói sai
-// rằng repository cũng bọc withContext), câu 19 → câu 10; bài sắp thứ tự và Bài 1 cũng chuyển từ quiz cũ.
+// Lịch sử chỉnh (R3 rebalance): giữ 10 câu MCQ, mở rộng mỗi câu từ 3 lên 4 lựa chọn a–d.
+// Câu 6 viết lại theo đúng bài giảng (bản cũ quy kết "ViewModel còn bọc thêm withContext" như quy tắc
+// chung): hàm DAO là suspend vì truy vấn đĩa có thể chậm và không được chặn luồng chính; suspend không
+// tự chọn luồng nên phải có một tầng quyết định — project này để ViewModel bọc withContext(Dispatchers.IO),
+// còn repository cố ý không bọc ("một tầng quyết định luồng là đủ"), không phải yêu cầu của Room.
+// Thay 2 câu nằm ngoài phạm vi cần kiểm (overload deleteBookmark; RecipeApp/getInstance — đã có Bài 1
+// bên dưới kiểm riêng) bằng: câu về vai ViewModel (state holder, dependency qua constructor, không import
+// Room) và câu "repository không tự động là nguồn đáng tin (SSOT)".
+// Chấm MCQ chuyển sang harness chung web/src/scripts/quiz.ts (IMP-001): import initQuiz + nút #quiz-retry.
+// R3 cân bằng độ dài đáp án (audit length-rank: r3=70% → r1=3/r2=1/r3=3/r4=3): tỉa gọn đáp án đúng Q1;
+// bổ sung chi tiết sai-lạc thật cho distractor quá ngắn ở Q2 (a, b), Q4 (a, c), Q8 (a, c) — không đổi
+// thứ tự lựa chọn, không đổi đáp án đúng, không đổi explain (các nhận định sai mới đều đã bị explain phản biện sẵn).
+// Bài sắp thứ tự KHÔNG đổi — harness không chấm phần này, vẫn chấm bằng script inline cùng <script>.
 const vmReadSnippet = `suspend fun getBookmarks() {
   withContext(Dispatchers.IO) {
     val allRecipes = repository.findAllRecipes()
@@ -13,62 +24,80 @@ const vmReadSnippet = `suspend fun getBookmarks() {
 <section class="quiz" id="quiz">
 	<h2>Quiz nhanh</h2>
 	<p class="intro">
-		10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn
-		làm đúng, nên đọc hết.
+		10 câu, mỗi câu có 4 lựa chọn (a–d) — chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ
+		hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.
 	</p>
 
 	<form id="quiz-form">
-		<fieldset data-answer="b">
-			<legend>1. Vì sao app cần tầng <code>RecipeRepository</code>, khi ViewModel có thể gọi thẳng DAO?</legend>
-			<label><input type="radio" name="q1" value="a" /> Vì Room bắt buộc phải có repository, không có thì không build được</label>
-			<label><input type="radio" name="q1" value="b" /> Để ViewModel không biết dữ liệu tới từ đâu — đổi Room sang nguồn khác chỉ cần sửa bên trong repository</label>
-			<label><input type="radio" name="q1" value="c" /> Để tăng tốc truy vấn nhờ có thêm một lớp cache</label>
+		<fieldset data-answer="d">
+			<legend>1. Vì sao app cần tầng <code>RecipeRepository</code>, khi ViewModel hoàn toàn có thể gọi thẳng DAO?</legend>
+			<label><input type="radio" name="q1" value="a" /> Vì Room bắt buộc phải có repository, không có thì project không build được</label>
+			<label><input type="radio" name="q1" value="b" /> Để tăng tốc truy vấn, nhờ repository giữ thêm một lớp cache giữa ViewModel và database nên không phải đọc đĩa mỗi lần</label>
+			<label><input type="radio" name="q1" value="c" /> Vì Room sinh sẵn repository từ các annotation, như nó sinh phần cài đặt cho DAO</label>
+			<label><input type="radio" name="q1" value="d" /> Để ViewModel không biết dữ liệu tới từ đâu — đổi nguồn chỉ cần sửa repository</label>
 			<p class="explain" hidden>
-				Room không bắt buộc gì cả, và repository ở đây không cache. Giá trị của nó là <em>ngăn cách</em>: ViewModel
-				nói "cho tôi mọi bookmark", còn việc đó là một câu SQL, một lời gọi mạng, hay đọc file — repository lo. Nó
-				cũng là chỗ gói các thao tác nhiều bước, ví dụ <code>deleteRecipeIngredients()</code> = một truy vấn + một
-				vòng lặp xoá, nhưng bên ngoài chỉ thấy một dòng.
+				Room không bắt buộc gì cả (a) và cũng không sinh repository — nó chỉ sinh phần cài đặt cho DAO;
+				repository là code người viết, đặt ở giữa là <em>quyết định kiến trúc</em>, không phải ràng buộc kỹ
+				thuật (c). Repository này cũng không cache gì — nó chỉ chuyển tiếp lời gọi xuống DAO (b). Giá trị
+				thật của nó là <em>ngăn cách</em>: ViewModel nói "cho tôi mọi bookmark", còn việc đó là một câu SQL,
+				một lời gọi mạng hay đọc file — repository lo; nhờ vậy ViewModel không import
+				<code>RecipeDao</code> lẫn <code>RecipeDatabase</code>. Nó còn là chỗ gói các thao tác nhiều bước:
+				<code>deleteRecipeIngredients()</code> = một truy vấn + một vòng lặp xoá, nhưng bên ngoài chỉ thấy
+				một dòng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. Đọc 12 hàm của <code>RecipeRepository</code>: gần như hàm nào cũng chỉ có <em>một dòng</em> gọi thẳng xuống DAO. Lớp "mỏng" như vậy có vô dụng không?</legend>
+			<label><input type="radio" name="q2" value="a" /> Có — hàm một dòng chỉ lặp lại lời gọi của DAO, code thừa không đáng giữ, nên cho ViewModel gọi thẳng DAO</label>
+			<label><input type="radio" name="q2" value="b" /> Không đánh giá được — ViewModel không bao giờ được phép gọi DAO trực tiếp, nên không có gì để so sánh</label>
+			<label><input type="radio" name="q2" value="c" /> Không — nó là ranh giới che DAO, và là chỗ gộp nhiều thao tác thành một, như <code>deleteRecipeIngredients()</code></label>
+			<label><input type="radio" name="q2" value="d" /> Không — vì repository tự viết lại câu SQL và tối ưu từng truy vấn, hiệu quả hơn phần Room sinh ra tự động</label>
+			<p class="explain" hidden>
+				Một hàm mỏng vẫn có giá trị vì nó là <em>ranh giới</em>: <code>RecipeViewModel</code> không import
+				<code>RecipeDao</code> cũng không import <code>RecipeDatabase</code>; mai này bookmark lấy từ server
+				thay vì từ Room, chỉ bên trong repository đổi. Và nó là chỗ có sẵn để gộp thao tác — đúng trong file
+				này, <code>deleteRecipeIngredients(recipeId)</code> là hàm duy nhất không mỏng: tìm mọi nguyên liệu
+				của công thức rồi xoá từng cái, nhưng bên ngoài chỉ gọi một dòng. Hai nhận định sai đáng nhớ: Room
+				hoàn toàn <em>cho phép</em> ViewModel gọi DAO trực tiếp, nên b là ràng buộc tưởng tượng; còn d sai vì
+				repository không chứa câu SQL nào — không một chữ nào trong 12 hàm nói về SQL, bảng hay Room; phần
+				cài đặt vẫn là của Room sinh.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="a">
-			<legend>2. Đọc 12 hàm của <code>RecipeRepository</code>, gần như hàm nào cũng chỉ có <em>một dòng</em> gọi thẳng xuống DAO. Lớp "mỏng" như vậy có vô dụng không?</legend>
-			<label><input type="radio" name="q2" value="a" /> Không — nó là chỗ để sau này đổi nguồn dữ liệu và là chỗ gộp nhiều thao tác thành một; <code>deleteRecipeIngredients()</code> chính là ví dụ gộp thật</label>
-			<label><input type="radio" name="q2" value="b" /> Có — hàm một dòng chỉ là code thừa, nên bỏ repository và cho ViewModel gọi DAO</label>
-			<label><input type="radio" name="q2" value="c" /> Không đánh giá được, vì Room không cho ViewModel gọi DAO trực tiếp</label>
+			<legend>3. Vì sao app này giữ <em>ba</em> class model song song (<code>RecipeInformationResponse</code>, <code>RecipeDb</code>, <code>Recipe</code>) — và tách ba class như thế có phải là kiến trúc bắt buộc không?</legend>
+			<label><input type="radio" name="q3" value="a" /> Vì mỗi hình dạng do một thứ khác quyết định: server API quyết hình dạng response, cấu trúc lưu trữ quyết hình dạng entity, giao diện quyết hình dạng model UI</label>
+			<label><input type="radio" name="q3" value="b" /> Vì Kotlin không cho phép một class dùng ở nhiều tầng</label>
+			<label><input type="radio" name="q3" value="c" /> Vì code Room sinh ra không đọc được class dùng chung giữa các tầng</label>
+			<label><input type="radio" name="q3" value="d" /> Vì nguyên tắc kiến trúc của S5 bắt buộc mỗi biên giới phải có class riêng — ba biên giới thì dù hình dạng có giống nhau cũng phải tách ba</label>
 			<p class="explain" hidden>
-				Một hàm mỏng vẫn có giá trị vì nó là <em>ranh giới</em>. Nhờ có nó, <code>RecipeViewModel</code> không import
-				<code>RecipeDao</code> cũng không import <code>RecipeDatabase</code> — mai này bookmark lấy từ server thay vì
-				từ Room, chỉ bên trong repository đổi. Và nó là chỗ có sẵn để gộp thao tác: đúng trong file này,
-				<code>deleteRecipeIngredients(recipeId)</code> là hàm duy nhất không mỏng — nó tìm mọi nguyên liệu của công
-				thức rồi xoá từng cái trong một vòng lặp, nhưng bên ngoài chỉ gọi một dòng. Room hoàn toàn cho phép gọi DAO
-				trực tiếp; đây là lựa chọn kiến trúc, không phải ràng buộc kỹ thuật.
+				Đây là xử lý <em>khác nhau có thật</em>, không phải phong tục: server trả nhiều hơn app cần, SQLite
+				không lưu được danh sách con, UI chỉ hiển thị một phần — tách ra thì đổi một bên không kéo hai bên
+				còn lại theo, đổi lại phải có <code>Conversions.kt</code> với 11 hàm dịch qua lại. Nhưng tách model
+				<strong>không phải luật</strong>: nếu hai biên giới cần đúng cùng một hình dạng và không có lý do
+				thay đổi nào khác nhau, dùng chung một class là hợp lý — ví dụ app thời tiết một màn hình, không
+				database, JSON trả đúng thứ màn hình cần thì không cần tách. d đảo ngược đúng bài học của S5: đừng
+				tách chỉ vì "kiến trúc nói thế". b và c là ràng buộc tưởng tượng — Kotlin và Room đều không cấm dùng
+				chung class.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="b">
-			<legend>3. Vì sao app giữ <em>ba</em> class model song song (<code>RecipeInformationResponse</code>, <code>RecipeDb</code>, <code>Recipe</code>) thay vì dùng một class cho tất cả?</legend>
-			<label><input type="radio" name="q3" value="a" /> Vì Kotlin không cho phép một class dùng ở nhiều tầng</label>
-			<label><input type="radio" name="q3" value="b" /> Vì mỗi hình dạng do một thứ khác quyết định: API quyết hình dạng response, bảng SQLite quyết hình dạng entity, giao diện quyết hình dạng model UI</label>
-			<label><input type="radio" name="q3" value="c" /> Vì code sinh bởi Room không đọc được class dùng chung</label>
+			<legend>4. <code>recipeToDb(recipe)</code> chỉ điền 3 field (<code>id</code>, <code>title</code>, <code>image</code>), 7 field còn lại nhận giá trị mặc định. Dùng object đó với <code>@Delete</code> thì sao, còn với <code>@Update</code>?</legend>
+			<label><input type="radio" name="q4" value="a" /> Cả hai đều an toàn — Room tự bỏ qua các field còn giá trị mặc định, nên 7 field cũ được giữ nguyên</label>
+			<label><input type="radio" name="q4" value="b" /> <code>@Delete</code> an toàn (chỉ khớp khoá chính), <code>@Update</code> nguy hiểm (ghi đè 7 field thật bằng giá trị rỗng)</label>
+			<label><input type="radio" name="q4" value="c" /> Cả hai đều lỗi — Room từ chối object chưa điền đủ mọi field, kể cả khi field còn lại có giá trị mặc định</label>
+			<label><input type="radio" name="q4" value="d" /> <code>@Delete</code> chỉ cần khoá chính, còn <code>@Update</code> thì không dùng khoá chính mà khớp theo toàn bộ field của object</label>
 			<p class="explain" hidden>
-				Dùng một class chung nghĩa là đổi một cột trong database sẽ lan ra khắp UI, và đổi API cũng vậy. Tách ra thì
-				mỗi tầng đổi độc lập, đổi lại phải có <code>Conversions.kt</code> — 11 hàm dịch qua lại. Chú ý điểm cụ thể:
-				<code>RecipeDb</code> <strong>không thể</strong> chứa danh sách nguyên liệu vì một cột SQLite không lưu được
-				danh sách con — nên đọc một bookmark phải ghép dữ liệu từ <em>hai</em> bảng.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="a">
-			<legend>4. <code>recipeToDb(recipe)</code> chỉ điền 3 field (<code>id</code>, <code>title</code>, <code>image</code>), 7 field còn lại nhận giá trị mặc định. Dùng kết quả đó với <code>@Delete</code> thì sao, còn với <code>@Update</code>?</legend>
-			<label><input type="radio" name="q4" value="a" /> <code>@Delete</code> an toàn (chỉ khớp khoá chính), <code>@Update</code> nguy hiểm (ghi đè 7 field thật bằng giá trị rỗng)</label>
-			<label><input type="radio" name="q4" value="b" /> Cả hai đều an toàn, Room tự bỏ qua field rỗng</label>
-			<label><input type="radio" name="q4" value="c" /> Cả hai đều lỗi, Room từ chối object chưa điền đủ field</label>
-			<p class="explain" hidden>
-				<code>@Delete</code> chỉ cần khoá chính để tìm dòng cần xoá — các field khác không được nhìn tới, nên object
-				điền một phần vẫn đúng. <code>@Update</code> thì ghi <em>toàn bộ</em> các cột của dòng đó: hướng dẫn nấu, số
-				phần ăn, thời gian nấu sẽ bị thay bằng <code>""</code> và <code>0</code>. Đây là loại lỗi im lặng — không
-				crash, chỉ mất dữ liệu.
+				Cả hai annotation đều <em>tìm dòng bằng khoá chính</em> — khác nhau ở chỗ kho: <code>@Delete</code>
+				bỏ qua các field còn lại (xoá cả dòng, chẳng có gì để ghi đè), còn <code>@Update</code> ghi
+				<em>toàn bộ</em> giá trị các field vào dòng tìm được: hướng dẫn nấu, số phần ăn, thời gian nấu bị
+				thay bằng <code>""</code> và <code>0</code>. d chính là sai lầm cần tránh khi nhớ quy tắc này —
+				<code>@Update</code> <em>có</em> dùng khoá chính để tìm dòng, nó chỉ "làm nhiều hơn"
+				<code>@Delete</code> ở các field còn lại. a và c sai vì Room không có bước nào "bỏ qua field rỗng"
+				hay "từ chối object thiếu field" — object điền một phần là object hợp lệ. Đây là loại lỗi im lặng —
+				không crash, chỉ mất dữ liệu.
 			</p>
 		</fieldset>
 
@@ -76,103 +105,118 @@ const vmReadSnippet = `suspend fun getBookmarks() {
 			<legend>5. Hàm <code>getBookmark(bookmarkId)</code> trong <code>RecipeViewModel</code> gọi repository <em>hai</em> lần rồi ghép kết quả. Vì sao không đọc một lần là xong?</legend>
 			<label><input type="radio" name="q5" value="a" /> Vì lần gọi thứ nhất có thể thất bại, nên phải gọi lại cho chắc</label>
 			<label><input type="radio" name="q5" value="b" /> Vì Room giới hạn mỗi hàm DAO chỉ đọc được một cột mỗi lần</label>
-			<label><input type="radio" name="q5" value="c" /> Vì một cột SQLite không lưu được danh sách con, nên nguyên liệu nằm ở bảng thứ hai — phải đọc bảng recipe rồi đọc bảng ingredient</label>
+			<label><input type="radio" name="q5" value="c" /> Vì một cột SQLite không lưu được danh sách con — nguyên liệu nằm ở bảng <code>ingredients</code> riêng, nên phải đọc hai bảng</label>
+			<label><input type="radio" name="q5" value="d" /> Vì <code>findRecipeById()</code> đã trả về đủ <code>RecipeInformationResponse</code> ghép sẵn, hàm thứ hai chỉ để kiểm tra rằng dữ liệu còn tồn tại trong bảng nguyên liệu</label>
 			<p class="explain" hidden>
 				<code>findRecipeById(bookmarkId)</code> lấy công thức từ bảng <code>recipes</code>, còn
-				<code>findRecipeIngredients(bookmarkId)</code> lấy nguyên liệu từ bảng <code>ingredients</code>. Hai lời gọi
-				vì đúng là hai bảng: <code>RecipeDb</code> không có field nào chứa được <code>List&lt;IngredientDb&gt;</code>,
-				bởi một cột SQLite chỉ lưu giá trị đơn lẻ. Sau đó <code>recipeDbToRecipeInformation(recipe,
-				ingredientDbsToExtendedIngredients(ingredients))</code> ghép hai mảnh thành một object giống hệt cái mà API
-				trả về trong <em>một</em> response JSON. Nói ngắn: cái mạng gửi về liền một khối thì database phải ghép lại từ
-				hai bảng — và hàm ghi bookmark là bản đối xứng, tách một khối ra hai bảng.
+				<code>findRecipeIngredients(bookmarkId)</code> lấy nguyên liệu từ bảng <code>ingredients</code> —
+				hai lời gọi vì đúng là hai bảng: <code>RecipeDb</code> không có field nào chứa được
+				<code>List&lt;IngredientDb&gt;</code>, bởi một cột SQLite chỉ lưu giá trị đơn lẻ. Sau đó
+				<code>recipeDbToRecipeInformation(recipe, ingredientDbsToExtendedIngredients(ingredients))</code>
+				ghép hai mảnh thành một object giống hệt cái mà API trả về trong <em>một</em> response JSON. Nói
+				ngắn: cái mạng gửi về liền một khối thì database phải ghép lại từ hai bảng — và hàm ghi bookmark là
+				bản đối xứng, tách một khối ra hai bảng. a là thói quen phòng thủ vô căn cứ; b là giới hạn tưởng
+				tượng của Room; d sai vì <code>findRecipeById()</code> trả về <code>RecipeDb</code> — không hề có
+				object ghép sẵn nào, hàm thứ hai là bắt buộc của cấu trúc lưu trữ chứ không phải bước kiểm tra.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="c">
-			<legend>6. Vì sao mọi hàm DAO đều là <code>suspend</code>, và ViewModel còn bọc thêm <code>withContext(Dispatchers.IO)</code>?</legend>
-			<label><input type="radio" name="q6" value="a" /> Vì SQLite chỉ hoạt động trên luồng phụ</label>
-			<label><input type="radio" name="q6" value="b" /> Vì <code>suspend</code> làm truy vấn chạy nhanh hơn</label>
-			<label><input type="radio" name="q6" value="c" /> Vì đọc/ghi đĩa có thể mất thời gian — làm trên luồng chính sẽ khiến giao diện đứng hình</label>
+			<legend>6. Trong project này, repository chỉ khai <code>suspend</code> rồi gọi thẳng DAO — không bọc <code>withContext</code> ở đâu cả — còn ViewModel bọc <code>withContext(Dispatchers.IO)</code> quanh lời gọi repository. Vì sao truy vấn database cần rời luồng chính, và việc chọn luồng được bố trí theo mô hình nào?</legend>
+			<label><input type="radio" name="q6" value="a" /> Vì SQLite không chạy được trên luồng chính, nên khai <code>suspend</code> là Room tự chuyển truy vấn sang luồng nền</label>
+			<label><input type="radio" name="q6" value="b" /> Vì <code>suspend</code> làm truy vấn chạy nhanh hơn, còn <code>withContext</code> chỉ để đo thời gian thực thi</label>
+			<label><input type="radio" name="q6" value="c" /> Vì truy vấn đĩa có thể chậm và không được chặn luồng vẽ giao diện; <code>suspend</code> không tự chọn luồng, nên một tầng phải quyết — project này để ViewModel bọc <code>withContext(Dispatchers.IO)</code>, một tầng quyết định là đủ</label>
+			<label><input type="radio" name="q6" value="d" /> Vì Room bắt buộc: hàm DAO <code>suspend</code> phải được bọc <code>withContext(Dispatchers.IO)</code> ở cả repository lẫn ViewModel, thiếu là app crash</label>
 			<p class="explain" hidden>
-				Luồng chính (main thread) là luồng vẽ giao diện. Mọi việc chậm đặt vào đó đều làm app treo, và Android sẽ
-				hiện hộp thoại "app không phản hồi". <code>suspend</code> là lời cam kết "hàm này sẽ được gọi trong
-				coroutine", còn <code>withContext(Dispatchers.IO)</code> là chỗ <em>quyết định</em> chạy ở luồng nào. Đặt
-				quyết định đó trong ViewModel là đúng — UI không nên phải nghĩ về luồng. Chú ý đúng chỗ đặt nó trong project
-				này: <code>RecipeRepository.kt</code> <strong>không</strong> bọc <code>withContext</code>, các hàm của nó chỉ
-				khai <code>suspend</code> rồi gọi thẳng DAO; chỉ <code>RecipeViewModel.kt</code> bọc
-				<code>withContext(Dispatchers.IO)</code>. Một tầng quyết định luồng là đủ, bọc lồng nhiều tầng chỉ thêm nhiễu.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="b">
-			<legend>7. Xoá một bookmark cần mấy lời gọi repository, và nếu bỏ lời gọi thứ hai thì hậu quả là gì?</legend>
-			<label><input type="radio" name="q7" value="a" /> Một lời gọi <code>deleteRecipe()</code> là đủ — SQLite tự dọn các nguyên liệu liên quan</label>
-			<label><input type="radio" name="q7" value="b" /> Hai lời gọi — <code>deleteRecipe()</code> và <code>deleteRecipeIngredients()</code>; bỏ lời gọi thứ hai thì nguyên liệu "mồ côi" vẫn nằm trong bảng và vẫn hiện ở trang Groceries</label>
-			<label><input type="radio" name="q7" value="c" /> Hai lời gọi, nhưng bỏ lời gọi thứ hai thì app crash ngay khi mở lại danh sách bookmark</label>
-			<p class="explain" hidden>
-				Cả hai hàm <code>deleteBookmark</code> trong <code>RecipeViewModel</code> đều gọi hai lần: một lần xoá dòng ở
-				bảng <code>recipes</code>, một lần xoá các dòng ở bảng <code>ingredients</code>. Phải làm tay vì project
-				<strong>không</strong> khai <code>foreignKeys</code> — cột <code>recipeId</code> chỉ là một cột số bình
-				thường, SQLite không biết đó là quan hệ nên không có cascade delete nào chạy hộ bạn. Quên lời gọi thứ hai thì
-				không có lỗi nào nổ ra: công thức biến mất khỏi tab Bookmark, nhưng nguyên liệu của nó vẫn còn trong bảng và
-				vẫn được <code>getIngredients()</code> đọc lên, nên chúng tiếp tục hiện ở danh sách đi chợ mãi mãi. Đúng loại
-				bug im lặng, khó truy.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="c">
-			<legend>8. <code>RecipeViewModel</code> có hai hàm cùng tên <code>deleteBookmark</code>, một nhận <code>Recipe</code>, một nhận <code>Int</code>. Cơ chế Kotlin nào cho phép điều này, và mỗi hàm phục vụ màn hình nào?</legend>
-			<label><input type="radio" name="q8" value="a" /> Đó là <em>override</em> — hàm thứ hai ghi đè hàm thứ nhất, chỉ hàm nhận <code>Int</code> thật sự chạy</label>
-			<label><input type="radio" name="q8" value="b" /> Kotlin không cho trùng tên; đây là hai hàm ở hai class khác nhau nên mới hợp lệ</label>
-			<label><input type="radio" name="q8" value="c" /> Đó là <em>overload</em> — bản nhận <code>Recipe</code> dùng ở <code>ShowBookmarks</code> (quẹt xoá, UI đang có cả object), bản nhận <code>Int</code> dùng ở <code>RecipeDetails</code> (UI chỉ có id)</label>
-			<p class="explain" hidden>
-				<em>Overload</em> nghĩa là hai hàm trùng tên nhưng khác danh sách tham số, và compiler chọn đúng bản dựa vào
-				kiểu bạn truyền vào — khác hẳn <em>override</em> (ghi đè hàm của class cha). Điều quyết định ở đây không phải
-				sở thích mà là <strong>UI đang có gì trong tay</strong>: <code>ShowBookmarks</code> đang hiển thị cả object
-				<code>Recipe</code> nên truyền luôn object, nhờ vậy cập nhật state bằng
-				<code>localList.remove(recipe)</code>. Còn <code>RecipeDetails</code> đang giữ một
-				<code>RecipeInformationResponse</code>, không có <code>Recipe</code> nào để truyền, nên chỉ đưa được id và
-				phải tìm bằng điều kiện <code>localList.removeIf &#123; it.id == recipeId &#125;</code>. Cả hai bản đều làm đủ
-				ba việc: xoá recipe, xoá nguyên liệu, cập nhật state.
+				Luồng chính là luồng vẽ giao diện — mọi việc chậm đặt vào đó đều làm app đứng hình và Android có thể
+				hiện hộp thoại "app không phản hồi". Nhưng <code>suspend</code> <em>không tự đổi luồng</em> và
+				<em>không tự chọn dispatcher</em> — hàm suspend chạy trong ngữ cảnh của nơi gọi nó, nên phải có
+				<em>một tầng</em> quyết định chạy ở luồng nào. Project này chọn tầng ViewModel: các hàm đọc/ghi của
+				ViewModel bọc <code>withContext(Dispatchers.IO)</code>, còn repository không bọc chỗ nào — chỉ khai
+				<code>suspend</code> rồi gọi thẳng DAO. Đây là <em>lựa chọn bố trí</em> ("một tầng quyết định luồng
+				là đủ, và là tầng gọi"), không phải yêu cầu của Room: Room không bắt buộc bọc IO quanh hàm DAO
+				suspend, nên d mô tả đúng thói quen cargo-cult cần tránh — gặp code khác không bọc, đó không phải
+				lỗi. a sai vì SQLite chạy được trên luồng chính, vấn đề là đừng chặn nó; b sai vì
+				<code>suspend</code> không làm gì nhanh hơn — nó chỉ cam kết "hàm này được gọi trong coroutine".
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="a">
-			<legend>9. Nhìn vào <code>RecipeApp.onCreate()</code>: database thật được tạo ở đâu, với tên gì, và điều đó làm những thứ nào trong <code>getInstance()</code> mất hiệu lực?</legend>
-			<label><input type="radio" name="q9" value="a" /> Tạo thẳng bằng <code>Room.databaseBuilder(this, RecipeDatabase::class.java, "Recipes").build()</code> trong <code>RecipeApp</code> — nên <code>@Volatile</code>, <code>synchronized</code>, <code>fallbackToDestructiveMigration()</code> và tên <code>"recipe_database"</code> trong <code>getInstance()</code> đều không bao giờ chạy</label>
-			<label><input type="radio" name="q9" value="b" /> <code>RecipeApp</code> gọi <code>RecipeDatabase.getInstance(this)</code>, nên mọi thứ trong khối singleton đều có hiệu lực, tên file là <code>recipe_database</code></label>
-			<label><input type="radio" name="q9" value="c" /> Database được tạo trong <code>MainActivity.onCreate()</code>, còn <code>getInstance()</code> chỉ mất hiệu lực phần <code>fallbackToDestructiveMigration()</code></label>
+			<legend>7. Xoá một bookmark cần mấy lời gọi repository, và nếu bỏ lời gọi thứ hai thì hậu quả là gì?</legend>
+			<label><input type="radio" name="q7" value="a" /> Hai lời gọi — <code>deleteRecipe()</code> và <code>deleteRecipeIngredients()</code>; bỏ lời gọi thứ hai thì nguyên liệu "mồ côi" vẫn hiện ở danh sách đi chợ</label>
+			<label><input type="radio" name="q7" value="b" /> Một lời gọi <code>deleteRecipe()</code> là đủ — SQLite tự dọn các nguyên liệu liên quan nhờ cascade delete</label>
+			<label><input type="radio" name="q7" value="c" /> Hai lời gọi, nhưng bỏ lời gọi thứ hai thì app crash ngay khi mở lại danh sách bookmark, vì Room phát hiện khoá ngoại trỏ tới dòng đã bị xoá</label>
+			<label><input type="radio" name="q7" value="d" /> Một lời gọi <code>deleteRecipe()</code> là đủ — <code>@Delete</code> xoá luôn cả các dòng nguyên liệu của công thức</label>
 			<p class="explain" hidden>
-				Đây là <strong>điểm lệch #1 và #2</strong> nhìn từ đúng dòng code sinh ra chúng. Phần lý thuyết dồn 5 trong 7
-				điểm giải thích cho khối singleton <code>getInstance()</code>, rồi lại hướng dẫn <code>RecipeApp</code> tạo
-				database theo cách khác: <code>Room.databaseBuilder(this, RecipeDatabase::class.java, "Recipes").build()</code>.
-				Hệ quả kép. <strong>Điểm lệch #1:</strong> tên file database thật trên thiết bị là <code>Recipes</code>, không
-				phải <code>recipe_database</code> — biết điều này để không hoang mang khi mở Device Explorer đi tìm file.
-				<strong>Điểm lệch #2:</strong> <code>getInstance()</code> không được gọi ở bất kỳ đâu, nên cả
-				<code>@Volatile</code>, cả khối <code>synchronized</code>, cả <code>fallbackToDestructiveMigration()</code> đều
-				là code chết. Riêng chuyện thiếu <code>fallbackToDestructiveMigration()</code> lại <em>an toàn hơn</em>: tăng
-				<code>version</code> lên 2 mà không viết migration thì app crash lộ lỗi ngay, chứ không âm thầm xoá sạch
-				bookmark của người dùng. Và <code>RecipeApp</code> vẫn là singleton theo cách khác —
-				<code>Application.onCreate()</code> chạy đúng một lần mỗi tiến trình nên không cần khoá luồng nào cả. Mẫu
-				singleton vẫn đáng học, chỉ cần biết ở đây nó không được dùng.
+				Cả hai hàm <code>deleteBookmark</code> đều gọi repository hai lần: một lần xoá dòng ở bảng
+				<code>recipes</code>, một lần xoá các dòng ở bảng <code>ingredients</code>. Phải làm tay vì project
+				<strong>không</strong> khai <code>foreignKeys</code> — cột <code>recipeId</code> chỉ là một cột số
+				bình thường, SQLite không biết đó là quan hệ nên không có cascade delete nào chạy hộ bạn (b).
+				<code>@Delete</code> cũng chỉ xoá đúng dòng của object truyền vào trong bảng của nó — nó không đụng
+				tới bảng <code>ingredients</code> (d). Quên lời gọi thứ hai thì không có lỗi nào nổ ra — c sai vì project
+				không khai khoá ngoại nào để Room "phát hiện" cả: công thức biến mất khỏi tab Bookmark, nhưng nguyên
+				liệu của nó vẫn được
+				<code>getIngredients()</code> đọc lên và tiếp tục hiện ở danh sách đi chợ mãi — đúng loại bug im
+				lặng, khó truy.
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="c">
-			<legend>10. <code>LocalRepositoryProvider = compositionLocalOf &#123; error("No repository provided") &#125;</code> — phần <code>error(...)</code> đó có tác dụng gì?</legend>
-			<label><input type="radio" name="q10" value="a" /> Ghi log cảnh báo mỗi lần đọc repository</label>
-			<label><input type="radio" name="q10" value="b" /> Trả về một repository rỗng để app vẫn chạy được</label>
-			<label><input type="radio" name="q10" value="c" /> Là giá trị mặc định cố tình ném lỗi, để chỗ nào đọc repository mà không nằm dưới <code>CompositionLocalProvider</code> thì nổ ngay và rõ ràng</label>
+		<fieldset data-answer="b">
+			<legend>8. Trong dây chuyền Room → repository → ViewModel → UI, <code>RecipeViewModel</code> đảm nhận vai gì?</legend>
+			<label><input type="radio" name="q8" value="a" /> Tự tạo <code>RecipeDatabase</code> và repository bên trong để chủ động hoàn toàn nguồn dữ liệu, khỏi cần ai truyền vào</label>
+			<label><input type="radio" name="q8" value="b" /> Chủ UI state (<code>MutableStateFlow</code>) — gọi repository, dịch model, gán state; dependency vào qua constructor, không import tên Room nào</label>
+			<label><input type="radio" name="q8" value="c" /> Lưu dữ liệu lâu dài trên đĩa — đảm nhận vai của DataStore/Prefs (Chương 9), thay cả database khi dữ liệu đơn giản</label>
+			<label><input type="radio" name="q8" value="d" /> Vẽ trực tiếp giao diện: giữ tham chiếu tới Activity để gọi hàm cập nhật màn hình mỗi khi dữ liệu thay đổi, thay vì để UI chủ động lắng nghe state</label>
 			<p class="explain" hidden>
-				Thiết kế "sai thì phải sai to và sai ngay" — tốt hơn nhiều so với lặng lẽ đưa ra một repository rỗng rồi để
-				bạn đi tìm vì sao danh sách trống. Nhưng có một hệ quả: hàm <code>@Preview</code> không chạy qua
-				<code>MainActivity</code> nên cũng không nằm dưới provider nào → preview trong Android Studio hiện lỗi thay
-				vì hiện giao diện. Muốn preview render thì phải tự bọc
-				<code>CompositionLocalProvider(LocalRepositoryProvider provides fakeRepository)</code>.
+				ViewModel là <em>chủ sở hữu state</em>: <code>_bookmarksState</code> là
+				<code>MutableStateFlow</code>, hễ <code>.value</code> đổi thì mọi nơi đang lắng nghe nhận giá trị
+				mới và Compose vẽ lại — không có dòng nào ra lệnh "hãy làm mới màn hình", nên d sai: ViewModel không
+				giữ Activity, không vẽ gì cả, UI tự đến lắng nghe state. <code>prefs</code> và
+				<code>repository</code> là dependency được truyền vào từ bên ngoài qua constructor (Chương 9),
+				không do ViewModel tự tạo — a sai. ViewModel cũng không phải nơi lưu trữ: nó không ghi đĩa, chỉ gọi
+				repository, dịch model và gán state — c sai. Và nó không import một tên Room nào — chỉ biết
+				repository, đúng biên giới S5.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>9. Repository nằm giữa ViewModel và Room. Vậy <code>RecipeRepository</code> có tự động là "nguồn đáng tin" (SSOT) của dữ liệu không?</legend>
+			<label><input type="radio" name="q9" value="a" /> Có — bất kỳ repository nào cũng là nguồn đáng tin, đó là định nghĩa của tầng này</label>
+			<label><input type="radio" name="q9" value="b" /> Có — vì trong project này repository là một class duy nhất, không viết interface, nên dữ liệu nằm trong tay nó</label>
+			<label><input type="radio" name="q9" value="c" /> Không — nguồn đáng tin luôn là server; database chỉ là bản cache tạm của dữ liệu mạng</label>
+			<label><input type="radio" name="q9" value="d" /> Không tự động — Room là nguồn đáng tin <em>cho dữ liệu bookmark</em> vì dữ liệu được lưu bền ở đó, còn repository chỉ là nơi kiểm soát đường vào; với dữ liệu khác, nguồn đáng tin có thể là DataStore, bộ nhớ tạm, hoặc server</label>
+			<p class="explain" hidden>
+				SSOT không tự đến với tầng repository — đó là quyết định kiến trúc, không phải định nghĩa kèm theo
+				từ "repository" (a). Trong app này dữ liệu bookmark được lưu bền trong Room, nên Room là nguồn đáng
+				tin <strong>cho loại dữ liệu đó</strong>, còn <code>RecipeRepository</code> là nơi kiểm soát đường
+				vào nguồn đó — hai vai khác nhau (d). b sai vì chuyện có interface hay không không quyết định nguồn
+				đáng tin: project này cố ý không viết <code>interface RecipeRepository</code>, biên giới vẫn tồn tại
+				nhờ cách tổ chức code; repository cũng không "nằm giữ" dữ liệu — nó chỉ dẫn đường. c sai vì nguồn
+				đáng tin không phải luôn là server — phát biểu của bài giới hạn đúng ở dữ liệu bookmark của project
+				này, và với dữ liệu offline thì chính Room là nguồn đáng tin.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>10. <code>LocalRepositoryProvider = compositionLocalOf &#123; error("No repository provided") &#125;</code> — phần <code>error(...)</code> đó có tác dụng gì?</legend>
+			<label><input type="radio" name="q10" value="a" /> Là giá trị mặc định cố tình ném lỗi, để chỗ nào đọc repository mà không nằm dưới <code>CompositionLocalProvider</code> thì nổ ngay và rõ ràng</label>
+			<label><input type="radio" name="q10" value="b" /> Ghi log cảnh báo mỗi lần có chỗ đọc repository</label>
+			<label><input type="radio" name="q10" value="c" /> Trả về một repository rỗng để app vẫn chạy được thay vì phải khai báo provider ở mọi nơi</label>
+			<label><input type="radio" name="q10" value="d" /> Tự khởi tạo một <code>RecipeRepository</code> mới bằng <code>Room.databaseBuilder</code> khi chưa có gì được cung cấp</label>
+			<p class="explain" hidden>
+				Thiết kế "sai thì phải sai to và sai ngay" — tốt hơn nhiều so với lặng lẽ đưa ra một repository rỗng
+				rồi để bạn đi tìm vì sao danh sách trống (c), và rõ ràng hơn một dòng log dễ bị bỏ qua (b). Nó cũng
+				không tự dựng repository giúp bạn (d) — giá trị mặc định của <code>compositionLocalOf</code> chỉ
+				được tính khi có nơi đọc, và ở đây việc tính ấy chính là ném lỗi. Hệ quả đáng nhớ: hàm
+				<code>@Preview</code> không chạy qua <code>MainActivity</code> nên không nằm dưới provider nào →
+				preview trong Android Studio hiện lỗi thay vì hiện giao diện; muốn render thì phải tự bọc
+				<code>CompositionLocalProvider(LocalRepositoryProvider provides fakeRepository)</code> — bạn sẽ gặp lại
+				đúng tình huống này ở Chương 10.4.
 			</p>
 		</fieldset>
 
 		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
 		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
 	</form>
 
@@ -336,36 +380,15 @@ const vmReadSnippet = `suspend fun getBookmarks() {
 	</div>
 </section>
 <script>
-	const form = document.getElementById("quiz-form");
-	const scoreEl = document.getElementById("quiz-score");
+	// IMP-001: chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
 
-	form?.addEventListener("submit", (e) => {
-		e.preventDefault();
-		const fieldsets = form.querySelectorAll("fieldset");
-		let correct = 0;
+	initQuiz();
 
-		fieldsets.forEach((fs) => {
-			const answer = fs.getAttribute("data-answer");
-			const name = fs.querySelector("input")?.getAttribute("name");
-			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
-			const explain = fs.querySelector(".explain");
-			explain?.removeAttribute("hidden");
-
-			fs.classList.remove("correct", "incorrect");
-			if (picked && picked.value === answer) {
-				correct++;
-				fs.classList.add("correct");
-			} else {
-				fs.classList.add("incorrect");
-			}
-		});
-
-		if (scoreEl) {
-			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
-			scoreEl.removeAttribute("hidden");
-		}
-	});
-
+	// Bài sắp thứ tự nằm ngoài #quiz-form và harness không chấm phần này — giữ code chấm riêng
+	// trong cùng <script>, chạy sau initQuiz(), hành vi giữ nguyên như trước.
 	const orderBtn = document.getElementById("check-order");
 	const orderResult = document.getElementById("order-result");
 

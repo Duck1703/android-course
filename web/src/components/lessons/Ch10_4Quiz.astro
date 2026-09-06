@@ -1,6 +1,8 @@
 ---
 // Quiz + bài tập nhỏ cho Chương 10.4. Câu hỏi bám nội dung Ch10_4GiaoDienVaCamBay.astro.
 // Không có câu nào chuyển từ quiz cũ sang: cả 19 câu cũ đều thuộc phạm vi Chương 10.1–10.3, nên 8 câu ở đây viết mới.
+// R4 rebalance: giữ nguyên 8 câu, mở rộng mỗi câu từ 3 lên 4 lựa chọn (thêm 1 distractor cho mỗi câu,
+// đều là nhầm lẫn thật trong phạm vi bài học) và migrate sang harness chung IMP-001 (web/src/scripts/quiz.ts).
 const bookmarksLaunchSnippet = `LaunchedEffect(Unit) {
   scope.launch {
     viewModel.bookmarksState.collect { bookmarks ->
@@ -43,32 +45,39 @@ const vmSnippet = `suspend fun getBookmarks() {
 	<form id="quiz-form">
 		<fieldset data-answer="b">
 			<legend>1. Trong <code>ShowBookmarks</code>, <code>LazyColumn</code> khai <code>key = &#123; index -> bookmarks[index].id &#125;</code>. Nếu bỏ dòng <code>key</code> đó đi thì hiện tượng gì xảy ra khi người dùng quẹt xoá một dòng?</legend>
-			<label><input type="radio" name="q1" value="a" /> App crash vì <code>LazyColumn</code> bắt buộc phải có <code>key</code></label>
-			<label><input type="radio" name="q1" value="b" /> Không crash, nhưng Compose có thể tái sử dụng sai item — bạn thấy animation quẹt nhảy sang dòng khác, hoặc dòng còn lại hiện trạng thái của dòng vừa bị xoá</label>
+			<label><input type="radio" name="q1" value="a" /> App crash vì <code>LazyColumn</code> bắt buộc phải có <code>key</code> cho mỗi dòng</label>
+			<label><input type="radio" name="q1" value="b" /> Không crash, nhưng các dòng bị định danh theo <em>vị trí</em>: xoá một dòng thì dòng sau trượt lên và kế thừa state của vị trí đó — animation quẹt nhảy sang dòng khác</label>
 			<label><input type="radio" name="q1" value="c" /> Danh sách vẫn đúng hoàn toàn, chỉ chậm hơn vì Compose phải vẽ lại mọi dòng</label>
+			<label><input type="radio" name="q1" value="d" /> Không ảnh hưởng gì tới danh sách — <code>key</code> chỉ có ý nghĩa với <code>LaunchedEffect</code>, còn <code>LazyColumn</code> tự nhận biết dữ liệu đổi nhờ so sánh tham số</label>
 			<p class="explain" hidden>
-				<code>key</code> không bắt buộc — thiếu nó thì Compose mặc định định danh mỗi dòng bằng <em>vị trí</em> của nó
-				trong danh sách. Đó là chỗ sinh lỗi: xoá dòng thứ 2 thì dòng thứ 3 trượt lên thành vị trí 2, và Compose tưởng
-				đó vẫn là "dòng số 2" cũ nên giữ lại state đã <code>remember</code> cho vị trí đó — kể cả
-				<code>dismissState</code> đang ở trạng thái đã quẹt. Kết quả nhìn thấy được là animation nhảy sang dòng khác
-				hoặc dòng vừa trượt lên tự biến mất theo. Khai <code>key</code> bằng <code>recipe.id</code> — một định danh
-				ổn định, không đổi khi vị trí đổi — làm Compose gắn state đúng vào đúng dữ liệu.
+				<code>key</code> không bắt buộc — thiếu nó thì Compose định danh mỗi dòng bằng <em>vị trí</em> của nó trong
+				danh sách. Đó là chỗ sinh lỗi: xoá dòng thứ 2 thì dòng thứ 3 trượt lên thành vị trí 2, và Compose tưởng đó
+				vẫn là "dòng số 2" cũ nên giữ lại state đã <code>remember</code> cho vị trí đó — kể cả
+				<code>dismissState</code> đang ở trạng thái đã quẹt. Kết quả nhìn thấy được: animation quẹt nhảy sang dòng
+				khác, hoặc dòng vừa trượt lên tự biến mất theo. Khai <code>key = recipe.id</code> — một định danh ổn định,
+				không đổi khi vị trí đổi — làm state gắn đúng vào đúng dữ liệu. Câu d vạch đúng một nhầm lẫn thật:
+				<code>key</code> của <code>LazyColumn</code> là cơ chế khác hẳn <code>key</code> của
+				<code>LaunchedEffect</code> — nó định danh item để tái sử dụng state, không phải điều kiện để effect chạy
+				lại; và Compose không "tự nhận biết dữ liệu đổi" ở đây — không có key, danh tính của một dòng chỉ là vị trí
+				của nó.
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="c">
+		<fieldset data-answer="d">
 			<legend>2. <code>ShowBookmarks</code> viết <code>scope.launch &#123; withContext(Dispatchers.IO) &#123; viewModel.getBookmarks() &#125; &#125;</code>, nhưng bản thân <code>getBookmarks()</code> đã tự bọc <code>withContext(Dispatchers.IO)</code> bên trong. Đó là lỗi hay không?</legend>
 			<label><input type="radio" name="q2" value="a" /> Là lỗi — lồng hai <code>withContext(Dispatchers.IO)</code> vào nhau gây deadlock, coroutine sẽ treo</label>
 			<label><input type="radio" name="q2" value="b" /> Là lỗi — luồng bên ngoài ghi đè luồng bên trong, nên truy vấn database cuối cùng chạy trên luồng chính</label>
-			<label><input type="radio" name="q2" value="c" /> Không lỗi, chỉ <em>dư</em> — nó chuyển luồng hai lần và làm lẫn trách nhiệm; quyết định chạy ở luồng nào nên nằm ở một chỗ duy nhất là ViewModel</label>
+			<label><input type="radio" name="q2" value="c" /> Không phải dư — bọc ở cả hai tầng là phòng thủ hai lớp được khuyến nghị: sau này ViewModel có thể đổi, còn UI tự bọc thì luôn an toàn</label>
+			<label><input type="radio" name="q2" value="d" /> Không lỗi, chỉ <em>dư</em>: coroutine chuyển sang IO hai lần — quyết định chạy ở luồng nào nên nằm ở một tầng duy nhất là ViewModel, như <code>GroceryList.kt</code></label>
 			<p class="explain" hidden>
 				<code>withContext</code> lồng nhau hoàn toàn hợp lệ: cái bên trong thấy mình đã ở đúng dispatcher nên gần như
-				không tốn gì, và không có deadlock — <code>withContext</code> chỉ chuyển context, không giữ khoá. Cũng không
-				có chuyện "bên ngoài ghi đè bên trong": cái bên trong là cái quyết định sau cùng. Vấn đề thuần về thiết kế:
-				nếu UI cũng nghĩ về luồng thì sau này đọc code bạn không biết ai chịu trách nhiệm, và nếu ViewModel bỏ
-				<code>withContext</code> đi thì có màn hình vẫn an toàn nhờ tự bọc, có màn hình thì không. So sánh trong cùng
-				project: <code>GroceryList.kt</code> chỉ viết <code>scope.launch &#123; recipeViewModel.getIngredients() &#125;</code>
-				— đó là cách đúng, và hai file trong cùng một project đang làm hai kiểu khác nhau cho cùng một việc.
+				không tốn gì, và không có deadlock — <code>withContext</code> chỉ chuyển context, không giữ khoá (câu a sai).
+				Cũng không có chuyện "bên ngoài ghi đè bên trong": cái bên trong là cái quyết định sau cùng (câu b sai). Câu
+				c là cách lí hoá nghe hợp lý nhưng đúng ngược quy tắc của bài: "phòng thủ hai lớp" chính là nhân đôi trách
+				nhiệm — nếu ViewModel bỏ <code>withContext</code> đi thì có màn hình vẫn an toàn nhờ tự bọc, có màn hình thì
+				không, và bạn có hai chuẩn luồng trong cùng một app. Vấn đề thuần về thiết kế: quyết định luồng nên nằm ở
+				một tầng duy nhất — ViewModel. So sánh trong cùng project: <code>GroceryList.kt</code> chỉ viết
+				<code>scope.launch &#123; recipeViewModel.getIngredients() &#125;</code> — đó là khuôn đúng.
 			</p>
 		</fieldset>
 
@@ -77,14 +86,15 @@ const vmSnippet = `suspend fun getBookmarks() {
 			<label><input type="radio" name="q3" value="a" /> Bản thay thế là <code>SwipeToDismissBox</code> + <code>rememberSwipeToDismissBoxState</code> + <code>SwipeToDismissBoxValue</code>; code mẫu vẫn build và chạy đúng với version Compose mà project ghim</label>
 			<label><input type="radio" name="q3" value="b" /> Deprecated nghĩa là đã bị xoá khỏi thư viện, nên code mẫu không còn build được — phải viết lại trước khi chạy</label>
 			<label><input type="radio" name="q3" value="c" /> Không có bản thay thế; muốn quẹt để xoá thì phải tự xử lý cử chỉ bằng <code>Modifier.pointerInput</code></label>
+			<label><input type="radio" name="q3" value="d" /> Bản thay thế đổi cả cơ chế: <code>SwipeToDismissBox</code> bỏ lambda <code>confirmValueChange</code>, nên phải viết lại toàn bộ logic xác nhận khi nâng cấp</label>
 			<p class="explain" hidden>
-				<em>Deprecated</em> (không khuyến nghị dùng nữa) khác <em>removed</em> (đã bị xoá): API còn đó, còn chạy, chỉ bị
-				Android Studio gạch ngang tên kèm cảnh báo. Vì project mẫu ghim đúng version Compose ở thời điểm nó được viết,
-				bạn mở lên build thì không thấy gì bất thường — cảnh báo chỉ xuất hiện khi bạn nâng Compose lên bản mới hơn,
-				hoặc gõ lại đoạn này trong một project mới. Điểm quan trọng nhất để đỡ mất công học lại: <strong>ý tưởng và
-				cấu trúc không đổi</strong> — vẫn là một state giữ hướng quẹt, một lambda xác nhận có cho biến mất hay không,
-				một phần nền vẽ icon thùng rác. Chỉ tên hàm và tên kiểu dữ liệu đổi. Nên khi thấy gạch ngang, đó không phải bạn
-				gõ sai.
+				<em>Deprecated</em> (không khuyến nghị dùng nữa) khác <em>removed</em> (đã bị xoá): API còn đó, còn chạy, chỉ
+				bị Android Studio gạch ngang tên kèm cảnh báo — nên câu b sai. Vì project ghim đúng version Compose ở thời
+				điểm nó được viết, bạn mở lên build thì không thấy gì bất thường; cảnh báo chỉ xuất hiện khi bạn nâng
+				Compose lên bản mới hơn, hoặc gõ lại đoạn này trong một project mới. Câu c sai vì có bản thay thế chính
+				thức. Câu d sai ở chữ "đổi cả cơ chế": <strong>ý tưởng và cấu trúc không đổi</strong> — vẫn là một state
+				giữ hướng quẹt, một lambda xác nhận có cho biến mất hay không, một phần nền vẽ icon thùng rác; chỉ tên hàm
+				và tên kiểu dữ liệu đổi sang bộ <code>*Box</code>. Nên khi thấy gạch ngang, đó không phải bạn gõ sai.
 			</p>
 		</fieldset>
 
@@ -92,88 +102,108 @@ const vmSnippet = `suspend fun getBookmarks() {
 			<legend>4. <code>RecipeDetails</code> nhận hai tham số id (<code>recipeId</code> và <code>databaseRecipeId</code>): vào từ kết quả tìm kiếm thì gọi mạng, vào từ bookmark thì đọc database. Điều đó minh hoạ lợi ích kiến trúc nào?</legend>
 			<label><input type="radio" name="q4" value="a" /> Rằng một Composable nên nhận càng nhiều tham số càng tốt để linh hoạt</label>
 			<label><input type="radio" name="q4" value="b" /> Rằng đọc database nhanh hơn gọi mạng, nên nên ưu tiên database</label>
-			<label><input type="radio" name="q4" value="c" /> Rằng hai nguồn dữ liệu hoàn toàn khác nhau vẫn dùng chung một đoạn UI — vì cả hai đường đều kết thúc bằng việc gán vào cùng một state, nên phần vẽ giao diện không cần biết dữ liệu tới từ đâu</label>
+			<label><input type="radio" name="q4" value="c" /> Rằng hai nguồn dữ liệu hoàn toàn khác nhau vẫn dùng chung một đoạn UI: cả hai đường đều kết thúc bằng việc gán vào cùng một state, nên phần vẽ giao diện không cần biết dữ liệu tới từ đâu</label>
+			<label><input type="radio" name="q4" value="d" /> Rằng mỗi nguồn cần một state riêng để UI phân biệt khi vẽ — dùng chung một state thì hai đường sẽ ghi đè lẫn nhau</label>
 			<p class="explain" hidden>
-				Đây là ví dụ cụ thể nhất trong cả Chương 10 cho lợi ích của kiến trúc phân tầng ở Chương 10.1, mục 4. Hai đường
-				vào khác nhau về mọi mặt — một cái đi qua Retrofit ra internet, một cái đi qua Room xuống file SQLite trên máy
-				— nhưng cùng kết thúc ở <code>_recipeState</code>. Phần dựng giao diện chỉ đọc một state duy nhất, nên nó không
-				có một dòng <code>if</code> nào về nguồn dữ liệu. Hệ quả thực tế: trang chi tiết của một bookmark mở được cả
-				khi máy không có mạng. Chú ý thêm cách phân biệt trong code là <code>if (recipeId != 0)</code> — dùng số 0 làm
-				"không có giá trị". Cách này đơn giản nhưng không lý tưởng; <code>Int?</code> hoặc một <code>sealed class</code>
-				sẽ nói rõ ý định hơn, nên đừng coi đó là chuẩn mực để bắt chước.
+				Đây là ví dụ cụ thể nhất trong cả Chương 10 cho lợi ích của kiến trúc phân tầng ở Chương 10.1, mục 4. Hai
+				đường vào khác nhau về mọi mặt — một cái đi qua Retrofit ra internet, một cái đi qua Room xuống file SQLite
+				trên máy — nhưng cùng kết thúc ở <code>_recipeState</code>. Phần dựng giao diện chỉ đọc một state duy nhất,
+				nên nó không có một dòng <code>if</code> nào về nguồn dữ liệu. Hệ quả thực tế: trang chi tiết của một
+				bookmark mở được cả khi máy không có mạng. Câu d sai vì hai đường không bao giờ chạy đồng thời — mỗi lần
+				điều hướng chỉ điền một trong hai id — nên dùng chung một state không hề ghi đè lẫn nhau; tách state theo
+				nguồn lại buộc UI phải biết và phân nhánh theo nguồn, mất đúng lợi ích vừa nói. Chú ý thêm cách phân biệt
+				trong code là kiểm tra <code>recipeId != null</code> (route ở MainActivity thiếu tham số thì fallback
+				<code>?: 0</code> — dùng số 0 làm "không có giá trị", chỗ có thể làm tốt hơn, không phải chuẩn mực để bắt
+				chước).
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="b">
 			<legend>5. Sau khi sửa bốn hàm <code>@Preview</code> để chúng đọc <code>LocalRepositoryProvider.current</code>, project build được nhưng preview trong Android Studio lại hiện lỗi thay vì hiện giao diện. Vì sao, và chữa thế nào?</legend>
 			<label><input type="radio" name="q5" value="a" /> Vì <code>@Preview</code> không hỗ trợ Composable có tham số ViewModel — phải bỏ preview của các màn hình đó đi</label>
-			<label><input type="radio" name="q5" value="b" /> Vì preview không chạy qua <code>MainActivity</code> nên không nằm dưới <code>CompositionLocalProvider</code> nào, và giá trị mặc định <code>error("No repository provided")</code> bị kích hoạt ngay; chữa bằng cách bọc nội dung preview trong <code>CompositionLocalProvider(LocalRepositoryProvider provides fakeRepository)</code></label>
+			<label><input type="radio" name="q5" value="b" /> Vì preview không chạy qua <code>MainActivity</code> nên không có <code>CompositionLocalProvider</code> nào phía trên — giá trị mặc định <code>error("No repository provided")</code> bị kích hoạt; chữa bằng bọc preview trong provider với repository giả</label>
 			<label><input type="radio" name="q5" value="c" /> Vì preview không có quyền mở file database, phải cấp quyền trong <code>AndroidManifest.xml</code></label>
+			<label><input type="radio" name="q5" value="d" /> Vì preview chạy trên JVM của máy dev, còn database Room chỉ tồn tại trên thiết bị/emulator, nên không kết nối được qua adb</label>
 			<p class="explain" hidden>
-				Nguyên nhân nằm ở đường chạy, không phải ở quyền hay ở giới hạn của <code>@Preview</code>. Khi app chạy thật,
-				<code>MainActivity</code> bọc toàn bộ cây giao diện trong <code>CompositionLocalProvider</code>, nên mọi
-				Composable bên dưới đọc <code>LocalRepositoryProvider.current</code> đều nhận được repository thật. Preview thì
-				được Android Studio render trực tiếp, bỏ qua <code>MainActivity</code> — không có provider nào phía trên, nên
-				CompositionLocal rơi về giá trị mặc định, và giá trị mặc định ở đây cố tình là <code>error(...)</code>. Cách
-				chữa là chính preview tự dựng provider với một repository giả:
-				<code>CompositionLocalProvider(LocalRepositoryProvider provides fakeRepository) &#123; ... &#125;</code>. Đây là
-				cái giá của việc dùng CompositionLocal để phát dependency, và hướng dẫn từng bước chỉ đủ để project
-				<em>compile</em>, không đủ để preview <em>render</em> — biết trước điều này giúp bạn không đi tìm lỗi ở chỗ
-				không có lỗi.
-			</p>
-		</fieldset>
-
-		<fieldset data-answer="c">
-			<legend>6. Trong bốn lựa chọn thay thế Room thường được nêu (GreenDAO, Realm, Firebase Realtime Database, Apollo/GraphQL), điều gì <em>phải</em> phân biệt trước khi coi chúng là thay thế được cho nhau?</legend>
-			<label><input type="radio" name="q6" value="a" /> Cái nào miễn phí và cái nào có phí — đó là khác biệt quan trọng nhất</label>
-			<label><input type="radio" name="q6" value="b" /> Cái nào là ORM và cái nào không, vì chỉ ORM mới lưu được dữ liệu có cấu trúc</label>
-			<label><input type="radio" name="q6" value="c" /> Cái nào lưu <em>trên máy</em> và cái nào lưu <em>trên server</em> — Firebase và GraphQL là dữ liệu ở xa, nên không giải được bài toán "mở app không có mạng vẫn xem được bookmark"</label>
-			<p class="explain" hidden>
-				Đặt cả bốn vào cùng một danh sách rất dễ khiến người mới tưởng chúng cùng loại. Thực tế chỉ GreenDAO và Realm là
-				lưu trữ cục bộ; Firebase Realtime Database là database NoSQL trên cloud, còn Apollo/GraphQL chỉ có nghĩa khi bạn
-				có một database <em>từ xa</em> chạy GraphQL. Bài toán mà Chương 10 đặt ra là lưu bookmark <strong>trên
-				máy</strong> để xem offline — nên hai cái sau không thay Room được, chúng thường dùng <em>kèm</em> Room. Trạng
-				thái hôm nay cũng cần biết: GreenDAO đã cũ và chính greenrobot khuyến nghị chuyển sang ObjectBox; Realm cho
-				Android nay thuộc MongoDB và bản Java/Kotlin cũ đã ngừng phát triển. Nếu cần lưu cục bộ trên Android hôm nay,
-				hai lựa chọn thực tế là <strong>Room</strong> hoặc <strong>SQLDelight</strong> — cái sau không nằm trong danh
-				sách bốn lựa chọn cổ điển đó.
+				Nguyên nhân nằm ở đường chạy, không phải ở quyền (câu c) hay ở giới hạn của <code>@Preview</code> (câu a —
+				preview hỗ trợ Composable nhận tham số, kể cả ViewModel; vấn đề là giá trị mà nó đọc bên trong). Khi app
+				chạy thật, <code>MainActivity</code> bọc toàn bộ cây giao diện trong <code>CompositionLocalProvider</code>,
+				nên mọi Composable đọc <code>LocalRepositoryProvider.current</code> đều nhận repository thật. Preview được
+				Android Studio render trực tiếp, bỏ qua <code>MainActivity</code> — không có provider nào phía trên, nên
+				CompositionLocal rơi về giá trị mặc định, và giá trị mặc định ở đây cố tình là <code>error(...)</code>. Câu
+				d sai vì preview không cần chạm database thật: nó chỉ cần một repository được cung cấp — thứ mà một provider
+				với repository giả là đủ. Cách chữa chính là
+				<code>CompositionLocalProvider(LocalRepositoryProvider provides fakeRepository) &#123; ... &#125;</code>. Đây
+				là cái giá của việc dùng CompositionLocal để phát dependency: mỗi nơi hiển thị Composable đó, kể cả preview,
+				phải tự cung cấp giá trị — biết trước giúp bạn không đi tìm lỗi ở chỗ không có lỗi.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="a">
-			<legend>7. Bảng 7 điểm lệch ở mục 20 cho thấy 6 trong 7 hàng neo vào Chương 10.1 và 10.2 — phần lý thuyết và phần dựng tầng Room. Bài học rút ra khi đọc code mẫu là gì?</legend>
-			<label><input type="radio" name="q7" value="a" /> Rằng phần được giải thích kỹ nhất chưa chắc là phần thật sự chạy — nên khi đọc một đoạn code được nhấn mạnh, hãy kiểm xem nó có <em>lời gọi</em> nào không trước khi tin nó đang hoạt động</label>
-			<label><input type="radio" name="q7" value="b" /> Rằng phần lý thuyết của Chương 10.1 và 10.2 sai, nên bỏ qua và chỉ đọc code</label>
-			<label><input type="radio" name="q7" value="c" /> Rằng project mẫu bị lỗi build, cần sửa cả 7 chỗ trước khi chạy được</label>
+			<legend>6. Trong bốn lựa chọn thay thế Room thường được nêu (GreenDAO, Realm, Firebase Realtime Database, Apollo/GraphQL), điều gì <em>phải</em> phân biệt trước khi coi chúng là thay thế được cho nhau?</legend>
+			<label><input type="radio" name="q6" value="a" /> Cái nào lưu <em>trên máy</em> và cái nào lưu <em>trên server</em> — Firebase và GraphQL là dữ liệu ở xa, không thay Room được</label>
+			<label><input type="radio" name="q6" value="b" /> Cái nào là ORM và cái nào không — chỉ ORM mới lưu được dữ liệu có cấu trúc nên Firebase và GraphQL tự loại</label>
+			<label><input type="radio" name="q6" value="c" /> Cái nào miễn phí và cái nào có phí — vì app mẫu không có doanh thu, nên chỉ thư viện miễn phí là chọn được</label>
+			<label><input type="radio" name="q6" value="d" /> Cái nào dùng SQL — vì dữ liệu có cấu trúc như bookmark bắt buộc phải nằm trong SQL mới đảm bảo xem được offline</label>
 			<p class="explain" hidden>
-				Không có điểm lệch nào làm project không build — cả 7 chỗ đều chạy được, đó chính là lý do chúng dễ bị bỏ qua.
-				Và cũng không phải "lý thuyết sai hết": cột <em>nên theo cái nào</em> của bảng cho thấy có hàng nên theo code
-				(#1, #3, #6), có hàng nên hiểu cả hai (#2), có hàng chỉ cần biết là dư (#4, #5, #7). Điểm lệch #2 là ví dụ rõ
-				nhất cho kỹ năng đáng luyện: khối <code>getInstance()</code> được giải thích dài nhất trong cả Chương 10, nhưng
-				không có một lời gọi nào — nên <code>@Volatile</code>, <code>synchronized</code>,
-				<code>fallbackToDestructiveMigration()</code> và tên <code>"recipe_database"</code> bên trong nó đều không bao
-				giờ có hiệu lực. Kỹ năng ở đây: tìm khai báo là chưa đủ, phải tìm lời gọi. Nó dùng được với mọi codebase, không
-				riêng Room.
+				Đặt cả bốn vào cùng một danh sách rất dễ khiến người mới tưởng chúng cùng loại. Thực tế chỉ GreenDAO và Realm
+				là lưu trữ cục bộ; Firebase Realtime Database là database NoSQL trên cloud, còn Apollo/GraphQL chỉ có nghĩa
+				khi bạn có một database <em>từ xa</em> chạy GraphQL. Bài toán mà Chương 10 đặt ra là lưu bookmark
+				<strong>trên máy</strong> để xem offline — nên hai cái sau không thay Room được, chúng thường dùng
+				<em>kèm</em> Room. Câu d sai vì tiêu chí quyết định là dữ liệu nằm ở đâu, không phải ngôn ngữ truy vấn:
+				Realm không dùng SQLite mà vẫn là lưu cục bộ. Câu b sai vì "ORM" không phải điều kiện bắt buộc để lưu dữ
+				liệu có cấu trúc trên máy — Realm không phải ORM mà vẫn lưu được, còn Firebase lưu được dữ liệu có cấu trúc
+				nhưng trên server, đúng chỗ "không thay Room được" của câu a. Giá (câu c) chỉ là ràng buộc chọn thư viện,
+				không quyết định một thư viện có thay Room cho việc lưu offline được hay không. Trạng thái hôm nay cũng cần
+				biết: GreenDAO đã cũ và chính
+				greenrobot khuyến nghị chuyển sang ObjectBox; Realm cho Android nay thuộc MongoDB và bản Java/Kotlin cũ đã
+				ngừng phát triển. Nếu cần lưu cục bộ trên Android hôm nay, hai lựa chọn thực tế là <strong>Room</strong> hoặc
+				<strong>SQLDelight</strong> — cái sau không nằm trong danh sách bốn lựa chọn cổ điển đó.
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="b">
+		<fieldset data-answer="d">
+			<legend>7. Bảng 7 điểm lệch ở mục 20 cho thấy 6 trong 7 hàng neo vào Chương 10.1 và 10.2 — phần lý thuyết và phần dựng tầng Room. Bài học rút ra khi đọc code mẫu là gì?</legend>
+			<label><input type="radio" name="q7" value="a" /> Rằng project mẫu bị lỗi build, cần sửa cả 7 chỗ trước khi chạy được</label>
+			<label><input type="radio" name="q7" value="b" /> Rằng phần lý thuyết của Chương 10.1 và 10.2 sai, nên bỏ qua và chỉ đọc code</label>
+			<label><input type="radio" name="q7" value="c" /> Rằng 7 điểm lệch nghĩa là 7 bug chạy sai kết quả — phải sửa hết trước khi dùng code mẫu làm tài liệu</label>
+			<label><input type="radio" name="q7" value="d" /> Rằng phần được giải thích kỹ nhất chưa chắc đã chạy — hãy tìm <em>lời gọi</em> của nó trước khi tin nó hoạt động</label>
+			<p class="explain" hidden>
+				Không có điểm lệch nào làm project không build (câu a sai) — cả 7 chỗ đều chạy được, đó chính là lý do chúng
+				dễ bị bỏ qua. Và cũng không có điểm nào là bug chạy được sai kết quả (câu c sai): chúng là code chết, dư
+				thừa, mô tả lệch, lệch phiên bản, hoặc cách làm hợp lệ khác — phân loại quan trọng hơn đếm số. Cũng không
+				phải "lý thuyết sai hết" (câu b sai): cột <em>nên theo cái nào</em> của bảng cho thấy có hàng nên theo code
+				(#1, #3, #6), có hàng nên hiểu cả hai (#2), có hàng chỉ cần biết là dư (#4, #5, #7). Ví dụ rõ nhất cho kỹ
+				năng đáng luyện là điểm lệch #2: khối <code>getInstance()</code> được giải thích dài nhất trong cả Chương 10,
+				nhưng không có một lời gọi nào — nên <code>@Volatile</code>, <code>synchronized</code>,
+				<code>fallbackToDestructiveMigration()</code> và tên <code>"recipe_database"</code> bên trong nó không bao giờ
+				có hiệu lực. Tìm khai báo là chưa đủ — phải tìm lời gọi; kỹ năng này dùng được với mọi codebase, không riêng
+				Room.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
 			<legend>8. Bản Room mới đổi <code>fallbackToDestructiveMigration()</code> thành <code>fallbackToDestructiveMigration(dropAllTables = true)</code>, tức bắt buộc phải truyền tham số. Vì sao API lại đổi theo hướng bắt người viết gõ nhiều hơn?</legend>
 			<label><input type="radio" name="q8" value="a" /> Vì bản mới hỗ trợ nhiều loại database nên cần tham số để biết xoá loại nào</label>
-			<label><input type="radio" name="q8" value="b" /> Vì hàm này xoá sạch dữ liệu người dùng — buộc phải viết rõ <code>dropAllTables = true</code> làm người viết <em>nói ra</em> rằng mình đồng ý điều đó, thay vì bật nhầm một hành vi phá dữ liệu chỉ bằng một lời gọi trông vô hại</label>
-			<label><input type="radio" name="q8" value="c" /> Vì tham số đó cho phép chọn xoá dữ liệu mà vẫn giữ lại schema cũ để so sánh</label>
+			<label><input type="radio" name="q8" value="b" /> Vì tham số cho phép xoá từng bảng một thay vì xoá toàn bộ — bản cũ xoá sạch quá mức cần kiểm</label>
+			<label><input type="radio" name="q8" value="c" /> Vì hàm này xoá sạch dữ liệu người dùng — tham số buộc người viết <em>nói ra</em> điều mình chấp nhận thay vì bật nhầm</label>
+			<label><input type="radio" name="q8" value="d" /> Vì bản mới an toàn hơn: Room không còn tự xoá dữ liệu khi thiếu migration — tham số là cách bật lại hành vi cũ</label>
 			<p class="explain" hidden>
 				Chữ <em>destructive</em> nói đúng việc hàm làm: khi số <code>version</code> của database tăng mà không có
-				migration, nó xoá sạch database cũ rồi tạo lại từ đầu — người dùng mất hết bookmark sau một bản cập nhật. Chấp
-				nhận được lúc đang phát triển (bạn tự cài lại app), rất tệ khi app đã lên Play Store. Đây là một mẫu thiết kế
-				API đáng để ý và bạn sẽ gặp lại ở nhiều thư viện: <strong>làm cho hành vi nguy hiểm khó gọi một cách tình
-				cờ</strong>. Một lời gọi không tham số dễ bị chép vào code mà không ai nghĩ nó xoá gì; một tham số tên
-				<code>dropAllTables</code> thì đọc code review là thấy ngay. Cách làm đúng cho app thật vẫn là viết migration —
-				đúng nội dung Chương 11.
+				migration, nó xoá sạch database cũ rồi tạo lại từ đầu — người dùng mất hết bookmark sau một bản cập nhật.
+				Chấp nhận được lúc đang phát triển (bạn tự cài lại app), rất tệ khi app đã lên Play Store. Câu d đảo ngược ý
+				nghĩa: Room vẫn xoá khi thiếu migration — tham số không làm API "an toàn hơn" mà buộc phải <em>khai ra</em>
+				hành vi phá huỷ. Câu b sai ở chỗ <code>dropAllTables</code> không phải tuỳ chọn xoá tinh tế:
+				<code>true</code> nghĩa là xoá cả những bảng ngoài quản lý của Room — mức phá huỷ cao hơn chứ không thấp
+				hơn. Đây là một mẫu thiết kế API đáng để ý và bạn sẽ gặp lại ở nhiều thư viện: <strong>làm cho hành vi nguy
+				hiểm khó gọi một cách tình cờ</strong>. Một lời gọi không tham số dễ bị chép vào code mà không ai nghĩ nó
+				xoá gì; một tham số tên <code>dropAllTables</code> thì đọc code review là thấy ngay. Cách làm đúng cho app
+				thật vẫn là viết migration — nội dung bài mở rộng O5 (không nằm trên lộ trình chính).
 			</p>
 		</fieldset>
 
 		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
 		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
 	</form>
 
@@ -294,33 +324,10 @@ const vmSnippet = `suspend fun getBookmarks() {
 	</div>
 </section>
 <script>
-	const form = document.getElementById("quiz-form");
-	const scoreEl = document.getElementById("quiz-score");
+	// IMP-001: chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
 
-	form?.addEventListener("submit", (e) => {
-		e.preventDefault();
-		const fieldsets = form.querySelectorAll("fieldset");
-		let correct = 0;
-
-		fieldsets.forEach((fs) => {
-			const answer = fs.getAttribute("data-answer");
-			const name = fs.querySelector("input")?.getAttribute("name");
-			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
-			const explain = fs.querySelector(".explain");
-			explain?.removeAttribute("hidden");
-
-			fs.classList.remove("correct", "incorrect");
-			if (picked && picked.value === answer) {
-				correct++;
-				fs.classList.add("correct");
-			} else {
-				fs.classList.add("incorrect");
-			}
-		});
-
-		if (scoreEl) {
-			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
-			scoreEl.removeAttribute("hidden");
-		}
-	});
+	initQuiz();
 </script>
