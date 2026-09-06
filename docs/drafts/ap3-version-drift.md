@@ -22,6 +22,7 @@
 ## Mục lục
 
 - [Ch06 — State, ViewModel & StateFlow](#ch06--state-viewmodel--stateflow)
+- [Ch08 — Networking: Retrofit, Moshi/KSP & Coil](#ch08--networking-retrofit-moshiksp--coil)
 
 ---
 
@@ -185,8 +186,63 @@ Android.
 
 ### 7. Việc còn lại của IMP-058 mà file này chưa làm
 
-- Chưa gom bảng lệch phiên bản của các chương khác (Ch03.4, Ch04, Ch08–Ch11) — mỗi chương thêm một mục
-  `## Ch<NN>` riêng khi batch tương ứng chạy.
+- Chưa gom bảng lệch phiên bản của các chương còn lại (Ch03.4, Ch04, Ch09–Ch11) — mỗi chương thêm một
+  mục `## Ch<NN>` riêng khi batch tương ứng chạy.
 - Chưa có bảng glossary và bảng lệnh (spec §6 mô tả AP3 gồm *versions, commands, glossary*).
 - Chưa có phần "số chương của giáo trình gốc" mà spec §16 muốn chuyển vào phụ lục.
 - Chưa wire vào registry/route — AP3 chỉ thành trang ở task IMP-058.
+
+---
+
+## Ch08 — Networking: Retrofit, Moshi/KSP & Coil
+
+**Nguồn:** `aaf-materials/08-networking/projects/{starter,final}/` ·
+`content/book/ch08-networking.md`
+**Số liệu chốt:** 2026-09-06 (verify trực tiếp trong phiên dựng lại trang Ch08; bản của giáo trình = 2023).
+**Bài lõi trỏ về đây:** trang Ch08 hiện tại (ba đơn vị W1/W2/W3), khối `#cam-bay` → mục "Cạm bẫy &
+tài liệu lỗi thời"; các con số dưới đây không lặp lại trong thân bài.
+
+### 1. Kiến thức bền vs cú pháp dễ đổi
+
+Nhóm khái niệm của chương này — coroutine/suspend/scope, Flow/StateFlow, mô tả API bằng interface
+Retrofit, JSON ↔ data class, codegen vs reflection, phân trang theo offset — **không lỗi thời theo
+phiên bản**. Đổi chỉ là *số phiên bản*, *tên artifact* (Coil 3) và *chính sách dịch vụ* (Spoonacular
+free tier); liệt kê dưới đây.
+
+### 2. Bảng lệch phiên bản (2023 → hôm nay)
+
+| Thứ trong giáo trình gốc / code mẫu | Hiện tại | Nên theo cái nào |
+|---|---|---|
+| `kotlinx-coroutines` **1.7.2** (`libs.versions.toml` dòng 19) | **1.11.x** (08/2026) | Không bắt buộc. Mọi API chương này dùng (`launch`, `suspend`, `Dispatchers`, `MutableStateFlow`, `asStateFlow`) không đổi |
+| `retrofit` **2.9.0** (dòng 20) | Nhánh 2.x kết ở **2.12.0**; bản ổn định mới là **3.0.0** (05/2025) — **không đổi API** (vẫn package `retrofit2`, tương thích binary 2.x); thay đổi đáng kể duy nhất: kéo OkHttp lên 4.12 | Nên lên 2.12.0 nếu tiện. `@GET`/`@Query`/`@Path` và `suspend` giữ nguyên ở cả hai nhánh |
+| `moshi` + `moshi-kotlin-codegen` **1.15.0** (dòng 22) | **1.15.2** (12/2024) — bản sửa lỗi | Nên đổi. `@Json`, `@JsonClass(generateAdapter = true)` không đổi |
+| `coil-compose` **2.4.0** (dòng 15) | Nhánh **Coil 3** (`io.coil-kt.coil3`, bản ổn định **3.6.x**, 2026): đổi namespace, tách artifact mạng (`coil-network-okhttp`), hỗ trợ Compose Multiplatform | `AsyncImage` dùng như nhau ở mức bài học (URL vô, ảnh ra). Project mới nên theo Coil 3; không cần nâng khi đang học chương này |
+| `timber` **5.0.1** | **5.0.1** — vẫn là bản mới nhất (08/2021) | Không. Ổn định nhiều năm |
+| `kotlin` **1.9.10** | **2.4.x**. Từ Kotlin 2.0, Compose compiler đi kèm plugin `org.jetbrains.kotlin.plugin.compose` thay vì khối `composeOptions` | Project mới: dùng plugin compose. Đã dạy ở phần Gradle của khoá |
+| `agp` **8.2.0** | Dòng 8.x đi tiếp; AGP phải tương thích Android Studio đang dùng | Để Studio tự nâng qua AGP Upgrade Assistant khi báo |
+| (không phải thư viện) Ảnh chụp màn hình đăng ký Spoonacular + hạn mức free tier | Chính sách free tier thay đổi thường xuyên hơn thư viện | Đăng ký theo *ý nghĩa* từng bước (tài khoản → console/profile → API key), không theo hình |
+
+### 3. "8 điểm lệch" giáo trình ↔ project — bản đồ đích sau khi dựng lại trang
+
+Bản Ch08 trước đây giữ một bảng tổng hợp 8 điểm "sách nói X, code làm Y". Sau khi dựng lại thành ba
+đơn vị, mỗi điểm đã sống ở đúng vị trí sư phạm của nó; bảng dưới chỉ còn là bản đồ tra nhanh —
+**nội dung đầy đủ của từng điểm nằm ở mục được trỏ, không lặp lại ở đây**:
+
+| # | Điểm | Nội dung ở mức một câu | Nơi dạy bây giờ |
+|---|---|---|---|
+| 1 | "Flows thay thế LiveData" (Key Points của giáo trình) | LiveData chưa deprecate; code mới chọn StateFlow vì sinh từ coroutine + không phụ thuộc Android | W1 mục 5 (tóm tắt một câu) — lịch sử câu nói gốc nằm ở dòng 592 `{BOOK}` |
+| 2 | `moshi-kotlin` (reflection) rồi bị bỏ | Giáo trình thêm bản reflection ở giữa chừng rồi chuyển codegen; `starter`/`final` chỉ lưu trạng thái cuối | W2 mục 13 (bảng reflection ↔ codegen) — trạng thái trung gian của giáo trình là dữ liệu lịch sử, giữ ở đây |
+| 3 | API key nằm trong code committed | Placeholder nên không rò rỉ, nhưng cấu trúc mời bạn dán key thật rồi commit | W3 mục 21 (khuôn keys.properties → BuildConfig + ranh giới bảo mật) |
+| 4 | Plugin KSP không được hướng dẫn khai | Đã có sẵn trong `starter`, project mới phải tự thêm `alias(libs.plugins.devtoolsKsp)` | W2 mục 13 |
+| 5 | `Ingredient` bị annotate nhưng không qua JSON | Làm máy móc theo chữ "các file còn lại"; model thật của Chương 10.2 | W2 mục 13 |
+| 6 | `suspend fun queryRecipe` + `viewModelScope.launch` cùng lúc | Lớp dư — hàm trả về ngay, suspend không giúp chờ | W1 mục 7 |
+| 7 | `launch(Dispatchers.Default)` cho lời gọi mạng | Chạy đúng (Retrofit tự main-safe) nhưng dựng thói quen sai | W1 mục 1, 7 |
+| 8 | Hai `@Preview` không render được (`LocalNavigatorProvider` mặc định ném lỗi) | Đọc code mẫu thấy preview đỏ là bình thường | **N1** sở hữu (Phần 15 #2 của draft N1); trang W1/W2 không dạy lại, chỉ cross-ref |
+
+### 4. Tham chiếu phiên bản Navigation (thuộc N1/N2)
+
+Project 08 khai `navigation-compose` **2.7.2** (`libs.versions.toml` dòng 17) — toàn bộ dữ kiện
+phiên bản về Navigation (2.8.0 = ngưỡng route type-safe; bản ổn định hiện tại; Navigation 3) đã được
+verify và ghi trong **`docs/drafts/n2-navigation-backstack-typesafe.md`** (mục "Editorial migration
+notes / C"). Khi N1/N2 được dựng thành trang, phần riêng của Navigation sẽ thêm vào file này —
+không nhân đôi ở đây.
