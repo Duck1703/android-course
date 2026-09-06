@@ -1,9 +1,36 @@
 ---
-// Lesson Chapter 9: Data Store — viết lại hoàn toàn ở Task 43 (Phase 5 "Depth pass").
-// Nguồn chính (source of truth): content/book/ch09-data-store.md (399 dòng, 13 heading).
-// Project minh hoạ: aaf-materials/09-data-store/projects/{starter,final}/ (app "Recipe Finder").
-// Mọi số dòng trích dẫn trong bài đã mở file thật để kiểm bằng Read tool trước khi viết.
-// Giải thích tự viết tiếng Việt — không copy nguyên văn sách (xem CLAUDE.md mục Bản quyền).
+// Chương 9 — Dữ liệu cục bộ (1): DataStore & SharedPreferences, và nối Prefs vào app.
+//
+// CẤU TRÚC: trang này đang là MỘT route (`ch09-data-store`) nhưng đã được dựng thành
+// HAI ĐƠN VỊ HỌC độc lập, đánh dấu bằng mốc tách (cùng khuôn với trang Ch06/Ch08):
+//
+//   <!-- D1 START --> … <!-- D1 END -->   Đơn vị 1 — DataStore & SharedPreferences legacy (mục 1–10)
+//   <!-- D2 START --> … <!-- D2 END -->   Đơn vị 2 — Prefs trong app: CompositionLocal & ViewModel wiring (mục 11–21)
+//
+// HƯỚNG DẪN TÁCH VỀ SAU (task IMP-041): cắt theo mốc là ra hai file lesson D1/D2.
+// Phần mở đầu dùng chung (callout journey + "hai vấn đề" + Getting Started) đi theo **D1** khi tách.
+// Hai khối dùng chung ở cuối (`#cam-bay`, `#nguon`) đã được nhóm sẵn theo D1/D2; khi tách mỗi bài
+// giữ đúng nhóm của mình và vẫn có đúng một `<h2 id="cam-bay">` + một `<h2 id="nguon">`.
+// Đánh số mục liên tục 1–21 — KHÔNG cần đổi khi tách.
+//
+// TIỀN QUYẾT (đã có trong khoá, không dạy lại): F1 (joinToString; map/filter) · F2 (`by` delegate,
+// riêng "Cùng cơ chế, delegate khác: by preferencesDataStore" ở Phần 9 của F2 — mục 5 của đơn vị 1
+// là phần trả nợ trực tiếp) · S1 (suspend = cho phép tạm dừng, không chọn thread · viewModelScope ·
+// Flow = giá trị theo thời gian) · S4 (ViewModel sở hữu UI state · MutableStateFlow + asStateFlow ·
+// viewModelScope) · S2 (remember/rememberSaveable) · S3 (truyền giá trị xuống, sự kiện lên) ·
+// C4 (LaunchedEffect chạm lần đầu) · A14 (version catalog) · Chương 1 (sandbox bảo mật).
+//
+// RANH GIỚI: database/Room = R1–R4 (bài này KHÔNG dạy Room, chỉ chỉ ra ranh giới khi dữ liệu là tập
+// hợp) · Hilt/DI framework = CHỈ seam note 1–2 câu ở mục 12 · toàn bộ bảng lệch phiên bản + bảng
+// "giáo trình ↔ project" + chuyện forensics preview = docs/drafts/ap3-version-drift.md (mục Ch09) ·
+// cơ chế CompositionLocal chỉ dạy ở mức project dùng (compositionLocalOf + provider + current),
+// KHÔNG dạy internals recomposition · LaunchedEffect ở mức áp dụng (chiều sâu đầy đủ = R4) ·
+// IOException/corruption handling của DataStore: project KHÔNG dùng, không dạy.
+//
+// GIỌI VĂN: mọi khẳng định kỹ thuật tự đứng (không "sách nói X"); các điểm lệch giữa văn bản gốc
+// và project mẫu được dạy trung tính tại chỗ có giá trị sư phạm, phần lịch sử/tra cứu nằm ở AP3.
+// Code thật lấy từ aaf-materials/09-data-store/projects/{starter,final}/; mọi số dòng trích dẫn
+// đã mở file thật để kiểm (phiên 2026-09-06). Ví dụ tối giản do khoá dựng được đánh dấu trong thân bài.
 import { Code } from "astro:components";
 
 const FINAL = "aaf-materials/09-data-store/projects/final/app/src/main/java/com/kodeco/recipefinder";
@@ -47,33 +74,17 @@ const buildGradleCode = `  ksp(libs.moshiCodeGen)
 
   implementation(libs.timber)`;
 
-const prefsSkeletonCode = `import android.content.Context
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.flow.first
+const topLevelDelegateCode = `// Cách project mẫu làm — delegate là MEMBER của class Prefs:
+class Prefs(val context: Context) {
+  private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "recipes")
+  // ...
+}
+
+// Cách tài liệu chính thức của DataStore hướng dẫn — delegate ở TOP-LEVEL của file:
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "recipes")
 
 class Prefs(val context: Context) {
-  // TODO: Add dataStore
-  // TODO: Add saveString
-  // TODO: Add getString
-  // TODO: Add saveInt
-  // TODO: Add getInit
-  // TODO: Add hasKey
-}`;
-
-const saveStringBookCode = `// 1
-suspend fun saveString(key: String, value: String) {
-  // 2
-  val prefKey = stringPreferencesKey(key)
-  // 3
-  context.dataStore.edit { prefs ->
-      // 4
-      prefs[prefKey] = value
-  }
+  // ...
 }`;
 
 const prefsFullCode = `class Prefs(val context: Context) {
@@ -109,17 +120,14 @@ const prefsFullCode = `class Prefs(val context: Context) {
   }
 }`;
 
-const topLevelDelegateCode = `// Cách project mẫu làm — delegate là MEMBER của class Prefs:
-class Prefs(val context: Context) {
-  private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "recipes")
-  // ...
-}
-
-// Cách tài liệu chính thức của DataStore hướng dẫn — delegate ở TOP-LEVEL của file:
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "recipes")
-
-class Prefs(val context: Context) {
-  // ...
+const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
+  // 1
+  val prefKey = stringPreferencesKey(key)
+  // 2
+  context.dataStore.edit { prefs ->
+      // 3
+      prefs[prefKey] = value
+  }
 }`;
 
 const recipeAppStarterCode = `class RecipeApp : Application() {
@@ -200,6 +208,15 @@ fun RecipeDetails(recipeId: Int? = null, databaseRecipeId: Int? = null) {
   val navController = LocalNavigatorProvider.current
   // TODO: Add Repository`;
 
+const searchRecipesCode = `fun searchRecipes(searchString: String, viewModel: RecipeViewModel) {
+  if (searchString.isNotEmpty()) {
+    viewModel.addPreviousSearch(searchString)
+    viewModel.queryRecipies(searchString, viewModel.queryState.value.offset)
+  } else {
+    viewModel.setSearching(false)
+  }
+}`;
+
 const savePreviousSearchesCode = `private fun savePreviousSearches() {
   viewModelScope.launch {
     val searchString = _uiState.value.previousSearches.joinToString(",")
@@ -217,15 +234,6 @@ const addPreviousSearchCode = `fun addPreviousSearch(searchString: String) {
     _uiState.value = _uiState.value.copy(previousSearches = updatedSearches)
     // 4
     savePreviousSearches()
-  }
-}`;
-
-const searchRecipesCode = `fun searchRecipes(searchString: String, viewModel: RecipeViewModel) {
-  if (searchString.isNotEmpty()) {
-    viewModel.addPreviousSearch(searchString)
-    viewModel.queryRecipies(searchString, viewModel.queryState.value.offset)
-  } else {
-    viewModel.setSearching(false)
   }
 }`;
 
@@ -255,46 +263,6 @@ const dropdownCode = `    Box {
       }
     }`;
 
-const exerciseStarterCode = `// starter/.../ui/groceries/GroceryList.kt
-@Composable
-fun GroceryList() {
-  // TODO: Add Prefs
-  // TODO: Update RecipeModel
-  val recipeViewModel: RecipeViewModel = viewModel(factory = viewModelFactory {
-    RecipeViewModel()
-  })`;
-
-const exerciseFinalCode = `// final/.../ui/groceries/GroceryList.kt
-@Composable
-fun GroceryList() {
-  val prefs = LocalPrefsProvider.current
-  val recipeViewModel: RecipeViewModel = viewModel(factory = viewModelFactory {
-    RecipeViewModel(prefs)
-  })`;
-
-const previewChipRowCode = `@Preview
-@Composable
-fun PreviewChipRow() {
-  val context = LocalContext.current   // <- khai báo rồi KHÔNG dùng
-  val prefs = LocalPrefsProvider.current
-  Surface {
-    Column {
-      ChipRow(RecipeViewModel(prefs))
-    }
-  }
-}`;
-
-const previewBookWayCode = `@Preview
-@Composable
-fun PreviewChipRow() {
-  val context = LocalContext.current
-  Surface {
-    Column {
-      ChipRow(RecipeViewModel(Prefs(context)))
-    }
-  }
-}`;
-
 const initLoadCode = `init {
   viewModelScope.launch {
     val previousSearchString = prefs.getString(PREVIOUS_SEARCH_KEY)
@@ -304,6 +272,15 @@ const initLoadCode = `init {
     }
   }
 }`;
+
+const commaBugCode = `// Người dùng tìm: chicken, rice
+previousSearches = ["chicken, rice"]
+
+// Lưu xuống máy (joinToString(","))
+"chicken, rice"
+
+// Mở lại app, đọc lên (split(","))
+["chicken", " rice"]   // <- 1 mục biến thành 2, mục thứ hai còn dư dấu cách`;
 
 const mainScreenStarterCode = `const val CURRENT_INDEX_KEY = "CURRENT_INDEX_KEY"
 
@@ -370,181 +347,196 @@ fun MainScreen() {
         }
       }),`;
 
-const commaBugCode = `// Người dùng tìm: chicken, rice
-previousSearches = ["chicken, rice"]
+const exerciseStarterCode = `// starter/.../ui/groceries/GroceryList.kt
+@Composable
+fun GroceryList() {
+  // TODO: Add Prefs
+  // TODO: Update RecipeModel
+  val recipeViewModel: RecipeViewModel = viewModel(factory = viewModelFactory {
+    RecipeViewModel()
+  })`;
 
-// Lưu xuống máy (joinToString(","))
-"chicken, rice"
+const exerciseFinalCode = `// final/.../ui/groceries/GroceryList.kt
+@Composable
+fun GroceryList() {
+  val prefs = LocalPrefsProvider.current
+  val recipeViewModel: RecipeViewModel = viewModel(factory = viewModelFactory {
+    RecipeViewModel(prefs)
+  })`;
 
-// Mở lại app, đọc lên (split(","))
-["chicken", " rice"]   // <- 1 mục biến thành 2, mục thứ hai còn dư dấu cách`;
+const previewChipRowCode = `@Preview
+@Composable
+fun PreviewChipRow() {
+  val context = LocalContext.current   // <- khai báo rồi KHÔNG dùng
+  val prefs = LocalPrefsProvider.current
+  Surface {
+    Column {
+      ChipRow(RecipeViewModel(prefs))
+    }
+  }
+}`;
+
+const previewBookWayCode = `@Preview
+@Composable
+fun PreviewChipRow() {
+  val context = LocalContext.current
+  Surface {
+    Column {
+      ChipRow(RecipeViewModel(Prefs(context)))
+    }
+  }
+}`;
 ---
 
 <section class="lesson">
-	<div class="callout goals">
-		<strong>Bạn sẽ học được gì trong bài này</strong>
-		<ul>
-			<li>Ba cách lưu dữ liệu xuống thiết bị Android, và <em>khi nào</em> chọn cách nào — để không dùng sai công cụ.</li>
-			<li><code>SharedPreferences</code> hoạt động ra sao: <code>getXXX()</code>, <code>contains()</code>,
-				<code>edit()</code>, và cặp <code>apply()</code> / <code>commit()</code>.</li>
-			<li>Vì sao Google tạo thư viện <strong>DataStore</strong> thay vì sửa <code>SharedPreferences</code>, và interface
-				<code>DataStore&lt;T&gt;</code> thật ra chỉ có 2 thành phần.</li>
-			<li>Cách khai báo <code>preferencesDataStore</code>, tạo key có kiểu bằng <code>stringPreferencesKey</code>, và đọc
-				bằng <code>data.first()</code>.</li>
-			<li>Tự viết class <code>Prefs</code> — một "cửa ra vào" duy nhất cho DataStore, với 5 hàm <code>suspend</code>.</li>
-			<li>Tạo đúng <strong>một</strong> instance <code>Prefs</code> trong <code>Application</code>, rồi phát nó xuống toàn
-				bộ cây Composable bằng <strong>CompositionLocal</strong>.</li>
-			<li>Truyền dependency vào ViewModel bằng <code>viewModelFactory</code>, và lưu <code>List&lt;String&gt;</code> xuống
-				DataStore dù DataStore chỉ nhận kiểu nguyên thuỷ.</li>
-			<li>Khôi phục UI state (tab đang chọn) bằng <code>LaunchedEffect</code> — và vì sao có một tích tắc UI hiện sai tab.</li>
-			<li>Những chỗ sách và project mẫu <em>lệch nhau</em>, kèm hướng nên làm theo cái nào.</li>
-		</ul>
-	</div>
-
-	<div class="callout">
-		<strong>App của chapter này:</strong> vẫn là <em>Recipe Finder</em> (<code>com.kodeco.recipefinder</code>) — app tìm
-		công thức nấu ăn qua API Spoonacular mà bạn đã dựng từ chapter 6 (ViewModel + Navigation) và chapter 8 (networking).
-		Tới hết chapter này app sẽ <strong>nhớ được 2 thứ qua các lần mở lại app</strong>: (1) danh sách từ khoá đã tìm, hiện
-		lại trong menu 3 dấu chấm ở thanh search; (2) tab đang chọn ở bottom bar (Recipes / Groceries).
-		<p>
-			Sách mở đầu chapter bằng tình huống "đang xem một công thức và muốn <em>bookmark</em> lại để xem sau". Nói trước
-			cho bạn khỏi chờ: <strong>chapter này chưa làm bookmark</strong>. Các hàm <code>bookmarkRecipe()</code>,
-			<code>getBookmarks()</code>, <code>deleteBookmark()</code> trong <code>RecipeViewModel</code> vẫn là thân rỗng kèm
-			<code>// TODO</code> ở cả starter và final. Bookmark thật sự là việc của Chương 10 (Room), vì nó cần một database
-			chứ không phải một cặp key-value.
-		</p>
-	</div>
-
 	<div class="callout journey">
-		<strong>Hành trình starter → final của chapter này</strong>
-		<p>
-			Chapter 9 là một trong những chapter <em>gọn</em> nhất về số file thay đổi, nhưng lại giới thiệu nhiều khái niệm
-			liên kết chặt với nhau. Project <code>starter</code> là app cuối chapter 8, với <strong>11 chỗ
-			<code>// TODO: Add Prefs</code></strong> rải khắp code. Project <code>final</code> chỉ thêm đúng
-			<strong>một file mới</strong>: <code>data/Prefs.kt</code>.
-		</p>
-		<ul>
-			<li><strong>Bạn tự viết:</strong> <code>data/Prefs.kt</code> (43 dòng, sách dẫn từng TODO một).</li>
-			<li><strong>Bạn sửa vài dòng:</strong> <code>gradle/libs.versions.toml</code>, <code>app/build.gradle.kts</code>,
-				<code>RecipeApp.kt</code>, <code>MainActivity.kt</code>, <code>viewmodels/RecipeViewModel.kt</code>,
-				<code>ui/RecipeDetails.kt</code>, <code>ui/MainScreen.kt</code>.</li>
-			<li><strong>Bài tập (sách để bạn tự làm):</strong> 6 file còn lại — <code>GroceryList</code>, <code>ChipRow</code>,
-				<code>RecipeList</code>, <code>SearchRow</code>, <code>ShowBookmarks</code>, <code>ShowRecipeList</code>. Bài
-				này có đáp án đối chiếu từ <code>final</code>.</li>
-			<li><strong>Không thay đổi nhưng cần đọc:</strong> <code>utils/ComposeUtils.kt</code> (chứa
-				<code>viewModelFactory</code> mà sách dùng nhưng không giải thích) và <code>ui/recipes/ImageRow.kt</code> (chứa
-				hàm <code>searchRecipes</code> — nơi <em>duy nhất</em> gọi việc lưu từ khoá).</li>
-		</ul>
-		<p>
-			<strong>Chỗ sách thiếu, bài này xử lý thế nào:</strong> chapter 9 là chapter có nhiều điểm lệch giữa văn bản sách
-			và code trong <code>final</code> nhất từ đầu sách tới giờ — có chỗ sách bảo thêm một dòng mà project cuối không hề
-			có, có chỗ sách hướng dẫn ngược lại với cảnh báo do chính sách đưa ra. Bài này <em>không</em> âm thầm sửa cho khớp.
-			Mỗi chỗ lệch được tách thành một mục riêng, ghi rõ sách nói gì, code thật ra sao, và bạn nên theo cái nào.
-		</p>
+		<strong>Vẫn là Recipe Finder — giờ app phải "nhớ".</strong> Từ Chương 8, app đã tìm và hiện được
+		công thức nấu ăn từ internet. Chương này thêm một năng lực khác hẳn: <strong>nhớ vài lựa chọn nhỏ của
+		người dùng qua các lần mở lại app</strong> — cụ thể là hai thứ: (1) danh sách từ khoá đã tìm, hiện lại
+		trong menu ba dấu chấm của thanh search; (2) tab đang chọn ở bottom bar (Recipes / Groceries). Nói trước
+		cho khỏi chờ: các hàm bookmark trong <code>RecipeViewModel</code> vẫn còn thân rỗng kèm
+		<code>// TODO</code> — bookmark thật sự cần một database, là việc của Chương 10 (Room).
 	</div>
-	<h2 id="luu-du-lieu">1. Ba cách lưu dữ liệu — và cách này dành cho loại dữ liệu nào</h2>
+
+	<h2 id="mo-dau">Bài này giải quyết vấn đề gì</h2>
 	<p>
-		Sách mở chapter bằng một danh sách rất ngắn: có <strong>ba cách chính</strong> để lưu dữ liệu xuống thiết bị.
+		Mọi thứ app biết cho tới giờ đều sống <em>trong bộ nhớ của một lần chạy</em>: tắt app là mất hết. Muốn nhớ
+		qua các lần mở lại, dữ liệu phải được ghi xuống bộ nhớ trong của thiết bị. Việc đó tách thành hai vấn đề
+		khác loại nhau, và chúng là lý do trang này được dựng thành hai đơn vị học:
+	</p>
+	<ul>
+		<li>
+			<strong>Lưu <em>bằng gì</em></strong> — chọn công cụ lưu trữ đúng cho dữ liệu nhỏ dạng key/value, biết
+			vì sao DataStore là lựa chọn hiện đại cho việc đó (và nó <em>không</em> phải cái gì), rồi đọc-ghi được
+			một giá trị thật. <em>→ Đơn vị 1.</em>
+		</li>
+		<li>
+			<strong>Lưu <em>ở đâu trong app</em></strong> — một class lưu trữ chỉ nên được tạo <strong>một lần</strong>
+			trong cả app; vậy ai tạo, và mọi màn hình + ViewModel lấy nó từ đâu mà không phải tự dựng? <em>→ Đơn vị 2</em>
+			(CompositionLocal + ViewModel wiring).
+		</li>
+	</ul>
+
+	<h2 id="getting-started">Chạy project mẫu trước khi sửa gì</h2>
+	<p>
+		Mở project <code>starter</code> của chương này trong Android Studio và <strong>chạy ngay</strong>. App giống
+		hệt bản cuối Chương 8 — vì nó <em>là</em> bản đó: <code>starter</code> của chương 9 chỉ là app chương 8 kèm
+		<strong>11 file còn dấu <code>// TODO: Add Prefs</code></strong> rải khắp nơi, và project <code>final</code>
+		chỉ thêm đúng <strong>một file mới</strong> (<code>data/Prefs.kt</code>), phần còn lại là sửa vài dòng để
+		"nối dây".
+	</p>
+	<p>
+		Thử hai tình huống: gõ tìm "chicken" rồi bấm menu ba dấu chấm — chưa có gợi ý nào được nhớ; bấm sang tab
+		<em>Groceries</em>, tắt app, mở lại — app luôn mở ở tab <em>Recipes</em>. Hết chương này, cả hai tình huống
+		đó sẽ hoạt động.
+	</p>
+
+	<!-- ==================================================================== -->
+	<!-- D1 START — Đơn vị 1: "DataStore & SharedPreferences legacy" (mục 1–10). -->
+	<!-- Sở hữu: ranh giới công cụ theo hình dạng dữ liệu · SharedPreferences   -->
+	<!-- ở mức ĐỌC code cũ (không dựng kiến trúc mới trên nó) · vì sao DataStore -->
+	<!-- (suspend-first, Flow, edit nguyên khối) · khai store bằng              -->
+	<!-- `by preferencesDataStore` (trả nợ F2 Phần 9) · key có kiểu · đọc       -->
+	<!-- `data.first()` · ghi `edit { }` · key-chưa-có ≠ giá trị mặc định ·      -->
+	<!-- class Prefs như một data source.                                       -->
+	<!-- KHÔNG dạy: Room (R1–R4) · map/trên Flow (W1) · IOException handling    -->
+	<!-- (project không dùng) · Proto DataStore (chỉ 2 câu giải thích tên).     -->
+	<!-- ==================================================================== -->
+	<div class="callout goals">
+		<strong>Đơn vị 1 — DataStore &amp; SharedPreferences legacy. Sau đơn vị này bạn sẽ</strong>
+		<ul>
+			<li>Chọn đúng công cụ lưu trữ cho từng <strong>hình dạng dữ liệu</strong>: vài giá trị rời → key/value;
+				nhiều bản ghi cần truy vấn → database (Chương 10); file/định dạng riêng → một bài toán khác.</li>
+			<li>Đọc được code <code>SharedPreferences</code> cũ — <code>getXXX()</code>, <code>edit()</code>,
+				<code>apply()</code>/<code>commit()</code> — và nói đúng trạng thái của nó (còn dùng được, không phải
+				"đã xoá khỏi Android", nhưng không còn là lựa chọn khuyến nghị cho code mới).</li>
+			<li>Giải thích được vì sao <code>DataStore</code> sinh ra: mọi phép đọc-ghi đều <code>suspend</code>, đọc qua
+				<code>Flow</code>, ghi <strong>nguyên khối</strong> — và vì sao nó <em>không</em> phải database hay "tự lưu
+				mọi object".</li>
+			<li>Tự viết được class <code>Prefs</code> 5 hàm: khai store bằng <code>by preferencesDataStore</code>, tạo
+				key có kiểu, đọc bằng <code>data.first()</code>, ghi bằng <code>edit { }</code>.</li>
+			<li>Phân biệt <strong>key chưa hề được lưu</strong> với <strong>giá trị đã lưu</strong>, và quyết định giá trị
+				mặc định một cách có chủ ý.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Vì sao đơn vị này quan trọng.</strong> Hầu như app nào cũng có vài lựa chọn nhỏ cần nhớ: tab đang xem,
+		chế độ tối, đã xem onboarding chưa, từ khoá đã tìm. Đây là loại dữ liệu xuất hiện <em>trước</em> mọi bài toán
+		lưu trữ lớn hơn (database, file người dùng). Nắm được ranh giới "key/value vs database vs file" từ đầu, bạn
+		không nhồi dữ liệu vào sai công cụ — và hiểu vì sao Chương 10 phải tồn tại.
+	</p>
+	<div class="callout">
+		<strong>Cần biết trước.</strong> <strong>F1</strong> — <code>joinToString</code> (ghép danh sách thành chuỗi).
+		<strong>F2</strong> — <code>by</code> delegate, riêng Phần 9 đã nhìn qua
+		<code>by preferencesDataStore(...)</code>; mục 5 của đơn vị này sẽ trả nợ đúng ví dụ đó. <strong>S1</strong> —
+		<code>suspend</code> cho phép tạm dừng chứ không chọn thread, <code>viewModelScope</code>, Flow = giá trị
+		theo thời gian. <strong>S4</strong> — ViewModel sở hữu UI state. <strong>A14</strong> — version catalog
+		Gradle. <strong>Chương 1</strong> — sandbox: app của bạn chỉ được đụng thư mục của chính nó.
+	</div>
+
+	<h2 id="luu-gi-vao-dau">1. Lưu thứ gì, vào đâu: chọn công cụ theo hình dạng dữ liệu</h2>
+	<p>
+		Có ba hướng chính để lưu dữ liệu xuống thiết bị. Điểm quan trọng không phải danh sách — mà là <em>loại dữ
+		liệu nào hợp với hướng nào</em>:
 	</p>
 	<table class="api">
 		<thead>
-			<tr><th>Cách</th><th>Sách nói gì</th><th>Phù hợp khi</th></tr>
+			<tr><th>Hướng</th><th>Làm gì</th><th>Phù hợp khi</th></tr>
 		</thead>
 		<tbody>
 			<tr>
 				<td><strong>1. Ghi dữ liệu có định dạng (như JSON) vào file</strong></td>
-				<td>Sách nói cách này <em>đơn giản</em>, nhưng bạn phải <strong>tự lo</strong> việc đọc-ghi đúng định dạng và
-					đúng thứ tự.</td>
-				<td>Bạn cần toàn quyền với định dạng file: export/import, cache một response, file cấu hình.</td>
+				<td>Tự đọc/ghi file, tự lo đúng định dạng và thứ tự</td>
+				<td>Bạn cần toàn quyền với file: export/import, cache một response, file cấu hình</td>
 			</tr>
 			<tr>
-				<td><strong>2. Dùng một thư viện để ghi dữ liệu đơn giản vào một chỗ chung</strong></td>
-				<td>Đây là <strong>chủ đề của chapter 9</strong>. Sách không giải thích dài ở đây, chỉ đưa vào danh sách.</td>
-				<td>Dữ liệu nhỏ, rời rạc, dạng "một cái tên → một giá trị".</td>
+				<td><strong>2. Thư viện key/value vào một chỗ chung</strong></td>
+				<td><strong>Chủ đề của chương này</strong> (SharedPreferences cũ · DataStore mới)</td>
+				<td>Dữ liệu nhỏ, rời rạc, dạng "một cái tên → một giá trị"</td>
 			</tr>
 			<tr>
-				<td><strong>3. Dùng database SQLite</strong></td>
-				<td>Sách nói: với dữ liệu <em>phức tạp hơn</em>, bạn lưu thông tin vào một database cục bộ.</td>
-				<td>Nhiều bản ghi cùng cấu trúc, cần truy vấn/lọc/sắp xếp/quan hệ. <strong>Room — Chương 10.1</strong>.</td>
+				<td><strong>3. Database (SQLite)</strong></td>
+				<td>Lưu nhiều bản ghi có cấu trúc, truy vấn/lọc/sắp xếp được</td>
+				<td>Nhiều bản ghi cùng kiểu + cần tìm kiếm. <strong>Room — Chương 10.</strong></td>
 			</tr>
 		</tbody>
 	</table>
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 17–23)</p>
-	<div class="callout">
-		<strong>Mental model: chọn công cụ theo <em>hình dạng</em> dữ liệu, không theo kích thước</strong>
+	<div class="callout mental">
+		<strong>Mental model: nhìn hình dạng, không nhìn kích thước</strong>
 		<p>
-			Người mới thường nghĩ "dữ liệu ít thì dùng cách nhẹ, dữ liệu nhiều thì dùng database". Cách nghĩ chính xác hơn là nhìn
-			<strong>hình dạng</strong>:
+			Người mới thường nghĩ "dữ liệu ít thì dùng cách nhẹ, dữ liệu nhiều thì dùng database". Cách nghĩ chính xác
+			hơn là nhìn <strong>hình dạng</strong>:
 		</p>
 		<ul>
 			<li>
-				Dữ liệu là <strong>vài giá trị rời nhau</strong>, mỗi giá trị có một cái tên riêng ("tab đang chọn", "đã xem
-				onboarding chưa", "user id") → cách 2. Bạn luôn biết chính xác mình cần lấy giá trị nào.
+				Vài giá trị rời nhau, mỗi giá trị có một cái tên riêng ("tab đang chọn", "đã xem onboarding chưa", "user
+				id") → <strong>hướng 2</strong>. Bạn luôn biết chính xác mình cần lấy giá trị nào.
 			</li>
 			<li>
-				Dữ liệu là <strong>nhiều bản ghi cùng kiểu</strong> ("100 công thức, mỗi công thức có id, tên, ảnh, danh sách nguyên
-				liệu") và bạn cần <em>tìm kiếm</em> trong đó → cách 3. Vì với cách 2 bạn không thể hỏi "cho tôi mọi công thức có chữ
+				Nhiều bản ghi cùng kiểu ("100 công thức, mỗi cái có id, tên, ảnh, nguyên liệu") và bạn cần <em>tìm
+				kiếm</em> trong đó → <strong>hướng 3</strong>. Với hướng 2 bạn không thể hỏi "cho tôi mọi công thức có chữ
 				chicken" — bạn chỉ hỏi được đúng một key.
 			</li>
 		</ul>
 		<p>
-			Chính chapter 9 là ví dụ sống: nó lưu <em>danh sách từ khoá đã tìm</em> bằng cách 2, và như bạn sẽ thấy ở mục 13, việc
-			nhồi một danh sách vào chỗ chỉ chứa được giá trị đơn lẻ buộc code phải dùng một mẹo — và cái mẹo đó có lỗi. Đó là dấu hiệu
-			dữ liệu đang bắt đầu vượt khỏi công cụ.
+			Và một cảnh báo đi kèm từ Chương 1: dữ liệu key/value này nằm trong thư mục của app, <strong>mất khi người
+			dùng xoá app</strong> hoặc xoá dữ liệu app. Tab đang chọn mất thì không ai để ý; danh sách bookmark cả năm
+			mất thì người dùng mất thật — đừng để nó là bản duy nhất của thứ gì người dùng tiếng.
 		</p>
 	</div>
-
-	<h2 id="vi-sao-du-lieu-nho">2. Vì sao phải lưu những mẩu dữ liệu nhỏ</h2>
-	<p>Sách nêu bốn ví dụ về việc <em>đáng</em> lưu, và cả bốn đều có điểm chung là "trạng thái, không phải nội dung":</p>
-	<ul>
-		<li><strong>User ID</strong> khi người dùng đã đăng nhập.</li>
-		<li><strong>Hoặc chỉ cần biết</strong> người dùng <em>có</em> đăng nhập hay không.</li>
-		<li><strong>Trạng thái onboarding</strong> — đã xem phần hướng dẫn lần đầu chưa.</li>
-		<li><strong>Dữ liệu người dùng đã bookmark</strong> để xem lại sau.</li>
-	</ul>
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 27)</p>
-	<p class="notice">
-		<strong>Một cảnh báo sách nói rất gọn nhưng quan trọng:</strong> dữ liệu đơn giản lưu ở chỗ chung này
-		<strong>mất khi người dùng xoá app</strong>. Nghĩa là: đừng bao giờ để nó là <em>bản duy nhất</em> của thứ gì người dùng
-		tiếc. Tab đang chọn mất thì không ai để ý; danh sách bookmark cả năm mất thì người dùng mất thật.
-	</p>
-	<div class="callout goals">
-		<strong>Hai mục tiêu cụ thể của chapter này</strong>
-		<ol>
-			<li>
-				Hiện một <strong>menu các từ khoá đã tìm trước đó</strong>, để người dùng chọn lại — và vẫn thấy nó
-				<em>sau khi khởi động lại app</em>.
-			</li>
-			<li>
-				Khôi phục <strong>màn hình đang xem</strong>. Sách mô tả tình huống rất thực: người dùng đang ở màn hình
-				<em>groceries</em>, bỏ đó rất lâu, app bị hệ thống đóng; khi mở lại họ muốn về đúng màn hình cũ.
-			</li>
-		</ol>
-		<p class="src">Nguồn: <code>{BOOK}</code> (dòng 31)</p>
-	</div>
-	<h2 id="sharedpreferences">3. SharedPreferences: cách cũ, và vì sao vẫn phải học</h2>
 	<p>
-		Trước khi giới thiệu DataStore, sách dành gần một nửa phần lý thuyết cho <code>SharedPreferences</code>. Đọc thoáng qua dễ
-		thấy vô ích — vì chính sách nói ngay là nó đã <em>deprecated</em> (không khuyến nghị dùng nữa). Nhưng đây là lựa chọn có lý:
-		DataStore được thiết kế để <strong>thay thế</strong> nó, nên hiểu cái cũ giúp bạn hiểu <em>vì sao</em> cái mới trông như vậy.
-	</p>
-	<p>Sách nói ba điều về <code>SharedPreferences</code>:</p>
-	<ul>
-		<li>Nó là một <strong>interface có sẵn trong hệ thống</strong>, tồn tại ở <em>mọi</em> phiên bản Android.</li>
-		<li>Bạn lấy được preference từ <strong>bất kỳ <code>Context</code></strong> nào.</li>
-		<li>Bạn cũng lấy được toàn bộ interface từ một <code>Activity</code>.</li>
-	</ul>
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 38)</p>
-	<p class="hint">
-		<strong>Về chữ "deprecated" ở đây:</strong> sách ghi ở dòng 40 rằng phương pháp <code>SharedPreferences</code> đã bị
-		deprecated. Nói cho chính xác: bản thân class <code>SharedPreferences</code> trong tài liệu Android
-		<em>chưa</em> bị đánh dấu <code>@Deprecated</code> ở mức API — nó vẫn hoạt động. Điều Google làm là
-		<strong>khuyến nghị chuyển sang DataStore</strong> cho code mới. Ghi rõ khác biệt này vì bạn sẽ còn gặp
-		<code>SharedPreferences</code> rất nhiều trong code cũ, và nó không hề "hỏng".
+		Hai mục tiêu cụ thể của chương, đúng theo ranh giới trên: <strong>(1)</strong> menu các từ khoá đã tìm — một
+		<em>danh sách</em> bị nhét vào chỗ chỉ chứa giá trị đơn (vì sao và cái giá, ở mục 7 và mục 17); <strong>(2)</strong>
+		tab đang chọn — một <code>Int</code>, đúng sở trường của key/value.
 	</p>
 
-	<h3>3.1 — Ba nhóm hàm để đọc, và ba nhóm hàm để ghi</h3>
-	<p>Sách chia rất rõ: đọc thì gọi thẳng, còn ghi thì phải <em>xin một editor</em> trước.</p>
+	<h2 id="sharedpreferences">2. SharedPreferences: cách cũ, và vì sao vẫn phải đọc được nó</h2>
+	<p>
+		Trước DataStore, Android có sẵn một interface tên <code>SharedPreferences</code> (thuộc
+		<code>android.content</code> — của chính hệ điều hành, không cần khai thư viện). Nó tồn tại ở mọi phiên bản
+		Android, lấy được từ bất kỳ <code>Context</code> nào, và vẫn có mặt trong rất nhiều codebase có tuổi — nên
+		cần phải <em>đọc được</em>, dù khoá này không dựng gì mới trên nó.
+	</p>
 	<div class="ba">
 		<div class="ba-col">
 			<div class="ba-head good">Đọc — gọi trực tiếp</div>
@@ -564,101 +556,78 @@ previousSearches = ["chicken, rice"]
 			</ul>
 		</div>
 	</div>
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 44–48 và 52–57)</p>
 	<p>
-		Sách nhấn một chi tiết dễ bỏ qua: <strong>mọi hàm trên đều dùng <em>key</em> để truy cập một mục — trừ
-		<code>clear()</code></strong>. Đưa cho thư viện một key duy nhất là bạn lưu / lấy / xoá được đúng mục đó.
-		<code>clear()</code> không cần key vì nó xoá tất cả.
+		Mọi hàm trên đều dùng <em>key</em> để truy cập một mục — trừ <code>clear()</code>, cái này xoá tất cả nên
+		không cần key. Cặp <code>apply()</code>/<code>commit()</code> đáng dừng lại vì nó là <strong>lý do tồn tại của
+		DataStore</strong>:
 	</p>
 	<div class="callout note">
-		<strong><code>apply()</code> hay <code>commit()</code>? Sách trả lời trong một câu, nhưng nó là một câu về hiệu năng</strong>
-		<p>
-			Sách viết: <code>apply()</code> giờ <strong>được khuyến nghị</strong> vì nó <em>asynchronous</em> (không đồng bộ); nhưng
-			nếu bạn cần một thứ được lưu <strong>ngay lập tức</strong>, hãy dùng <code>commit()</code>.
-		</p>
+		<strong><code>apply()</code> hay <code>commit()</code>? — một câu hỏi về hiệu năng</strong>
 		<ul>
 			<li>
-				<code>apply()</code> ghi vào bộ nhớ ngay rồi <em>đẩy việc ghi xuống đĩa sang luồng khác</em>. Hàm trả về ngay, giao
-				diện không bị đứng. Đổi lại bạn <em>không</em> biết việc ghi đã xong chưa và không nhận được lỗi.
+				<code>apply()</code> ghi vào bộ nhớ ngay rồi <em>đẩy việc ghi xuống đĩa sang luồng khác</em>. Hàm trả về
+				ngay, giao diện không bị đứng. Đổi lại bạn <em>không</em> biết việc ghi đã xong chưa và không nhận được lỗi.
 			</li>
 			<li>
-				<code>commit()</code> ghi xuống đĩa <strong>xong mới trả về</strong>, và trả về <code>Boolean</code> cho biết thành
-				công hay không. Gọi trên luồng chính là <strong>chặn giao diện</strong> — đây chính là điểm yếu lớn nhất của
-				<code>SharedPreferences</code>, và cũng là <em>lý do tồn tại</em> của DataStore ở mục 4.
+				<code>commit()</code> ghi xuống đĩa <strong>xong mới trả về</strong>, và trả về <code>Boolean</code> cho biết
+				thành công hay không. Gọi trên luồng chính là <strong>chặn giao diện</strong>.
 			</li>
 		</ul>
+		<p>
+			Cái giá của "biết chắc đã ghi xong" là nguy cơ treo UI — và API cho phép bạn tự bắn vào chân mình. DataStore
+			sẽ xử lý đúng nhức nhối này bằng cách <em>buộc</em> mọi phép ghi là <code>suspend</code> (mục 3).
+		</p>
 	</div>
-
-	<h3>3.2 — Đoạn ví dụ của sách, đọc từng dòng</h3>
+	<p><strong>Một ví dụ đọc code cũ, từng dòng:</strong></p>
 	<Code code={sharedPrefsExampleCode} lang="kotlin" theme="github-dark" />
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 61–70). Đây là ví dụ <em>trong sách</em>, không có trong project.</p>
 	<ol class="chain">
 		<li>
 			Lấy một instance <code>SharedPreferences</code> với tên file <code>"MyPreferences"</code> và chế độ
-			<code>MODE_PRIVATE</code> (riêng tư). Sách khuyên trong ngoặc: <strong>bạn sẽ luôn muốn để nó private</strong> — nối
-			trực tiếp với security sandbox ở chapter 1.
+			<code>MODE_PRIVATE</code> (riêng tư — app khác không đọc được). Nối trực tiếp với security sandbox ở
+			Chương 1: app chỉ được đụng thư mục của chính nó.
 		</li>
 		<li>Kiểm tra trước cho chắc là key có tồn tại.</li>
 		<li>
-			Lấy giá trị chuỗi với key <code>"MyKey"</code>, và giá trị mặc định <code>"MyDefault"</code> nếu key đó chưa có.
+			Lấy giá trị chuỗi với key <code>"MyKey"</code>, và giá trị mặc định <code>"MyDefault"</code> nếu key đó chưa
+			có.
 		</li>
 	</ol>
 	<p class="hint">
-		<strong>Để ý mâu thuẫn nhỏ ngay trong ví dụ:</strong> code đã gọi <code>contains("MyKey")</code> ở bước 2 rồi, nên nhánh
-		bên trong <em>chắc chắn</em> có key — giá trị mặc định <code>"MyDefault"</code> ở bước 3 sẽ không bao giờ được dùng tới.
-		Đây là ví dụ minh hoạ <em>cả hai</em> cơ chế cùng lúc nên hơi dư. Trong code thật bạn chọn một trong hai: hoặc
-		<code>contains()</code> rồi đọc, hoặc đọc luôn kèm giá trị mặc định. Cách thứ hai gọn hơn và chỉ đọc file một lần.
+		<strong>Để ý mâu thuẫn nhỏ ngay trong ví dụ:</strong> code đã gọi <code>contains("MyKey")</code> ở bước 2 rồi,
+		nên nhánh bên trong <em>chắc chắn</em> có key — giá trị mặc định <code>"MyDefault"</code> ở bước 3 sẽ không bao
+		giờ được dùng tới. Đây là ví dụ minh hoạ <em>cả hai</em> cơ chế cùng lúc nên hơi dư. Trong code thật bạn chọn
+		một trong hai: hoặc <code>contains()</code> rồi đọc, hoặc đọc luôn kèm giá trị mặc định. Cách thứ hai gọn hơn
+		và chỉ đọc file một lần — DataStore ở mục 9 chọn cách thứ hai.
 	</p>
-	<p>Sách liệt kê <strong>đúng 5 kiểu</strong> lưu-đọc được, và đây là giới hạn quan trọng nhất của cả cơ chế:</p>
+	<p>
+		Cuối cùng, giới hạn quan trọng nhất của cả cơ chế — chỉ lưu được <strong>5 kiểu nguyên thuỷ</strong>:
+	</p>
 	<pre class="tree">String   Boolean   Int   Long   Float</pre>
 	<p>
-		Rồi sách nói thẳng hệ quả: bạn <strong>không lưu được gì phức tạp hơn</strong> 5 kiểu này. Class — kể cả
-		<code>data class</code> — <em>không</em> lưu được, trừ khi bạn tự tách ra lưu từng phần.
+		Class — kể cả <code>data class</code> — <em>không</em> lưu được, trừ khi tự tách ra lưu từng phần. Giới hạn này
+		quyết định một phần của chương: muốn lưu <em>danh sách</em> từ khoá (mục tiêu 1), bạn phải tự mã hoá nó thành
+		một <code>String</code> — và ở mục 17 sẽ thấy cái giá của phép mã hoá đó.
 	</p>
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 78–84)</p>
-	<div class="callout">
-		<strong>Giới hạn này quyết định toàn bộ phần còn lại của chapter</strong>
-		<p>
-			Nhớ mục tiêu số 1: lưu <strong>danh sách</strong> từ khoá đã tìm. <code>List&lt;String&gt;</code> không nằm trong 5 kiểu
-			trên. Vậy làm sao? Sách chọn cách "tự tách ra": nối cả danh sách thành <strong>một</strong> chuỗi dài
-			(<code>joinToString(",")</code>), lưu như một <code>String</code> duy nhất, rồi lúc đọc thì cắt lại
-			(<code>split(",")</code>). Bạn sẽ thấy đúng code đó ở mục 11 và 14 — cùng với cái giá phải trả ở mục 13.
-		</p>
-	</div>
-	<h2 id="datastore-library">4. DataStore: vì sao Google làm thư viện mới thay vì sửa hệ thống</h2>
-	<p>
-		Đây là mục ngắn nhưng giải thích một chuyện lớn về cách Android phát triển. Sách nói: Google <strong>đang chuyển sang dùng
-		thư viện bên ngoài thay vì chỉ cập nhật hệ thống</strong>. Lý do sách đưa ra rất cụ thể: chiến lược đó cho họ
-		<em>sự linh hoạt</em> để tung ra thay đổi cho thư viện <strong>thường xuyên</strong>, và những thay đổi đó
-		<strong>tới tay người dùng ngay</strong>.
+	<p class="notice">
+		<strong>Chữ "deprecated" cần nói cho chính xác.</strong> Một số tài liệu — kể cả giáo trình gốc mà khoá này
+		đối chiếu — gọi <code>SharedPreferences</code> là <em>deprecated</em>. Tài liệu chính thức của Android hiện
+		nay <strong>không đánh dấu class này <code>@Deprecated</code></strong>: nó vẫn chạy, vẫn có trong SDK. Điều
+		Google khuyến nghị là <strong>dùng DataStore cho code mới</strong>. Vậy tư thế của khoá: mọi cấu trúc lưu trữ
+		mới đều dựng trên DataStore; SharedPreferences chỉ cần <em>đọc được</em> khi gặp trong code cũ. (Bảng đối chiếu
+		tài liệu nằm ở phần tra cứu phiên bản — AP3.)
 	</p>
-	<p>
-		Nên thay vì sửa code <code>SharedPreferences</code> trong hệ thống, họ tạo thư viện mới tên <strong>DataStore</strong> — một
-		thư viện <em>hiện đại</em> để lưu các cặp key/value.
-	</p>
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 88)</p>
-	<div class="callout">
-		<strong>Vì sao "thư viện" nhanh hơn "hệ thống" — điều sách nói ngầm</strong>
-		<p>
-			<code>SharedPreferences</code> nằm <em>trong</em> hệ điều hành Android. Muốn sửa nó, Google phải ra một bản Android mới,
-			rồi <strong>chờ</strong>: nhà sản xuất máy cập nhật, người dùng bấm cập nhật. Chuyện đó mất <em>nhiều năm</em> và rất
-			nhiều máy không bao giờ nhận được.
-		</p>
-		<p>
-			DataStore là <strong>thư viện bạn khai trong <code>build.gradle.kts</code></strong> — nó được đóng gói
-			<em>vào trong app của bạn</em>. Google ra bản mới, bạn đổi một dòng số phiên bản, build lại, phát hành: người dùng có bản
-			mới. Không phụ thuộc phiên bản Android của máy.
-		</p>
-		<p>
-			Đây chính là mô hình <strong>Jetpack</strong> / AndroidX mà bạn đã gặp từ chapter 4 (Version Catalog) và chapter 6
-			(<code>lifecycle-viewmodel-compose</code>). Chapter 9 là chỗ sách nói ra <em>lý do</em> của nó.
-		</p>
-	</div>
 
-	<h3>4.1 — Toàn bộ interface DataStore chỉ có 2 thành phần</h3>
-	<p>Sách nói định nghĩa của nó "khá đơn giản", rồi in ra. Đúng là đơn giản đến mức đáng ngạc nhiên:</p>
+	<h2 id="vi-sao-datastore">3. Vì sao DataStore tồn tại — và nó <em>không</em> phải cái gì</h2>
+	<p>
+		Câu hỏi tự nhiên: "vậy tại sao không sửa <code>SharedPreferences</code> cho tốt lên?". Vì nó nằm
+		<em>trong</em> hệ điều hành: muốn sửa, Google phải ra một bản Android mới rồi chờ nhà sản xuất và người dùng
+		cập nhật — chuyện mất nhiều năm và rất nhiều máy không bao giờ nhận được. Thay vào đó, Google tạo một
+		<strong>thư viện</strong> tên <code>DataStore</code>: được khai trong <code>build.gradle.kts</code>, đóng gói
+		<em>vào trong app</em> của bạn, cập nhật theo nhịp riêng. Đây chính là mô hình Jetpack/AndroidX mà bạn đã gặp
+		từ A14 và S4 — Chương 9 là chỗ nhìn thấy <em>lý do</em> của nó.
+	</p>
+	<p>Định nghĩa thật của interface chỉ có hai thành phần — đáng đọc vì cả chương xoay quanh hai dòng này:</p>
 	<Code code={dataStoreInterfaceCode} lang="kotlin" theme="github-dark" />
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 91–95)</p>
 	<table class="api">
 		<thead>
 			<tr><th>Thành phần</th><th>Đọc thế nào</th><th>Khác SharedPreferences ở đâu</th></tr>
@@ -666,65 +635,138 @@ previousSearches = ["chicken, rice"]
 		<tbody>
 			<tr>
 				<td><code>val data: Flow&lt;T&gt;</code></td>
-				<td>Dữ liệu <strong>không</strong> là một giá trị tĩnh — nó là một <code>Flow</code>, tức một
-					<em>dòng giá trị chảy theo thời gian</em>.</td>
-				<td><code>SharedPreferences.getString()</code> trả về giá trị <em>tại lúc gọi</em>. <code>Flow</code> có thể
-					<strong>phát lại</strong> mỗi khi dữ liệu đổi — bạn không cần hỏi lại.</td>
+				<td>Dữ liệu <strong>không</strong> là một giá trị tĩnh — nó là một <code>Flow</code>, một <em>dòng giá trị
+					chảy theo thời gian</em> (S1).</td>
+				<td><code>getString()</code> trả về giá trị <em>tại lúc gọi</em>. <code>Flow</code> có thể <strong>phát lại</strong>
+					mỗi khi dữ liệu đổi — bạn không cần hỏi lại.</td>
 			</tr>
 			<tr>
 				<td><code>suspend fun updateData(...)</code></td>
-				<td>Từ khoá <code>suspend</code> nghĩa là hàm này <strong>chỉ gọi được từ trong coroutine</strong>.</td>
-				<td>Chính là câu trả lời cho vấn đề <code>apply()</code> / <code>commit()</code> ở mục 3.1: DataStore
-					<strong>không cho</strong> bạn chặn luồng chính. Trình biên dịch chặn từ đầu.</td>
+				<td>Từ khoá <code>suspend</code> nghĩa là hàm này <strong>chỉ gọi được từ trong coroutine</strong> (S1).</td>
+				<td>Trả lời đúng nhức nhối <code>apply()</code>/<code>commit()</code> ở mục 2: DataStore <strong>không cho</strong>
+					bạn chặn luồng chính — trình biên dịch chặn từ đầu.</td>
 			</tr>
 		</tbody>
 	</table>
 	<div class="callout note">
-		<strong>Đây là mấu chốt của cả chapter — <code>suspend</code> không phải chi tiết cú pháp</strong>
+		<strong><code>suspend</code> ở đây không phải chi tiết cú pháp — nó là tính năng</strong>
 		<p>
-			Cả 5 hàm bạn sắp viết trong <code>Prefs</code> đều là <code>suspend fun</code>, và điều đó lan ra <em>khắp</em> code còn
-			lại: <code>RecipeViewModel</code> phải bọc trong <code>viewModelScope.launch</code>, <code>MainScreen</code> phải bọc
-			trong <code>rememberCoroutineScope</code> + <code>LaunchedEffect</code>. Nếu bạn tự hỏi "sao chỗ nào cũng thấy
-			<code>launch</code>?" — câu trả lời nằm ở đúng chữ <code>suspend</code> trong interface 4 dòng này.
+			Cả 5 hàm bạn sắp viết trong <code>Prefs</code> đều là <code>suspend fun</code>, và điều đó lan ra <em>khắp</em>
+			code còn lại: <code>RecipeViewModel</code> phải bọc trong <code>viewModelScope.launch</code>,
+			<code>MainScreen</code> phải bọc trong <code>LaunchedEffect</code>/<code>rememberCoroutineScope</code>. Nếu
+			tự hỏi "sao chỗ nào cũng thấy <code>launch</code>?" — câu trả lời nằm ở đúng chữ <code>suspend</code> trong
+			interface 4 dòng này. SharedPreferences chỉ <em>khuyên</em> bạn đừng chặn luồng chính (và cho
+			<code>commit()</code> để tự bắn vào chân mình); DataStore <strong>bắt buộc</strong> bằng kiểu dữ liệu.
 		</p>
+	</div>
+	<p class="notice">
+		<strong>Hai điều DataStore <em>không</em> phải, để không rút ra quy tắc sai:</strong> (1) nó <strong>không phải
+		database</strong> — không truy vấn, không quan hệ, không "cho tôi mọi bản ghi có chữ X"; nó là một kho key/value
+		có kiểu, và database là Chương 10. (2) nó <strong>không tự lưu mọi object</strong> — như mục 2 đã chốt, chỉ 5
+		kiểu nguyên thuỷ (ở biến thể Preferences), mọi thứ phức tạp hơn phải tự mã hoá.
+	</p>
+
+	<h2 id="them-thu-vien">4. Thêm thư viện — hai file, hai lần Gradle sync</h2>
+	<p><strong>Bước 1 — <code>gradle/libs.versions.toml</code>:</strong> thêm version, rồi thêm thư viện.</p>
+	<Code code={versionCatalogCode} lang="properties" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL_ROOT}/gradle/libs.versions.toml</code> — <code>prefsVersion = "1.0.0"</code> ở
+		<strong>dòng 22</strong>, dòng <code>prefs = ...</code> ở <strong>dòng 75</strong>.
+	</p>
+	<p class="hint">
+		Đây là <strong>Version Catalog</strong> của A14: số phiên bản tập trung ở <code>[versions]</code>, khai báo thư
+		viện ở <code>[libraries]</code> và trỏ về version bằng <code>version.ref</code>. Nhờ vậy nâng phiên bản chỉ sửa
+		<em>một</em> chỗ. Tên <code>prefs</code> bạn tự đặt — nó sẽ thành <code>libs.prefs</code> ở bước sau.
+	</p>
+	<p><strong>Bước 2 — <code>app/build.gradle.kts</code>:</strong></p>
+	<Code code={buildGradleCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL_ROOT}/app/build.gradle.kts</code> — <code>implementation(libs.prefs)</code> ở
+		<strong>dòng 80</strong>, <code>implementation(libs.timber)</code> ở <strong>dòng 82</strong>.
+	</p>
+	<p>
+		Sau mỗi file cần <strong>một lần Gradle sync</strong>. Lần đầu để Android Studio <em>biết</em> có một entry tên
+		<code>prefs</code> trong catalog — chưa sync thì khi gõ <code>libs.prefs</code>, IDE sẽ gạch đỏ vì chưa biết cái
+		tên đó tồn tại.
+	</p>
+	<p class="hint">
+		<strong>Đọc tên thư viện cho kỹ:</strong> <code>androidx.datastore:datastore-preferences</code> — phần cuối là
+		<strong>preferences</strong>. DataStore có hai biến thể: <strong>Preferences DataStore</strong> (dùng ở đây) lưu
+		key-value không cần định nghĩa schema, gần nhất với <code>SharedPreferences</code>; <strong>Proto
+		DataStore</strong> lưu object có kiểu rõ ràng qua Protocol Buffers — an toàn kiểu hơn nhưng phải học thêm một
+		công cụ, ngoài phạm vi khoá. Tên biến thể giải thích luôn câu hỏi "tại sao vẫn không lưu được data class?": bản
+		Preferences thì không, bản Proto thì được.
+	</p>
+
+	<h2 id="khai-store">5. Khai store đúng một lần: <code>by preferencesDataStore</code></h2>
+	<p>Ba dòng code đủ để có một store. Dòng đầu là khai báo:</p>
+	<Code code={dataStoreDelegateCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc dòng này bằng <strong>hai tầng</strong>, tách bạch rõ:</p>
+	<ul>
+		<li>
+			<strong>Tầng Kotlin — <code>by</code> delegate (F2 đã dạy).</strong> Đây là một
+			<em>extension property</em> trên <code>Context</code> (JIT: cú pháp này cho phép thêm một thuộc tính vào class
+			bạn không sửa được — ở đây là <code>Context</code> của Android) uỷ quyền việc tạo-giữ giá trị cho
+			<code>preferencesDataStore</code>. Nếu viết <code>val Context.dataStore = preferencesDataStore(...)</code>
+			không có <code>by</code>, mỗi lần đọc thuộc tính sẽ tạo lại một instance mới; với <code>by</code>, instance
+			được tạo <strong>một lần</strong> ở lần truy cập đầu tiên rồi giữ lại. Cú pháp này <em>chính là</em> cơ chế
+			đảm bảo "chỉ một instance".
+		</li>
+		<li>
+			<strong>Tầng DataStore — một store gắn với Context, có tên.</strong> Tham số <code>name = "settings"</code>
+			đặt tên file preference; trong project thật tên là <code>"recipes"</code> (mục 10). Một cái tên = một file =
+			một store: <strong>không được tạo nhiều hơn một instance DataStore trỏ vào cùng một file</strong> — tài liệu
+			chính thức in cảnh báo này bằng chữ "Important". Hai instance giữ cache riêng và tự ghi file; chúng ghi đè
+			lẫn nhau hoặc trả giá trị cũ, và lỗi <em>không đều</em> — chạy 10 lần đúng 9 lần — nên rất khó lần ra.
+		</li>
+	</ul>
+	<div class="callout note">
+		<strong>Đặt delegate ở đâu? — hai vị trí, hai mức đảm bảo</strong>
+		<Code code={topLevelDelegateCode} lang="kotlin" theme="github-dark" />
+		<p class="src">
+			Cách trên: <code>{FINAL}/data/Prefs.kt</code> dòng 12–13 (code thật). Cách dưới: khuôn tài liệu chính thức của
+			DataStore hướng dẫn.
+		</p>
+		<table class="api">
+			<thead>
+				<tr><th></th><th>Delegate là member của class (project làm)</th><th>Delegate ở top-level (tài liệu khuyên)</th></tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>"Một lần" được đảm bảo trong</td>
+					<td>Mỗi <strong>instance <code>Prefs</code></strong></td>
+					<td>Toàn bộ <strong>file / process</strong></td>
+				</tr>
+				<tr>
+					<td>Tạo 2 <code>Prefs</code> thì</td>
+					<td><strong>2 instance DataStore</strong> cùng trỏ vào file <code>recipes</code> → đúng tình huống cảnh báo cấm</td>
+					<td>Vẫn <strong>1 instance</strong> duy nhất được chia sẻ</td>
+				</tr>
+				<tr>
+					<td>An toàn khi</td>
+					<td>Bạn <em>tự đảm bảo</em> chỉ có một <code>Prefs</code> trong cả app</td>
+					<td>Luôn luôn</td>
+				</tr>
+			</tbody>
+		</table>
 		<p>
-			Nói cách khác: DataStore <strong>bắt buộc</strong> bạn viết code không chặn giao diện, trong khi
-			<code>SharedPreferences</code> chỉ <em>khuyên</em> bạn (và cho bạn <code>commit()</code> để tự bắn vào chân mình).
+			Project mẫu <em>thoát</em> được vì nó tạo <code>Prefs</code> đúng một lần trong <code>RecipeApp.onCreate()</code>
+			(Đơn vị 2, mục 12) rồi phát đi khắp app. Cấu trúc này hoạt động — nhưng phụ thuộc vào việc không ai bao giờ
+			gõ <code>Prefs(context)</code> lần thứ hai. <strong>Khi tự dựng app, hãy đặt delegate ở top-level</strong>:
+			nó biến "chỉ một instance" từ quy ước bạn phải nhớ thành điều trình biên dịch tự bảo đảm. Trong khoá, giữ
+			theo project để code đối chiếu được; những chỗ dựng thêm <code>Prefs</code> gây rủi ro này được ghi ở mục 19
+			và AP3.
 		</p>
 	</div>
 
-	<h3>4.2 — Ba dòng code đủ để dùng DataStore</h3>
-	<p><strong>Dòng 1 — tạo <code>dataStore</code>:</strong></p>
-	<Code code={dataStoreDelegateCode} lang="kotlin" theme="github-dark" />
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 100)</p>
-	<p>Sách giải thích dòng này bằng ba mảnh, và cả ba đều đáng dừng lại:</p>
-	<ul>
-		<li>
-			Nó là một <strong>extension của <code>Context</code></strong> — để ý <code>val Context.dataStore</code>. Nghĩa là sau
-			dòng này, <em>bất kỳ</em> <code>Context</code> nào cũng có thuộc tính <code>.dataStore</code>, dù class
-			<code>Context</code> của Android không hề có nó.
-		</li>
-		<li>
-			Nó dùng <strong>delegated property</strong> (thuộc tính uỷ quyền) từ <code>preferencesDataStore</code> — chính là từ khoá
-			<code>by</code>. Bạn đã gặp <code>by</code> ở chapter 6 với <code>by viewModels()</code>: nó nghĩa là "việc tạo và giữ
-			giá trị này, tôi giao cho <code>preferencesDataStore</code> lo".
-		</li>
-		<li>
-			Bạn <strong>đặt tên gì cũng được</strong>. Ở đây file preference sẽ mang tên <code>"settings"</code>.
-		</li>
-	</ul>
-	<p class="hint">
-		<strong>Vì sao <code>by</code> quan trọng ở đây chứ không chỉ là cú pháp đẹp:</strong> nếu viết
-		<code>val Context.dataStore = preferencesDataStore(...)</code> thì mỗi lần đọc thuộc tính sẽ tạo lại một instance mới — và
-		đó đúng là điều cảnh báo ngay dưới đây cấm. Với <code>by</code>, instance được tạo <strong>một lần</strong> ở lần truy cập
-		đầu tiên rồi giữ lại (lazy). Cú pháp này <em>chính là</em> cơ chế đảm bảo "chỉ một instance".
-	</p>
-	<p><strong>Dòng 2 — bọc key thô thành key có kiểu, rồi đọc:</strong></p>
-	<Code code={prefKeyReadCode} lang="kotlin" theme="github-dark" />
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 108 và 114)</p>
+	<h2 id="keys">6. Key có kiểu: kiểu nằm trong key, không nằm trong tên hàm</h2>
 	<p>
-		Sách nói: bạn vẫn dùng một <strong>string key</strong> như hệ cũ, nhưng <strong>phải tạo một biến bọc quanh key trước</strong>.
-		Muốn lấy giá trị chuỗi thì dùng <code>stringPreferencesKey</code>.
+		Để đọc/ghi một giá trị, chuỗi key thô phải được bọc thành một <strong>key có kiểu</strong> trước:
+	</p>
+	<Code code={prefKeyReadCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Vẫn là một string key như hệ cũ — nhưng <code>stringPreferencesKey("MyKey")</code> trả về một object có kiểu
+		<code>Preferences.Key&lt;String&gt;</code>, và kiểu đó quyết định mọi thứ phía sau:
 	</p>
 	<div class="ba">
 		<div class="ba-col">
@@ -732,8 +774,8 @@ previousSearches = ["chicken, rice"]
 			<pre class="tree">prefs.getString("count", "")
 prefs.getInt("count", 0)</pre>
 			<p>
-				Cùng một key <code>"count"</code> đọc được bằng cả hai hàm. Gõ sai hàm thì lỗi <em>lúc chạy</em>, và thường là một
-				<code>ClassCastException</code> khó hiểu.
+				Cùng một key <code>"count"</code> đọc được bằng cả hai hàm. Gõ sai hàm thì lỗi <em>lúc chạy</em>, và thường
+				là một <code>ClassCastException</code> khó hiểu.
 			</p>
 		</div>
 		<div class="ba-col">
@@ -747,193 +789,155 @@ context.dataStore.data.first()[k]</pre>
 		</div>
 	</div>
 	<p>
-		Về <code>first()</code>, sách nói nó là một <strong>terminating operator</strong> (toán tử kết thúc) — nó
-		<em>chỉ lấy giá trị đầu tiên</em>.
+		Trong project, hai key thật được khai cạnh chỗ dùng của mỗi chủ sở hữu:
+		<code>PREVIOUS_SEARCH_KEY</code> — một <code>String</code> trong <code>RecipeViewModel</code> (mục 16), và
+		<code>CURRENT_INDEX_KEY</code> — một <code>Int</code> trong <code>MainScreen</code> (mục 18). Quy ước của
+		chương: kiểu của key phải khớp với kiểu của dữ liệu bạn định lưu; nếu tương lai cần <code>Boolean</code> thì
+		dùng <code>booleanPreferencesKey</code> — khoá này không catalogue hết các biến thể, chỉ dùng đúng loại project
+		cần.
 	</p>
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 117)</p>
+
+	<h2 id="doc-first">7. Đọc: <code>data</code> là một Flow — và <code>first()</code> là một lựa chọn</h2>
+	<p>
+		Mô hình đọc của DataStore: <code>dataStore.data</code> là một <code>Flow&lt;Preferences&gt;</code> — dòng giá
+		trị theo thời gian mà S1 đã dạy. Mỗi lần file preference thay đổi (mọi lần <code>edit</code> xong), dòng đó
+		phát ra một snapshot mới của toàn bộ các cặp key/value.
+	</p>
+	<p class="hint">
+		<strong>JIT — <code>first()</code>:</strong> một hàm trên Flow <em>hứng đúng giá trị đầu tiên rồi dừng</em> —
+		sau đó code phía sau chạy tiếp bình thường. Đó là cách "rút một giá trị ra khỏi dòng chảy" mà không phải
+		collect vô hạn. Toán tử Flow đầy đủ sẽ học ở W1.
+	</p>
+	<p>
+		Project chọn cách đọc một lần: <code>context.dataStore.data.first()[prefKey]</code> — lấy snapshot đầu tiên,
+		tra giá trị theo key (tra key không có thì được <code>null</code>, xử lý ở mục 9). Cách này hợp lý cho một
+		class tiện ích đơn giản, nhưng cần hiểu rõ <strong>cái đã bị bỏ lại</strong>:
+	</p>
 	<div class="callout note">
-		<strong>Ở đây có một đánh đổi mà sách không nói ra</strong>
-		<p>
-			Ưu điểm to nhất của DataStore là <code>data</code> là một <code>Flow</code>: nó <em>tự phát lại</em> mỗi khi dữ liệu đổi.
-			Nhưng <code>first()</code> <strong>lấy một giá trị rồi ngắt</strong> dòng chảy đó.
-		</p>
+		<strong>Đánh đổi của <code>first()</code> — đọc một lần, không theo dòng chảy</strong>
 		<ul>
-			<li>Kết quả: bạn dùng DataStore <em>y như</em> <code>SharedPreferences</code> — đọc một lần khi cần.</li>
 			<li>
-				Bạn <strong>mất</strong> khả năng "UI tự cập nhật khi preference đổi", vốn là điều <code>Flow</code> sinh ra để làm.
+				Với <code>first()</code>, bạn dùng DataStore <em>y như</em> <code>SharedPreferences</code>: hỏi một lần, nhận
+				một giá trị, xong. Nếu preference đổi <em>sau</em> đó, chỗ đang giữ giá trị cũ <strong>không tự biết</strong>.
 			</li>
 			<li>
-				Vì sao vẫn hợp lý ở đây: sách đang dạy chuyển từ khái niệm cũ sang mới, và giữ hình dạng "đọc một lần" giúp
-				<code>Prefs</code> trở thành một class đơn giản 5 hàm. Nếu trả về <code>Flow</code>, mọi chỗ gọi đều phải collect —
-				độ phức tạp tăng vọt cho một chapter nhập môn.
+				Cái DataStore thật sự hơn ở mô hình <code>data</code>-là-Flow: UI có thể <em>tự cập nhật</em> khi preference
+				đổi. Muốn vậy, thay vì <code>first()</code>, giữ nguyên Flow và <code>collect</code> nó ở ViewModel — rồi
+				state màn hình tự theo kịp. Nâng cấp này là bài tập ở cuối Đơn vị 2, và là việc làm tự nhiên sau khi học
+				W1.
 			</li>
 			<li>
-				Nhưng cần biết để sau này còn nâng cấp: muốn UI tự phản ứng, bạn đổi <code>getString()</code> thành trả về
-				<code>Flow&lt;String?&gt;</code> (bỏ <code>first()</code>) rồi <code>collect</code> ở ViewModel.
+				Chuyện đọc file là việc chậm vẫn đúng: <code>first()</code> là hàm <code>suspend</code>, phải gọi trong
+				coroutine — không có lối tắt đồng bộ nào.
 			</li>
 		</ul>
 	</div>
-	<p class="notice">
-		<strong>Cảnh báo sách in kèm chữ "Important":</strong> để tránh hành vi ngoài ý muốn,
-		<strong>không tạo nhiều hơn một instance DataStore trỏ vào cùng một file preference</strong>.
-		<span class="src" style="display: block; margin-top: 0.3rem;">Nguồn: <code>{BOOK}</code> (dòng 119)</span>
-	</p>
 	<p>
-		Hãy giữ câu này trong đầu — vì ở <strong>mục 7</strong> bạn sẽ thấy code trong project mẫu đặt delegate ở một vị trí khiến
-		cảnh báo này có nguy cơ bị vi phạm, và đó là một trong những điểm lệch đáng chú ý nhất của chapter.
-	</p>
-	<h2 id="them-thu-vien">5. Thêm thư viện DataStore — hai file, hai lần Gradle sync</h2>
-	<p>
-		Sách bắt đầu phần thực hành bằng một câu đáng chú ý: nếu bạn đang theo app từ các chapter trước thì <strong>mở tiếp app đó
-		mà dùng</strong>; nếu không, mở <code>projects/starter</code> của chapter này. Nghĩa là project chapter 9 là
-		<em>phần tiếp</em> của chapter 8, không phải project mới.
-	</p>
-	<p><strong>Bước 1 — <code>gradle/libs.versions.toml</code>:</strong> thêm version, rồi thêm thư viện.</p>
-	<Code code={versionCatalogCode} lang="properties" theme="github-dark" />
-	<p class="src">
-		Nguồn: sách dòng 126 và 132–133. Đã kiểm trong <code>{FINAL_ROOT}/gradle/libs.versions.toml</code>:
-		<code>prefsVersion = "1.0.0"</code> ở <strong>dòng 22</strong>, dòng <code>prefs = ...</code> ở <strong>dòng 75</strong> —
-		khớp chính xác với sách.
-	</p>
-	<p class="hint">
-		Đây là <strong>Version Catalog</strong> mà chapter 4 đã dạy: số phiên bản tập trung ở <code>[versions]</code>, khai báo thư
-		viện ở <code>[libraries]</code> và trỏ về version bằng <code>version.ref</code>. Nhờ vậy nâng phiên bản chỉ sửa
-		<em>một</em> chỗ. Tên <code>prefs</code> bạn tự đặt — nó sẽ thành <code>libs.prefs</code> ở bước sau.
-	</p>
-	<p><strong>Bước 2 — <code>app/build.gradle.kts</code>:</strong> sách nói thêm <em>sau thư viện timber</em>.</p>
-	<Code code={buildGradleCode} lang="kotlin" theme="github-dark" />
-	<p class="src">
-		Nguồn: <code>{FINAL_ROOT}/app/build.gradle.kts</code> — <code>implementation(libs.prefs)</code> ở
-		<strong>dòng 80</strong>, <code>implementation(libs.timber)</code> ở <strong>dòng 82</strong>.
-	</p>
-	<p class="notice">
-		<strong>Lệch nhỏ giữa sách và code (điểm lệch #1):</strong> sách viết "thêm <em>sau</em> thư viện timber", nhưng trong
-		<code>final</code> dòng <code>libs.prefs</code> nằm ở dòng 80 — tức <strong>trước</strong> <code>libs.timber</code> (dòng 82).
-		Không ảnh hưởng gì: <strong>thứ tự khai dependency trong Gradle không quan trọng</strong>. Ghi lại chỉ để bạn không hoang
-		mang khi đối chiếu và thấy khác vị trí. Nếu bạn thấy mình hay lo những khác biệt kiểu này, đây là một ví dụ tốt để phân biệt
-		"khác vị trí" (vô hại) với "khác nội dung" (cần xem kỹ).
-	</p>
-	<p>
-		Sách nhắc <strong>Gradle sync hai lần</strong> — một lần sau khi sửa <code>libs.versions.toml</code>, một lần sau khi sửa
-		<code>build.gradle.kts</code>. Lý do: lần sync đầu là để Android Studio <em>biết</em> có một entry tên
-		<code>prefs</code> trong catalog; chưa sync thì khi bạn gõ <code>libs.prefs</code> ở bước 2, IDE sẽ gạch đỏ vì chưa biết cái
-		tên đó tồn tại.
-	</p>
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 123–142)</p>
-	<div class="callout">
-		<strong>Thư viện này thực chất là gì</strong>
-		<p>
-			<code>androidx.datastore:datastore-preferences</code> — để ý phần cuối: <strong>preferences</strong>. DataStore có
-			<em>hai</em> phiên bản:
-		</p>
-		<ul>
-			<li>
-				<strong>Preferences DataStore</strong> (dùng ở đây): lưu key-value, không cần định nghĩa schema. Gần nhất với
-				<code>SharedPreferences</code>, dễ chuyển sang.
-			</li>
-			<li>
-				<strong>Proto DataStore</strong>: lưu object có kiểu rõ ràng, bạn định nghĩa cấu trúc bằng Protocol Buffers. An toàn
-				kiểu hơn nhưng phải học thêm một công cụ.
-			</li>
-		</ul>
-		<p>
-			Sách không nhắc Proto DataStore. Nói ra ở đây vì nó giải thích cái tên thư viện — và vì nó là câu trả lời cho câu hỏi tự
-			nhiên "nếu DataStore hiện đại vậy sao vẫn không lưu được data class?": bản Preferences thì không, bản Proto thì được.
-			Kiến thức ngoài sách, không cần cho chapter này.
-		</p>
-	</div>
-	<h2 id="prefs-class">6. Viết class <code>Prefs</code> — một "cửa ra vào" duy nhất cho DataStore</h2>
-	<p>
-		Sách cho bạn tạo file mới <code>data/Prefs.kt</code> và bắt đầu bằng một bộ khung gồm 8 import và 6 dòng
-		<code>// TODO</code>. Cách dạy này rất đáng để ý: thay vì đưa file hoàn chỉnh, sách để bạn <em>điền từng TODO một</em>.
-	</p>
-	<Code code={prefsSkeletonCode} lang="kotlin" theme="github-dark" />
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 151–167)</p>
-	<p class="hint">
-		Để ý dòng <code>// TODO: Add getInit</code> — sách viết sai chính tả, đúng ra là <code>getInt</code>. Hàm bạn viết ra tên là
-		<code>getInt</code>. Không ảnh hưởng gì vì đó chỉ là comment, nhưng ghi lại để bạn không tưởng mình đọc sai.
-	</p>
-	<p>
-		Trước khi điền, hãy hiểu <strong>vì sao có class này</strong>. Sách không giải thích, nhưng đây là một quyết định thiết kế
-		quan trọng:
-	</p>
-	<div class="callout">
-		<strong>Class <code>Prefs</code> là một lớp bọc (wrapper) — và nó giải quyết 3 vấn đề</strong>
-		<ol>
-			<li>
-				<strong>Che chi tiết DataStore khỏi phần còn lại của app.</strong> Không có nó, mỗi chỗ muốn lưu một giá trị đều phải
-				biết <code>stringPreferencesKey</code>, <code>edit</code>, <code>data.first()</code>. Có nó, chúng chỉ cần gọi
-				<code>prefs.saveString("key", "value")</code>.
-			</li>
-			<li>
-				<strong>Giữ đúng một điểm khai báo <code>dataStore</code>.</strong> Nối với cảnh báo "chỉ một instance" ở mục 4.2.
-			</li>
-			<li>
-				<strong>Đổi được nền tảng lưu trữ sau này mà không sửa cả app.</strong> Muốn chuyển sang Proto DataStore hay
-				encrypted storage, bạn chỉ sửa trong <code>Prefs.kt</code>; 5 chữ ký hàm giữ nguyên.
-			</li>
-		</ol>
-		<p>
-			Đây là ý tưởng bạn sẽ gặp lại ở Chương 10.3 dưới cái tên <strong>Repository</strong> — và không phải tình cờ:
-			trong project chapter 9 đã có sẵn các dòng <code>// TODO: Add Repository</code> nằm chờ (ví dụ
-			<code>MainActivity.kt</code> dòng 28 và 47 của <code>final</code>). Sách đang dựng dần cùng một mô hình.
-		</p>
-	</div>
-
-	<h3>6.1 — TODO 1: <code>dataStore</code></h3>
-	<Code code={dataStoreDelegateCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Sách nói dòng cần viết "giống ví dụ, chỉ khác là bạn đặt tên file là <code>recipes</code>". Dòng thật trong project:
-	</p>
-	<pre class="tree">private val Context.dataStore: DataStore&lt;Preferences&gt; by preferencesDataStore(name = "recipes")</pre>
-	<p class="src">
-		Nguồn: sách dòng 173; code thật <code>{FINAL}/data/Prefs.kt</code> <strong>dòng 13</strong> — khớp từng chữ.
-	</p>
-	<p>
-		Tên <code>"recipes"</code> sẽ thành một file thật trên máy, ở
-		<code>/data/data/com.kodeco.recipefinder/files/datastore/recipes.preferences_pb</code>. Bạn không cần thao tác với file đó,
-		nhưng biết nó tồn tại giúp hiểu vì sao "xoá app là mất dữ liệu": xoá app là xoá cả thư mục đó.
+		Chốt mô hình cho đúng: DataStore <strong>không phải</strong> "biến toàn cục đọc một lần rồi quên" — nó là một
+		dòng dữ liệu sống, và project đang chủ động lấy một giá trị từ dòng đó tại thời điểm cần. Khi dữ liệu của màn
+		hình <em>phụ thuộc liên tục</em> vào một preference, hãy chuyển sang collect (Đơn vị 2, mục 21).
 	</p>
 
-	<h3>6.2 — TODO 2: <code>saveString</code>, đọc theo 4 số của sách</h3>
-	<Code code={saveStringBookCode} lang="kotlin" theme="github-dark" />
-	<p class="src">Nguồn: <code>{BOOK}</code> (dòng 179–194)</p>
+	<h2 id="ghi-edit">8. Ghi: <code>edit { }</code> — suspend, nguyên khối, không cần chốt</h2>
+	<p>Hàm ghi đầu tiên của class <code>Prefs</code>, đọc theo ba số:</p>
+	<Code code={prefsUsageCode} lang="kotlin" theme="github-dark" />
 	<ol class="chain">
-		<li>Nhận vào key và giá trị cần lưu.</li>
-		<li>Tạo một string preference key — bọc chuỗi thô thành key có kiểu, đúng như mục 4.2.</li>
-		<li>Bắt đầu edit. <code>context.dataStore.edit &#123; ... &#125;</code> mở một khối chỉnh sửa.</li>
-		<li>Gán giá trị cho key đã cho.</li>
+		<li>Bọc chuỗi key thô thành key có kiểu — đúng như mục 6.</li>
+		<li>
+			<code>context.dataStore.edit &#123; ... &#125;</code> mở một khối chỉnh sửa. Lambda nhận vào snapshot
+			hiện tại của preference (đặt tên <code>prefs</code>).
+		</li>
+		<li>Gán giá trị cho key: <code>prefs[prefKey] = value</code> — cú pháp tra-ghi như Map.</li>
 	</ol>
 	<div class="callout note">
-		<strong>Ba điều về <code>edit &#123; ... &#125;</code> mà sách không nói nhưng bạn nên biết</strong>
+		<strong>Ba tính chất của <code>edit</code> mà không nhìn kỹ sẽ bỏ lỡ</strong>
 		<ul>
 			<li>
-				<code>edit</code> là <strong>hàm <code>suspend</code></strong>. Đó là lý do <code>saveString</code> buộc phải là
-				<code>suspend fun</code> — bạn không thể gọi hàm suspend từ hàm thường.
+				<code>edit</code> là <strong>hàm <code>suspend</code></strong>. Đó là lý do <code>saveString</code> buộc phải
+				là <code>suspend fun</code> — bạn không thể gọi hàm suspend từ hàm thường. Ai gọi
+				<code>prefs.saveString(...)</code> cũng phải đang ở trong một coroutine (S1).
 			</li>
 			<li>
-				Nó <strong>atomic</strong> (nguyên khối): đọc dữ liệu hiện có, cho bạn sửa, rồi ghi <em>toàn bộ</em> xuống một lần.
-				Không có trạng thái nửa vời như <code>SharedPreferences</code> khi <code>apply()</code> chưa kịp xong.
+				Nó <strong>nguyên khối</strong> (transactional): đọc dữ liệu hiện có, cho bạn sửa, rồi ghi <em>toàn bộ</em>
+				xuống một lần. Không có trạng thái nửa vời kiểu "apply() chưa kịp xong" của <code>SharedPreferences</code>.
 			</li>
 			<li>
-				Bạn <strong>không cần</strong> gọi thêm <code>apply()</code> hay <code>commit()</code>. Khối
-				<code>edit</code> kết thúc là dữ liệu đã ghi xong — và vì hàm là <code>suspend</code>, khi nó trả về bạn <em>biết
-				chắc</em> việc ghi đã hoàn tất. Đây đúng là ưu điểm của <code>commit()</code> mà <strong>không</strong> phải trả giá
-				chặn luồng chính.
+				<strong>Không cần gọi thêm gì để "chốt"</strong>. Khối <code>edit</code> kết thúc là dữ liệu đã ghi xong — và
+				vì hàm là <code>suspend</code>, khi nó trả về bạn <em>biết chắc</em> việc ghi đã hoàn tất. Đúng cái được của
+				<code>commit()</code> mà <strong>không</strong> phải trả giá chặn luồng chính.
 			</li>
 		</ul>
+		<p>
+			Và một điều <em>không cần</em> làm: không bọc <code>Dispatchers.IO</code> quanh lời gọi. S1 đã dạy dispatcher
+			cho code tự bạn viết mà nó chặn thread; DataStore tự lo việc chuyển ngữ cảnh cho các thao tác file của nó —
+			thêm <code>withContext(IO)</code> chỉ là lớp dư. (Bản Chương 8 đã phê đúng kiểu lỗi này cho Retrofit; DataStore
+			cũng vậy.)
+		</p>
 	</div>
 
-	<h3>6.3 — Ba TODO còn lại và file hoàn chỉnh</h3>
+	<h2 id="mac-dinh">9. Key chưa có ≠ giá trị mặc định: <code>null</code> là tín hiệu, mặc định là quyết định</h2>
 	<p>
-		<code>getString</code> "bắt đầu giống nhau nhưng dùng <code>data.first()</code> để lấy mục ra với key làm chỉ số" (sách dòng
-		205). <code>saveInt</code> / <code>getInt</code> "làm y hệt nhưng cho <code>Int</code>" (dòng 222).
-		<code>hasKey</code> "chỉ kiểm tra xem mục đó có tồn tại" (dòng 231). Đây là toàn bộ file thật, 43 dòng:
+		Cả hai hàm đọc của project trả về kiểu nullable: <code>getString()</code> → <code>String?</code>,
+		<code>getInt()</code> → <code>Int?</code>. Chỗ nào <code>null</code>? Chính xác là <strong>chưa bao giờ có ai
+		ghi key đó</strong> — app mới cài, hoặc preference đó chưa từng được lưu. Đây không phải lỗi; đó là trạng thái
+		"hỏng có dữ liệu" cần được xử lý tường minh:
+	</p>
+	<ul>
+		<li>
+			<code>MainScreen</code> (mục 18): <code>if (currentIndex != null) &#123; ... &#125;</code> — chưa từng lưu tab
+			thì để nguyên tab mặc định <code>0</code> của <code>remember</code>.
+		</li>
+		<li>
+			<code>RecipeViewModel</code> (mục 16): <code>if (!previousSearchString.isNullOrEmpty())</code> — chưa có gì
+			lưu thì không tạo danh sách rỗng giả.
+		</li>
+	</ul>
+	<div class="callout note">
+		<strong>"Giá trị mặc định" là quyết định của app, không phải của thư viện</strong>
+		<p>
+			<code>SharedPreferences</code> nhét mặc định vào từng lời gọi: <code>getString("tab", "0")</code> — quy tắc
+			"không có thì lấy gì" nằm rải rác ở mọi chỗ đọc. DataStore Preferences thì <em>không</em> có mặc định ngầm:
+			tra key chưa có, bạn nhận <code>null</code>, và app quyết định lấy gì thay. Tách bạch hai cái này tránh lỗi
+			"sự thật do tai nạn": tưởng rằng <code>0</code> là giá trị hợp lệ đã lưu, trong khi thật ra key chưa từng
+			được ghi. Quy tắc: <strong>mặc định nằm ở tầng app (ViewModel/UI), rõ ràng, một chỗ</strong>.
+		</p>
+	</div>
+
+	<h2 id="prefs-class">10. Class <code>Prefs</code>: một cửa ra vào cho DataStore</h2>
+	<p>
+		Ghép các mảnh trên vào một file duy nhất — <code>data/Prefs.kt</code>, file <em>mới duy nhất</em> mà chương này
+		thêm vào project (43 dòng):
 	</p>
 	<Code code={prefsFullCode} lang="kotlin" theme="github-dark" />
 	<p class="src">
-		Nguồn: <code>{FINAL}/data/Prefs.kt</code> (dòng 12–43, đã lược phần <code>package</code> + 8 dòng import). Toàn bộ khớp với
-		code sách hướng dẫn.
+		Code thật: <code>{FINAL}/data/Prefs.kt</code> (dòng 12–43, đã lược phần <code>package</code> + import). Delegate
+		ở dòng <strong>13</strong>, <code>saveString</code> <strong>15–20</strong>, <code>getString</code>
+		<strong>22–25</strong>, <code>saveInt</code> <strong>27–32</strong>, <code>getInt</code> <strong>34–37</strong>,
+		<code>hasKey</code> <strong>39–42</strong>.
+	</p>
+	<p>
+		Vì sao bọc một class thay vì cho cả app gọi DataStore trực tiếp? Ba lợi ích thật, đúng theo tinh thần S5
+		(kiến trúc quản lý trách nhiệm, không phải đếm class):
+	</p>
+	<ol>
+		<li>
+			<strong>Che cơ chế lưu trữ.</strong> Không có nó, mỗi chỗ muốn lưu đều phải biết
+			<code>stringPreferencesKey</code>, <code>edit</code>, <code>data.first()</code>. Có nó, chúng chỉ cần gọi
+			<code>prefs.saveString("key", "value")</code>.
+		</li>
+		<li>
+			<strong>Giữ đúng một điểm khai báo <code>dataStore</code></strong> — nối với cảnh báo "một instance" ở mục 5.
+		</li>
+		<li>
+			<strong>Đổi nền tảng lưu trữ mà không sửa cả app.</strong> Muốn chuyển sang Proto DataStore hay lưu mã hoá,
+			chỉ sửa trong <code>Prefs.kt</code>; chữ ký 5 hàm giữ nguyên.
+		</li>
+	</ol>
+	<p>
+		Gọi đúng tên nó: <code>Prefs</code> là một <strong>data source</strong> — "một chỗ dữ liệu thực sự nằm, và cách
+		nói chuyện với chỗ đó" theo ngôn ngữ của S5 — chuyên cho thiết lập nhỏ của app. Nó <em>không cần</em> một lớp
+		repository bọc ngoài: một data source nhỏ, một trách nhiệm, một file. (Repository như một biên giới đa nguồn
+		là nội dung của S5/R3 — không gán nhãn cho có.)
 	</p>
 	<table class="api">
 		<thead>
@@ -943,123 +947,180 @@ context.dataStore.data.first()[k]</pre>
 			<tr>
 				<td><code>saveString</code></td>
 				<td>Lưu một chuỗi</td>
-				<td><code>RecipeViewModel.kt</code> dòng 88 — lưu danh sách từ khoá đã nối bằng dấu phẩy</td>
+				<td><code>RecipeViewModel.kt</code> dòng 88 — lưu danh sách từ khoá đã nối bằng dấu phẩy (mục 16)</td>
 			</tr>
 			<tr>
 				<td><code>getString</code></td>
 				<td>Đọc một chuỗi, trả <code>null</code> nếu chưa có</td>
-				<td><code>RecipeViewModel.kt</code> dòng 59 — đọc lại danh sách trong <code>init</code></td>
+				<td><code>RecipeViewModel.kt</code> dòng 59 — đọc lại danh sách trong <code>init</code> (mục 16)</td>
 			</tr>
 			<tr>
 				<td><code>saveInt</code></td>
 				<td>Lưu một số nguyên</td>
-				<td><code>ui/MainScreen.kt</code> dòng 48 và 58 — lưu tab đang chọn (0 hoặc 1)</td>
+				<td><code>ui/MainScreen.kt</code> dòng 48 và 58 — lưu tab đang chọn (mục 18)</td>
 			</tr>
 			<tr>
 				<td><code>getInt</code></td>
 				<td>Đọc một số nguyên</td>
-				<td><code>ui/MainScreen.kt</code> dòng 33 — đọc tab lúc mở app</td>
+				<td><code>ui/MainScreen.kt</code> dòng 33 — đọc tab lúc mở app (mục 18)</td>
 			</tr>
 			<tr>
 				<td><code>hasKey</code></td>
 				<td>Kiểm tra key có tồn tại</td>
-				<td><strong>Không nơi nào</strong> — đã grep toàn bộ <code>final</code>: chỉ có định nghĩa ở dòng 39, không có chỗ gọi</td>
+				<td><strong>Không nơi nào</strong> — đã soát toàn bộ <code>final</code>: chỉ có định nghĩa, không có lời gọi</td>
 			</tr>
 		</tbody>
 	</table>
-	<p class="src">Nguồn: đã grep <code>hasKey</code>, <code>prefs.getInt</code>, <code>prefs.saveInt</code>,
-		<code>prefs.getString</code>, <code>prefs.saveString</code> trong toàn bộ <code>{FINAL_ROOT}/app/src/main/</code></p>
 	<div class="callout diff">
-		<strong>Điểm lệch #2 — <code>hasKey</code> là code chết trong project</strong>
+		<strong>Đọc code mẫu phê phán: <code>hasKey</code> là code chết, và còn có một hố nhỏ</strong>
 		<p>
-			Sách cho bạn viết <code>hasKey</code> và giải thích nó, nhưng <strong>không chapter nào dùng tới</strong>. Nó tồn tại vì
-			nó là bản tương ứng của <code>contains()</code> trong <code>SharedPreferences</code> ở mục 3.1 — viết cho đủ bộ.
+			<code>hasKey</code> tồn tại như bản tương ứng của <code>contains()</code> trong <code>SharedPreferences</code>
+			(mục 2) — viết cho đủ bộ, nhưng app không gọi tới. Bạn không cần nó: <code>getString()</code> đã trả về
+			<code>String?</code>, kiểm tra <code>null</code> là biết key có tồn tại không — và chỉ đọc file
+			<strong>một</strong> lần thay vì hai.
 		</p>
 		<p>
-			<strong>Nên làm gì:</strong> cứ viết theo sách. Nhưng biết rằng trong code thật, hàm này thường
-			<em>không cần thiết</em>: <code>getString()</code> đã trả về <code>String?</code>, nên bạn chỉ cần kiểm tra
-			<code>null</code> là biết key có tồn tại hay không — và chỉ đọc file <strong>một</strong> lần thay vì hai. Gọi
-			<code>hasKey()</code> rồi <code>getString()</code> là đọc file hai lần cho cùng một câu hỏi.
-		</p>
-		<p>
-			Chú ý thêm một chi tiết nhỏ: <code>hasKey</code> luôn tạo key bằng <code>stringPreferencesKey</code>, nên nó
-			<strong>không</strong> tìm được key kiểu <code>Int</code>. Gọi <code>hasKey(CURRENT_INDEX_KEY)</code> sẽ luôn trả
-			<code>false</code> dù giá trị đã được lưu — vì <code>stringPreferencesKey("X")</code> và
-			<code>intPreferencesKey("X")</code> là hai key khác nhau với DataStore. Đây là hệ quả trực tiếp của "kiểu nằm trong key"
-			ở mục 4.2, và là lý do nữa để không dùng hàm này.
+			Hố nhỏ đáng học hơn: <code>hasKey</code> luôn tạo key bằng <code>stringPreferencesKey</code>, nên nó
+			<strong>không</strong> tìm được key kiểu <code>Int</code> — gọi <code>hasKey(CURRENT_INDEX_KEY)</code> sẽ luôn
+			trả <code>false</code> dù giá trị đã được lưu, vì <code>stringPreferencesKey("X")</code> và
+			<code>intPreferencesKey("X")</code> là hai key khác nhau với DataStore. Đây là hệ quả trực tiếp của "kiểu nằm
+			trong key" ở mục 6.
 		</p>
 	</div>
-	<h2 id="delegate-vi-tri">7. Chỗ đặt <code>dataStore</code>: điểm lệch đáng chú ý nhất chapter</h2>
-	<p>
-		Quay lại cảnh báo "Important" ở mục 4.2: <em>không tạo nhiều hơn một instance DataStore trỏ vào cùng một file</em>. Bây giờ
-		hãy để ý <strong>vị trí</strong> của delegate trong project mẫu — nó là <code>private val</code> nằm
-		<em>bên trong</em> class <code>Prefs</code>.
-	</p>
-	<Code code={topLevelDelegateCode} lang="kotlin" theme="github-dark" />
-	<p class="src">
-		Cách trên: <code>{FINAL}/data/Prefs.kt</code> dòng 12–13 (code thật). Cách dưới: cách tài liệu chính thức của DataStore
-		hướng dẫn (developer.android.com/topic/libraries/architecture/datastore — chính link sách đưa ở dòng 397).
-	</p>
-	<table class="api">
-		<thead>
-			<tr><th></th><th>Delegate là member của class (project làm)</th><th>Delegate ở top-level (tài liệu khuyên)</th></tr>
-		</thead>
-		<tbody>
-			<tr>
-				<td>Phạm vi "một lần" được đảm bảo trong</td>
-				<td>Mỗi <strong>instance <code>Prefs</code></strong></td>
-				<td>Toàn bộ <strong>file / process</strong></td>
-			</tr>
-			<tr>
-				<td>Tạo 2 <code>Prefs</code> thì</td>
-				<td><strong>2 instance DataStore</strong> cùng trỏ vào file <code>recipes</code> → đúng tình huống cảnh báo cấm</td>
-				<td>Vẫn <strong>1 instance</strong> duy nhất được chia sẻ</td>
-			</tr>
-			<tr>
-				<td>An toàn khi</td>
-				<td>Bạn <em>tự đảm bảo</em> chỉ có một <code>Prefs</code> trong cả app</td>
-				<td>Luôn luôn</td>
-			</tr>
-		</tbody>
-	</table>
-	<div class="callout diff">
-		<strong>Vậy project mẫu có sai không? Câu trả lời là "không sai, nhưng mong manh"</strong>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh — Đơn vị 1</strong>
 		<p>
-			Project <em>thoát</em> được vấn đề vì nó tạo <code>Prefs</code> <strong>đúng một lần</strong>, trong
-			<code>RecipeApp.onCreate()</code> (mục 8), rồi phát đi khắp app bằng CompositionLocal. Chỉ có một
-			<code>Prefs</code> nên cũng chỉ có một DataStore. Cấu trúc này <em>hoạt động</em>.
+			Đồng nghiệp viết: <code>fun loadName(context: Context): String = context.dataStore.data.first()[NAME_KEY] ?: ""</code>
+			và gọi nó trong <code>onClick</code> của một nút. Chỉ ra <strong>(a)</strong> dòng này không biên dịch được vì
+			sao, <strong>(b)</strong> hai chỗ thiếu so với khuôn của <code>Prefs</code> (một về khai báo, một về việc gọi
+			hàm), và <strong>(c)</strong> nếu <code>NAME_KEY</code> khai bằng <code>intPreferencesKey</code> thì phép tra
+			<code>[NAME_KEY]</code> được khai bằng <code>intPreferencesKey</code> — phép tra
+			<code>[NAME_KEY]</code> để lấy <code>String</code> sẽ ra sao? Nói ở tầng kiểu.
 		</p>
-		<p>
-			Nhưng nó phụ thuộc vào việc <strong>không ai bao giờ gõ <code>Prefs(context)</code> lần thứ hai</strong>. Và ngay trong
-			chính chapter này, sách bảo bạn làm đúng điều đó ở <em>hai</em> chỗ:
-		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>(a)</strong> <code>first()</code> là hàm <code>suspend</code> (mục 7), nên hàm bọc nó phải là
+				<code>suspend fun</code>; còn gọi trong <code>onClick</code> thì cần một coroutine scope
+				(<code>rememberCoroutineScope</code>/<code>LaunchedEffect</code>).
+			</p>
+			<p>
+				<strong>(b)</strong> Thiếu khai báo <code>private val Context.dataStore by preferencesDataStore(name = ...)</code>
+				— không có delegate thì <code>context.dataStore</code> không tồn tại (mục 5). Và hàm nên nằm trong class
+				<code>Prefs</code> để giữ đúng một điểm khai báo + che cơ chế (mục 10).
+			</p>
+			<p>
+				<strong>(c)</strong> Không compile. <code>intPreferencesKey("X")</code> có kiểu
+				<code>Preferences.Key&lt;Int&gt;</code>, không phải index của <code>Preferences</code> trả về
+				<code>String?</code> theo cách tra đó — đây là lỗi <em>lúc biên dịch</em>, đúng thiết kế "kiểu nằm trong key"
+				(mục 6).
+			</p>
+		</details>
+	</div>
+	<div class="callout journey">
+		<strong>Tóm tắt Đơn vị 1</strong>
+		<ol>
+			<li>Chọn công cụ theo <strong>hình dạng dữ liệu</strong>: vài giá trị rời → key/value (DataStore); tập hợp bản
+				ghi cần truy vấn → database (Chương 10); file định dạng riêng → bài toán khác.</li>
+			<li><code>SharedPreferences</code>: đọc trực tiếp (<code>getXXX</code>/<code>contains</code>), ghi qua editor +
+				<code>apply()</code>/<code>commit()</code>; chỉ 5 kiểu; <code>commit()</code> có thể chặn UI. Chưa bị đánh dấu
+				deprecated — nhưng không còn là lựa chọn cho code mới.</li>
+			<li>DataStore = <code>data: Flow&lt;T&gt;</code> + <code>suspend updateData</code>: mọi phép đọc-ghi là
+				<code>suspend</code>, ghi <strong>nguyên khối</strong>. Không phải database, không tự lưu object.</li>
+			<li><code>by preferencesDataStore(name = ...)</code>: delegate tạo đúng một instance per store; đặt top-level thì
+				trình biên dịch tự bảo đảm.</li>
+			<li>Key có kiểu — sai kiểu là lỗi biên dịch. Đọc: <code>data.first()</code> (một giá trị, không theo dòng
+				chảy). Ghi: <code>edit &#123; &#125;</code>, xong là chắc.</li>
+			<li>Key chưa có → <code>null</code> → mặc định là <strong>quyết định của app</strong>, đặt một chỗ rõ ràng.</li>
+			<li><code>Prefs</code> = data source 43 dòng cho thiết lập nhỏ: che cơ chế, giữ một điểm khai báo, đổi nền
+				tảng được.</li>
+		</ol>
+	</div>
+	<!-- ==================================================================== -->
+	<!-- D1 END — hết Đơn vị 1 "DataStore & SharedPreferences legacy".           -->
+	<!-- ==================================================================== -->
+
+	<!-- ==================================================================== -->
+	<!-- D2 START — Đơn vị 2: "Prefs trong app: CompositionLocal & ViewModel     -->
+	<!-- wiring" (mục 11–21).                                                    -->
+	<!-- Sở hữu: bài toán nối dây · Application ownership + DI tay (Hilt chỉ     -->
+	<!-- seam note) · cơ chế CompositionLocal (declare/provider/current — trả    -->
+	<!-- nợ ghi nhận của C3) · ranh giới "không phải service locator" ·          -->
+	<!-- viewModelFactory · trace từ khoá (ghi + đọc init) · bug dấu phẩy        -->
+	<!-- (critical reading) · trace tab (LaunchedEffect vs                       -->
+	<!-- rememberCoroutineScope; rememberSaveable ≠ persistence) · bài toán      -->
+	<!-- @Preview · bảng trách nhiệm.                                            -->
+	<!-- KHÔNG dạy lại: D1 (suspend/Flow/edit/keys) · S3 UDF · S4 ViewModel ·    -->
+	<!-- internals recomposition của CompositionLocal · Hilt annotations.        -->
+	<!-- ==================================================================== -->
+	<div class="callout goals">
+		<strong>Đơn vị 2 — Prefs trong app: CompositionLocal &amp; ViewModel wiring. Sau đơn vị này bạn sẽ</strong>
 		<ul>
-			<li>
-				<code>MainActivity</code>: sách bảo thêm <code>val prefs = remember &#123; Prefs(context) &#125;</code> (dòng 255) —
-				xem mục 8, dòng này <strong>không</strong> có trong <code>final</code>.
-			</li>
-			<li>
-				Code <code>@Preview</code>: sách bảo "dùng context đang có để tạo một <code>Prefs</code> mới" (dòng 329) — xem mục 12,
-				<code>final</code> cũng <strong>không</strong> làm vậy.
-			</li>
+			<li>Nêu được vì sao <strong>không cho mỗi màn hình tự dựng <code>Prefs</code></strong> — và nêu được ba việc
+				cần làm: tạo ở một chủ sở hữu hợp lý, <em>cấp</em> xuống, <em>tiêu thụ</em> ở nơi cần.</li>
+			<li>Trace được toàn mạch của một preference thật: <code>Application</code> tạo → provider cấp → ViewModel/
+				Composable đọc <code>.current</code> → ghi vào DataStore → mở lại app đọc lại → UI hiện đúng.</li>
+			<li>Giải thích được <strong>cơ chế CompositionLocal</strong> ở mức project dùng: khai local có giá trị mặc định
+				<code>error(...)</code>, <code>CompositionLocalProvider ... provides</code>, đọc bằng <code>.current</code>,
+				phạm vi là cây con — và vì sao nó <em>không</em> phải biến toàn cục cũng <em>không</em> tự tạo object.</li>
+			<li>Đưa một dependency vào ViewModel qua <code>viewModelFactory</code>, và giải thích vì sao phải đặt
+				<code>.current</code> <em>trước</em> lambda factory.</li>
+			<li>Phân biệt rõ: <strong>recomposition</strong>, <strong>configuration change</strong>, <strong>tắt/mở
+				app</strong>, <strong>lưu trữ bền</strong> — và nói đúng <code>remember</code>/<code>rememberSaveable</code>
+				không phải persistence.</li>
+			<li>Trình bày <strong>bảng trách nhiệm</strong> DataStore / Prefs / CompositionLocal / ViewModel / Composable
+				không lẫn cái nào.</li>
 		</ul>
-		<p>
-			<strong>Nên theo cái nào:</strong> viết theo project <code>final</code> để code của bạn khớp với sách khi đối chiếu. Nhưng
-			nếu bạn tự dựng app của mình, hãy đặt delegate ở <strong>top-level</strong> — nó biến "chỉ một instance" từ
-			<em>quy ước bạn phải nhớ</em> thành <em>điều trình biên dịch tự bảo đảm</em>, và bạn không còn phải cẩn thận khi tạo
-			<code>Prefs</code>.
-		</p>
 	</div>
-	<p class="hint">
-		<strong>Điều gì thực sự xảy ra nếu có 2 instance:</strong> mỗi instance giữ cache riêng và tự ghi file. Hai instance ghi
-		gần nhau thì instance này có thể ghi đè thay đổi của instance kia, hoặc bạn đọc ra giá trị cũ vì cache chưa đồng bộ. Đây là
-		loại lỗi xuất hiện <em>không đều</em> — chạy 10 lần đúng 9 lần — nên rất khó lần ra. Đó là lý do tài liệu dùng chữ
-		"Important".
-	</p>
-	<h2 id="application-instance">8. Tạo instance duy nhất trong <code>Application</code></h2>
 	<p>
-		Sách cho bạn mở <code>RecipeApp.kt</code> và điền hai TODO. Đây là file <code>Application</code> của app — class được hệ
-		thống tạo <strong>một lần</strong>, <em>trước</em> mọi Activity, và sống suốt vòng đời process.
+		<strong>Vì sao đơn vị này quan trọng.</strong> Đơn vị 1 cho bạn một class lưu trữ đúng. Nhưng class nằm trong
+		file <code>Prefs.kt</code> thì mọi màn hình lấy nó ở đâu? Câu hỏi "một dependency sống ở đâu trong app và được
+		phát đi thế nào" là bài toán kiến trúc thật — cùng bản chất với những gì S5 gọi là nối tầng dữ liệu vào tầng
+		UI. Giải quyết nó một lần với một dependency nhỏ, sau này thêm dependency mới (repository ở R3) bạn đã có khuôn.
+	</p>
+	<div class="callout">
+		<strong>Cần biết trước.</strong> <strong>Đơn vị 1</strong> — <code>Prefs</code>, "một instance", đọc/ghi
+		<code>suspend</code>. <strong>S4</strong> — ViewModel sống ngoài UI, <code>viewModel()</code>, UI state;
+		<code>viewModel(...)</code> mặc định chỉ gọi được constructor rỗng — đơn vị này dạy cách "dạy" nó tạo ViewModel
+		có tham số. <strong>S3</strong> — truyền giá trị xuống qua tham số, gửi sự kiện lên qua callback.
+		<strong>C3</strong> — bạn đã từng <em>nghe tên</em> <code>CompositionLocal</code> (mục theme); đơn vị này dạy
+		<em>cơ chế</em> thật của nó. <strong>C4</strong> — <code>LaunchedEffect</code> ở mức nhận diện.
+	</div>
+
+	<h2 id="noi-day">11. Bài toán nối dây: một dependency, nhiều nơi cần dùng</h2>
+	<p>
+		Giả sử đi theo cách trực giác nhất: màn hình nào cần lưu/đọc thì tự dựng <code>Prefs(context)</code>.
+		<code>MainScreen</code> dựng một cái, <code>RecipeDetails</code> dựng một cái, <code>RecipeList</code> nữa...
+		Với cách đó, có bốn vấn đề — cả bốn đều đã học đủ nền để nhìn ra:
+	</p>
+	<ul>
+		<li>
+			<strong>Sở hữu trùng.</strong> Mỗi instance <code>Prefs</code> giữ một instance DataStore riêng (mục 5) — tạo
+			2 <code>Prefs</code> là có 2 store trỏ cùng file. Đúng cảnh báo "Important".
+		</li>
+		<li>
+			<strong>Vòng đời mơ hồ.</strong> Ai sống lâu hơn ai? Một <code>Prefs</code> cầm <code>Context</code> của
+			Activity nào đó rồi bị giữ bởi thứ sống lâu hơn — rò rỉ kinh điển của Android.
+		</li>
+		<li>
+			<strong>Dựng lẫn với dùng.</strong> Mỗi nơi gọi <code>Prefs(context)</code> vừa <em>tạo</em> vừa <em>dùng</em> —
+			khi muốn đổi cách tạo (bọc thêm log, fake cho test), phải sửa mọi nơi.
+		</li>
+		<li>
+			<strong>Khó kiểm thử.</strong> Không thể thay <code>Prefs</code> bằng bản giả nếu mọi nơi tự dựng bản thật.
+		</li>
+	</ul>
+	<p>
+		Điều cần có là tách ba việc: <strong>(1) tạo</strong> dependency ở một chủ sở hữu sống đủ lâu và sống một lần;
+		<strong>(2) cấp</strong> nó cho phần còn lại của app; <strong>(3) tiêu thụ</strong> ở nơi cần, mà không biết
+		chuyện tạo. Ba mục tiếp theo làm đúng ba việc đó.
+	</p>
+
+	<h2 id="application">12. Application: chủ sở hữu hợp lý — và "dependency injection" nghĩa là gì</h2>
+	<p>
+		Class <code>Application</code> là "app object": hệ thống tạo <strong>một lần</strong>, <em>trước</em> mọi
+		Activity, và nó sống suốt vòng đời process. Đó là đặc tính chủ sở hữu cần — và project đặt
+		<code>Prefs</code> vào đúng đó (<code>RecipeApp.kt</code>):
 	</p>
 	<div class="ba">
 		<div class="ba-col">
@@ -1078,96 +1139,88 @@ context.dataStore.data.first()[k]</pre>
 			</p>
 		</div>
 	</div>
-	<p class="src">Nguồn hướng dẫn: <code>{BOOK}</code> (dòng 233–243)</p>
-	<p>Hai dòng ngắn nhưng mỗi dòng có một quyết định:</p>
+	<p>Hai dòng, mỗi dòng một quyết định:</p>
 	<ul>
 		<li>
-			<strong><code>lateinit var prefs: Prefs</code></strong> — <code>lateinit</code> nghĩa là "tôi hứa sẽ gán giá trị trước khi
-			dùng, nên đừng bắt tôi khai giá trị ngay". Cần vì <code>Prefs</code> đòi một <code>Context</code>, mà
-			<code>Application</code> chỉ trở thành <code>Context</code> hợp lệ <em>sau khi</em> <code>onCreate()</code> chạy —
-			không thể gán ở dòng khai báo.
+			<strong><code>lateinit var prefs: Prefs</code></strong> — <em>JIT:</em> <code>lateinit</code> là lời hứa "tôi sẽ
+			gán giá trị trước khi dùng" cho <code>var</code> không thể gán ngay lúc khai báo. Cần ở đây vì
+			<code>Prefs</code> đòi một <code>Context</code>, mà <code>Application</code> chỉ trở thành <code>Context</code>
+			hợp lệ <em>sau khi</em> <code>onCreate()</code> chạy. (Bạn đã gặp <code>lateinit</code> trong code Ditto ở
+			Chương 7.)
 		</li>
 		<li>
-			<strong><code>prefs = Prefs(this)</code></strong> — <code>this</code> ở đây là chính <code>Application</code>. Đây là
-			<code>Context</code> "sống lâu nhất" của app, nên không có nguy cơ giữ tham chiếu tới một Activity đã bị huỷ
-			(memory leak — rò rỉ bộ nhớ). Truyền <code>Activity</code> vào một object sống lâu là một trong những lỗi rò rỉ kinh
-			điển nhất của Android; ở đây sách chọn đúng.
+			<strong><code>prefs = Prefs(this)</code></strong> — <code>this</code> là chính <code>Application</code>:
+			<code>Context</code> "sống lâu nhất" của app, nên không nguy cơ giữ tham chiếu tới một Activity đã bị huỷ.
+			Truyền <code>Activity</code> vào một object sống lâu là một trong những lỗi rò rỉ kinh điển của Android; ở đây
+			chọn đúng.
 		</li>
 	</ul>
-	<p class="hint">
-		<strong>Vì sao <code>RecipeApp</code> được hệ thống gọi mà bạn không gọi:</strong> vì nó được khai trong manifest —
-		<code>android:name=".RecipeApp"</code> ở <code>AndroidManifest.xml</code> <strong>dòng 12</strong>. Đây lại là ý
-		"mọi component là entry point, hệ thống gọi bạn" của chapter 1, xuất hiện trong một tình huống rất thực.
+	<p class="src">
+		Vì sao hệ thống biết phải tạo <code>RecipeApp</code>: <code>{FINAL_ROOT}/app/src/main/AndroidManifest.xml</code>
+		dòng <strong>12</strong> — <code>android:name=".RecipeApp"</code> (dòng này có sẵn từ chương trước, dùng để khởi
+		Timber).
 	</p>
 	<Code code={manifestCode} lang="xml" theme="github-dark" />
-	<p class="src">
-		Code thật: <code>{FINAL_ROOT}/app/src/main/AndroidManifest.xml</code> — <code>android:name=".RecipeApp"</code> dòng
-		<strong>12</strong>. Dòng này <em>đã có sẵn</em> trong <code>starter</code>, bạn không phải thêm; nó được đặt từ chapter
-		trước, lúc <code>RecipeApp</code> mới chỉ dùng để khởi tạo Timber (thư viện ghi log).
-	</p>
-	<div class="callout">
-		<strong>Vì sao <code>Application</code> là chỗ đúng cho <code>Prefs</code></strong>
-		<p>Ba lý do, xếp theo mức quan trọng:</p>
-		<ol>
-			<li>
-				<strong>Đảm bảo đúng một instance</strong> — nối trực tiếp với mục 7. Hệ thống tạo <code>Application</code> một lần,
-				nên <code>Prefs</code> cũng chỉ được tạo một lần.
-			</li>
-			<li>
-				<strong>Sẵn sàng trước mọi UI.</strong> <code>Application.onCreate()</code> chạy trước
-				<code>MainActivity.onCreate()</code>, nên khi Composable đầu tiên cần <code>prefs</code> thì nó đã có.
-			</li>
-			<li>
-				<strong>Không chết theo cấu hình.</strong> Xoay máy làm Activity bị huỷ và tạo lại, nhưng
-				<code>Application</code> thì không — <code>prefs</code> vẫn nguyên.
-			</li>
-		</ol>
+	<p>Ba lý do <code>Application</code> là chỗ đúng cho <code>Prefs</code>, xếp theo mức quan trọng:</p>
+	<ol>
+		<li><strong>Đảm bảo đúng một instance</strong> — hệ thống tạo <code>Application</code> một lần, nên <code>Prefs</code> cũng chỉ được tạo một lần.</li>
+		<li><strong>Sẵn sàng trước mọi UI</strong> — <code>Application.onCreate()</code> chạy trước <code>MainActivity.onCreate()</code>, nên khi Composable đầu tiên cần <code>prefs</code> thì nó đã có.</li>
+		<li><strong>Không chết theo cấu hình</strong> — xoay máy huỷ và tạo lại Activity, nhưng <code>Application</code> thì không; <code>prefs</code> vẫn nguyên.</li>
+	</ol>
+	<div class="callout note">
+		<strong>Đây chính là "dependency injection" — ở mức nguyên lý</strong>
 		<p>
-			<strong>Điểm cần biết để sau này không đi sai:</strong> đặt dependency vào <code>Application</code> là cách
-			<em>đơn giản nhất</em>, phù hợp app học. App lớn dùng dependency injection (Hilt / Koin) để làm cùng việc này mà không
-			cần nhồi mọi thứ vào <code>Application</code>. Sách không nhắc — và với 1 dependency thì cách của sách hoàn toàn hợp lý.
+			<code>RecipeViewModel</code> không tự gõ <code>Prefs(context)</code>; nó <em>nhận</em> <code>Prefs</code> qua
+			constructor. <code>RecipeDetails</code> cũng không tự tạo — nó lấy từ provider. Dependency được
+			<strong>dựng bên ngoài class sử dụng nó</strong> và <strong>truyền vào</strong> — đó là toàn bộ ý của
+			"dependency injection" (tiêm phụ thuộc). Không cần framework: cách nối tay này là hợp lệ và đủ cho quy mô
+			hiện tại. Trong một app lớn hơn, một DI framework như Hilt có thể tự động hoá phần lớn việc dựng và nối dây
+			kiểu này — đó là câu chuyện của một bài khác, không phải của đây.
 		</p>
 	</div>
 
-	<h2 id="compositionlocal">9. CompositionLocal: phát <code>prefs</code> xuống cả cây Composable</h2>
+	<h2 id="compositionlocal">13. CompositionLocal: cấp giá trị theo ngữ cảnh xuống cây Composable</h2>
 	<p>
-		Bây giờ <code>prefs</code> nằm trong <code>RecipeApp</code>, còn chỗ cần dùng nó là các Composable ở sâu trong cây UI. Truyền
-		tay qua từng tham số thì mọi Composable trung gian đều phải nhận một tham số nó không dùng. Compose có cơ chế riêng cho việc
-		này, và sách gọi nó là "provider ability".
+		<code>prefs</code> đã nằm trong <code>RecipeApp</code>. Nhưng chỗ cần nó là các Composable ở sâu trong cây UI.
+		Truyền tay qua từng tham số thì mọi Composable trung gian đều phải nhận một tham số nó không dùng — đúng vấn
+		đề "xâu chuỗi dữ liệu qua nhiều tầng" mà S3 đã cảnh báo. Compose có cơ chế riêng cho việc cấp giá trị theo
+		ngữ cảnh — và bạn đã <em>dùng nó mỗi ngày từ C3</em> mà có thể chưa biết tên:
+		<code>MaterialTheme</code> cấp màu/chữ/kích thước xuống mọi composable con chính bằng CompositionLocal.
+		C3 hẹn "gặp lại cơ chế này ở giai đoạn Dữ liệu cục bộ" — đây chính là chỗ đó.
 	</p>
-	<p><strong>Bước 1 — khai báo:</strong> sách bảo thay <code>// TODO: Add Pref Provider</code> bằng:</p>
+	<p><strong>Bước 1 — khai báo local</strong> (đặt ở <code>MainActivity.kt</code>, cạnh <code>LocalNavigatorProvider</code> của Chương 8):</p>
 	<Code code={localPrefsDeclareCode} lang="kotlin" theme="github-dark" />
 	<p class="src">
-		Nguồn: sách dòng 248–249; code thật <code>{FINAL}/MainActivity.kt</code> dòng <strong>30–31</strong> (trong
-		<code>starter</code>, TODO ở dòng <strong>29</strong>). Để ý <code>LocalNavigatorProvider</code> ở dòng 25–26 đã dùng
-		<em>đúng</em> khuôn mẫu đó từ chapter trước.
-	</p>
-	<p>
-		Sách nói thêm một câu quan trọng: <em>ban đầu dòng này bắt đầu bằng một error, nhưng bạn sẽ đặt provider sau</em>. Cần giải
-		thích rõ vì nhìn <code>error(...)</code> trong code dễ tưởng là lỗi:
+		Code thật: <code>{FINAL}/MainActivity.kt</code> dòng <strong>30–31</strong> (trong <code>starter</code>, TODO ở
+		dòng <strong>29</strong>).
 	</p>
 	<div class="callout note">
-		<strong><code>compositionLocalOf&lt;Prefs&gt; &#123; error("No prefs provided") &#125;</code> — cái lambda đó là gì</strong>
+		<strong>Cái lambda <code>&#123; error("No prefs provided") &#125;</code> là gì?</strong>
 		<p>
-			Nó là <strong>giá trị mặc định</strong>, và nó được viết thành "hãy văng lỗi". Nghĩa là: <em>nếu</em> có Composable nào đọc
-			<code>LocalPrefsProvider.current</code> mà chưa ai cung cấp giá trị, app sẽ crash ngay với thông báo rõ ràng
-			"No prefs provided".
-		</p>
-		<p>
-			Đây là <strong>chủ ý thiết kế</strong>, không phải sự cẩu thả. Lựa chọn còn lại là để mặc định <code>null</code>, khi đó
-			mọi chỗ dùng đều phải kiểm tra null cho một tình huống <em>không bao giờ được phép xảy ra</em>. Chọn "crash to, crash sớm,
-			kèm thông báo dễ hiểu" — bạn phát hiện thiếu provider ngay lần chạy đầu, ở đúng chỗ, thay vì gặp lỗi mơ hồ về sau.
+			Nó là <strong>giá trị mặc định</strong> của local — được viết thành "văng lỗi". Nghĩa là: <em>nếu</em> có
+			Composable nào đọc <code>LocalPrefsProvider.current</code> mà chưa ai cấp giá trị, app sẽ crash ngay với thông
+			báo rõ ràng "No prefs provided". Đây là <strong>chủ ý thiết kế</strong>, không phải cẩu thả: lựa chọn còn lại
+			là mặc định <code>null</code>, khi đó mọi chỗ dùng đều phải kiểm tra null cho một tình huống <em>không bao giờ
+			được phép xảy ra</em>. Chọn "crash sớm, kèm thông báo dễ hiểu" — bạn phát hiện thiếu provider ngay lần chạy
+			đầu, ở đúng chỗ, thay vì gặp lỗi mơ hồ về sau. (Chính vì vậy, một <code>@Preview</code> đứng ngoài provider
+			sẽ không render được — xem mục 19.)
 		</p>
 	</div>
-	<p><strong>Bước 2 — cung cấp giá trị:</strong> sách bảo thêm dòng sau <code>LocalNavigatorProvider provides navController</code>:</p>
+	<p><strong>Bước 2 — cấp giá trị</strong>, bên trong <code>setContent</code> của <code>MainActivity</code>:</p>
 	<Code code={compositionProviderCode} lang="kotlin" theme="github-dark" />
 	<p class="src">
-		Nguồn: sách dòng 261; code thật <code>{FINAL}/MainActivity.kt</code> dòng <strong>44–48</strong> (TODO tương ứng ở
-		<code>starter</code> dòng <strong>45</strong>)
+		Code thật: <code>{FINAL}/MainActivity.kt</code> dòng <strong>44–48</strong> (TODO tương ứng ở
+		<code>starter</code> dòng <strong>45</strong>).
 	</p>
 	<p>
-		Sách kết bằng một câu gọn: "điều này cung cấp class Prefs của bạn cho <strong>bất kỳ composable nào bên dưới</strong>".
-		Cụm "bên dưới" là toàn bộ ý nghĩa của cơ chế này — nó là <em>phạm vi</em> chứ không phải biến toàn cục.
+		Chú ý <code>(application as RecipeApp).prefs</code>: trong một Activity, <code>application</code> có kiểu chung
+		<code>Application</code>, nên phải <em>ép kiểu</em> (<code>as</code>) về <code>RecipeApp</code> mới thấy được
+		thuộc tính <code>prefs</code> tự thêm ở mục 12. Ép kiểu này an toàn vì manifest dòng 12 đã bảo đảm class
+		<code>Application</code> thật sự là <code>RecipeApp</code>.
+	</p>
+	<p>
+		Mô hình cần nắm của cả cơ chế — <strong>provider ở ngoài, mọi composable con đọc được</strong>. Phạm vi của giá
+		trị là <em>cây con</em> bên trong <code>CompositionLocalProvider &#123; &#125;</code>:
 	</p>
 	<pre class="tree">CompositionLocalProvider(LocalPrefsProvider provides ...)
 └── NavHost
@@ -1176,291 +1229,243 @@ context.dataStore.data.first()[k]</pre>
     │   │   └── SearchRow(...)       ← đọc được
     │   └── GroceryList()            ← đọc được (dòng 19)
     └── RecipeDetails(...)           ← đọc được (dòng 53)</pre>
-	<p>
-		Chú ý <code>(application as RecipeApp).prefs</code>: bên trong một Activity, <code>application</code> có kiểu chung
-		<code>Application</code>, nên phải <em>ép kiểu</em> (<code>as</code>) về <code>RecipeApp</code> mới thấy được thuộc tính
-		<code>prefs</code> mà bạn tự thêm ở mục 8. Ép kiểu này an toàn vì manifest dòng 12 đã bảo đảm class
-		<code>Application</code> thật sự là <code>RecipeApp</code>.
+	<p><strong>Bước 3 — tiêu thụ</strong>, ở bất kỳ đâu trong cây con:</p>
+	<pre class="tree">val prefs = LocalPrefsProvider.current</pre>
+	<ul>
+		<li>
+			<code>LocalPrefsProvider</code> <strong>không phải persistence</strong> — nó không lưu gì cả; DataStore mới là
+			chỗ lưu.
+		</li>
+		<li>
+			CompositionLocal <strong>không tự tạo <code>Prefs</code></strong> — nó chỉ <em>vận chuyển</em> instance đã được
+			tạo ở <code>RecipeApp</code> tới nơi cần.
+		</li>
+		<li>
+			<code>.current</code> đọc giá trị do <strong>provider gần nhất</strong> phía trên cấp — và giá trị đó chỉ tồn
+			tại trong <em>phạm vi cây con</em> của provider đó.
+		</li>
+	</ul>
+	<p class="hint">
+		Compose còn có một biến thể khai báo khác (<code>staticCompositionLocalOf</code>) — khác nhau ở cách Compose xử
+		lý vẽ lại khi giá trị đổi; project dùng <code>compositionLocalOf</code> và đó là cái cần nhớ ở mức này. Phần
+		này <em>không</em> dạy internals recomposition của CompositionLocal.
 	</p>
-	<div class="callout diff">
-		<strong>Điểm lệch #3 — một dòng sách bảo thêm mà <code>final</code> không có</strong>
-		<p>
-			Sách nói ở dòng 252–256: "Tiếp theo, thay <code>// TODO: Add Prefs</code> bằng
-			<code>val prefs = remember &#123; Prefs(context) &#125;</code>". Đã đọc trọn
-			<code>{FINAL}/MainActivity.kt</code> (86 dòng): <strong>dòng này không tồn tại</strong>. Chỗ TODO đó trong
-			<code>starter</code> (dòng 45) được điền bằng
-			<code>LocalPrefsProvider provides (application as RecipeApp).prefs</code> — tức chính bước 2 ở trên.
-		</p>
-		<p>
-			<strong>Đây là chỗ lệch cần biết, không chỉ là dư một dòng.</strong> Nếu bạn làm theo sách thì <code>MainActivity</code> sẽ
-			tạo <em>thêm</em> một <code>Prefs</code> nữa (bên cạnh cái đã tạo trong <code>RecipeApp</code>) — và với cách đặt delegate
-			ở mục 7, đó là <strong>2 instance DataStore trỏ cùng file <code>recipes</code></strong>, đúng điều cảnh báo "Important"
-			cấm. Biến <code>prefs</code> đó cũng không được dùng vào việc gì, vì dòng provides lấy từ
-			<code>(application as RecipeApp).prefs</code>.
-		</p>
-		<p>
-			<strong>Nên theo <code>final</code>:</strong> bỏ dòng đó đi. Có lẽ nó là dấu vết của một phiên bản nháp trước, khi
-			<code>Prefs</code> chưa được đưa vào <code>RecipeApp</code>.
-		</p>
-	</div>
-	<h2 id="viewmodel-factory">10. Đưa <code>Prefs</code> vào ViewModel bằng <code>viewModelFactory</code></h2>
+
+	<h2 id="khong-phai-service-locator">14. Ranh giới: không biến CompositionLocal thành "biến toàn cục"</h2>
 	<p>
-		Đến đây <code>prefs</code> đã tới được mọi Composable. Nhưng chỗ <em>thật sự</em> cần lưu và đọc dữ liệu không phải Composable
-		— mà là <code>RecipeViewModel</code>, nơi giữ state của màn hình. Sách gọi phần này là "Updating ViewModels", và nó mở ra một
-		vấn đề mới mà sách xử lý rất gọn nhưng không giải thích kỹ.
+		Sau khi thấy <code>prefs</code> "hiện ra" ở mọi composable, quy tắc sai dễ rút ra nhất là: "vậy cứ thứ gì cần
+		dùng ở nhiều nơi thì bỏ vào CompositionLocal". Đừng. Suy tới cùng, CompositionLocal là <strong>đường tắt quanh
+		các tầng tham số</strong> — và đường tắt nào cũng có giá:
 	</p>
-	<p><strong>Bước 1 — ViewModel nhận <code>Prefs</code> qua constructor:</strong></p>
+	<ul>
+		<li>
+			Hàm composable đọc <code>.current</code> thì <em>không khai báo</em> mình cần gì — chữ ký nằm im trong khi
+			hành vi đổi theo ngữ cảnh; khó đọc, khó test lại từng phần.
+		</li>
+		<li>
+			Giá trị thay đổi thì vùng phụ thuộc vẽ lại rộng hơn vùng bạn tưởng.
+		</li>
+	</ul>
+	<p>Quy tắc khoá này, nhất quán với S3:</p>
+	<ul>
+		<li>
+			<strong>Dữ liệu và sự kiện của một màn hình</strong> (danh sách hiển thị, callback bấm nút...) → truyền
+			<strong>tham số tường minh</strong>: giá trị chảy xuống, sự kiện chảy lên. Đây là con đường mặc định.
+		</li>
+		<li>
+			<strong>Ngữ cảnh/giả thuyết môi trường</strong> mà cả cây con cùng hưởng — theme (C3), <code>prefs</code> cấp
+			ở gốc app, navigator — mới là chỗ CompositionLocal hợp lý.
+		</li>
+	</ul>
+	<p>
+		Nhìn lại project cho thấy ranh giới được giữ khá nghiêm: <code>RecipeViewModel</code> nhận <code>prefs</code>
+		qua constructor, còn mọi state màn hình vẫn đi qua <code>uiState</code> — CompositionLocal chỉ là
+		<em>cầu vận chuyển dependency</em>, không phải kho state.
+	</p>
+
+	<h2 id="viewmodel-factory">15. Đưa <code>Prefs</code> vào ViewModel: <code>viewModelFactory</code></h2>
+	<p>
+		<code>prefs</code> đã tới được mọi Composable. Nhưng chỗ <em>thật sự</em> cần đọc/ghi dữ liệu là
+		<code>RecipeViewModel</code> — nơi giữ state của màn hình (S4). Vấn đề: S4 đã dạy bạn lấy ViewModel bằng
+		<code>viewModel()</code>, và cơ chế đó mặc định chỉ biết gọi constructor <strong>rỗng</strong>. Ngay khi
+		ViewModel cần một tham số (<code>private val prefs: Prefs</code>), phải dạy cho <code>viewModel()</code> biết
+		cách tạo nó — đó là việc của một <em>factory</em> (hàm sản xuất).
+	</p>
+	<p><strong>Bước 1 — ViewModel khai nhận dependency qua constructor:</strong></p>
 	<Code code={viewModelCtorCode} lang="kotlin" theme="github-dark" />
 	<p class="src">
-		Nguồn: sách dòng 269–273; code thật <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>32</strong>
-		(constructor) và <strong>34</strong> (<code>PREVIOUS_SEARCH_KEY</code>). Trong <code>starter</code> dòng 32 là
-		<code>class RecipeViewModel()</code> — constructor rỗng.
+		Code thật: <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>32</strong> (constructor) và
+		<strong>34</strong> (<code>PREVIOUS_SEARCH_KEY</code>). Trong <code>starter</code> dòng 32 là constructor rỗng.
 	</p>
-	<div class="callout note">
-		<strong>Vì sao thêm 1 tham số vào ViewModel lại là chuyện lớn</strong>
-		<p>
-			Bạn <strong>không</strong> tự tạo ViewModel bằng <code>RecipeViewModel(prefs)</code> rồi giữ trong biến. Nếu làm vậy, xoay
-			máy là ViewModel mất theo Activity — mất luôn ý nghĩa của ViewModel. Việc tạo ViewModel phải do Compose làm, qua hàm
-			<code>viewModel()</code>, để nó <em>sống lâu hơn</em> lần recomposition và lần huỷ-tạo-lại Activity.
-		</p>
-		<p>
-			Nhưng <code>viewModel()</code> mặc định chỉ biết gọi constructor <strong>rỗng</strong>. Ngay khi ViewModel của bạn cần một
-			tham số, bạn phải dạy cho <code>viewModel()</code> biết cách tạo nó. Đó là việc của một <em>factory</em> (hàm sản xuất).
-		</p>
-	</div>
+	<p class="hint">
+		<strong>Vì sao không tự <code>RecipeViewModel(prefs)</code> rồi giữ trong biến?</strong> ViewModel phải do
+		Compose tạo qua <code>viewModel()</code> để nó <em>sống lâu hơn</em> lần recomposition và lần huỷ-tạo-lại
+		Activity (S4). Tự tạo là mất đúng ý nghĩa của ViewModel.
+	</p>
 	<p>
-		Sách không viết factory này ở chapter 9 — nó đã có sẵn trong project từ trước. Rất đáng đọc, vì nó chỉ 4 dòng:
+		Factory trong project đã có sẵn từ trước trong <code>utils/ComposeUtils.kt</code> — 4 dòng, đáng đọc vì nó giải
+		thích cả cơ chế:
 	</p>
 	<Code code={viewModelFactoryCode} lang="kotlin" theme="github-dark" />
 	<p class="src">
-		Code thật: <code>{FINAL}/utils/ComposeUtils.kt</code> dòng <strong>44–47</strong> (file này còn 2 helper
-		<code>rememberState</code> mà tác giả ghi rõ nguồn là một bài Medium của Matt Robertson)
+		Code thật: <code>{FINAL}/utils/ComposeUtils.kt</code> dòng <strong>44–47</strong>.
 	</p>
 	<p>Đọc từ trong ra ngoài:</p>
 	<ul>
 		<li>
-			<code>f: () -&gt; VM</code> — bạn đưa vào một <strong>công thức tạo ViewModel</strong>, chứ không đưa ViewModel đã tạo.
-			Đây là điểm cốt lõi: Compose sẽ gọi công thức đó <em>khi nào nó muốn</em>, chỉ đúng một lần cho mỗi vòng đời.
+			<code>f: () -&gt; VM</code> — bạn đưa vào một <strong>công thức tạo ViewModel</strong>, chứ không đưa ViewModel
+			đã tạo. Đây là điểm cốt lõi: Compose sẽ gọi công thức đó <em>khi nào nó muốn</em>, chỉ đúng một lần cho mỗi
+			vòng đời.
 		</li>
 		<li>
 			<code>object : ViewModelProvider.Factory</code> — gói công thức vào đúng kiểu mà hệ thống ViewModel yêu cầu.
 		</li>
 		<li>
-			<code>create(modelClass) = f() as T</code> — khi hệ thống hỏi "tạo cho tôi một ViewModel", factory chạy công thức của bạn.
+			<code>create(modelClass) = f() as T</code> — khi hệ thống hỏi "tạo cho tôi một ViewModel", factory chạy công
+			thức của bạn.
 		</li>
 	</ul>
-	<p><strong>Bước 2 — chỗ dùng.</strong> Sách lấy <code>RecipeDetails</code> làm ví dụ:</p>
+	<p><strong>Bước 2 — chỗ dùng.</strong> Ví dụ <code>RecipeDetails</code>:</p>
 	<Code code={recipeDetailsCode} lang="kotlin" theme="github-dark" />
 	<p class="src">
-		Nguồn: sách dòng 305–315; code thật <code>{FINAL}/ui/RecipeDetails.kt</code> — <code>prefs</code> dòng
-		<strong>53</strong>, <code>RecipeViewModel(prefs)</code> dòng <strong>55</strong>. Trong <code>starter</code>, hai TODO nằm ở
-		dòng <strong>52</strong> và <strong>54</strong>.
+		Code thật: <code>{FINAL}/ui/RecipeDetails.kt</code> — <code>prefs</code> dòng <strong>53</strong>,
+		<code>RecipeViewModel(prefs)</code> dòng <strong>55</strong>.
 	</p>
-	<p>Ba dòng, ba mắt của cùng một chuỗi — đọc theo thứ tự này thì cả cơ chế hiện ra:</p>
-	<pre class="tree">RecipeApp.onCreate()          →  prefs = Prefs(this)              (mục 8)
-MainActivity                  →  LocalPrefsProvider provides ...   (mục 9)
-RecipeDetails (dòng 53)       →  val prefs = LocalPrefsProvider.current
-RecipeDetails (dòng 55)       →  viewModelFactory &#123; RecipeViewModel(prefs) &#125;
-RecipeViewModel (dòng 32)     →  constructor nhận prefs
-RecipeViewModel (dòng 88)     →  prefs.saveString(...)  → DataStore → file recipes</pre>
+	<div class="callout note">
+		<strong>Trật tự hai dòng đó không được đảo — vì closure</strong>
+		<p>
+			<code>val prefs = LocalPrefsProvider.current</code> phải đặt <em>trước</em> khối
+			<code>viewModelFactory &#123; ... &#125;</code>. Bên trong lambda đó không còn là "vùng Composable" nữa — nó là
+			code thường sẽ chạy sau, nên không đọc được CompositionLocal. Bạn phải lấy giá trị ra ngoài trước, rồi lambda
+			mới bắt được nó (closure). Đảo hai dòng này là lỗi biên dịch, và là lỗi rất thường gặp khi mới học Compose.
+		</p>
+	</div>
 	<p>
-		<strong>Điểm dễ bỏ qua:</strong> <code>val prefs = LocalPrefsProvider.current</code> phải đặt <em>trước</em> khối
-		<code>viewModelFactory &#123; ... &#125;</code>. Lý do: bên trong lambda đó không còn là "vùng Composable" nữa — nó là code
-		thường sẽ chạy sau, nên không đọc được CompositionLocal. Bạn phải lấy giá trị ra ngoài trước rồi lambda mới bắt được nó
-		(closure). Đảo hai dòng này là lỗi biên dịch, và đây là lỗi rất thường gặp khi mới học Compose.
-	</p>
-	<p>
-		Cùng khuôn mẫu đó lặp lại ở 3 file khác trong <code>final</code>:
-		<code>ui/ShowRecipeList.kt</code> (prefs dòng <strong>96</strong>, <code>RecipeViewModel(prefs)</code> dòng
-		<strong>100</strong>) · <code>ui/MainScreen.kt</code> (dòng <strong>29</strong>) · và
-		<code>ui/groceries/GroceryList.kt</code> — file thứ ba chính là <strong>bài tập</strong> sách để bạn tự làm (mục 12).
+		Cùng khuôn đó lặp lại ở <code>ui/recipes/RecipeList.kt</code> (dòng <strong>26–28</strong>) và
+		<code>ui/groceries/GroceryList.kt</code> — file cuối chính là bài tập (mục 19). Còn bốn chỗ nữa là các
+		<code>@Preview</code> — một bài toán riêng, mục 19.
 	</p>
 
-	<h2 id="save-previous-searches">11. Lưu danh sách từ khoá đã tìm</h2>
+	<h2 id="trace-tu-khoa">16. Trace 1 — một từ khoá tìm kiếm: ghi xuống và đọc lại</h2>
 	<p>
-		Giờ mới tới tính năng thật của chapter: người dùng gõ từ khoá tìm công thức, đóng app, mở lại — danh sách từ khoá cũ vẫn còn
-		trong menu gợi ý. Sách chia thành 2 hàm.
+		Tính năng thật thứ nhất: người dùng gõ từ khoá, đóng app, mở lại — menu gợi ý (ba dấu chấm của thanh search)
+		vẫn còn các từ cũ. Đây là mạch <strong>ViewModel → Prefs → DataStore</strong> hoàn chỉnh, và là chỗ mọi khái
+		niệm hai đơn vị gặp nhau.
 	</p>
-	<h3 id="ham-save">11.1. <code>savePreviousSearches()</code> — hàm ghi</h3>
-	<Code code={savePreviousSearchesCode} lang="kotlin" theme="github-dark" />
+	<p><strong>Nửa ghi — chạy khi người dùng tìm kiếm.</strong> Điểm vào là hàm helper mọi đường tìm kiếm đều đi qua:</p>
+	<Code code={searchRecipesCode} lang="kotlin" theme="github-dark" />
 	<p class="src">
-		Nguồn: sách dòng 275–283; code thật <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>85–90</strong>
-		(<code>prefs.saveString</code> ở dòng <strong>88</strong>). Trong <code>starter</code>, hàm này rỗng ở dòng
-		<strong>79–81</strong>, kèm TODO dòng <strong>80</strong>.
+		Code thật: <code>{FINAL}/ui/recipes/ImageRow.kt</code> dòng <strong>36–43</strong>; được gọi từ
+		<code>SearchRow.kt</code> và <code>ShowRecipeList.kt</code>.
 	</p>
-	<p>Ba chi tiết trong 4 dòng:</p>
-	<ul>
-		<li>
-			<code>viewModelScope.launch</code> — <code>prefs.saveString</code> là <code>suspend</code> (mục 6.1), nên phải gọi trong
-			một coroutine. <code>viewModelScope</code> là scope <em>gắn với vòng đời ViewModel</em>: ViewModel bị clear thì coroutine
-			đang chạy bị huỷ theo, không rò rỉ. Đây là lý do hàm này nằm ở ViewModel mà không nằm ở Composable.
-		</li>
-		<li>
-			<code>private</code> — ViewModel tự quyết định khi nào ghi; bên ngoài không được gọi. Cách đóng gói đúng.
-		</li>
-		<li>
-			<code>joinToString(",")</code> — điểm mấu chốt. DataStore Preferences chỉ lưu được 5 kiểu cơ bản (mục 3.2), không lưu được
-			<code>List</code>. Nên sách <strong>ép danh sách thành một chuỗi</strong>, nối bằng dấu phẩy:
-			<code>["chicken","beef"]</code> → <code>"chicken,beef"</code>. Đọc lên thì tách ngược lại bằng <code>split(",")</code>
-			(mục 14). Đơn giản, chạy được — và có một cái bẫy sẽ mổ riêng ở mục 13.
-		</li>
-	</ul>
-	<h3 id="ham-add">11.2. <code>addPreviousSearch()</code> — hàm cập nhật state</h3>
+	<p>Trong ViewModel, <code>addPreviousSearch</code> cập nhật state rồi mới kích hoạt lưu:</p>
 	<Code code={addPreviousSearchCode} lang="kotlin" theme="github-dark" />
 	<p class="src">
-		Nguồn: sách dòng 285–303; code thật <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>122–133</strong>
-		(trong <code>starter</code>, hàm rỗng ở dòng <strong>114–115</strong>)
+		Code thật: <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>122–133</strong>.
 	</p>
 	<ol>
 		<li>
-			<strong>Chống trùng</strong> — <code>if (!...contains(searchString))</code>: tìm lại đúng từ khoá cũ thì không thêm lần nữa.
+			<strong>Chống trùng</strong> — tìm lại đúng từ khoá cũ thì không thêm lần nữa.
 		</li>
 		<li>
-			<strong>Tạo list mới rồi copy sang</strong>, thay vì <code>previousSearches.add(...)</code> trực tiếp. Đây <em>không</em> phải
-			code dư. Compose chỉ vẽ lại khi nhận ra state <strong>đổi tham chiếu</strong>; sửa nội dung list cũ tại chỗ thì tham chiếu
-			vẫn y nguyên và UI sẽ không cập nhật. Đây chính là bài học "immutable state" của chapter 5–6, xuất hiện lại trong tình
-			huống thật.
+			<strong>Tạo list mới rồi copy sang</strong>, thay vì <code>previousSearches.add(...)</code> trực tiếp. Đây
+			<em>không</em> phải code dư: Compose chỉ vẽ lại khi nhận ra state <strong>đổi tham chiếu</strong>; sửa nội dung
+			list cũ tại chỗ thì tham chiếu vẫn y nguyên và UI sẽ không cập nhật — bài học immutable state của
+			S2/S4, xuất hiện lại trong tình huống thật.
 		</li>
 		<li>
-			<strong><code>_uiState.value = _uiState.value.copy(...)</code></strong> — cập nhật state để UI vẽ lại ngay.
+			<strong><code>_uiState.value.copy(...)</code></strong> — cập nhật state để UI vẽ lại ngay.
 		</li>
 		<li>
-			<strong>Rồi mới lưu xuống máy</strong>. Thứ tự này quan trọng: UI phản hồi tức thì (đồng bộ), việc ghi file diễn ra sau
-			trong coroutine (bất đồng bộ). Người dùng không phải chờ ổ đĩa.
+			<strong>Rồi mới lưu xuống máy.</strong> Thứ tự này quan trọng: UI phản hồi tức thì (đồng bộ), việc ghi file
+			diễn ra sau trong coroutine (bất đồng bộ). Người dùng không phải chờ ổ đĩa.
 		</li>
 	</ol>
-	<h3 id="cho-goi">11.3. Ai gọi <code>addPreviousSearch</code>?</h3>
-	<Code code={searchRecipesCode} lang="kotlin" theme="github-dark" />
+	<p>Hàm ghi thật — nơi <code>List&lt;String&gt;</code> bị mã hoá thành một chuỗi:</p>
+	<Code code={savePreviousSearchesCode} lang="kotlin" theme="github-dark" />
 	<p class="src">
-		Code thật <code>{FINAL}/ui/recipes/ImageRow.kt</code> dòng <strong>36–43</strong> (lời gọi
-		<code>addPreviousSearch</code> ở dòng <strong>38</strong>). Hàm <code>searchRecipes</code> này được gọi từ
-		<code>ui/recipes/SearchRow.kt</code> dòng <strong>65</strong> và <strong>85</strong>, và
-		<code>ui/recipes/ShowRecipeList.kt</code> dòng <strong>59</strong>.
+		Code thật: <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>85–90</strong>.
 	</p>
-	<p>
-		Một hàm nhỏ nhưng đặt đúng chỗ: mọi đường dẫn tới việc tìm kiếm đều đi qua nó, nên chỉ cần <em>một</em> lời gọi
-		<code>addPreviousSearch</code> là mọi cách tìm đều được ghi nhận. Để ý cả nhánh <code>else</code>: chuỗi rỗng thì không lưu gì
-		— tránh nhồi mục rỗng vào danh sách.
+	<ul>
+		<li>
+			<code>viewModelScope.launch</code> — <code>prefs.saveString</code> là <code>suspend</code> (Đơn vị 1), nên
+			phải chạy trong coroutine của scope gắn với vòng đời ViewModel (S1/S4).
+		</li>
+		<li>
+			<code>private</code> — ViewModel tự quyết định khi nào ghi; bên ngoài không được gọi.
+		</li>
+		<li>
+			<code>joinToString(",")</code> (F1) — DataStore Preferences chỉ lưu giá trị đơn của 5 kiểu nguyên thuỷ, không
+			lưu <code>List</code>. Nên danh sách bị <strong>ép thành một chuỗi</strong>:
+			<code>["chicken","beef"]</code> → <code>"chicken,beef"</code>. Đơn giản, chạy được — và có một cái bẫy mổ riêng
+			ở mục 17.
+		</li>
+	</ul>
+	<p><strong>Nửa đọc — chạy một lần lúc ViewModel được tạo</strong> (khối <code>init</code>):</p>
+	<Code code={initLoadCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>57–65</strong>.
 	</p>
-	<p>Và đây là nơi dữ liệu đã lưu hiện ra trước mắt người dùng:</p>
+	<ul>
+		<li>
+			<strong>Đặt trong <code>init</code></strong> — chạy đúng một lần, ngay khi ViewModel được tạo. Vì ViewModel sống
+			qua recomposition và qua xoay máy, việc đọc cũng chỉ xảy ra một lần cho mỗi màn hình.
+		</li>
+		<li>
+			<strong><code>viewModelScope.launch</code></strong> — đọc là <code>suspend</code>; UI hiện ra <em>trước</em> khi
+			dữ liệu về, danh sách gợi ý trống trong khoảnh khắc đầu rồi mới đầy. Với dữ liệu nhỏ thì không ai thấy, nhưng
+			đó đúng là điều đang xảy ra.
+		</li>
+		<li>
+			<strong><code>isNullOrEmpty()</code></strong> — xử lý key-chưa-có đúng như mục 9: <code>null</code> (chưa từng
+			lưu) và <code>""</code> (đã lưu chuỗi rỗng) đều bị loại. Nếu bỏ kiểm tra này,
+			<code>"".split(",")</code> trả về <code>[""]</code> — một danh sách chứa đúng một mục rỗng, và menu gợi ý sẽ có
+			một dòng trống bấm được. (JIT: <code>split(",")</code> cắt chuỗi theo ký tự phân cách, ngược với
+			<code>joinToString</code> của F1.)
+		</li>
+		<li>
+			<strong><code>copy(...)</code></strong> — cùng khuôn immutable ở trên.
+		</li>
+	</ul>
+	<p>Và nơi dữ liệu đã lưu hiện ra trước mắt người dùng — menu ba dấu chấm:</p>
 	<Code code={dropdownCode} lang="kotlin" theme="github-dark" />
 	<p class="src">
-		Code thật <code>{FINAL}/ui/recipes/SearchRow.kt</code> — <code>Box</code> dòng <strong>105</strong>, icon
-		<code>MoreVert</code> dòng <strong>111</strong>, <code>DropdownMenu</code> dòng <strong>115</strong>,
-		<code>forEach</code> qua <code>previousSearches</code> dòng <strong>119</strong>
+		Code thật: <code>{FINAL}/ui/recipes/SearchRow.kt</code> — <code>Box</code> dòng <strong>105</strong>,
+		<code>DropdownMenu</code> dòng <strong>115</strong>, <code>forEach</code> qua <code>previousSearches</code> dòng
+		<strong>119</strong>.
 	</p>
 	<p>
-		Sách không giải thích phần này (nó đã có sẵn trong starter) nhưng nên xem, vì nó đóng vòng lặp:
-		<code>uiState.previousSearches.forEach</code> đọc từ state, mà state được nạp lại từ DataStore lúc app khởi động (mục 14). Bấm
-		vào một mục thì <code>searchText = it</code> — điền lại từ khoá cũ. Đó là toàn bộ giá trị người dùng nhận được từ cả chương này.
-	</p>
-	<h2 id="bai-tap-sach">12. Bài tập của sách — và điểm lệch ở <code>@Preview</code></h2>
-	<p>
-		Sách dừng lại và giao một bài tập ngắn (dòng 316–329). Đề bài: <em>bạn vừa thêm tham số vào constructor của
-		<code>RecipeViewModel</code>, nên mọi chỗ đang tạo ViewModel đó đều đang lỗi — hãy đi sửa hết</em>.
-	</p>
-	<div class="callout">
-		<strong>Vì sao đây là bài tập hay, dù nghe như việc dọn dẹp</strong>
-		<p>
-			Nó cho bạn cảm nhận trực tiếp một sự thật của lập trình: <strong>đổi một constructor là đổi hợp đồng với toàn bộ codebase</strong>.
-			Compiler trở thành danh sách việc cần làm — bạn sửa cho tới khi hết đỏ. Đây cũng là lý do người ta dùng dependency
-			injection ở app lớn: để không phải sửa tay từng chỗ mỗi lần thêm một dependency.
-		</p>
-	</div>
-	<p><strong>Chỗ chính cần sửa</strong> — <code>GroceryList.kt</code>, file duy nhất còn 1 TODO thật về Prefs:</p>
-	<div class="ba">
-		<div class="ba-col">
-			<div class="ba-head bad">starter — còn TODO</div>
-			<Code code={exerciseStarterCode} lang="kotlin" theme="github-dark" />
-			<p class="src">
-				<code>{STARTER}/ui/groceries/GroceryList.kt</code> — TODO dòng <strong>18</strong>
-			</p>
-		</div>
-		<div class="ba-col">
-			<div class="ba-head good">final — đáp án</div>
-			<Code code={exerciseFinalCode} lang="kotlin" theme="github-dark" />
-			<p class="src">
-				<code>{FINAL}/ui/groceries/GroceryList.kt</code>
-			</p>
-		</div>
-	</div>
-	<p>
-		Đúng khuôn mẫu mục 10, không có gì mới: lấy <code>prefs</code> từ CompositionLocal <em>trước</em>, rồi truyền vào
-		<code>RecipeViewModel(prefs)</code> trong factory.
-	</p>
-	<p>
-		<strong>Còn 4 chỗ nữa</strong> cần sửa, đều là <code>@Preview</code> (hàm chỉ dùng để xem trước UI trong Android Studio, không
-		chạy trên máy thật): <code>ui/recipes/ChipRow.kt</code> dòng <strong>68–72</strong> ·
-		<code>ui/recipes/SearchRow.kt</code> dòng <strong>137–141</strong> · <code>ui/recipes/ShowBookmarks.kt</code> dòng
-		<strong>106–110</strong> · <code>ui/recipes/ShowRecipeList.kt</code> dòng <strong>95–100</strong>. Và đây là chỗ sách và code
-		đi hai đường.
-	</p>
-	<div class="callout diff">
-		<strong>Điểm lệch #4 — sách sửa <code>@Preview</code> một kiểu, <code>final</code> sửa kiểu khác</strong>
-		<p>Sách gợi ý (dòng 327–329): <em>trong preview, hãy dùng context đang có để tạo một <code>Prefs</code> mới</em>.</p>
-		<div class="ba">
-			<div class="ba-col">
-				<div class="ba-head bad">Cách sách gợi ý</div>
-				<Code code={previewBookWayCode} lang="kotlin" theme="github-dark" />
-			</div>
-			<div class="ba-col">
-				<div class="ba-head good">Cách <code>final</code> làm thật</div>
-				<Code code={previewChipRowCode} lang="kotlin" theme="github-dark" />
-			</div>
-		</div>
-		<p>
-			<code>final</code> dùng <code>LocalPrefsProvider.current</code> — <strong>không</strong> tạo <code>Prefs</code> mới. Nhất
-			quán với điểm lệch #3 ở mục 9: cả hai lần sách bảo tạo thêm một <code>Prefs</code>, code thật đều không làm.
-		</p>
-		<p>
-			<strong>Cách nào đúng hơn?</strong> Cách của <code>final</code> — vì mỗi <code>Prefs(context)</code> mới là một instance
-			DataStore mới trỏ vào cùng file <code>recipes</code>, đúng điều cảnh báo "Important" ở mục 4.2 cấm. Trong preview thì gần
-			như không gây hại (chỉ chạy trong Android Studio), nhưng nó dạy sai thói quen.
-		</p>
-		<p>
-			<strong>Tuy nhiên cách của <code>final</code> cũng có điểm yếu riêng:</strong> preview <em>không</em> có
-			<code>CompositionLocalProvider</code> bọc ngoài — nó không đi qua <code>MainActivity</code>. Nên
-			<code>LocalPrefsProvider.current</code> trong preview sẽ chạm vào giá trị mặc định
-			<code>error("No prefs provided")</code> (mục 9) và preview <strong>văng lỗi khi render</strong>. Nói cách khác: cách sách
-			gợi ý thì preview chạy được nhưng tạo thêm instance; cách <code>final</code> thì sạch về kiến trúc nhưng preview không
-			render. Không có cách nào trong hai cách là hoàn hảo.
-		</p>
-		<p>
-			<strong>Cách đúng thật sự</strong> (không có trong sách): bọc nội dung preview trong
-			<code>CompositionLocalProvider(LocalPrefsProvider provides ...)</code> với một <code>Prefs</code> giả (fake) chỉ dùng cho
-			preview. Đó là lý do người ta tách <code>Prefs</code> thành <code>interface</code> — để có bản thật và bản giả. Sách chưa
-			đi tới đó, và với app học thì chấp nhận được.
-		</p>
-	</div>
-	<p class="hint">
-		<strong>Dấu vết đáng chú ý trong code:</strong> cả 4 preview trong <code>final</code> vẫn giữ dòng
-		<code>val context = LocalContext.current</code> — <strong>khai báo rồi không dùng</strong>. Đây gần như chắc chắn là vết còn
-		lại từ việc làm theo cách sách gợi ý rồi đổi sang cách khác mà quên xoá. Android Studio sẽ cảnh báo "unused variable" ở đúng 4
-		dòng đó (ChipRow 68, SearchRow 137, ShowBookmarks 106, ShowRecipeList 95). Không phải bug, nhưng là bằng chứng khá rõ rằng
-		hai cách sửa trên từng lần lượt tồn tại trong cùng project.
+		Phần này có sẵn từ <code>starter</code> nhưng nên đọc, vì nó <em>đóng vòng lặp</em>:
+		<code>uiState.previousSearches.forEach</code> đọc từ state, mà state được nạp lại từ DataStore lúc khởi động.
+		Bấm vào một mục thì <code>searchText = it</code> — điền lại từ khoá cũ. Đó là toàn bộ giá trị người dùng nhận
+		được từ mạch này.
 	</p>
 
-	<h2 id="bug-dau-phay">13. Cái bẫy dấu phẩy — bug thật trong project</h2>
+	<h2 id="bug-dau-phay">17. Cái bẫy dấu phẩy: đọc code mẫu một cách phê phán</h2>
 	<p>
-		Mục 11 đã chốt: danh sách được lưu bằng <code>joinToString(",")</code> và đọc lại bằng <code>split(",")</code>. Cách này chạy
-		tốt cho mọi từ khoá <em>không chứa dấu phẩy</em>. Còn nếu người dùng gõ từ khoá <strong>có</strong> dấu phẩy — mà đây là
-		app tìm công thức nấu ăn, "chicken, rice" là kiểu gõ hoàn toàn tự nhiên:
+		Mục 16 đã chốt: danh sách được lưu bằng <code>joinToString(",")</code> và đọc lại bằng <code>split(",")</code>.
+		Cách này chạy tốt cho mọi từ khoá <em>không chứa dấu phẩy</em>. Còn nếu người dùng gõ từ khoá
+		<strong>có</strong> dấu phẩy — mà đây là app tìm công thức nấu ăn, "chicken, rice" là kiểu gõ hoàn toàn tự nhiên:
 	</p>
 	<Code code={commaBugCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Một mục biến thành hai, và mục thứ hai còn dư một dấu cách ở đầu. Sách không nhắc chuyện này ở đâu cả — nó là hệ quả trực tiếp
-		của việc chọn dấu phẩy làm ký tự phân tách.
+		Một mục biến thành hai, và mục thứ hai còn dư một dấu cách ở đầu. Đây là một bug thật trong project mẫu — đi
+		theo khuôn <strong>expected → trace code → actual → bài học mang đi được</strong>:
 	</p>
+	<ul>
+		<li><strong>Expected:</strong> menu gợi ý hiện đúng "chicken, rice".</li>
+		<li><strong>Trace:</strong> lưu <code>joinToString(",")</code> → chuỗi "chicken, rice"; đọc <code>split(",")</code> — ký tự phân cách <em>đồng thời</em> là dữ liệu, nên không phân biệt được "ranh giới giữa hai mục" và "dấu phẩy trong một mục".</li>
+		<li><strong>Actual:</strong> <code>["chicken", " rice"]</code> — dữ liệu hỏng ngay sau một vòng tắt/mở app.</li>
+	</ul>
 	<div class="callout note">
-		<strong>Tên của vấn đề này</strong>
+		<strong>Tên của vấn đề: thiếu escaping</strong>
 		<p>
-			Đây là lỗi <strong>thiếu escaping</strong> (thoát ký tự): bạn dùng một ký tự vừa làm <em>dấu phân tách</em> vừa có thể là
-			<em>dữ liệu</em>, mà không có cách phân biệt hai vai trò đó. Cùng một họ với lỗi khiến file CSV vỡ khi nội dung ô có dấu
-			phẩy, và (nghiêm trọng hơn nhiều) cùng một họ với SQL injection. Hiểu nó ở đây bằng một bug vô hại thì sau này bạn nhận ra
-			nó ở chỗ nguy hiểm.
+			Bạn dùng một ký tự vừa làm <em>dấu phân tách</em> vừa có thể là <em>dữ liệu</em>, mà không có cách phân biệt
+			hai vai trò đó. Cùng một họ với lỗi làm vỡ file CSV khi nội dung ô có dấu phẩy. Hiểu nó ở đây bằng một bug vô
+			hại thì sau này bạn nhận ra nó ở chỗ nguy hiểm hơn nhiều.
 		</p>
 	</div>
-	<p><strong>Ba cách sửa</strong>, xếp từ đơn giản tới đúng đắn:</p>
+	<p><strong>Hướng sửa</strong> — ba cách, xếp từ đơn giản tới đúng đắn:</p>
 	<table class="cmp">
 		<thead>
 			<tr><th>Cách</th><th>Làm gì</th><th>Đánh giá</th></tr>
@@ -1479,74 +1484,23 @@ RecipeViewModel (dòng 88)     →  prefs.saveString(...)  → DataStore → fil
 			<tr>
 				<td>Lưu bằng JSON</td>
 				<td>Chuyển list thành JSON array rồi lưu chuỗi đó</td>
-				<td><strong>Đúng đắn nhất.</strong> JSON tự escaping. Project <em>đã có</em> Moshi (xem <code>build.gradle.kts</code>) nên gần như không tốn thêm gì.</td>
+				<td><strong>Đúng đắn nhất.</strong> JSON tự escaping. Project <em>đã có</em> Moshi (Chương 8) nên gần như không tốn thêm gì.</td>
 			</tr>
 		</tbody>
 	</table>
-	<p class="hint">
-		Còn một cách nữa, ở tầng khác: dùng <strong>Proto DataStore</strong> thay vì Preferences DataStore — nó lưu được object có kiểu,
-		nên <code>List&lt;String&gt;</code> không cần biến thành chuỗi. Sách không nhắc Proto DataStore. Đây là lựa chọn đúng khi dữ
-		liệu bắt đầu có cấu trúc.
-	</p>
 	<p>
-		<strong>Vì sao nói kỹ về một bug nhỏ:</strong> vì nó cho thấy giới hạn thật của công cụ trong chapter này. Preferences DataStore
-		lưu <em>giá trị đơn</em>. Ngay khi dữ liệu là một <em>tập hợp</em>, bạn đã phải bịa ra cách mã hoá riêng — và mỗi cách bịa đều
-		mang theo một cái bẫy. Đó chính là dấu hiệu bạn nên chuyển sang database, tức Chương 10.1 (Room).
+		Bài học mang đi được nằm ở tầng cao hơn ba cách sửa: <strong>Preferences DataStore lưu giá trị đơn</strong>. Ngay
+		khi dữ liệu là một <em>tập hợp</em>, bạn đã phải bịa ra cách mã hoá riêng — và mỗi cách bịa đều mang theo một cái
+		bẫy. Đó là dấu hiệu dữ liệu đang vượt khỏi công cụ: khi bài toán thật sự là "lưu nhiều bản ghi có cấu trúc",
+		hãy chuyển sang database — Chương 10 (Room). Đừng phát minh thêm tầng mã hoá trên key/value.
 	</p>
-	<h2 id="doc-lai-init">14. Đọc dữ liệu lên lúc khởi động — <code>init</code></h2>
-	<p>
-		Ghi xong mà không đọc lên thì người dùng chẳng thấy gì. Sách (dòng 337–345) bảo thêm vào khối <code>init</code> của
-		<code>RecipeViewModel</code>:
-	</p>
-	<Code code={initLoadCode} lang="kotlin" theme="github-dark" />
-	<p class="src">
-		Nguồn: sách dòng 339–345; code thật <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>57–65</strong>
-		(<code>prefs.getString</code> ở dòng <strong>59</strong>). Trong <code>starter</code>, <code>init</code> rỗng ở dòng
-		<strong>57–59</strong> kèm TODO dòng <strong>58</strong>.
-	</p>
-	<p>Bốn quyết định trong khối này:</p>
-	<ul>
-		<li>
-			<strong>Đặt trong <code>init</code></strong> — <code>init</code> chạy đúng một lần, ngay khi ViewModel được tạo. Vì ViewModel
-			sống qua recomposition và qua việc xoay máy, việc đọc file cũng chỉ xảy ra một lần cho mỗi màn hình, không lặp lại mỗi lần
-			vẽ. Đây là chỗ đúng để nạp dữ liệu ban đầu.
-		</li>
-		<li>
-			<strong><code>viewModelScope.launch</code></strong> — <code>getString</code> là <code>suspend</code> (mục 6.1). Đọc file là
-			việc chậm; chạy trong coroutine để không chặn luồng UI. Hệ quả cần biết: UI hiện ra <em>trước</em> khi dữ liệu về, danh sách
-			gợi ý trống trong khoảnh khắc đầu rồi mới đầy. Với dữ liệu nhỏ thì không ai thấy, nhưng đó đúng là điều đang xảy ra.
-		</li>
-		<li>
-			<strong><code>isNullOrEmpty()</code></strong> — chặn hai tình huống bằng một lần kiểm: lần chạy đầu tiên chưa có key nào
-			(<code>null</code>), và trường hợp đã lưu nhưng chuỗi rỗng (<code>""</code>). Nếu bỏ kiểm tra này,
-			<code>"".split(",")</code> trả về <code>[""]</code> — một danh sách chứa đúng một mục rỗng, và menu gợi ý sẽ có một dòng
-			trống bấm được. Một dòng <code>if</code> đổi lấy một bug UI.
-		</li>
-		<li>
-			<strong><code>_uiState.value.copy(...)</code></strong> — cùng khuôn mẫu immutable của mục 11.2: tạo state mới thay vì sửa
-			state cũ, để Compose nhận ra thay đổi và vẽ lại.
-		</li>
-	</ul>
-	<p>
-		Đây là nửa còn lại của chu trình. Ghép hai mục 11 và 14, vòng đời một từ khoá trọn vẹn như sau:
-	</p>
-	<pre class="tree">Người dùng gõ "chicken" → tìm
-  searchRecipes()            (ImageRow.kt:36)
-  → addPreviousSearch()      (RecipeViewModel.kt:122) → state đổi → UI vẽ lại NGAY
-    → savePreviousSearches() (RecipeViewModel.kt:85)  → joinToString(",")
-      → prefs.saveString()   (Prefs.kt:15)            → DataStore ghi file "recipes"
 
-Người dùng tắt app, mở lại
-  RecipeApp.onCreate()       → Prefs(this)
-  → RecipeViewModel.init     (RecipeViewModel.kt:57)
-    → prefs.getString()      (Prefs.kt:22) → data.first()
-      → split(",")           → state → menu gợi ý có lại "chicken"</pre>
-
-	<h2 id="luu-tab">15. Lưu tab đang mở — cùng công cụ, tình huống khác</h2>
+	<h2 id="trace-tab">18. Trace 2 — tab đang chọn: cùng công cụ, nơi chạy khác</h2>
 	<p>
-		Phần cuối chapter (dòng 350–383) làm một việc nghe rất nhỏ: nhớ người dùng đang ở tab nào (Recipes hay Groceries) để lần mở app
-		sau vào lại đúng tab đó. Sách đưa nó vào cuối chương là có lý — nó dùng lại đúng bộ công cụ vừa học nhưng ở một dạng khác:
-		lưu <strong>Int</strong> thay vì String, và lưu từ <strong>Composable</strong> thay vì từ ViewModel.
+		Tính năng thứ hai nghe rất nhỏ: nhớ người dùng đang ở tab nào (Recipes hay Groceries) để lần mở app sau vào
+		lại đúng tab. Nó dùng đúng bộ công cụ Đơn vị 1, nhưng ở một dạng khác: lưu <strong>Int</strong> thay vì String,
+		và đọc/ghi từ <strong>Composable</strong> thay vì từ ViewModel — vì chỉ số tab chỉ là một
+		<code>remember &#123; mutableIntStateOf(0) &#125;</code> trong Composable, không có ViewModel nào giữ nó.
 	</p>
 	<div class="ba">
 		<div class="ba-col">
@@ -1568,214 +1522,418 @@ Người dùng tắt app, mở lại
 			</p>
 		</div>
 	</div>
-	<h3 id="launchedeffect">15.1. Vì sao đọc bằng <code>LaunchedEffect</code> mà không phải <code>init</code></h3>
-	<p>
-		Ở mục 14 việc đọc nằm trong <code>init</code> của ViewModel. Ở đây không có ViewModel nào giữ chỉ số tab — nó chỉ là một
-		<code>remember &#123; mutableIntStateOf(0) &#125;</code> trong Composable. Nên phải dùng công cụ tương ứng của Compose:
-	</p>
-	<table class="cmp">
-		<thead>
-			<tr><th></th><th><code>init</code> (ViewModel)</th><th><code>LaunchedEffect(Unit)</code> (Composable)</th></tr>
-		</thead>
-		<tbody>
-			<tr><td>Chạy khi</td><td>ViewModel được tạo</td><td>Composable vào màn hình lần đầu</td></tr>
-			<tr><td>Chạy mấy lần</td><td>1 lần / vòng đời ViewModel</td><td>1 lần, vì key là <code>Unit</code> (không bao giờ đổi)</td></tr>
-			<tr><td>Coroutine từ đâu</td><td><code>viewModelScope</code></td><td>Compose tự cấp scope, tự huỷ khi Composable rời màn hình</td></tr>
-		</tbody>
-	</table>
 	<p class="hint">
-		<strong>Điểm quan trọng nhất về <code>LaunchedEffect</code>:</strong> nếu bạn viết
-		<code>prefs.getInt(...)</code> trực tiếp trong thân Composable (không bọc), nó sẽ chạy lại <strong>mỗi lần Compose vẽ lại</strong>
-		— hàng chục lần, mỗi lần một lần đọc file, và ghi đè lựa chọn người dùng vừa bấm. <code>LaunchedEffect(Unit)</code> là cách nói
-		"việc này chỉ làm một lần, không phải mỗi lần vẽ".
-	</p>
-	<p>
-		Đáng chú ý là <code>final</code> viết <code>LaunchedEffect &#123; scope.launch &#123; ... &#125; &#125;</code> — bọc hai lớp
-		coroutine. <code>LaunchedEffect</code> <em>đã</em> là một coroutine scope, nên <code>scope.launch</code> bên trong là dư; gọi
-		trực tiếp <code>prefs.getInt(...)</code> là đủ. Nó chạy đúng nên không phải bug, nhưng nếu bạn thấy code của mình như vậy thì có
-		thể bỏ một lớp.
-	</p>
-	<h3 id="ghi-tab">15.2. Ghi khi người dùng bấm</h3>
-	<p>
-		Hai lời gọi <code>prefs.saveInt(CURRENT_INDEX_KEY, 0)</code> (dòng 48) và <code>...1)</code> (dòng 58) nằm trong
-		<code>onclick</code> của từng tab, mỗi cái bọc trong <code>scope.launch</code> — với <code>scope</code> lấy từ
-		<code>rememberCoroutineScope()</code> (dòng 30).
+		<strong>Vì sao đọc bằng <code>LaunchedEffect</code> mà không phải <code>init</code>:</strong> không có ViewModel
+		nào ở đây, nên phải dùng công cụ tương ứng của Compose — <code>LaunchedEffect(Unit)</code> chạy một lần khi
+		Composable vào màn hình, và Compose tự cấp + tự huỷ scope theo vòng đời của nó (chạm lần đầu ở C4; chiều sâu đầy
+		đủ ở R4). Nếu viết <code>prefs.getInt(...)</code> trực tiếp trong thân Composable (không bọc), nó sẽ chạy lại
+		<strong>mỗi lần vẽ lại</strong> — hàng chục lần đọc file, và có thể ghi đè lựa chọn người dùng vừa bấm.
 	</p>
 	<div class="callout note">
 		<strong><code>rememberCoroutineScope()</code> vs <code>LaunchedEffect</code> — chọn cái nào</strong>
 		<p>
-			Hai công cụ này hay bị lẫn, và <code>MainScreen</code> dùng cả hai nên là ví dụ rất tốt để phân biệt:
+			<code>MainScreen</code> dùng cả hai nên là ví dụ rất tốt để phân biệt:
 		</p>
 		<ul>
 			<li>
-				<strong><code>LaunchedEffect</code></strong> — cho việc chạy <em>tự động</em> khi Composable xuất hiện (hoặc khi key đổi).
-				Bạn không gọi nó; Compose gọi.
+				<strong><code>LaunchedEffect</code></strong> — cho việc chạy <em>tự động</em> khi Composable xuất hiện (hoặc
+				khi key đổi). Bạn không gọi nó; Compose gọi.
 			</li>
 			<li>
-				<strong><code>rememberCoroutineScope</code></strong> — cho việc chạy <em>khi có sự kiện</em>: người dùng bấm nút. Bạn cần
-				một scope để <em>tự</em> phóng coroutine trong một callback thường (<code>onclick</code> không phải Composable, nên không
-				gọi được <code>suspend</code> trực tiếp).
+				<strong><code>rememberCoroutineScope</code></strong> — cho việc chạy <em>khi có sự kiện</em>: người dùng bấm
+				nút. Bạn cần một scope để <em>tự</em> phóng coroutine trong một callback thường (<code>onclick</code> không
+				phải Composable, nên không gọi được <code>suspend</code> trực tiếp).
 			</li>
 		</ul>
 		<p>
-			Quy tắc ngắn: <strong>đọc lúc mở màn hình → <code>LaunchedEffect</code>; ghi lúc người dùng bấm → <code>rememberCoroutineScope</code></strong>.
-			Đúng như <code>MainScreen</code> đang làm.
+			Quy tắc ngắn: <strong>đọc lúc mở màn hình → <code>LaunchedEffect</code>; ghi lúc người dùng bấm →
+			<code>rememberCoroutineScope</code></strong>. Đúng như <code>MainScreen</code> đang làm. (Thấy code mẫu bọc
+			<code>scope.launch</code> bên trong <code>LaunchedEffect</code> — hai lớp coroutine dư một lớp:
+			<code>LaunchedEffect</code> đã là một coroutine scope, gọi thẳng <code>prefs.getInt(...)</code> là đủ. Nó chạy
+			đúng nên không phải bug, nhưng code của bạn có thể bỏ lớp.)
 		</p>
 	</div>
 	<p>
-		Để ý một chi tiết thiết kế: <code>selectedIndex.intValue = 0</code> chạy <strong>đồng bộ</strong> nên tab đổi ngay, còn
-		<code>saveInt</code> chạy trong coroutine. Cùng một nguyên tắc "UI trước, ổ đĩa sau" như mục 11.2. Người dùng không bao giờ
-		phải chờ việc ghi file.
+		Để ý chi tiết thiết kế: <code>selectedIndex.intValue = 0</code> chạy <strong>đồng bộ</strong> nên tab đổi ngay,
+		còn <code>saveInt</code> chạy trong coroutine — cùng nguyên tắc "UI trước, ổ đĩa sau" như mục 16.
 	</p>
+	<div class="callout note">
+		<strong>Phân biệt bốn "thứ được giữ lại" — đây là chốt của cả chương</strong>
+		<table class="cmp">
+			<thead>
+				<tr><th>Cơ chế</th><th>Chống lại cái gì</th><th>Chết khi nào</th></tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><code>remember</code></td>
+					<td>Lần vẽ lại (recomposition)</td>
+					<td>Composable rời màn hình / Activity được tạo lại</td>
+				</tr>
+				<tr>
+					<td><code>rememberSaveable</code> (S2)</td>
+					<td>Activity được tạo lại do <em>thay đổi cấu hình</em> (xoay máy...)</td>
+					<td><strong>Tắt app / hệ thống thu hồi process</strong> — và không bao giờ ghi đĩa</td>
+				</tr>
+				<tr>
+					<td>DataStore (đĩa)</td>
+					<td>Tắt app, khởi động lại máy</td>
+					<td>Người dùng xoá app / xoá dữ liệu app (mục 1)</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			Đó là lý do tab dùng DataStore chứ không phải <code>rememberSaveable</code>: yêu cầu là "lần <em>mở app
+			sau</em> vào đúng tab" — một <strong>preference</strong> của người dùng, không phải trạng thái UI qua xoay
+			máy. Hai công cụ giải hai bài toán khác nhau; dùng <code>rememberSaveable</code> cho bài toán persistence là
+			nhầm loại.
+		</p>
+	</div>
 	<p class="hint">
-		<strong>Chỉ số tab được lưu bằng số, không bằng tên</strong> — <code>0</code> = Recipes, <code>1</code> = Groceries. Ngắn gọn,
-		nhưng ràng dữ liệu đã lưu vào <em>thứ tự</em> các tab trong code: chỉ cần bạn chèn thêm một tab vào giữa ở bản cập nhật sau, người
-		dùng cũ sẽ mở app ra và thấy sai tab. Cách bền hơn là lưu một chuỗi định danh (<code>"recipes"</code> / <code>"groceries"</code>).
-		Đây là lớp vấn đề "migration của dữ liệu đã lưu" mà sách chưa đề cập, nhưng rất thật.
+		<strong>Một quyết định dữ liệu đáng để ý:</strong> tab được lưu bằng <em>số</em> (<code>0</code>/<code>1</code>),
+		nên dữ liệu đã lưu ràng buộc vào <em>thứ tự</em> các tab trong code — chèn thêm một tab vào giữa ở bản cập nhật
+		sau, người dùng cũ sẽ mở app ra và thấy sai tab. Cách bền hơn là lưu một chuỗi định danh
+		(<code>"recipes"</code>/<code>"groceries"</code>). Đây là lớp vấn đề "migration của dữ liệu đã lưu" — thật, và sẽ
+		gặp lại ở Chương 10 với dạng lớn hơn.
 	</p>
-	<h2 id="diem-lech-tong-hop">16. Tổng hợp các điểm lệch sách ↔ project</h2>
+
+	<h2 id="preview">19. Đổi constructor = đổi hợp đồng: mọi chỗ dựng ViewModel</h2>
 	<p>
-		Chapter 9 có nhiều chỗ lệch nhất từ đầu sách tới giờ. Gom về một bảng để bạn tra nhanh khi đối chiếu code của mình với
-		<code>final</code>. Mọi số dòng dưới đây đều đã mở file thật để kiểm.
+		Thêm tham số vào constructor của <code>RecipeViewModel</code> là <strong>đổi hợp đồng với toàn bộ codebase</strong>:
+		mọi lời gọi <code>RecipeViewModel()</code> đều lỗi ngay lập tức, và compiler trở thành danh sách việc cần làm —
+		sửa cho tới khi hết đỏ. Trong <code>final</code> có 3 chỗ dựng thật
+		(<code>RecipeDetails.kt:55</code>, <code>RecipeList.kt:28</code>, <code>GroceryList.kt:21</code>) và 4 chỗ trong
+		<code>@Preview</code>. Đây cũng là lý do người ta dùng DI framework ở app lớn: để không phải sửa tay từng chỗ
+		mỗi lần thêm một dependency.
 	</p>
-	<table class="cmp">
+	<p><strong>Chỗ chính cần sửa</strong> — <code>GroceryList.kt</code>:</p>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">trước — còn TODO</div>
+			<Code code={exerciseStarterCode} lang="kotlin" theme="github-dark" />
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">sau — đúng khuôn mục 15</div>
+			<Code code={exerciseFinalCode} lang="kotlin" theme="github-dark" />
+		</div>
+	</div>
+	<p>
+		Đúng khuôn <code>RecipeDetails</code>: lấy <code>prefs</code> từ CompositionLocal <em>trước</em>, rồi truyền vào
+		<code>RecipeViewModel(prefs)</code> trong factory. Không có gì mới — và đó chính là điểm: khuôn đã lặp lại đủ
+		để thành phản xạ.
+	</p>
+	<div class="callout diff">
+		<strong>Bài toán <code>@Preview</code>: hai cách sửa, mỗi cách một cái giá</strong>
+		<p>
+			Preview <em>không</em> đi qua <code>MainActivity</code>, tức không có
+			<code>CompositionLocalProvider</code> bọc ngoài — nên đọc <code>LocalPrefsProvider.current</code> trong preview
+			sẽ chạm giá trị mặc định <code>error("No prefs provided")</code> (mục 13) và preview không render được. Có hai
+			hướng xử lý trong tự nhiên:
+		</p>
+		<div class="ba">
+			<div class="ba-col">
+				<div class="ba-head">Tự tạo <code>Prefs</code> trong preview</div>
+				<Code code={previewBookWayCode} lang="kotlin" theme="github-dark" />
+				<p>Preview render được — nhưng mỗi <code>Prefs(context)</code> mới là một instance DataStore mới trỏ vào cùng
+					file <code>recipes</code>, đúng điều mục 5 cấm. Trong preview gần như vô hại (chỉ chạy trong Android
+					Studio), nhưng nó dạy sai thói quen.</p>
+			</div>
+			<div class="ba-col">
+				<div class="ba-head">Đọc từ provider (project làm)</div>
+				<Code code={previewChipRowCode} lang="kotlin" theme="github-dark" />
+				<p class="src">
+					<code>{FINAL}/ui/recipes/ChipRow.kt</code> dòng <strong>65–73</strong> — cùng khuôn ở <code>SearchRow.kt</code>
+					dòng <strong>137–141</strong>, <code>ShowBookmarks.kt</code> <strong>106–110</strong>,
+					<code>ShowRecipeList.kt</code> <strong>95–100</strong>.
+				</p>
+				<p>Sạch về kiến trúc — nhưng như đã nói, preview không render được khi thiếu provider. Để ý cả 4 preview
+					vẫn giữ <code>val context = LocalContext.current</code> <strong>khai rồi không dùng</strong> — vết của một
+					cách sửa khác; Android Studio sẽ cảnh báo "unused variable" (chi tiết ở AP3).</p>
+			</div>
+		</div>
+		<p>
+			<strong>Cách đúng thật sự</strong> (không có trong project): bọc nội dung preview trong
+			<code>CompositionLocalProvider(LocalPrefsProvider provides ...)</code> với một <code>Prefs</code> giả chỉ dùng
+			cho preview — và đó là lý do người ta tách <code>Prefs</code> thành <code>interface</code>: để có bản thật và
+			bản giả. Ý tưởng này chờ bạn ở phần testing (bài mở rộng O2); với app học thì chấp nhận được.
+		</p>
+	</div>
+
+	<h2 id="bang-trach-nhiem">20. Bảng trách nhiệm: ai giữ gì — không lẫn cái nào</h2>
+	<p>
+		Cả chương có 5 "nhân vật" tham gia một mạch. Đây là bảng phân vai — nếu bạn có thể tự vẽ lại bảng này thì đơn vị
+		2 đã đạt:
+	</p>
+	<table class="api">
 		<thead>
-			<tr><th>#</th><th>Sách nói</th><th>Code thật</th><th>Nên theo</th></tr>
+			<tr><th>Nhân vật</th><th>Trách nhiệm</th><th>Không phải việc của nó</th></tr>
 		</thead>
 		<tbody>
 			<tr>
-				<td>1</td>
-				<td>Thêm <code>implementation(libs.prefs)</code> <em>sau</em> dòng timber (dòng 140)</td>
-				<td><code>libs.prefs</code> ở dòng <strong>80</strong>, <code>libs.timber</code> ở dòng <strong>82</strong> — tức trước</td>
-				<td>Cả hai. Thứ tự dependency trong Gradle không có ý nghĩa.</td>
+				<td><strong>DataStore</strong></td>
+				<td>Lưu các cặp key/value xuống đĩa, đọc qua Flow, ghi nguyên khối</td>
+				<td>Biết app có những màn hình nào; dựng UI state</td>
 			</tr>
 			<tr>
-				<td>2</td>
-				<td>Viết hàm <code>hasKey()</code> (dòng 231)</td>
-				<td>Có ở <code>Prefs.kt:39</code> nhưng <strong>không nơi nào gọi</strong>, và luôn tạo key bằng
-					<code>stringPreferencesKey</code> nên không thể tìm thấy key kiểu Int</td>
-				<td>Viết cho đủ bộ thì được, nhưng đừng tin nó cho key số (mục 6.3).</td>
+				<td><strong>Prefs</strong></td>
+				<td>Phơi các thao tác preference có tên (<code>saveInt</code>, <code>getString</code>...); giữ một điểm khai
+					báo store</td>
+				<td>Quyết định UI hiện gì; là "repository" cho mọi loại dữ liệu</td>
 			</tr>
 			<tr>
-				<td>3</td>
-				<td>Thêm <code>val prefs = remember &#123; Prefs(context) &#125;</code> vào <code>MainActivity</code> (dòng 255)</td>
-				<td><strong>Không tồn tại</strong> trong <code>MainActivity.kt</code> (86 dòng, đã đọc hết)</td>
-				<td><code>final</code>. Dòng đó tạo instance DataStore thứ hai — trái cảnh báo của chính sách (mục 9).</td>
+				<td><strong>CompositionLocal</strong></td>
+				<td>Vận chuyển dependency đã tạo tới mọi composable trong cây con</td>
+				<td>Tạo object; lưu dữ liệu; thay tham số tường minh cho dữ liệu màn hình</td>
 			</tr>
 			<tr>
-				<td>4</td>
-				<td>Trong <code>@Preview</code>, tạo <code>Prefs(context)</code> từ context có sẵn (dòng 329)</td>
-				<td>Cả 4 preview dùng <code>LocalPrefsProvider.current</code>, và vẫn còn <code>val context</code> không dùng</td>
-				<td><code>final</code> về kiến trúc, nhưng preview sẽ không render — cách đúng là bọc <code>CompositionLocalProvider</code> (mục 12).</td>
+				<td><strong>ViewModel</strong></td>
+				<td>Giữ/transform UI state; phản ứng với dữ liệu; chạy coroutine với <code>viewModelScope</code></td>
+				<td>Tự dựng <code>Prefs</code>; giữ tham chiếu Activity</td>
 			</tr>
 			<tr>
-				<td>5</td>
-				<td>Comment trong skeleton ghi hàm thứ tư là <code>getInit</code> (dòng 165)</td>
-				<td>Hàm thật tên <code>getInt</code> (<code>Prefs.kt:34</code>)</td>
-				<td>Lỗi chính tả trong sách. Tên đúng là <code>getInt</code>.</td>
-			</tr>
-			<tr>
-				<td>6</td>
-				<td>Chapter mở đầu bằng câu chuyện bookmark công thức (dòng 5–13)</td>
-				<td>Mọi hàm bookmark trong <code>RecipeViewModel</code> là thân rỗng + TODO (dòng 107, 111, 115, 119, 152, 156)</td>
-				<td>Bookmark là Chương 10 (Room). Đừng chờ nó ở chapter này.</td>
-			</tr>
-			<tr>
-				<td>7</td>
-				<td>Sách cảnh báo "Important: không tạo nhiều hơn một instance DataStore cho cùng file" (dòng 119)</td>
-				<td>Delegate được đặt <em>bên trong</em> class <code>Prefs</code> (<code>Prefs.kt:13</code>), nên chính trình biên dịch
-					không còn bảo đảm được điều đó</td>
-				<td>Hiểu rủi ro; app tự viết thì đặt delegate ở top-level (mục 7).</td>
+				<td><strong>Composable</strong></td>
+				<td>Vẽ từ state; gửi sự kiện lên (tham số tường minh + callback — S3)</td>
+				<td>Ghi đĩa trực tiếp (trừ preference gắn với UI thuần như tab — và cả đó cũng qua <code>Prefs</code>)</td>
 			</tr>
 		</tbody>
 	</table>
-	<p class="hint">
-		<strong>Cách đọc bảng này cho đúng:</strong> không có chỗ nào ở trên khiến app chạy sai. Chúng là dấu vết bình thường của một
-		cuốn sách viết song song với project — văn bản chốt ở một phiên bản, code chốt ở phiên bản sau. Giá trị của việc biết chúng là:
-		khi code của bạn khác sách một chút, bạn không mất thời gian tưởng mình làm sai.
+	<p>
+		Hai lẫn lộn hay gặp nhất, giờ có chỗ để chặn: nhầm <strong>CompositionLocal với persistence</strong> (nó vận
+		chuyển, không lưu) và nhầm <strong>DataStore với UI state</strong> (DataStore là nguồn dữ liệu bền; UI state là
+		ảnh chụp màn hình đang hiện — mạch là <code>DataStore → Prefs → ViewModel → UiState → Compose</code>, mỗi chặng
+		một vai).
 	</p>
 
-	<h2 id="key-points">17. Điểm chốt lại</h2>
-	<p>Sách chốt 3 điểm (dòng 385–389). Dưới đây là 3 điểm đó cùng những gì bài này bổ sung:</p>
-	<div class="callout goals">
-		<strong>Sách chốt</strong>
+	<h2 id="di-tiep">21. Tóm tắt, luyện tập và đi tiếp</h2>
+	<div class="callout journey">
+		<strong>Tóm tắt Đơn vị 2</strong>
 		<ol>
-			<li>Có nhiều cách lưu dữ liệu: ra <em>file</em>, vào <em>shared preferences</em>, và vào database <em>SQLite</em>.</li>
-			<li>Shared preferences phù hợp nhất cho các cặp <em>key-value</em> đơn giản của kiểu nguyên thuỷ: chuỗi, số, boolean.</li>
-			<li>Ví dụ điển hình: lưu tab người dùng đang xem, để lần mở app sau vào lại đúng tab đó.</li>
+			<li>Không cho mỗi màn hình tự dựng dependency: <strong>tạo một lần</strong> ở chủ sở hữu sống đủ lâu →
+				<strong>cấp</strong> → <strong>tiêu thụ</strong>.</li>
+			<li><code>Application</code> là chủ sở hữu hợp lý: một lần, trước mọi UI, không chết theo xoay máy. Dependency
+				dựng ngoài class sử dụng = dependency injection ở mức nguyên lý; Hilt là câu chuyện của app lớn hơn.</li>
+			<li>CompositionLocal: khai local (mặc định <code>error(...)</code> = crash sớm có chủ ý) →
+				<code>CompositionLocalProvider ... provides</code> → <code>.current</code> trong cây con. Không persistence,
+				không tự tạo object, không thay tham số tường minh cho dữ liệu màn hình.</li>
+			<li>ViewModel có tham số → factory: đưa <em>công thức tạo</em>, Compose gọi đúng một lần mỗi vòng đời; đọc
+				<code>.current</code> <em>trước</em> lambda factory.</li>
+			<li>Hai trace: từ khoá (ViewModel → <code>joinToString</code> → DataStore; đọc lại trong <code>init</code>) và
+				tab (Composable; <code>LaunchedEffect</code> đọc, <code>rememberCoroutineScope</code> ghi).</li>
+			<li><code>joinToString</code>/<code>split</code> quanh dấu phẩy = bug thật: dữ liệu tập hợp đã vượt công cụ
+				key/value → Chương 10 (Room).</li>
+			<li>Bốn thứ "được giữ lại" khác nhau: <code>remember</code> (vẽ lại) / <code>rememberSaveable</code> (xoay máy)
+				/ DataStore (tắt app) / — và chỉ cái cuối là persistence.</li>
 		</ol>
 	</div>
-	<div class="callout">
-		<strong>Bài này bổ sung</strong>
-		<ul>
-			<li>
-				<code>SharedPreferences</code> đã <strong>deprecated</strong>; thay thế chính thức là <strong>DataStore</strong>. Vẫn phải
-				học cái cũ vì bạn sẽ gặp nó trong mọi codebase có tuổi.
-			</li>
-			<li>
-				<code>DataStore&lt;T&gt;</code> chỉ có 2 thành phần: <code>data: Flow&lt;T&gt;</code> để đọc và
-				<code>suspend updateData</code> để ghi. Mọi thứ khác chỉ là tiện ích quanh hai cái đó.
-			</li>
-			<li>
-				Mọi phép đọc-ghi DataStore đều là <code>suspend</code> — <em>đó chính là tính năng</em>, vì nó khiến bạn không thể chặn
-				luồng UI như <code>commit()</code> của <code>SharedPreferences</code> cho phép.
-			</li>
-			<li>
-				Dùng <code>first()</code> để đọc là <strong>bỏ đi</strong> lợi thế reactive của <code>Flow</code> — cách đơn giản hoá có ý
-				thức của sách. Muốn UI tự cập nhật khi dữ liệu đổi thì trả về <code>Flow</code> và <code>collect</code>.
-			</li>
-			<li>
-				<strong>Đúng một instance</strong> cho mỗi file DataStore. Cách của project là tạo trong <code>Application</code> rồi phát
-				bằng CompositionLocal. Đặt delegate ở top-level thì trình biên dịch tự bảo đảm điều này.
-			</li>
-			<li>
-				DataStore Preferences chỉ lưu 5 kiểu (String, Boolean, Int, Long, Float). Muốn lưu <code>List</code> thì phải tự mã hoá
-				thành chuỗi — và cách mã hoá bằng dấu phẩy của sách có bug thật (mục 13).
-			</li>
-			<li>
-				Ranh giới cần nhớ: <strong>đọc lúc mở màn hình → <code>init</code> (ViewModel) hoặc <code>LaunchedEffect</code>
-				(Composable); ghi lúc người dùng bấm → <code>rememberCoroutineScope</code></strong>.
-			</li>
-			<li>
-				Dữ liệu lưu bằng cách này <strong>mất khi người dùng xoá app</strong> hoặc xoá dữ liệu app. Không dùng cho thứ không được
-				phép mất.
-			</li>
-		</ul>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh — Đơn vị 2</strong>
+		<p>
+			Một người bạn dựng app riêng, viết trong <code>SomeScreen.kt</code>:
+			<code>val prefs = Prefs(LocalContext.current)</code> ngay trong thân Composable để gọi
+			<code>prefs.saveInt(...)</code> khi bấm nút — và nói "app tôi chạy đúng mà". Hãy chỉ ra <strong>(a)</strong>
+			hai vấn đề kiến trúc với dòng đó (một về instance, một về vòng đời), <strong>(b)</strong> ba dòng thay thế
+			đúng khuôn của chương (từ khai báo tới tiêu thụ), và <strong>(c)</strong> nếu giờ thêm tham số
+			<code>prefs</code> vào constructor của một ViewModel, vì sao đọc
+			<code>LocalPrefsProvider.current</code> <em>phải</em> nằm ngoài lambda
+			<code>viewModelFactory &#123; &#125;</code>?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>(a)</strong> Mỗi lần vẽ lại là một <code>Prefs</code> mới → một instance DataStore mới trỏ cùng file
+				(vi phạm "một instance", mục 5); và <code>LocalContext.current</code> là Context của màn hình — một object
+				sống lâu cầm Context ngắn hạn là khuôn rò rỉ (mục 12).
+			</p>
+			<p>
+				<strong>(b)</strong> <code>RecipeApp</code> tạo <code>prefs = Prefs(this)</code> một lần trong
+				<code>onCreate()</code>; <code>MainActivity</code> cấp
+				<code>LocalPrefsProvider provides (application as RecipeApp).prefs</code> quanh <code>NavHost</code>;
+				Composable tiêu thụ <code>val prefs = LocalPrefsProvider.current</code> rồi phóng coroutine qua
+				<code>rememberCoroutineScope</code> để ghi (mục 12–13, 18).
+			</p>
+			<p>
+				<strong>(c)</strong> Vì bên trong lambda factory không còn là vùng Composable — nó là code thường chạy sau,
+				không đọc được CompositionLocal. Phải lấy giá trị ra biến trước, lambda closure bắt biến đó (mục 15).
+			</p>
+		</details>
 	</div>
-
-	<h2 id="di-tiep">18. Đi tiếp từ đây</h2>
-	<p>Sách gợi ý 2 link (dòng 391–399), cả hai đều còn sống và đáng đọc:</p>
-	<ul>
-		<li>
-			<a href="https://developer.android.com/reference/kotlin/android/content/SharedPreferences" target="_blank" rel="noopener"
-			>Tài liệu tham khảo <code>SharedPreferences</code></a> — tra khi bạn đọc code cũ.
-		</li>
-		<li>
-			<a href="https://developer.android.com/topic/libraries/architecture/datastore" target="_blank" rel="noopener"
-			>Trang DataStore chính thức</a> — đọc phần <strong>Proto DataStore</strong>, thứ sách không nhắc: nó lưu được object có kiểu,
-			nên là lời giải đúng cho vấn đề "lưu một danh sách" ở mục 13.
-		</li>
-	</ul>
-	<div class="callout journey">
+	<div class="callout">
 		<strong>Ba việc nên tự làm trước khi qua Chương 10</strong>
 		<ol>
 			<li>
-				<strong>Sửa bug dấu phẩy.</strong> Chọn một trong ba cách ở mục 13 và làm thật. Cách nhanh nhất để kiểm tra: gõ tìm
-				"chicken, rice", tắt app, mở lại, xem menu 3 chấm.
+				<strong>Sửa bug dấu phẩy.</strong> Chọn một trong ba cách ở mục 17 và làm thật. Cách nhanh nhất để kiểm tra:
+				gõ tìm "chicken, rice", tắt app, mở lại, xem menu 3 chấm.
 			</li>
 			<li>
-				<strong>Chuyển <code>getString</code> sang trả <code>Flow&lt;String?&gt;</code></strong> và <code>collect</code> nó trong
-				ViewModel. Đây là bài tập biến DataStore từ "SharedPreferences kiểu mới" thành thứ nó thật sự là.
+				<strong>Chuyển <code>getString</code> sang trả <code>Flow&lt;String?&gt;</code></strong> (bỏ <code>first()</code>)
+				và <code>collect</code> nó trong ViewModel. Đây là bài tập biến DataStore từ "SharedPreferences kiểu mới"
+				thành thứ nó thật sự là — có thể làm được ngay, thoải mái hơn sau khi học W1.
 			</li>
 			<li>
-				<strong>Dời delegate ra top-level</strong> (mục 7) rồi thử tạo <code>Prefs</code> hai lần. Bạn sẽ thấy vấn đề "một
-				instance" đổi từ chuyện phải ghi nhớ thành chuyện trình biên dịch lo.
+				<strong>Dời delegate ra top-level</strong> (mục 5) rồi thử tạo <code>Prefs</code> hai lần. Bạn sẽ thấy vấn
+				đề "một instance" đổi từ chuyện phải ghi nhớ thành chuyện trình biên dịch lo.
 			</li>
 		</ol>
-		<p>
-			<strong>Chương 10 — Room:</strong> bạn sẽ gặp lại đúng bài toán đã đụng ở mục 13. Khi dữ liệu là một <em>tập hợp bản ghi có
-			cấu trúc</em> (danh sách công thức đã bookmark, mỗi cái có id, tên, ảnh, nguyên liệu), key-value hết đường. Room là database
-			SQLite — cái "cách thứ ba" mà mục 1 đã kể tên nhưng chưa dùng. Và lúc đó bookmark ở đầu chapter 9 mới thật sự được làm.
-		</p>
 	</div>
+	<p>
+		<strong>Chương 10 — Room.</strong> Bạn sẽ gặp lại đúng bài toán đã đụng ở mục 17: khi dữ liệu là một
+		<em>tập hợp bản ghi có cấu trúc</em> (danh sách công thức đã bookmark, mỗi cái có id, tên, ảnh, nguyên liệu),
+		key-value hết đường. Room là database SQLite — "hướng thứ ba" mà mục 1 đã kể tên nhưng chưa dùng. Và lúc đó
+		bookmark ở đầu chương mới thật sự được làm.
+	</p>
+	<!-- ==================================================================== -->
+	<!-- D2 END — hết Đơn vị 2 "Prefs trong app: CompositionLocal & ViewModel    -->
+	<!-- wiring".                                                                -->
+	<!-- ==================================================================== -->
+
+	<!-- ==================================================================== -->
+	<!-- KHỐI DÙNG CHUNG 1/2 — CẠM BẪY.                                          -->
+	<!-- Trang gộp bắt buộc chỉ có ĐÚNG MỘT tiêu đề id="cam-bay".                -->
+	<!-- KẾ HOẠCH TÁCH: D1 lấy nhóm (a); D2 lấy nhóm (b).                        -->
+	<!-- Mỗi bài sau khi tách giữ nguyên tiêu đề id="cam-bay".                   -->
+	<!-- ==================================================================== -->
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Gom lại các cảnh báo của cả hai đơn vị để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng
+		phía trên. Bảng lệch phiên bản và bảng đối chiếu "văn bản gốc ↔ project" đầy đủ nằm ở phần tra cứu phiên bản
+		của khoá (AP3, mục Ch09).
+	</p>
+	<h3>(a) Đơn vị 1 — DataStore &amp; SharedPreferences</h3>
+	<ul>
+		<li>
+			<strong>Gọi <code>SharedPreferences</code> là "deprecated".</strong> Tài liệu chính thức không đánh dấu class
+			này <code>@Deprecated</code> — nó vẫn chạy và vẫn có trong SDK. Đúng: Google khuyến nghị DataStore cho code
+			mới (mục 2). Sai gốc rễ này sẽ khiến bạn "sửa" code cũ không cần sửa.
+		</li>
+		<li>
+			<strong>Tưởng DataStore là database, hoặc là "tự lưu mọi object".</strong> Không truy vấn, không quan hệ, không
+			lưu class — chỉ 5 kiểu giá trị đơn ở biến thể Preferences (mục 3). Tập hợp bản ghi có cấu trúc → Room,
+			Chương 10.
+		</li>
+		<li>
+			<strong>Tưởng <code>rememberSaveable</code> là persistence.</strong> Nó sống qua xoay máy, chết khi tắt app, và
+			không bao giờ ghi đĩa (mục 18). Preference thật → DataStore.
+		</li>
+		<li>
+			<strong>Đọc DataStore với mental model chặn.</strong> Mọi phép đọc là <code>suspend</code> + trả qua Flow —
+			không có lối tắt đồng bộ; và <code>first()</code> nghĩa là "một giá trị, không theo dòng chảy", không phải "đọc
+			ra giữ nguyên vĩnh viễn" (mục 7).
+		</li>
+		<li>
+			<strong>Nhầm <code>null</code> (key chưa có) với giá trị đã lưu.</strong> Mặc định là quyết định của app, đặt
+			một chỗ rõ ràng — đừng để "sự thật do tai nạn" kiểu 0/false ngầm (mục 9).
+		</li>
+		<li>
+			<strong>Rải preference khắp code UI.</strong> Tự dựng <code>Prefs(context)</code> mỗi nơi = nhiều instance
+			DataStore + Context sống lâu cầm Context ngắn hạn. Một chủ sở hữu, một điểm khai báo (mục 5, 10, 12).
+		</li>
+		<li>
+			<strong>Bọc thêm <code>Dispatchers.IO</code> quanh DataStore.</strong> Các API DataStore tự lo chuyển ngữ cảnh
+			của việc file; thêm IO là lớp dư (mục 8).
+		</li>
+	</ul>
+	<h3>(b) Đơn vị 2 — CompositionLocal &amp; wiring</h3>
+	<ul>
+		<li>
+			<strong>Tưởng CompositionLocal là persistence, hoặc là máy tạo object.</strong> Nó <em>vận chuyển</em> giá trị
+			đã được tạo ở provider; instance thật nằm ở <code>RecipeApp</code>, dữ liệu thật nằm ở DataStore (mục 13, 20).
+		</li>
+		<li>
+			<strong>Đổ mọi dependency vào CompositionLocal.</strong> Đường mặc định cho dữ liệu/sự kiện màn hình là tham số
+			tường minh (S3); CompositionLocal dành cho ngữ cảnh của cả cây con — theme, <code>prefs</code>, navigator
+			(mục 14).
+		</li>
+		<li>
+			<strong>Đọc <code>.current</code> bên trong lambda factory.</strong> Lambda không còn là vùng Composable — lấy
+			giá trị ra trước rồi closure mới bắt được (mục 15). Lỗi biên dịch kinh điển.
+		</li>
+		<li>
+			<strong>Tự <code>RecipeViewModel(prefs)</code> rồi giữ trong biến.</strong> ViewModel phải do
+			<code>viewModel()</code> tạo qua factory để sống qua xoay máy (mục 15, S4).
+		</li>
+		<li>
+			<strong>Ghi đĩa trong thân Composable hoặc trong <code>onclick</code> không bọc coroutine.</strong> Đọc/ghi là
+			<code>suspend</code>: đọc lúc mở màn hình → <code>LaunchedEffect</code>; ghi lúc bấm →
+			<code>rememberCoroutineScope</code> (mục 18).
+		</li>
+		<li>
+			<strong>Dùng <code>hasKey</code> trước <code>getString</code>.</strong> Đọc file hai lần cho một câu hỏi — và
+			<code>hasKey</code> không tìm thấy key kiểu <code>Int</code> vì luôn tạo key dạng string (mục 10).
+		</li>
+	</ul>
+	<!-- ==================================================================== -->
+	<!-- KHỐI DÙNG CHUNG 2/2 — NGUỒN THAM KHẢO.                                  -->
+	<!-- Trang gộp bắt buộc chỉ có ĐÚNG MỘT tiêu đề id="nguon".                  -->
+	<!-- KẾ HOẠCH TÁCH: mỗi bài lấy đúng nhóm của mình bên dưới.                 -->
+	<!-- ==================================================================== -->
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<h3>Dùng cho Đơn vị 1 (mục 1–10)</h3>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — ba cách lưu dữ liệu (dòng 17–23), ví dụ đáng lưu (dòng
+			27), hai mục tiêu chương (dòng 31), SharedPreferences + ghi chú "deprecated" của giáo trình (dòng 38–40), các
+			nhóm hàm đọc/ghi (dòng 44–57), ví dụ SharedPreferences (dòng 61–70), 5 kiểu (dòng 78–84), vì sao thư viện riêng
+			+ interface DataStore (dòng 88–95), khai store (dòng 100), key/đọc/<code>first()</code> + cảnh báo "Important"
+			một instance (dòng 108–119), thêm thư viện (dòng 121–142), bộ khung <code>Prefs</code> + 5 TODO (dòng 151–167,
+			173, 179–194, 205, 222, 231), Key Points (dòng 385–389), link DataStore chính thức (dòng 391–399).
+		</li>
+		<li>
+			<strong>Code thật:</strong> <code>{FINAL}/data/Prefs.kt</code> (dòng 12–43 — toàn bộ class; delegate dòng 13),
+			<code>{FINAL_ROOT}/gradle/libs.versions.toml</code> (dòng 22, 75),
+			<code>{FINAL_ROOT}/app/build.gradle.kts</code> (dòng 80, 82).
+		</li>
+		<li>
+			<strong>Đối chiếu nền tảng:</strong> <code>docs/drafts/f2-kotlin-foundation.md</code> (Phần 9 —
+			<code>by preferencesDataStore</code> ở mức delegate, trả nợ ở mục 5) · <code>docs/drafts/f1-kotlin-foundation.md</code>
+			(<code>joinToString</code>) · <code>docs/drafts/s1-coroutine-foundation.md</code> (suspend/scope/Flow) ·
+			<code>docs/drafts/s5-app-architecture-repository.md</code> (định nghĩa data source — mục 10) · A14 (version
+			catalog) · Chương 1 (sandbox, <code>MODE_PRIVATE</code>).
+		</li>
+		<li>
+			<strong>Ví dụ tối giản do khoá dựng:</strong> bảng "hình dạng dữ liệu" (mục 1 — viết lại từ danh sách ba cách
+			của giáo trình), cột "Không phải việc của nó" trong bảng trách nhiệm (mục 20), khuôn kiểm tra nhanh.
+		</li>
+	</ul>
+	<h3>Dùng cho Đơn vị 2 (mục 11–21)</h3>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — <code>RecipeApp</code> (dòng 233–243), khai
+			CompositionLocal + provider (dòng 248–261), ViewModel nhận <code>Prefs</code> (dòng 269–273),
+			<code>savePreviousSearches</code>/<code>addPreviousSearch</code> (dòng 275–303), <code>RecipeDetails</code> +
+			factory (dòng 305–315), bài tập các file còn lại + hướng dẫn preview (dòng 316–329), đọc lại trong
+			<code>init</code> (dòng 337–345), lưu tab (dòng 350–383), Key Points (dòng 385–389), link
+			<code>SharedPreferences</code> reference (dòng 393–395).
+		</li>
+		<li>
+			<strong>Code thật:</strong> <code>{FINAL}/RecipeApp.kt</code> (dòng 9–21),
+			<code>{FINAL_ROOT}/app/src/main/AndroidManifest.xml</code> (dòng 12),
+			<code>{FINAL}/MainActivity.kt</code> (dòng 25–31 — hai provider; 44–48 — cấp giá trị; 80–86 —
+			<code>MainPreview</code>), <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> (dòng 32–35 — constructor + key;
+			57–65 — <code>init</code>; 85–90 — <code>savePreviousSearches</code>; 122–133 —
+			<code>addPreviousSearch</code>), <code>{FINAL}/utils/ComposeUtils.kt</code> (dòng 44–47 —
+			<code>viewModelFactory</code>; helper <code>rememberState</code> trong cùng file là bài Medium của Matt
+			Robertson, được ghi nguồn ngay trong comment code), <code>{FINAL}/ui/RecipeDetails.kt</code> (dòng 53–55),
+			<code>{FINAL}/ui/recipes/RecipeList.kt</code> (dòng 26–28), <code>{FINAL}/ui/recipes/ImageRow.kt</code> (dòng
+			36–43 — <code>searchRecipes</code>), <code>{FINAL}/ui/recipes/SearchRow.kt</code> (dòng 105–119 — dropdown),
+			<code>{FINAL}/ui/MainScreen.kt</code> (dòng 22–58 — tab), <code>{FINAL}/ui/groceries/GroceryList.kt</code>
+			(dòng 19–21), 4 preview: <code>ChipRow.kt</code> (68–72), <code>SearchRow.kt</code> (137–141),
+			<code>ShowBookmarks.kt</code> (106–110), <code>ShowRecipeList.kt</code> (95–100).
+		</li>
+		<li>
+			<strong>Đối chiếu nền tảng:</strong> S3 (tham số tường minh vs ngữ cảnh cây con — mục 14) · S4
+			(<code>viewModel()</code>, vòng đời ViewModel — mục 15) · S2 (<code>remember</code>/<code>rememberSaveable</code>
+			— mục 18) · C3 (ghi nhận tên CompositionLocal — trả nợ ở mục 13) · C4 (<code>LaunchedEffect</code> chạm lần
+			đầu; chiều sâu đầy đủ ở R4 — mục 18) · <code>docs/drafts/s5-app-architecture-repository.md</code> (Hilt/DI để
+			ngoài, seam note ở mục 12; ngôn ngữ data source ở mục 20) · Chương 8 (Moshi đã có sẵn — mục 17).
+		</li>
+		<li>
+			<strong>Ví dụ tối giản do khoá dựng:</strong> bảng bốn vấn đề của "mỗi màn hình tự dựng" (mục 11), sơ đồ cây
+			provider (mục 13 — dựng từ số dòng thật của <code>MainActivity</code>), bảng "bốn thứ được giữ lại" (mục 18),
+			bảng trách nhiệm (mục 20), hai khuôn kiểm tra nhanh.
+		</li>
+	</ul>
+	<p class="hint">
+		<strong>Tra cứu phiên bản:</strong> bảng lệch phiên bản DataStore (1.0.0 → 1.2.x) và bảng đối chiếu "văn bản
+		gốc ↔ project" của chương này (7 điểm lệch + chuyện preview) nằm ở <code>docs/drafts/ap3-version-drift.md</code>,
+		mục Ch09 — không lặp lại ở đây.
+	</p>
 </section>

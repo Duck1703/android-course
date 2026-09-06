@@ -23,6 +23,7 @@
 
 - [Ch06 — State, ViewModel & StateFlow](#ch06--state-viewmodel--stateflow)
 - [Ch08 — Networking: Retrofit, Moshi/KSP & Coil](#ch08--networking-retrofit-moshiksp--coil)
+- [Ch09 — Data Store: Preferences DataStore & wiring](#ch09--data-store-preferences-datastore--wiring)
 
 ---
 
@@ -246,3 +247,67 @@ phiên bản về Navigation (2.8.0 = ngưỡng route type-safe; bản ổn đ�
 verify và ghi trong **`docs/drafts/n2-navigation-backstack-typesafe.md`** (mục "Editorial migration
 notes / C"). Khi N1/N2 được dựng thành trang, phần riêng của Navigation sẽ thêm vào file này —
 không nhân đôi ở đây.
+
+---
+
+## Ch09 — Data Store: Preferences DataStore & wiring
+
+**Nguồn:** `aaf-materials/09-data-store/projects/{starter,final}/` ·
+`content/book/ch09-data-store.md`
+**Số liệu chốt:** 2026-09-06 (verify trực tiếp trong phiên dựng lại trang Ch09; bản của giáo trình = 2023).
+**Bài lõi trỏ về đây:** trang Ch09 hiện tại (hai đơn vị D1/D2) — khối `#cam-bay` (đoạn mở "tra cứu
+phiên bản của khoá — AP3") và cuối khối `#nguon`; riêng điểm "deprecated" được trỏ từ mục 2 của D1.
+Các con số dưới đây không lặp lại trong thân bài.
+
+### 1. Kiến thức bền vs cú pháp dễ đổi
+
+Nhóm khái niệm của chương này — chọn công cụ lưu trữ theo hình dạng dữ liệu, key/value có kiểu, đọc-ghi
+bất đồng bộ (suspend/Flow), ghi nguyên khối, một-instance-per-store, cấp dependency qua
+CompositionLocal — **không lỗi thời theo phiên bản**. Đổi chỉ là *số phiên bản* của thư viện, liệt kê
+bên dưới.
+
+### 2. Bảng lệch phiên bản (2023 → hôm nay)
+
+| Thứ trong giáo trình gốc / code mẫu | Hiện tại | Nên theo cái nào |
+|---|---|---|
+| `datastore-preferences` **1.0.0** (`libs.versions.toml` dòng 22, `prefsVersion`) | Nhánh 1.1.x (2025) rồi **1.2.x** — bản ổn định mới **1.2.1** (03/2026); nhánh 1.3.0 còn ở alpha | Nên lên 1.2.1 khi dựng project mới. Toàn bộ API chương dùng (`preferencesDataStore`, `stringPreferencesKey`/`intPreferencesKey`, `edit`, `data`) không đổi |
+| (stack chung) kotlinx-coroutines 1.7.2, Kotlin/Compose compiler/AGP, timber | Đã đối chiếu đủ trong **mục Ch08** của file này | Xem bảng Ch08 — không nhân đôi ở đây |
+
+### 3. Lệch giáo trình ↔ project — bản đồ sau khi dựng lại trang
+
+Bản Ch09 trước đây giữ một bảng tổng hợp 7 điểm "văn bản nói X, code làm Y". Sau khi dựng lại thành
+hai đơn vị D1/D2, mỗi điểm đã sống ở đúng vị trí sư phạm của nó; bảng dưới chỉ còn là bản đồ tra
+nhanh — nội dung đầy đủ của từng điểm nằm ở mục được trỏ, **không lặp lại ở đây**:
+
+| # | Điểm | Nội dung ở mức một câu | Nơi dạy bây giờ |
+|---|---|---|---|
+| 1 | "Thêm `implementation(libs.prefs)` *sau* dòng timber" | Trong `final`, `libs.prefs` (dòng 80) nằm **trước** `libs.timber` (dòng 82) | Không cần dạy: thứ tự khai dependency trong Gradle vô nghĩa — ghi lại để không hoang mang khi đối chiếu |
+| 2 | `hasKey()` được hướng dẫn nhưng không ai gọi | `Prefs.kt:39–42` chỉ có định nghĩa, không có lời gọi nào; và luôn tạo key bằng `stringPreferencesKey` nên không tìm thấy key kiểu Int | D1 mục 10 (callout "code chết + hố nhỏ") |
+| 3 | "Thêm `val prefs = remember { Prefs(context) }` vào `MainActivity`" | Dòng này **không tồn tại** trong `MainActivity.kt` (86 dòng, đã đọc hết); TODO tương ứng được điền bằng `LocalPrefsProvider provides (application as RecipeApp).prefs` | D2 mục 13 (cấp giá trị) và mục 19 (hai cách preview); dòng thừa nếu làm theo sẽ tạo instance DataStore thứ hai — đúng điều cảnh báo "Important" cấm |
+| 4 | Preview: "dùng context để tạo một `Prefs` mới" | Cả 4 preview trong `final` đọc `LocalPrefsProvider.current`, và vẫn giữ `val context = LocalContext.current` khai rồi không dùng (ChipRow 68, SearchRow 137, ShowBookmarks 106, ShowRecipeList 95) — vết của một cách sửa khác | D2 mục 19 (hai cách + cái giá của mỗi cách); chi tiết "unused variable" nằm ở đây |
+| 5 | Comment trong bộ khung ghi hàm thứ tư là `getInit` | Hàm thật tên `getInt` (`Prefs.kt:34`) | Lỗi chính tả trong giáo trình; không dạy, ghi lại ở đây |
+| 6 | Chương mở đầu bằng chuyện bookmark | Mọi hàm bookmark trong `RecipeViewModel` còn thân rỗng + TODO (dòng 106–157) | Cross-ref Chương 10 (Room) ngay đầu trang; không có gì phải "sửa" |
+| 7 | Cảnh báo "Important: một instance" vs delegate đặt **trong** class | `Prefs.kt:13` — mỗi `Prefs` mới tạo thêm một instance DataStore trỏ cùng file; project thoát được nhờ tạo đúng một `Prefs` trong `RecipeApp.onCreate()` | D1 mục 5 (bảng hai vị trí + "hoạt động, nhưng mong manh") |
+
+Hai điểm nữa phát hiện khi dựng lại, không có trong bảng cũ:
+
+- Tiêu đề phần cuối của giáo trình: *"In this section, you'll use **shared preferences** to save the
+  current UI tab"* (dòng 350–351) — nhưng toàn bộ code phần đó là **DataStore**
+  (`prefs.saveInt`/`prefs.getInt`). Văn bản dùng "shared preferences" như một cụm chung chỉ
+  "thiết lập đã lưu", không phải tên API; khi đối chiếu code, cứ hiểu là DataStore.
+- Số `// TODO: Add Prefs` trong `starter`: **13 lời gọi rải trong 11 file** (RecipeApp×2,
+  MainActivity×1, MainScreen×1, GroceryList×1, RecipeDetails×2, RecipeList×1, ChipRow×1,
+  SearchRow×1, ShowBookmarks×1, ShowRecipeList×1, RecipeViewModel×1 — trong đó
+  `ShowBookmarks.kt:108` viết sai thành `// TODO: Add PRefs`), cộng thêm 3 TODO prefs khác trong
+  `MainScreen.kt` (dòng 32, 43, 51). Đối chiếu từng file thì đừng ngạc nhiên nếu thấy chính tả
+  comment lệch.
+
+### 4. "SharedPreferences đã deprecated"? — ghi chú lịch sử
+
+Giáo trình ghi ở dòng 40: *"The SharedPreferences method has been deprecated"*. Tài liệu chính thức
+của Android hiện nay **không** đánh dấu class `SharedPreferences` là `@Deprecated` — nó vẫn thuộc
+SDK, vẫn chạy, và vẫn được dùng trong vô số codebase hiện hữu. Điều Google làm là **khuyến nghị
+DataStore cho code mới** (tài liệu DataStore mô tả nó: đọc-ghi bất đồng bộ qua coroutine/Flow, cập
+nhất nhất quán và transactional). Trang lõi (D1, mục 2) dạy đúng tư thế này — SharedPreferences chỉ
+cần *đọc được*, còn kiến trúc mới của khoá dựng trên DataStore. Mục này chỉ giữ mốc: *câu
+"deprecated" là lời của giáo trình gốc (2023), không phải của tài liệu API hiện hành.*
