@@ -24,6 +24,7 @@
 - [Ch06 — State, ViewModel & StateFlow](#ch06--state-viewmodel--stateflow)
 - [Ch08 — Networking: Retrofit, Moshi/KSP & Coil](#ch08--networking-retrofit-moshiksp--coil)
 - [Ch09 — Data Store: Preferences DataStore & wiring](#ch09--data-store-preferences-datastore--wiring)
+- [Ch11 — Advanced Storage: files/SAF/backup & encryption](#ch11--advanced-storage-filessafbackup--encryption)
 
 ---
 
@@ -311,3 +312,72 @@ DataStore cho code mới** (tài liệu DataStore mô tả nó: đọc-ghi bất
 nhất nhất quán và transactional). Trang lõi (D1, mục 2) dạy đúng tư thế này — SharedPreferences chỉ
 cần *đọc được*, còn kiến trúc mới của khoá dựng trên DataStore. Mục này chỉ giữ mốc: *câu
 "deprecated" là lời của giáo trình gốc (2023), không phải của tài liệu API hiện hành.*
+
+---
+
+## Ch11 — Advanced Storage: files/SAF/backup & encryption
+
+**Nguồn:** `aaf-materials/11-advanced-storage/projects/{starter,final}/` ·
+`content/book/ch11-advanced-storage.md`
+**Số liệu chốt:** 2026-09-06 (verify trực tiếp khi dựng lại trang Ch11; bản của giáo trình = 2023).
+**Bài lõi trỏ về đây:** trang Ch11 hiện tại (hai nửa X1/X2 trên cùng một route, đánh dấu `X1/X2 START/END`) —
+khối `#cam-bay` (cảnh báo ESP + SQLCipher artifact) và mục 16/17 của bài trỏ về đây cho phần drift dài.
+Các con số dưới đây không lặp lại đầy đủ trong thân bài.
+
+### 1. Kiến thức bền vs cú pháp dễ đổi
+
+Nhóm khái niệm của chương này — chọn chỗ lưu theo thuộc tính (riêng tư / bền / có quyền), hợp đồng
+cache, SAF = "người dùng chỉ thay vì app xin quyền", Uri ≠ đường dẫn, envelope encryption (master key
+trong Keystore mở data key), tráo lớp SQLite dưới Room qua `openHelperFactory`, backup ≠ vị trí ≠ mã
+hoá — **không lỗi thời theo phiên bản**. Đổi là *tên artifact*, *trạng thái deprecation* và *cú pháp
+backup rule*, liệt kê bên dưới.
+
+### 2. Bảng lệch phiên bản (2023 → 09/2026)
+
+| Thứ trong giáo trình gốc / code mẫu | Hiện tại | Nên theo cái nào |
+|---|---|---|
+| `androidx.security:security-crypto` **1.0.0** (`libs.versions.toml` dòng 24) | **1.1.0 stable (30/07/2025)** — *toàn bộ API deprecated ở chính bản stable này*; AndroidX: *"There won't be any subsequent releases of this library"*, hướng thay: *"existing platform APIs and direct usage of Android Keystore"*. Lộ trình: `MasterKeys` deprecated từ 1.1.0-alpha01 (10/06/2020) → `MasterKey.Builder` (1.1.0-alpha03) → nay cả `MasterKey` cũng deprecated → `KeyGenParameterSpec.Builder` + `javax.crypto.KeyGenerator` với AndroidKeyStore | **HISTORICAL.** Đọc được code cũ; không dùng cho code mới. Không có migration guide chính thức; DataStore **không phải** bản thay ESP về mã hoá |
+| `MasterKeys.getOrCreate(AES256_GCM_SPEC)` | Deprecated trước cả khi sách ra; overload `create(fileName, alias, context, …)` còn bị javadoc cảnh báo không thread-safe khi key chưa tạo | Bản trung gian: `MasterKey.Builder` + `create(context, fileName, masterKey, …)`; hiện tại: Keystore trực tiếp |
+| `net.zetetic:android-database-sqlcipher` **4.4.0** (dòng 25) | **EOL** — Zetetic khuyến nghị chuyển từ 31/08/2023; bản cuối nhánh cũ 4.5.4. Kế thừa: `net.zetetic:sqlcipher-android`, bản mới nhất **4.18.0** (18/08/2026) | Đọc được code cũ; project mới dùng `sqlcipher-android`: package `net.zetetic.database.sqlcipher`, `SupportOpenHelperFactory` thay `SupportFactory` (class cũ **không còn tồn tại**), **tự gọi `System.loadLibrary("sqlcipher")`** (bỏ `loadLibs` — quên là `UnsatisfiedLinkError`), `androidx.sqlite` 2.7.0, minSdk 23. `openOrCreateDatabase` đổi thứ tự tham số; `SQLiteDatabaseHook.preKey/postKey` nhận `SQLiteConnection` |
+| Lý do đổi SQLCipher artifact | Yêu cầu 16KB page size của Google Play buộc build lại native library; `loadLibs` không tương thích `SplitInstallHelper.loadLibrary` | — |
+| Room **2.5.2**-kỷ (project Ch10) / tích hợp mã hoá qua `openHelperFactory` | Room 2.x mới nhất **2.8.4** (19/11/2025) — `openHelperFactory` **vẫn dùng được**; Room 2.7.0 (09/04/2025) thêm `setDriver()` + KMP; 2.8.0 thêm `room-sqlite-wrapper`/`getSupportWrapper()`. Room 3 = artifact riêng `androidx.room3:room3-*`, bản **3.0.2** (26/08/2026): bỏ `SupportSQLite`/`Cursor`, **bắt buộc `SQLiteDriver`** (`setDriver()`), không còn `openHelperFactory` | Room 2.x: đổi tên class thành `SupportOpenHelperFactory` + `password.toByteArray(Charsets.UTF_8)` (hướng dẫn chính thức không còn dùng `SQLiteDatabase.getBytes()`). Room 3: dùng `SQLCipherDriver` qua `setDriver()` — sqlcipher-android hỗ trợ cả Room 2 lẫn Room 3 từ 4.18.0 |
+| `android:fullBackupContent` (file `backup_rules.xml`) | Chỉ áp dụng **Android 11 (API 30) trở xuống**. Android 12+ (API 31+) đọc `android:dataExtractionRules` — format `<data-extraction-rules>` với section `<cloud-backup>` / `<device-transfer>` / (`<cross-platform-transfer>` từ Android 16). App target 31+ **vẫn phải** khai `fullBackupContent` cho máy cũ. Cú pháp hai thế hệ khác nhau; app này giữ **cả hai** attribute trong manifest (dòng 7–8) | Khai cả hai; mỗi section chỉ áp kênh của nó (thiếu `<device-transfer>` = chuyển máy trực tiếp vẫn copy); `<exclude>` thắng `<include>`; khai `<include>` là tắt mặc định "backup tất cả"; cache/code-cache/no-backup bị loại trừ cứng |
+| `Environment.getExternalStoragePublicDirectory()` | Deprecated từ API 29 (Scoped Storage); đường dẫn trả về thường không ghi được trên máy thật | `getExternalFilesDir()` (riêng app, không quyền) / MediaStore (ảnh/video) / SAF (tài liệu người dùng) |
+| `startActivityForResult` | Deprecated; Activity Result API (`registerForActivityResult` + `CreateDocument`/`OpenDocument`/`OpenDocumentTree`) là cách hiện tại | Activity Result API; đăng ký lúc Activity khởi tạo, `launch()` lúc bấm |
+| `KeyInfo.isInsideSecureHardware()` | Đúng tên là `isInsideSecureHardware()` (sách in `isInsideSecurityHardware()` — **không compile**); deprecated ở **API 31** thay bằng `getSecurityLevel()` (`KeyProperties.SecurityLevelEnum`: `TRUSTED_ENVIRONMENT` / `STRONGBOX`). Trên API ≤ 28 vẫn phải dùng hàm cũ. StrongBox: Android 9+, tuỳ thiết bị, kiểm `FEATURE_STRONGBOX_KEYSTORE`, fallback `StrongBoxUnavailableException` | Theo mốc API; kiểm hardware-backed lúc chạy, không giả định |
+| (không phải thư viện) `SpoonacularService.kt:47` placeholder key trong source | Không đổi trong project; khuôn đúng đã dạy ở W3 (`keys.properties`) | Theo W3 |
+
+### 3. Lệch giáo trình ↔ project — bản đồ sau khi dựng lại trang
+
+Bản Ch11 trước đây giữ một bảng tổng hợp 15 điểm "sách nói X, code làm Y". Sau khi dựng lại thành hai
+nửa X1/X2, mỗi điểm đã sống ở đúng vị trí sư phạm của nó (kèm cột **Phân loại**: VALID / VALID
+ALTERNATIVE / REDUNDANT / HISTORICAL/VERSION DRIFT / BUG/RISK); bảng dưới chỉ còn là bản đồ tra nhanh
+— nội dung đầy đủ ở mục được trỏ:
+
+| # | Điểm | Nơi dạy bây giờ |
+|---|---|---|
+| 1 | "getSystemService phải trên main thread" — đảo chiều | X1 mục 3.3 (BUG/RISK) |
+| 2 | `context.cacheDir`/`context.filesDir` trong Activity — không compile | X1 mục 3.3 (BUG/RISK) |
+| 3 | `getExternalStoragePublicDirectory()` như cách dùng được | X1 mục 6 (HISTORICAL/VERSION DRIFT) — chi tiết drift ở mục 2 bảng trên |
+| 4 | `startActivityForResult` + Note không có code mới | X1 mục 7.3 (HISTORICAL/VERSION DRIFT) |
+| 5 | `isInsideSecurityHardware()` + mốc API 28/29 | X2 mục 9.1 (BUG/RISK) — chi tiết ở mục 2 bảng trên |
+| 6 | Nối dây đặt trong MainActivity | X2 mục 14 (VALID ALTERNATIVE — project đặt RecipeApp.onCreate đúng hơn) |
+| 7 | `PASSCODE_KEY` trần | X2 mục 14 (BUG/RISK) |
+| 8 | `prefs = SecurePrefs(this)` sau khi chính sách đổi tên `securePrefs` | X2 mục 14 (BUG/RISK — tự mâu thuẫn) |
+| 9 | Đổi tên database `"Recipes"` → `"recipe_database"` âm thầm | X2 mục 13.3 (BUG/RISK — mất dữ liệu im lặng) |
+| 10 | `getPassCode()` dùng `kotlin.random.Random`, chỉ a–z (~70 bit) | X2 mục 13.1 (BUG/RISK — SecureRandom + 62 ký tự ≈ 89 bit) |
+| 11 | Passcode `String` rồi `toCharArray()` — lợi ích CharArray bị vô hiệu | X2 mục 13.1 (REDUNDANT) |
+| 12 | `allowBackup="true"` + mọi backup rule bị comment → bẫy backup | X1 mục 8.5 + X2 mục 15 (BUG/RISK — javadoc ESP cảnh báo) |
+| 13 | 5 version bump không liên quan trong toml | X2 mục 10 (VALID ALTERNATIVE — chỉ cần biết khi đối chiếu) |
+| 14 | Import/file/dòng code chết (RecipeApp imports 38–39, Prefs.kt không ai gọi, ShowRecipeList import LocalContext, IngredientDao dòng trống, MainScreen null-check luôn đúng) | X2 mục 12.1 + bảng 17 (REDUNDANT; riêng null-check là thay đổi hành vi) |
+| 15 | API key placeholder trong source | Bảng 17 (BUG/RISK) — khuôn đúng là W3 |
+
+### 4. Ghi chú lịch sử riêng
+
+- **"SharedPreferences deprecated"**: tương tự ghi chú Ch09 — giáo trình nói chung chung; class
+  `SharedPreferences` của SDK **không** bị đánh dấu `@Deprecated`. Cái bị deprecated toàn bộ là
+  `security-crypto` (2025). Trong Ch11, việc quay về `SharedPreferences` là đánh đổi để có mã hoá
+  (đã dạy trong X2 mục 12), không phải hệ quả của một lệnh deprecate.
+- **Backup trap** (điểm 12) là phần khoá học tự bổ sung — không có trong giáo trình; nguồn hậu thuẫn
+  là javadoc `EncryptedSharedPreferences` (mục WARNING) + tài liệu Auto Backup.
+
