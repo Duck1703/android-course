@@ -1,5 +1,5 @@
 ---
-import { SECTIONS, ALL_CHAPTERS, chapterLabel, groupChapters } from "../data/chapters";
+import { STAGES, ALL_CHAPTERS, chapterLabel, groupChaptersByStage } from "../data/chapters";
 import { getStats } from "../data/lessonStats";
 import "../styles/global.css";
 
@@ -38,16 +38,32 @@ const searchIndex = ALL_CHAPTERS.flatMap((ch) => {
 // van la 4 trang rieng, nhung nguoi hoc dem chuong theo chuong lon.
 const totalChapters = new Set(ALL_CHAPTERS.map((c) => c.number)).size;
 
-// Ten module trong rail: bo tien to "Section I: " de con lai phan mo ta.
-// `nodes` gom cac chuong nho (10.1..10.4) duoi mot tieu de nhom.
-const modules = SECTIONS.map((s, i) => {
-  const parts = s.title.split(": ");
+// Sidebar theo STAGE (IMP-011): thu tu nhom doc tu STAGES, bai hoc doc tu
+// ALL_CHAPTERS qua groupChaptersByStage. Stage khong con bai live (foundation,
+// navigation, appendix hien nay) khong tra ve -> tu dong an, khong co placeholder.
+// Nhom "core" mo san (cung nhu trang chu) de nguoi hoc thay ca lo trinh;
+// nhom optional/appendix ("Mở rộng") thu lai, chi tu mo khi bai active nam trong do.
+const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
+  const { stage, chapters } = group;
+  const hasCurrent = chapters.some((c) => currentPath === `/chapters/${c.slug}/`);
+  // Nhom cha da tach (chuong lon co >= 2 chuong nho, vd 10.1..10.4): renderer
+  // se chen mot tieu de nho roi thut cac chuong nho vao duoi. Chuong nguyen khoi
+  // (Ch05, Ch07, Ch08, Ch09, Ch11) render truc tiep, khong co tieu de con.
+  const seenNumbers = new Map<number, number>();
+  for (const c of chapters) {
+    seenNumbers.set(c.number, (seenNumbers.get(c.number) ?? 0) + 1);
+  }
+  const splitNumbers = new Set<number>();
+  for (const [num, count] of seenNumbers) {
+    if (count >= 2 && chapters.some((c) => c.number === num && c.subNumber !== undefined)) {
+      splitNumbers.add(num);
+    }
+  }
   return {
-    index: i + 1,
-    label: parts.length > 1 ? parts.slice(1).join(": ") : s.title,
-    chapters: s.chapters,
-    nodes: groupChapters(s.chapters),
-    chapterCount: new Set(s.chapters.map((c) => c.number)).size,
+    stage,
+    chapters,
+    splitNumbers,
+    open: stage.kind === "core" ? hasCurrent || currentPath === "/" : hasCurrent,
   };
 });
 ---
@@ -150,20 +166,17 @@ const modules = SECTIONS.map((s, i) => {
 				</div>
 				<nav>
 					{
-						modules.map((mod) => {
-							const slugs = mod.chapters.map((c) => c.slug);
-							// Module nao dang chua bai dang doc thi mo san.
-							const hasCurrent = mod.chapters.some(
-								(c) => currentPath === `/chapters/${c.slug}/`
-							);
+						stageGroups.map((group) => {
+							const { stage, chapters, splitNumbers, open } = group;
+							const slugs = chapters.map((c) => c.slug);
 							return (
-								<details class="module" open={hasCurrent || currentPath === "/"} data-mod={slugs.join(",")}>
+								<details class="module" open={open} data-mod={slugs.join(",")}>
 									<summary>
-										<span class="module-num">{mod.index}</span>
+										<span class="module-num" aria-hidden="true">{stage.order}</span>
 										<span class="module-meta">
-											<span class="module-title">{mod.label}</span>
+											<span class="module-title">{stage.label}</span>
 											<span class="module-sub">
-												<span class="mod-done">0</span>/{mod.chapters.length} chương xong
+												<span class="mod-done">0</span>/{chapters.length} chương xong
 											</span>
 											<span class="module-bar" aria-hidden="true"><span></span></span>
 										</span>
@@ -172,39 +185,60 @@ const modules = SECTIONS.map((s, i) => {
 										</svg>
 									</summary>
 									<ul>
-										{mod.nodes.map((node) => {
-											// Chuong lon da tach: mot tieu de nhom, roi cac chuong nho thut vao.
-											const rows = node.items.map((ch) => {
-												const href = `/chapters/${ch.slug}/`;
-												const active = currentPath === href;
-												return (
-													<li>
-														<a
-															href={href}
-															class={active ? "active" : ""}
-															data-slug={ch.slug}
-															aria-current={active ? "page" : undefined}
-														>
-															<span class="num">{chapterLabel(ch)}</span>
-															{ch.title}
-															<svg class="check" role="img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Đã học">
-																<path d="M4 12.5l5 5L20 6.5"></path>
-															</svg>
-														</a>
-													</li>
-												);
-											});
+										{chapters.map((ch) => {
+											// Chuong lon da tach (vd 10.1..10.4): dung CHINH chuong dau tien
+											// cua chuong lon de render tieu de nhom + toan bo cac chuong nho;
+											// cac chuong nho sau bo qua de khong bi render trung.
+											const isGroupHead = splitNumbers.has(ch.number) && ch.subNumber === 1;
+											if (splitNumbers.has(ch.number) && !isGroupHead) return null;
+											const rows = (
+												<li>
+													<a
+														href={`/chapters/${ch.slug}/`}
+														class={currentPath === `/chapters/${ch.slug}/` ? "active" : ""}
+														data-slug={ch.slug}
+														aria-current={currentPath === `/chapters/${ch.slug}/` ? "page" : undefined}
+													>
+														<span class="num">{chapterLabel(ch)}</span>
+														{ch.title}
+														<svg class="check" role="img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Đã học">
+															<path d="M4 12.5l5 5L20 6.5"></path>
+														</svg>
+													</a>
+												</li>
+											);
 
-											if (!node.groupTitle) return rows;
+											if (!isGroupHead) return rows;
 
-											return (
+											const siblings = chapters.filter((c) => c.number === ch.number);											return (
 												<li class="ch-group">
 													<p class="ch-group-head">
-														<span class="num">{node.groupNumber}</span>
-														<span>{node.groupTitle}</span>
-														<span class="ch-group-count">{node.items.length} phần</span>
+														<span class="num">{ch.number}</span>
+														<span>{ch.parentTitle ?? ch.title}</span>
+														<span class="ch-group-count">{siblings.length} phần</span>
 													</p>
-													<ul class="ch-group-list">{rows}</ul>
+													<ul class="ch-group-list">
+														{siblings.map((sub) => {
+															const href = `/chapters/${sub.slug}/`;
+															const active = currentPath === href;
+															return (
+																<li>
+																	<a
+																		href={href}
+																		class={active ? "active" : ""}
+																		data-slug={sub.slug}
+																		aria-current={active ? "page" : undefined}
+																	>
+																		<span class="num">{chapterLabel(sub)}</span>
+																		{sub.title}
+																		<svg class="check" role="img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Đã học">
+																			<path d="M4 12.5l5 5L20 6.5"></path>
+																		</svg>
+																	</a>
+																</li>
+															);
+														})}
+													</ul>
 												</li>
 											);
 										})}

@@ -67,6 +67,32 @@ export const STAGES: readonly StageInfo[] = [
   { id: "appendix", label: "Phụ lục", order: 10, kind: "appendix" },
 ];
 
+/**
+ * Gom danh sach chuong flat thanh cac nhom THEO STAGE (IMP-011), giu thu tu
+ * xuat hien ban dau ben trong moi stage. Chi tra ve cac stage co it nhat 1
+ * chuong — stage trong (foundation/navigation/appendix hien nay) tu dong an,
+ * khong can code rieng; khi bai moi voi stageId tuong ung duoc them vao
+ * ALL_CHAPTERS, nhom se tu xuat hien dung vi tri.
+ */
+export interface StageGroup {
+  stage: StageInfo;
+  /** Cac chuong thuoc stage, theo dung thu tu trong SECTIONS/ALL_CHAPTERS. */
+  chapters: ChapterInfo[];
+}
+
+export function groupChaptersByStage(chapters: ChapterInfo[]): StageGroup[] {
+  const byId = new Map<StageId, ChapterInfo[]>();
+  for (const ch of chapters) {
+    const list = byId.get(ch.stageId);
+    if (list) list.push(ch);
+    else byId.set(ch.stageId, [ch]);
+  }
+  return STAGES.filter((st) => byId.has(st.id)).map((st) => ({
+    stage: st,
+    chapters: byId.get(st.id)!,
+  }));
+}
+
 /** Khoa gom file .astro cho mot chuong: "10" (nguyen khoi) hoac "10_2" (chuong nho). */
 export function chapterFileKey(ch: Pick<ChapterInfo, "number" | "subNumber">): string {
   const nn = String(ch.number).padStart(2, "0");
