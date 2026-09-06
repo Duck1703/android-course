@@ -144,56 +144,47 @@ suspend fun getAllRecipes(): List<RecipeDb>
 	<div class="callout goals">
 		<strong>Bạn sẽ học được gì trong chương này</strong>
 		<ul>
-			<li><strong>Room biến class Kotlin thành bảng như thế nào</strong> — cơ chế đứng sau ba annotation, và vì sao
-				chúng phải đi cùng nhau.</li>
-			<li><strong>Entity</strong> — khai một bảng bằng đúng một <code>data class</code>: <code>@Entity</code>,
-				<code>@PrimaryKey</code>, <code>@ColumnInfo</code>, giá trị mặc định, và <code>@Ignore</code>.</li>
-			<li><strong>Khoá chính</strong> — khác nhau giữa <em>natural key</em> (id do nguồn ngoài cấp) và
-				<em>surrogate key</em> (id do hệ thống tự sinh), và <code>autoGenerate</code> nên đặt gì.</li>
-			<li><strong>Quan hệ một-nhiều</strong> — cách một cột <code>recipeId</code> nối hai bảng, và cái giá phải trả khi
-				không khai khoá ngoại.</li>
-			<li><strong>DAO</strong> — bốn annotation <code>@Insert</code> / <code>@Query</code> / <code>@Update</code> /
-				<code>@Delete</code>, bộ thao tác CRUD, cơ chế tham số <code>:tên</code> và vì sao nó chặn được SQL injection.</li>
-			<li><strong><code>OnConflictStrategy</code></strong> — năm lựa chọn khi insert trùng khoá chính, và mỗi lựa chọn
-				đổi hành vi app ra sao.</li>
-			<li><strong>Database class</strong> — <code>@Database</code>, class <code>abstract</code> kế thừa
-				<code>RoomDatabase</code>, và pattern <strong>Singleton</strong> kèm <code>@Volatile</code> /
-				<code>synchronized</code>.</li>
-			<li><strong>Phần thưởng lớn nhất của Room</strong> — câu SQL sai bị bắt ngay lúc biên dịch, không đợi tới lúc
-				người dùng bấm nút.</li>
+			<li>Giải thích được <strong>Entity là gì</strong>: vì sao một <code>data class</code> gắn <code>@Entity</code> là
+				một bảng, một object của class đó là một dòng, và vì sao dòng nào cũng cần <strong>khoá chính</strong>.</li>
+			<li>Đọc được <strong>DAO</strong>: nó <em>khai báo</em> những thao tác nào được phép với dữ liệu
+				(<code>@Query</code>, <code>@Insert</code>, <code>@Update</code>, <code>@Delete</code>), còn Room sinh phần
+				cài đặt hộ.</li>
+			<li>Đọc được một câu SQL trong <code>@Query</code> — <code>SELECT</code>, <code>FROM</code>,
+				<code>WHERE</code> — và hiểu vì sao <code>:id</code> là một <strong>tham số được nối vào</strong> (bound
+				parameter), không phải chuỗi ghép tay.</li>
+			<li>Trả lời được <strong>phần thưởng lớn nhất của Room</strong>: câu SQL gõ sai bị bắt ngay lúc biên dịch — và
+				Room bắt được <em>những loại lỗi nào</em>, không bắt được những loại nào.</li>
+			<li>Đọc được class <code>@Database</code>: nó nối entity với DAO thành một cửa vào duy nhất, và vì sao app nên
+				có <strong>đúng một</strong> instance database (<code>@Volatile</code> + <code>synchronized</code> lo hai
+				việc khác nhau).</li>
 		</ul>
+		<p>
+			<strong>Tại sao điều này quan trọng.</strong> Từ bài này, những gì S5 gọi là "data source phía sau biên giới"
+			có code thật để đọc: ba loại class mà mọi project dùng Room đều có. Và phần thưởng lớn nhất — Room đọc cả ba
+			lúc build để bắt lỗi SQL thay bạn — chỉ xảy ra nếu bạn viết đúng cấu trúc ba class đó.
+		</p>
+		<p>
+			<strong>Cần biết trước.</strong> <strong>Chương 10.1</strong> — ba vai Entity/DAO/Database ở mức nhận diện,
+			thư viện Room đã khai xong qua Version Catalog với <code>ksp(libs.room.compiler)</code>, và ẩn dụ nhà hàng
+			(thực đơn — bồi bàn — nhà hàng). <strong>S1</strong> — <code>suspend</code> nghĩa là gì và <em>không</em>
+			nghĩa là gì. <strong>Chương 8</strong> — annotation (<code>@GET</code>, <code>@Query</code>) và KSP. 
+			<strong>F2</strong> — <code>data class</code>.
+		</p>
 	</div>
-
-	<p>
-		Ở Chương 10.1 bạn đã hiểu bức tranh lớn: <strong>SQLite</strong> là cái engine database thật nằm sẵn trong mỗi máy
-		Android, <strong>Room</strong> là lớp thư viện phủ lên trên nó để bạn không phải viết SQL bằng tay, và Room gồm ba
-		thành phần: <em>Entity</em>, <em>DAO</em>, <em>Database</em>. Bạn cũng đã thêm xong thư viện Room vào project qua
-		<code>libs.versions.toml</code> và <code>build.gradle.kts</code>, trong đó <code>ksp(libs.room.compiler)</code> là
-		dòng cho phép Room <em>đọc code của bạn lúc biên dịch rồi sinh thêm code mới</em>. Từ đây trở đi mọi thứ trở nên rất
-		cụ thể: bạn sẽ viết đúng ba loại class đó, và sẽ thấy phần code Room sinh ra hộ bạn bắt lỗi ngay trên máy mình.
-	</p>
 
 	<h2 id="room-classes">7. Room Classes — Room biến class của bạn thành bảng như thế nào</h2>
 	<p>
-		Giờ mới tới lúc thêm các class cơ bản mà Room yêu cầu: các Entity, các DAO, và Database. Việc xảy ra sau hậu trường
-		có thể gói vào một câu gọn: <strong>Room lấy cấu trúc class của bạn và tạo ra một database SQLite kèm các bảng và
-		định nghĩa cột tương ứng.</strong>
+		Ở Chương 10.1 bạn đã có bức tranh lớn: SQLite là engine thật, Room là lớp bọc phía trên, và có ba vai cần viết.
+		Giờ là lúc viết code thật. Việc xảy ra sau hậu trường gói vào một câu: <strong>Room lấy cấu trúc class của bạn
+		và tạo ra một database SQLite kèm các bảng và định nghĩa cột tương ứng.</strong>
 	</p>
 	<p>
-		Nói cách khác, Room là một <strong>ORM</strong> (Object-Relational Mapping — bản đồ nối object với bảng quan hệ):
-		một lớp phần mềm phủ lên SQLite, làm nhiệm vụ dịch qua lại giữa <em>object Kotlin</em> mà bạn viết và <em>dòng dữ
-		liệu trong bảng</em> mà SQLite hiểu. Bạn khai bằng class, Room lo phần chuyển đổi.
-	</p>
-	<p>
-		Ba cái tên được chốt ngay từ đây, và cả chương sẽ dùng lại: database tên <code>recipe_database</code>, hai class
-		model tên <code>RecipeDb</code> và <code>IngredientDb</code>.
+		Cách gọi chuyên môn cho cơ chế đó là <strong>ORM</strong> (Object-Relational Mapping — bản đồ nối object với bảng
+		quan hệ): Room dịch qua lại giữa <em>object Kotlin</em> mà bạn viết và <em>dòng dữ liệu trong bảng</em> mà SQLite
+		hiểu. Bạn khai bằng class, Room lo phần chuyển đổi. Bảng đối chiếu dưới đây là thứ nên giữ trong đầu suốt bài:
 	</p>
 	<div class="callout">
 		<strong>Đường đi từ class Kotlin sang bảng SQLite</strong>
-		<p>
-			Nếu hình dung quá trình chuyển đổi thành một bảng đối chiếu, nó trông như sau — và đây chính là thứ bạn nên giữ
-			trong đầu suốt cả chương:
-		</p>
 		<table class="cmp">
 			<thead>
 				<tr><th>Thứ bạn viết bằng Kotlin</th><th>Thứ Room tạo ra trong SQLite</th></tr>
@@ -208,16 +199,24 @@ suspend fun getAllRecipes(): List<RecipeDb>
 			</tbody>
 		</table>
 	</div>
+	<p>
+		Hai dòng giữa bảng là chỗ cần đọc chậm: <strong>Entity không phải database</strong> — một class entity chỉ mô tả
+		<em>một bảng</em>; và <strong>một object entity tương ứng <em>một dòng</em></strong>, không phải cả bảng. Recipe
+		Finder cần hai bảng — <code>recipes</code> cho công thức đã bookmark, <code>ingredients</code> cho nguyên liệu của
+		từng công thức — nên sẽ có hai class entity, hai interface DAO, và một class database gắn tất cả lại.
+	</p>
 
 	<h2 id="entities">8. Entities — khai báo bảng bằng một data class</h2>
 	<p>
-		Recipe Finder cần hai loại entity để lưu công thức: <code>RecipeDb</code> và <code>IngredientDb</code>. Bắt đầu bằng
-		việc tạo package <code>database</code> bên trong package <code>data</code>, rồi tạo file <code>RecipeDb.kt</code>.
+		Vì sao cần <code>@Entity</code>? Vì Room không tự biết class nào của bạn muốn được lưu. Câu lệnh
+		<code>@Entity</code> nói với Room: <em>instance của class này map với các dòng trong một bảng</em> — property nào
+		là cột nào, property nào là khoá chính. Tạo package <code>database</code> bên trong <code>data</code>, rồi tạo
+		file <code>RecipeDb.kt</code>:
 	</p>
 	<h3>8.1. <code>RecipeDb</code> — bảng <code>recipes</code></h3>
 	<Code code={recipeDbCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Đoạn code trên có năm điểm cần giải thích. Bảng dưới đây đi lần lượt từng điểm, kèm phần bổ sung cho người mới:
+		Đoạn code trên có năm điểm cần giải thích, đi lần lượt:
 	</p>
 	<table class="api">
 		<thead>
@@ -227,62 +226,48 @@ suspend fun getAllRecipes(): List<RecipeDb>
 			<tr>
 				<td>1</td>
 				<td><code>@Parcelize</code></td>
-				<td>Kotlin dùng annotation này để <em>tự sinh</em> phần cài đặt <code>Parcelable</code> cho class.
-					<code>Parcelable</code> là một interface làm việc <em>serialize</em> và <em>deserialize</em> một object —
-					tức đóng gói object thành dạng có thể truyền đi, rồi mở gói lại. Hữu ích khi cần chuyển dữ liệu giữa các
-					activity, fragment hay component khác trong app Android. <strong>Không liên quan gì tới Room.</strong></td>
+				<td>Đã gặp ở Chương 10.1: annotation này bảo plugin <code>kotlin-parcelize</code> tự sinh phần cài đặt
+					<code>Parcelable</code> — giao ước của Android để gói/mở object khi truyền giữa các thành phần của app.
+					<strong>Không liên quan gì tới Room.</strong></td>
 			</tr>
 			<tr>
 				<td>2</td>
 				<td><code>@Entity(tableName = "recipes")</code></td>
-				<td>Nói với Room: đây là một class entity của database. <code>tableName</code> đặt tên bảng là
-					<code>recipes</code> — nhớ tên này, vì các câu <code>@Query</code> ở mục 9 phải viết đúng nó.</td>
+				<td>Khai đây là một entity — tức một bảng. <code>tableName</code> đặt tên bảng là <code>recipes</code>;
+					không đặt thì mặc định lấy tên class. <strong>Nhớ tên này</strong>: các câu <code>@Query</code> ở mục 9
+					phải viết đúng nó, và Room sẽ bắt lỗi ngay lúc build nếu không khớp.</td>
 			</tr>
 			<tr>
 				<td>3</td>
 				<td><code>data class RecipeDb(...)</code></td>
-				<td>Constructor chính của <code>RecipeDb</code> nhận đối số cho <em>tất cả</em> property, và các property đều
-					<strong>có giá trị mặc định</strong>. Lợi ích rất cụ thể: nhờ có mặc định, bạn tạo được một recipe chỉ với
-					<em>một phần</em> danh sách property. Chương 10.3, mục 11 sẽ cho thấy chỗ này được khai thác thật.</td>
+				<td>Constructor nhận đối số cho <em>tất cả</em> property, và các property đều <strong>có giá trị mặc
+					định</strong>. Lợi ích rất cụ thể: nhờ có mặc định, bạn tạo được một recipe chỉ với <em>một phần</em>
+					danh sách property. Chương 10.3, mục 11 sẽ cho thấy chỗ này được khai thác thật.</td>
 			</tr>
 			<tr>
 				<td>4</td>
 				<td><code>@PrimaryKey(autoGenerate = false)</code></td>
-				<td>Property <code>id</code> được đánh dấu là <strong>khoá chính</strong>. Mỗi Entity phải có ít nhất một khoá
-					chính. Khoá chính là giá trị <em>không được trùng</em> giữa các dòng — nó là cách database phân biệt dòng này
-					với dòng kia. <em>(Về <code>autoGenerate</code>, xem mục "Cạm bẫy &amp; tài liệu lỗi thời" ở cuối chương —
-					đây là chỗ người mới hay hiểu sai nhất.)</em></td>
+				<td>Property <code>id</code> là <strong>khoá chính</strong> — giá trị không trùng giữa các dòng, cách
+					database định danh từng dòng. <code>autoGenerate = false</code> nghĩa là Room <strong>không</strong> tự
+					sinh số: bạn phải tự cấp <code>id</code> khi insert. Vì sao chọn false — xem mục "Cạm bẫy" ở cuối bài,
+					đây là chỗ người mới hay hiểu sai nhất.</td>
 			</tr>
 			<tr>
 				<td>5</td>
 				<td><code>@ColumnInfo(name = "...")</code> + các mặc định</td>
-				<td>Đặt tên cột trong database — có thể khác tên property Kotlin. Các field còn lại đều được khai kèm giá trị
-					mặc định.</td>
+				<td>Đặt tên cột trong database — có thể khác tên property Kotlin. Ở đây các cột giữ nguyên tên property,
+					nên <code>@ColumnInfo</code> nghe như thừa; nó trở nên cần thiết khi muốn tên cột khác tên property.</td>
 			</tr>
 		</tbody>
 	</table>
-
-	<div class="callout note">
-		<strong>Hai chi tiết nhỏ nhưng không nên bỏ qua</strong>
-		<p>
-			<strong>Thứ nhất — <code>@Entity</code> nhận nhiều thuộc tính khác.</strong> Project này không dùng chúng, nhưng
-			bạn hoàn toàn có thể áp dụng khi cần:
-		</p>
-		<ul>
-			<li><code>foreignKeys()</code> — danh sách ràng buộc <em>khoá ngoại</em>: buộc một cột phải trỏ tới một dòng tồn
-				tại ở bảng khác.</li>
-			<li><code>indices()</code> — danh sách <em>index</em> để thêm vào bảng: giúp tìm kiếm theo cột đó nhanh hơn.</li>
-			<li><code>primaryKeys()</code> — danh sách tên cột làm khoá chính. Không cần nếu đã dùng annotation
-				<code>@PrimaryKey</code>. (Dùng khi khoá chính gồm <em>nhiều cột</em> ghép lại.)</li>
-			<li><code>tableName()</code> — tên bảng dùng trong database. Nếu không đặt, mặc định lấy <em>tên class</em>.</li>
-		</ul>
-		<p>
-			<strong>Thứ hai — Room tìm field ở đâu:</strong> Room xem <em>cả</em> đối số của constructor <em>và</em> property
-			của class để xác định các field của bảng. Trong trường hợp này, bạn chỉ dùng property để định nghĩa field. Điều
-			này nghe nhỏ nhưng giải thích được một lỗi hay gặp: nếu bạn thêm một property phụ (ví dụ một giá trị tính toán)
-			vào class Entity mà không đánh dấu <code>@Ignore</code>, Room sẽ tưởng đó là một cột và đòi có cột tương ứng.
-		</p>
-	</div>
+	<p class="notice">
+		<strong>Room tìm field của bảng ở đâu?</strong> Room xem <em>cả</em> đối số của constructor <em>và</em> property
+		của class — không chỉ những property có <code>@ColumnInfo</code>. Vì vậy nếu bạn thêm một property phụ (ví dụ một
+		giá trị chỉ để tính toán trong code) mà không nói gì, Room sẽ tưởng đó là một cột và đòi cột tương ứng trong
+		bảng. Cách nói "property này chỉ sống trong code Kotlin, đừng đưa vào bảng" là annotation
+		<code>@Ignore</code> — project này không cần nó vì mọi property của hai entity đều là dữ liệu thật, nhưng bạn sẽ
+		gặp nó khi đọc code của người khác.
+	</p>
 	<h3>8.2. <code>IngredientDb</code> — bảng <code>ingredients</code></h3>
 	<p>
 		Tạo <code>IngredientDb.kt</code> trong cùng package <code>data/database</code>. Nhìn nhanh thì class này
@@ -297,7 +282,6 @@ suspend fun getAllRecipes(): List<RecipeDb>
 		<code>findIngredientsByRecipe(id)</code> ở mục 9 hoạt động, cũng là cơ chế đứng sau danh sách đi chợ ở Chương 10.4,
 		mục 18.3.
 	</p>
-
 	<div class="callout">
 		<strong>Quan hệ 1-nhiều, và vì sao ở đây nó "làm bằng tay"</strong>
 		<p>
@@ -306,12 +290,12 @@ suspend fun getAllRecipes(): List<RecipeDb>
 			<code>IngredientDb.recipeId</code> giữ giá trị <code>RecipeDb.id</code>.
 		</p>
 		<p>
-			Điều đáng chú ý: project <strong>không</strong> khai <code>foreignKeys</code> (khoá ngoại) như thuộc tính vừa được
-			nhắc ở mục 8.1. Nghĩa là database <em>không tự kiểm tra</em> rằng <code>recipeId</code> có trỏ tới một công thức
-			thật hay không, và <em>không tự xoá</em> nguyên liệu khi công thức bị xoá. Chính vì vậy Repository phải có hàm
-			<code>deleteRecipeIngredients(recipeId)</code> và ViewModel phải gọi nó <em>bằng tay</em> mỗi lần xoá bookmark
-			(xem Chương 10.3, mục 11). Nếu có khai <code>foreignKeys</code> kèm <code>onDelete = CASCADE</code>, database sẽ
-			tự dọn.
+			Điều đáng chú ý: project <strong>không</strong> khai <code>foreignKeys</code> (khoá ngoại) — thuộc tính của
+			<code>@Entity</code> buộc một cột phải trỏ tới một dòng tồn tại ở bảng khác. Nghĩa là database <em>không tự
+			kiểm tra</em> rằng <code>recipeId</code> có trỏ tới một công thức thật hay không, và <em>không tự xoá</em> nguyên
+			liệu khi công thức bị xoá. Chính vì vậy Repository phải có hàm <code>deleteRecipeIngredients(recipeId)</code>
+			và ViewModel phải gọi nó <em>bằng tay</em> mỗi lần xoá bookmark (xem Chương 10.3, mục 11). Nếu có khai
+			<code>foreignKeys</code> kèm <code>onDelete = CASCADE</code>, database sẽ tự dọn.
 		</p>
 		<p>
 			Đây là kiểu chi tiết cho thấy vì sao nên đọc code chứ không chỉ đọc mô tả: một dòng <em>không được viết</em> trong
@@ -319,28 +303,42 @@ suspend fun getAllRecipes(): List<RecipeDb>
 		</p>
 	</div>
 	<p class="notice">
-		<strong>Thêm một chỗ đáng để ý về <code>recipeId: Int?</code>:</strong> dấu hỏi ở cuối kiểu là cú pháp Kotlin cho
-		"kiểu này cho phép giá trị <code>null</code>". <code>Int</code> thì <em>bắt buộc</em> luôn có một số; <code>Int?</code>
-		thì có thể là một số, <em>hoặc</em> là <code>null</code> — tức "không có giá trị nào". Áp vào bảng: cột
-		<code>recipeId</code> được phép để trống, nghĩa là một nguyên liệu <em>có thể</em> không thuộc công thức nào. Cái giá
-		của lựa chọn đó là ở mọi nơi đọc <code>recipeId</code>, Kotlin sẽ buộc bạn xử lý khả năng null (dùng <code>?.</code>,
-		<code>?:</code> hoặc kiểm tra trước) — trình biên dịch không cho bạn coi nó như một số bình thường. Với app này thì
-		trường hợp null không bao giờ xảy ra: <code>extendedIngredientToIngredientDb(recipeId, ...)</code> luôn truyền một id
-		thật vào. Vậy nên đây là một chỗ mà khai chặt tay hơn (<code>Int</code>, không dấu hỏi) sẽ đơn giản hơn: kiểu dữ liệu
-		sẽ nói đúng sự thật của app, và bạn bớt được một loạt kiểm tra null vô ích.
+		<strong>Một chỗ đáng để ý về <code>recipeId: Int?</code>:</strong> dấu hỏi ở cuối kiểu là cú pháp Kotlin cho
+		"kiểu này cho phép giá trị <code>null</code>". Áp vào bảng: cột <code>recipeId</code> được phép để trống, nghĩa là
+		một nguyên liệu <em>có thể</em> không thuộc công thức nào. Với app này thì trường hợp null không bao giờ xảy ra —
+		hàm dịch dữ liệu luôn truyền một id thật vào. Vậy nên đây là một chỗ mà khai chặt tay hơn (<code>Int</code>, không
+		dấu hỏi) sẽ đơn giản hơn: kiểu dữ liệu sẽ nói đúng sự thật của app, và bạn bớt được một loạt kiểm tra null vô ích.
 	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Mở <code>IngredientDb.kt</code> rồi trả lời mà không nhìn lên: <strong>(a)</strong> một object
+			<code>IngredientDb</code> tương ứng với bao nhiêu dòng của bảng <code>ingredients</code>? <strong>(b)</strong> Nếu
+			hai nguyên liệu khác tên nhưng cùng <code>id</code> được insert vào, chuyện gì xảy ra ở tầng database — và cái gì
+			quyết định chuyện đó?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>(a)</strong> Đúng một dòng — object là hình ảnh của một dòng, class là hình ảnh của cả bảng.
+				<strong>(b)</strong> Cả hai không thể cùng tồn tại: khoá chính <code>id</code> buộc giá trị không trùng, nên
+				lệnh insert thứ hai va vào ràng buộc khoá chính. Chuyện nó được xử lý thế nào (báo lỗi, bỏ qua, hay ghi đè) là
+				một <em>quyết định</em> — chính là chủ đề <code>onConflict</code> ở mục 9.2.
+			</p>
+		</details>
+	</div>
 
 	<h2 id="daos">9. DAOs — nơi định nghĩa mọi thao tác được phép với dữ liệu</h2>
 	<p>
-		Tiếp theo là định nghĩa <em>data access object</em> — thứ đọc và ghi từ database. Tạo file <code>RecipeDao.kt</code>
-		trong <code>data/database</code>.
+		Entity mô tả dữ liệu <em>trông như thế nào</em>; nó không làm gì cả. Câu hỏi kế tiếp: <em>được phép làm gì với dữ
+		liệu đó?</em> Câu trả lời nằm ở <strong>DAO — Data Access Object</strong>: một interface khai báo các thao tác
+		đọc/ghi mà app được phép thực hiện với database. Tạo file <code>RecipeDao.kt</code> trong <code>data/database</code>:
 	</p>
 	<Code code={recipeDaoCode} lang="kotlin" theme="github-dark" />
 	<p>
-		<code>RecipeDao</code> định nghĩa cái mà giới database truyền thống gọi là các thao tác <strong>CRUD</strong>. CRUD là
-		chữ viết tắt của bốn việc cơ bản mà bất kỳ nơi lưu dữ liệu nào cũng phải làm được: <em>Create</em> (tạo mới),
-		<em>Read</em> (đọc), <em>Update</em> (sửa), <em>Delete</em> (xoá). Nhớ bốn chữ này thì bạn đọc được cấu trúc của mọi
-		DAO, mọi API, mọi lớp lưu trữ:
+		<code>RecipeDao</code> định nghĩa các thao tác CRUD — bốn việc cơ bản mà bất kỳ nơi lưu dữ liệu nào cũng phải làm
+		được: <em>Create</em> (tạo mới), <em>Read</em> (đọc), <em>Update</em> (sửa), <em>Delete</em> (xoá). Nhớ bốn chữ này
+		thì bạn đọc được cấu trúc của mọi DAO, mọi API, mọi lớp lưu trữ:
 	</p>
 	<table class="api">
 		<thead>
@@ -354,12 +352,13 @@ suspend fun getAllRecipes(): List<RecipeDb>
 		</tbody>
 	</table>
 	<p>
-		Và đây là một câu rất cần nhớ: <strong>mọi truy cập tới dữ liệu recipe sẽ đi qua class này.</strong> Bạn được quyền
-		đặt tên hàm tuỳ ý — sức mạnh thật nằm ở các <em>annotation</em>. Bốn annotation <code>@Query</code>,
-		<code>@Insert</code>, <code>@Update</code>, <code>@Delete</code> cung cấp cho Room thông tin quan trọng, và Room dùng
-		thông tin đó để sinh ra code tự động chuyển data entity của bạn thành dòng database và ngược lại.
-	</p>
+		Và đây là một câu rất cần nhớ: <strong>mọi truy cập tới dữ liệu recipe sẽ đi qua interface này.</strong> Bạn được
+		quyền đặt tên hàm tuỳ ý — sức mạnh thật nằm ở các <em>annotation</em>: <code>@Query</code>, <code>@Insert</code>,
+		<code>@Update</code>, <code>@Delete</code> cung cấp cho Room thông tin về thao tác, và Room dùng thông tin đó để
+		<em>sinh ra phần cài đặt</em> lúc biên dịch — đúng cơ chế KSP đã nói ở Chương 10.1. Lưu ý trạng thái "không có thân
+		hàm" của mọi hàm trong interface: chúng là <em>khai báo</em>, không phải <em>bản cài đặt</em>.
 
+	</p>
 	<h3>9.1. Sáu điểm cần nắm trong <code>RecipeDao</code></h3>
 	<table class="api">
 		<thead>
@@ -368,22 +367,22 @@ suspend fun getAllRecipes(): List<RecipeDb>
 		<tbody>
 			<tr>
 				<td>1</td>
-				<td><code>@Dao</code> nói với Room đây là một <em>Data Access Object</em>. Class DAO <strong>phải</strong> là
+				<td><code>@Dao</code> nói với Room đây là một Data Access Object. DAO <strong>phải</strong> là
 					<code>interface</code> hoặc <code>abstract class</code>. Room tạo class cụ thể <em>lúc biên dịch</em> dựa trên
-					các định nghĩa hàm bạn viết — đúng cơ chế KSP đã nói ở Chương 10.1.</td>
+					các định nghĩa hàm bạn viết — đó là lý do bạn không viết một dòng cài đặt nào.</td>
 			</tr>
 			<tr>
 				<td>2</td>
 				<td><code>addRecipe()</code> dùng <code>@Insert</code>: lưu <em>một</em> object <code>RecipeDb</code> vào
-					database và trả về khoá chính mới ứng với recipe mới đó. Thuộc tính <code>onConflict</code> của
-					<code>@Insert</code> định nghĩa <em>chuyện gì xảy ra nếu đã tồn tại một bản ghi cùng khoá chính</em>.</td>
+					database. Thuộc tính <code>onConflict</code> định nghĩa <em>chuyện gì xảy ra nếu đã tồn tại một bản ghi cùng
+					khoá chính</em> — chi tiết ở mục 9.2.</td>
 			</tr>
 			<tr>
 				<td>3</td>
-				<td>Hàm này trả về <em>một</em> object <code>RecipeDb</code>. <code>@Query</code> nói với Room cách lấy một
-					recipe duy nhất theo <code>id</code>. Để chạy truy vấn, <strong>Room lấy các đối số truyền vào hàm và thay vào
-					các chuỗi <code>:?</code> khớp trong câu query</strong>, trong đó <code>?</code> khớp với <em>tên đối số</em>
-					của hàm. Ở đây <code>:id</code> được thay bằng giá trị của đối số <code>id</code>.</td>
+				<td><code>findRecipeById()</code> trả về <em>một</em> object <code>RecipeDb</code>. <code>@Query</code> nói với
+					Room cách lấy một recipe duy nhất theo <code>id</code>. Để chạy truy vấn, <strong>Room lấy các đối số truyền
+					vào hàm và nối vào các chỗ <code>:tên</code> khớp trong câu query</strong> — ở đây <code>:id</code> nhận giá
+					trị của đối số <code>id</code>.</td>
 			</tr>
 			<tr>
 				<td>4</td>
@@ -412,9 +411,12 @@ suspend fun getAllRecipes(): List<RecipeDb>
 		<pre class="tree">@Query("SELECT * FROM recipes WHERE id = :id")
 suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		<p>
-			Chuỗi <code>:id</code> trong câu SQL <em>không</em> là một biến Kotlin bị nội suy vào chuỗi. Nó là một
-			<strong>chỗ giữ tham số</strong> (parameter placeholder) mà Room nối với đối số <em>cùng tên</em> của hàm. Đổi tên
-			đối số thành <code>recipeId</code> mà không sửa câu query thì build lỗi ngay.
+			Đọc câu SQL: <code>SELECT</code> — đọc; <code>*</code> — lấy tất cả các cột; <code>FROM recipes</code> — từ bảng
+			<code>recipes</code> (tên đã khai bằng <code>tableName</code> ở mục 8); <code>WHERE id = :id</code> — chỉ những
+			dòng mà cột <code>id</code> khớp điều kiện. Còn <code>:id</code> là gì? <strong>Nó không phải biến Kotlin bị nội
+			suy vào chuỗi.</strong> Nó là một <strong>chỗ giữ tham số</strong> (parameter placeholder) mà Room nối với đối số
+			<em>cùng tên</em> của hàm lúc chạy. Đổi tên đối số thành <code>recipeId</code> mà không sửa câu query thì build
+			lỗi ngay — Room đối chiếu hai cái tên đó lúc biên dịch.
 		</p>
 		<p>
 			Vì sao cách này quan trọng: nếu Room cho bạn nối chuỗi kiểu <code>"... WHERE id = " + id</code>, thì với dữ liệu do
@@ -426,36 +428,35 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 	<div class="callout">
 		<strong>Vì sao mọi hàm DAO đều là <code>suspend</code></strong>
 		<p>
-			Chương này không dừng lại giải thích coroutine (đã học ở phần trước), nhưng đây là điểm người mới hay thắc mắc nên
-			cần nhắc lại. <code>suspend</code> nghĩa là hàm chỉ gọi được từ trong một coroutine, và có thể "tạm dừng" rồi tiếp
-			tục sau mà không chặn thread đang chạy.
+			Theo đúng mô hình S1: <code>suspend</code> nói "hàm này được gọi từ trong coroutine/suspend code, và có thể
+			<em>tạm dừng</em> rồi tiếp tục sau mà không chặn thread đang chạy". Hai điều nó <em>không</em> nghĩa — nhắc lại vì
+			đây là chỗ hay suy diễn quá: <code>suspend</code> <strong>không</strong> tự chuyển hàm sang thread nền, và
+			<strong>không</strong> tự chọn dispatcher.
 		</p>
 		<p>
-			Lý do bắt buộc với database: đọc/ghi ổ đĩa mất thời gian. Nếu chạy trên <em>main thread</em> (thread vẽ giao diện),
-			giao diện sẽ đứng — và Room thực ra <strong>chủ động chặn bạn</strong>: gọi một hàm DAO không phải suspend trên main
-			thread sẽ khiến app crash kèm thông báo kiểu "Cannot access database on the main thread". Đánh dấu
-			<code>suspend</code> là cách nói với Room "tôi sẽ gọi nó trong coroutine", và Chương 10.3, mục 13 sẽ cho thấy
-			ViewModel còn nói rõ hơn nữa: chạy trên <code>Dispatchers.IO</code>.
+			Lý do DAO cần nó: Room <strong>chủ động chặn</strong> việc gọi database trên main thread — thread vẽ giao diện —
+			vì đọc/ghi ổ đĩa mất thời gian sẽ làm giao diện đứng. Gọi một hàm DAO không phải suspend trên main thread sẽ
+			làm app crash với thông báo kiểu "Cannot access database on the main thread". Đánh dấu <code>suspend</code> là
+			cách khai "hàm này dành cho coroutine code".
+		</p>
+		<p>
+			Và một quy tắc để mang theo: <strong>đừng thêm <code>withContext(Dispatchers.IO)</code> chỉ vì hàm "chạm vào
+			database".</strong> Các hàm DAO suspend của Room được thiết kế để gọi từ coroutine code mà người gọi không phải
+			tự quản lý luồng; chỗ quyết định luồng trong app này thuộc về tầng trên, và Chương 10.3 sẽ bàn chuyện đó tại đúng
+			code của nó.
 		</p>
 	</div>
-	<p class="notice">
-		<strong>Hai chỗ để đi sâu thêm khi bạn muốn:</strong> về các lựa chọn <code>onConflict</code>, tài liệu chính thức nằm
-		ở <code>developer.android.com/reference/androidx/room/OnConflictStrategy</code>; về cách SQLite định nghĩa từng chiến
-		lược xung đột, xem <code>sqlite.org/lang_conflict.html</code>. Về SQL nói chung, xin nhấn lại một lần nữa: <em>bạn
-		không cần biết nhiều SQL để dựng app này</em>, và nếu muốn học thêm cú pháp SQLite thì đọc
-		<code>sqlite.org/lang.html</code>.
-	</p>
 
-	<h3>9.2. <code>OnConflictStrategy</code> — lựa chọn thực sự quyết định hành vi app</h3>
+	<h3>9.2. <code>onConflict</code> — một quyết định chính sách, không phải trang trí</h3>
 	<p>
-		Định nghĩa ngắn gọn thì <code>onConflict</code> "định nghĩa chuyện gì xảy ra nếu trùng khoá chính" — nhưng nói vậy rồi
-		bỏ qua thì thiệt, vì lựa chọn này ảnh hưởng trực tiếp tới hành vi bookmark mà người dùng nhìn thấy. Dưới đây là toàn bộ
-		năm giá trị của <code>androidx.room.OnConflictStrategy</code>, đặt cạnh câu hỏi "app sẽ làm gì". Ba giá trị đầu là ba
-		giá trị hay dùng nhất:
+		<code>@Insert(onConflict = OnConflictStrategy.IGNORE)</code> trả lời câu hỏi từ kiểm tra nhanh ở mục 8: khi lệnh
+		insert va vào ràng buộc khoá chính (đã có dòng cùng <code>id</code>), app <em>phải</em> làm gì? Đó là một
+		<strong>quyết định chính sách</strong> — không có đáp án đúng tuyệt đối, chỉ có lựa chọn phù hợp với hành vi app mong
+		muốn:
 	</p>
 	<table class="cmp">
 		<thead>
-			<tr><th>Giá trị</th><th>Room làm gì khi trùng khoá chính</th><th>Nếu Recipe Finder dùng nó</th></tr>
+			<tr><th>Lựa chọn</th><th>Room làm gì khi trùng khoá chính</th><th>Nếu Recipe Finder dùng nó</th></tr>
 		</thead>
 		<tbody>
 			<tr>
@@ -466,38 +467,29 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 			<tr>
 				<td><code>REPLACE</code></td>
 				<td>Xoá dòng cũ rồi chèn dòng mới vào chỗ đó.</td>
-				<td>Bookmark lại sẽ <em>ghi đè</em> bằng dữ liệu mới nhất từ API. Hợp nếu bạn muốn làm mới nội dung — nhưng lưu
-					ý: vì là "xoá rồi chèn", các dòng khác trỏ tới nó qua khoá ngoại có thể bị ảnh hưởng.</td>
+				<td>Bookmark lại sẽ <em>ghi đè</em> bằng dữ liệu mới nhất từ API. Hợp nếu bạn muốn làm mới nội dung.</td>
 			</tr>
 			<tr>
 				<td><code>ABORT</code><br /><em>(mặc định nếu không ghi <code>onConflict</code>)</em></td>
-				<td>Huỷ giao dịch và <strong>ném lỗi</strong>.</td>
+				<td>Huỷ lệnh và <strong>ném lỗi</strong>.</td>
 				<td>Bookmark lại một công thức cũ → app crash nếu không bọc <code>try/catch</code>. Đây là lý do dòng
-					<code>onConflict = OnConflictStrategy.IGNORE</code> không phải trang trí.</td>
-			</tr>
-			<tr>
-				<td><code>ROLLBACK</code><br /><em>(đã deprecated)</em></td>
-				<td>Huỷ <em>cả</em> transaction đang mở rồi ném lỗi — mạnh tay hơn <code>ABORT</code>, vốn chỉ huỷ lệnh hiện
-					tại.</td>
-				<td>Không nên dùng nữa: Room đã đánh dấu deprecated vì hành vi này không tương thích với cách Room quản lý
-					transaction. Biết để đọc được code cũ.</td>
-			</tr>
-			<tr>
-				<td><code>FAIL</code><br /><em>(đã deprecated)</em></td>
-				<td>Dừng ngay lệnh đang chạy và ném lỗi, nhưng <em>giữ lại</em> các thay đổi đã kịp thực hiện trước đó trong
-					cùng lệnh.</td>
-				<td>Cũng không nên dùng nữa, và cũng nguy hiểm hơn: bạn có thể còn lại dữ liệu ghi dở. Với app này,
-					<code>IGNORE</code> vẫn là lựa chọn đúng.</td>
+					<code>onConflict = IGNORE</code> không phải trang trí.</td>
 			</tr>
 		</tbody>
 	</table>
-
+	<p>
+		Chú ý nói cho đúng: <code>IGNORE</code> là lựa chọn <em>đúng cho tình huống này</em>, không phải "luôn là lựa chọn
+		đúng". Với dữ liệu mà bản mới cần thắng bản cũ (ví dụ đồng bộ từ server), <code>REPLACE</code> có thể phù hợp hơn.
+		Đọc DAO của project khác, hãy tự hỏi: <em>app muốn chuyện gì xảy ra khi trùng khoá?</em> — rồi chiến lược sẽ tự
+		nói lên ý định của người viết. (SQLite còn có vài chiến lược khác, trong đó hai cái đã bị đánh dấu deprecated; bạn
+		sẽ gặp chúng trong tài liệu chính thức nếu cần.)
+	</p>
 	<h3>9.3. <code>IngredientDao</code></h3>
 	<p>
 		Tạo <code>IngredientDao.kt</code> cùng package. Về mặt cấu trúc nó lặp lại đúng khuôn của <code>RecipeDao</code>: một
 		<code>@Insert</code> với <code>onConflict = OnConflictStrategy.IGNORE</code>, các <code>@Query</code> để đọc, một
 		<code>@Update</code>, một <code>@Delete</code>. Nhưng nó có thêm <strong>một hàm mà <code>RecipeDao</code> không
-		có</strong> — và đó là hàm quan trọng nhất của cả chương về mặt tính năng.
+		có</strong> — và đó là hàm quan trọng nhất của cả bài về mặt tính năng.
 	</p>
 	<Code code={ingredientDaoCode} lang="kotlin" theme="github-dark" />
 	<p>
@@ -517,10 +509,11 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		tí nữa (mục 10, phần c) bạn sẽ thấy Room còn kiểm tra chính điều này lúc build.
 	</p>
 
-	<h2 id="database-class">10. Database — mảnh cuối, và pattern Singleton</h2>
+	<h2 id="database-class">10. Database — mảnh cuối, nối mọi thứ thành một cửa vào</h2>
 	<p>
-		Mảnh cuối để hoàn tất bộ class Room là chính lớp Database. Tạo <code>RecipeDatabase.kt</code> trong
-		<code>data/database</code>.
+		Mảnh cuối để hoàn tất bộ class Room là chính lớp Database. Nếu giữ ẩn dụ nhà hàng của Chương 10.1: Entity là thực
+		đơn, DAO là bồi bàn, thì <strong><code>@Database</code> là cả nhà hàng</strong> — nơi biết có những bàn nào và giao
+		cho bạn đúng bồi bàn. Tạo <code>RecipeDatabase.kt</code> trong <code>data/database</code>:
 	</p>
 	<Code code={recipeDatabaseCode} lang="kotlin" theme="github-dark" />
 	<h3>a) Bảy điểm cần nắm trong <code>RecipeDatabase</code></h3>
@@ -531,15 +524,19 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		<tbody>
 			<tr>
 				<td>1</td>
-				<td><code>@Database</code> cho Room biết đây là một class Database. <code>entities</code> là thuộc tính
-					<strong>bắt buộc</strong>, khai một mảng gồm <em>tất cả</em> entity mà database dùng — ở đây là 2 entity. Room
-					<strong>yêu cầu</strong> class database phải <code>abstract</code> và kế thừa <code>RoomDatabase</code>.</td>
+				<td><code>@Database</code> cho Room biết đây là định nghĩa database. <code>entities</code> là thuộc tính
+					<strong>bắt buộc</strong>: danh sách <em>tất cả</em> entity mà database chứa — ở đây là 2 class entity, tức
+					2 bảng. <code>version = 1</code> là <strong>số phiên bản schema</strong> — Room dùng nó để biết cấu trúc
+					bảng thay đổi lúc nào; nói cho đúng ngay từ đầu: đây là version của <em>cấu trúc database</em>, không liên
+					quan gì tới versionCode/versionName của app hay version của thư viện Gradle. <code>exportSchema = false</code>
+					bảo Room đừng xuất file mô tả schema ra ngoài lúc build — liên quan tới migration, bài mở rộng O5.</td>
 			</tr>
 			<tr>
 				<td>2</td>
-				<td>Hai hàm abstract <code>recipeDao</code> và <code>ingredientDao</code> trả về interface DAO. Điểm cần nhấn:
-					bạn muốn bao nhiêu DAO cũng được. Khai <code>abstract</code> vì <strong>Room tự cài đặt</strong>
-					<code>RecipeDao</code> và <code>IngredientDao</code> giúp bạn, dựa trên interface bạn đã viết ở mục 9.</td>
+				<td>Room <strong>yêu cầu</strong> class database phải <code>abstract</code> và kế thừa
+					<code>RoomDatabase</code>. Hai hàm abstract <code>recipeDao()</code> và <code>ingredientDao()</code> trả về
+					interface DAO — khai <code>abstract</code> vì <strong>Room tự cài đặt</strong> chúng, dựa trên các interface
+					đã viết ở mục 9. Muốn bao nhiêu DAO cũng được; mỗi DAO phụ trách một nhóm thao tác.</td>
 			</tr>
 			<tr>
 				<td>—</td>
@@ -572,7 +569,8 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 				<td><strong>Singleton là gì:</strong> một cách viết class sao cho trong cả app chỉ tồn tại <em>đúng một</em>
 					object của class đó, và mọi nơi cần dùng đều lấy về cùng object ấy. Vì sao cần ở đây: mở kết nối database là
 					việc tốn tài nguyên. Nếu mỗi màn hình tự tạo một <code>RecipeDatabase</code>, bạn có nhiều kết nối tới cùng
-					một file — vừa tốn, vừa dễ tranh chấp ghi. Singleton đảm bảo cả app dùng đúng <em>một</em> object.</td>
+					một file — vừa tốn, vừa dễ tranh chấp ghi. Singleton đảm bảo cả app dùng đúng <em>một</em> object: người gọi
+					đầu tiên kích hoạt tạo, những người gọi sau nhận lại đúng object đã có.</td>
 			</tr>
 			<tr>
 				<td><code>companion object</code></td>
@@ -585,13 +583,15 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 				<td>Chính comment trong file đã nói: giá trị của biến volatile <em>không bao giờ bị cache</em>, mọi lần đọc-ghi
 					đều đi thẳng vào main memory. Nhờ vậy <code>INSTANCE</code> luôn là bản mới nhất và <em>giống nhau với mọi
 					thread</em>: một thread sửa thì các thread khác thấy ngay. Không có nó, thread B có thể vẫn đọc thấy
-					<code>null</code> sau khi thread A đã tạo xong, và app tạo ra hai database.</td>
+					<code>null</code> sau khi thread A đã tạo xong. Chú ý phạm vi: <code>@Volatile</code> chỉ lo việc
+					<em>hiển thị giá trị mới nhất</em> — nó <strong>không</strong> ngăn hai thread cùng đi vào một đoạn code.</td>
 			</tr>
 			<tr>
 				<td><code>synchronized(this)</code></td>
 				<td>Comment trong file cũng nói: mỗi thời điểm chỉ <em>một</em> thread được vào khối này. Đây là cái bảo vệ
 					khoảng thời gian giữa "kiểm tra <code>instance == null</code>" và "gán <code>INSTANCE = instance</code>" — nếu
-					hai thread chen vào giữa hai bước đó, cả hai đều thấy null và cả hai đều tạo database.</td>
+					hai thread chen vào giữa hai bước đó, cả hai đều thấy null và cả hai đều tạo database. Tức là:
+					<code>@Volatile</code> và <code>synchronized</code> lo <em>hai việc khác nhau</em>, và mẫu này cần cả hai.</td>
 			</tr>
 		</tbody>
 	</table>
@@ -603,13 +603,23 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		gọi <code>getInstance()</code> gần như đồng thời, cả hai đều thấy <code>INSTANCE == null</code>, cả hai đều tạo một
 		database mới — app kết thúc với hai kết nối tới cùng một file thay vì một.
 	</p>
-
+	<p>
+		Còn ba chi tiết nhỏ trong dòng <code>Room.databaseBuilder(...)</code> — đủ để đọc được nó, không hơn:
+	</p>
+	<ul>
+		<li><code>context.applicationContext</code> — database sống suốt đời app, nên nó giữ <em>application context</em>
+			chứ không giữ <code>Context</code> của một màn hình nào: một Activity có thể bị huỷ và dựng lại liên tục, còn app
+			thì không. (Chi tiết Context đã học ở Chương 1; ở đây chỉ cần nhớ <em>vì sao</em> dùng applicationContext.)</li>
+		<li><code>RecipeDatabase::class.java</code> — class abstract cần Room sinh bản cài đặt; <code>"recipe_database"</code> —
+			tên <em>file</em> database trên máy. Tên nào cũng chạy được, nhưng project này có một chuyện thật sự đang chờ bạn
+			ở mục "Cạm bẫy" về cái tên này.</li>
+		<li><code>.fallbackToDestructiveMigration()</code> — dòng cần được cảnh báo riêng; xem mục "Cạm bẫy" cuối bài trước
+			khi mang nó sang app thật.</li>
+	</ul>
 	<p>
 		Một lưu ý về <em>chỗ dùng</em>: <code>getInstance()</code> được <strong>khai báo</strong> ở đây, nhưng nơi database thật
 		sự được tạo ra và đưa vào app lại nằm ở <strong>Chương 10.3, mục 14</strong>. Khi tới đó bạn sẽ thấy một chuyện đáng chú
-		ý về khối singleton này — chi tiết ở mục "Cạm bẫy &amp; tài liệu lỗi thời" cuối chương. Trong đoạn
-		<code>Room.databaseBuilder(...)</code> ở trên còn một dòng nữa cần được cảnh báo riêng:
-		<code>fallbackToDestructiveMigration()</code>, cũng nằm ở mục "Cạm bẫy" — đọc trước khi bạn mang dòng đó sang app thật.
+		ý về khối singleton này — chi tiết ở mục "Cạm bẫy &amp; tài liệu lỗi thời" cuối chương.
 	</p>
 	<h3>c) Tính năng đáng giá nhất của Room: kiểm SQL ngay lúc biên dịch</h3>
 	<p>
@@ -623,11 +633,6 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		<code>recipe</code> trong một câu <code>@Query</code> ở <code>RecipeDao.kt</code>.
 	</p>
 	<Code code={sqlErrorCode} lang="kotlin" theme="github-dark" />
-	<p>
-		Có một góc lịch sử đáng nhắc ở đây: nếu bạn từng làm việc với SQLite trên Android <em>trước khi</em> có Room, bạn sẽ hiểu
-		điều này giúp được đến mức nào. Room cung cấp một <em>lưới an toàn</em> chống các lỗi gõ sai trong câu SQL.
-	</p>
-
 	<div class="callout">
 		<strong>Vì sao "lúc biên dịch" đổi hẳn cách bạn làm việc</strong>
 		<p>
@@ -646,53 +651,63 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 			trả một object — Room cũng cảnh báo. Đây chính là quy tắc "kiểu trả về cho biết một hay nhiều dòng" ở mục 9.3, nhưng
 			do compiler kiểm hộ.
 		</p>
+		<p>
+			Và nói cho đúng phạm vi: Room kiểm được <strong>nhiều</strong> loại lệch giữa câu SQL và schema đã khai — tên bảng,
+			tên cột, tên tham số, kiểu trả về. Nó <strong>không</strong> bắt được mọi thứ: một câu SQL <em>hợp lệ nhưng sai logic</em>
+			(ví dụ <code>WHERE</code> thiếu điều kiện), hay chuyện dữ liệu thay đổi lúc chạy, vẫn là trách nhiệm của người viết.
+		</p>
 	</div>
 
 	<div class="callout journey">
 		<strong>Tổng kết chương 10.2</strong>
 		<p>
 			Ba annotation bạn vừa viết không phải ba thứ rời rạc — chúng là ba mảnh của <em>một</em> cơ chế duy nhất:
-			<code>@Entity</code> mô tả <strong>bảng</strong> (cột nào, khoá chính nào), <code>@Dao</code> mô tả <strong>câu truy
-			vấn</strong> (thao tác nào được phép, nhận tham số gì, trả về gì), và <code>@Database</code> <strong>gắn hai thứ
-			lại</strong> rồi ra lệnh cho Room sinh code. Thiếu một mảnh thì hai mảnh kia vô nghĩa.
+			<code>@Entity</code> mô tả <strong>bảng</strong> (cột nào, khoá chính nào), <code>@Dao</code> mô tả <strong>các thao
+			tác</strong> (đọc/thêm/sửa/xoá gì, nhận tham số gì, trả về gì), và <code>@Database</code> <strong>gắn hai thứ
+			lại</strong> rồi ra lệnh cho Room sinh code. Thiếu một mảnh thì hai mảnh kia vô nghĩa. Đường đi của một lời hỏi dữ
+			liệu qua bộ ba này:
+		</p>
+		<pre class="tree">người gọi  →  RecipeDatabase   (cửa vào, sinh lúc build)
+            →  RecipeDao          (thao tác đã khai báo)
+            →  SQLite             (câu SQL chạy trên file database)</pre>
+		<p>
+			Những điểm nên nhớ nhất: một object entity là <em>một dòng</em>, không phải cả bảng; khoá chính là định danh của dòng
+			và <code>autoGenerate = false</code> ở đây là một lựa chọn có lý do; kiểu trả về của một hàm DAO cho bạn biết ngay
+			truy vấn khớp một dòng hay nhiều dòng; cơ chế tham số <code>:tên</code> vừa nối đối số với câu SQL vừa miễn phí cho
+			bạn khả năng chống SQL injection; <code>onConflict = IGNORE</code> là một quyết định chính sách ("bookmark lại thì
+			im lặng") chứ không phải trang trí; và <code>suspend</code> ở DAO nghĩa là "gọi từ coroutine code" — không tự nghĩa
+			là "chạy ở thread nền".
 		</p>
 		<p>
-			Những điểm nên nhớ nhất: bảng <code>recipes</code> và <code>ingredients</code> nối với nhau qua cột
-			<code>recipeId</code> mà <em>không</em> có khoá ngoại, nên việc dọn dữ liệu phải làm bằng tay ở tầng trên; kiểu trả
-			về của một hàm DAO cho bạn biết ngay truy vấn khớp một dòng hay nhiều dòng; cơ chế tham số <code>:tên</code> vừa nối
-			đối số với câu SQL vừa miễn phí cho bạn khả năng chống SQL injection; <code>onConflict = IGNORE</code> là dòng quyết
-			định "bookmark lại thì im lặng" chứ không phải trang trí; và mọi hàm DAO là <code>suspend</code> vì đọc-ghi ổ đĩa
-			không được phép chạy trên main thread.
-		</p>
-		<p>
-			Phần thưởng của cả cơ chế này là điều bạn vừa thử ở mục 10, phần c: <strong>SQL sai bị bắt lúc biên dịch</strong>.
-			Bạn khai bằng Kotlin có kiểu, Room đọc phần khai đó lúc build, nên một tên bảng gõ sai hay một kiểu trả về lệch sẽ
-			làm build đỏ trên máy bạn — thay vì làm app crash trên máy người dùng.
+			Phần thưởng của cả cơ chế này là điều bạn vừa thử ở mục 10, phần c: <strong>nhiều lỗi SQL/schema bị bắt lúc biên
+			dịch</strong>. Bạn khai bằng Kotlin có kiểu, Room đọc phần khai đó lúc build, nên một tên bảng gõ sai hay một kiểu
+			trả về lệch sẽ làm build đỏ trên máy bạn — thay vì làm app crash trên máy người dùng.
 		</p>
 	</div>
 	<p>
-		Đến đây bạn đã có đủ ba class Room, nhưng chưa có dòng nào <em>gọi</em> chúng. Chương 10.3 sẽ dựng các tầng đứng trên:
-		Repository bọc DAO lại, <code>Conversions.kt</code> dịch dữ liệu giữa các họ model, ViewModel gọi Repository trên
-		<code>Dispatchers.IO</code>, và cuối cùng là chỗ database được tạo thật rồi phát xuống toàn bộ giao diện.
+		Đến đây bạn đã có đủ ba class Room, nhưng chưa có dòng nào <em>gọi</em> chúng. Bạn đã từng học ở S5 rằng tầng trên chỉ
+		được <em>hỏi dữ liệu</em> qua một biên giới, không chạm thẳng vào data source. Chương 10.3 sẽ dựng đúng biên giới đó trên
+		những class vừa viết: Repository bọc các hàm DAO lại, <code>Conversions.kt</code> dịch dữ liệu giữa các họ model,
+		ViewModel gọi Repository, và cuối cùng là chỗ database được tạo thật rồi phát xuống toàn bộ giao diện.
 	</p>
 
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Bốn mục dưới đây là những chỗ mà code thật lệch khỏi cách nó thường được giải thích, hoặc chỗ mà một dòng code trông vô
-		hại lại có hậu quả lớn. Đây là phần mà người mới hay trượt, và cũng là phần đáng đọc kỹ nhất của chương.
+		hại lại có hậu quả lớn. Đây là phần mà người mới hay trượt, và cũng là phần đáng đọc kỹ nhất của bài.
 	</p>
 	<div class="callout diff">
-		<strong>(a) Cái tên database được chốt ở đầu mục 7 không bao giờ được dùng thật</strong>
+		<strong>(a) Điểm lệch #1 — cái tên database được khai trong <code>getInstance()</code> không bao giờ được dùng thật</strong>
 		<p>
-			Lý thuyết dạy đặt tên database là <code>recipe_database</code>, và ở mục 10 bạn đã thấy đúng tên đó trong
-			<code>Room.databaseBuilder(...)</code> bên trong <code>RecipeDatabase.getInstance()</code>. Nhưng ở Chương 10.3, mục
-			14, cũng chính hướng dẫn đó lại dặn bạn tạo database trong <code>RecipeApp</code> bằng
+			Trong <code>Room.databaseBuilder(...)</code> ở mục 10, tên file database được khai là
+			<code>"recipe_database"</code>. Nhưng ở Chương 10.3, mục 14, nơi database thật sự được tạo ra lại dùng
 			<code>Room.databaseBuilder(this, RecipeDatabase::class.java, <strong>"Recipes"</strong>).build()</code>.
 		</p>
 		<p>
 			Đã kiểm trong code thật: <code>RecipeApp.kt</code> (dòng 58–64) dùng <code>"Recipes"</code>, và không có chỗ nào trong
 			app gọi <code>getInstance()</code>. Nghĩa là <strong>file database trên máy thật tên <code>Recipes</code>, không phải
-			<code>recipe_database</code></strong>. Cái tên được chốt ở đầu mục 7 chỉ tồn tại trong đoạn code không được dùng.
+			<code>recipe_database</code></strong>. Cái tên khai trong <code>getInstance()</code> chỉ tồn tại trong đoạn code
+			không được chạy.
 		</p>
 		<p>
 			<strong>Nên theo cái nào:</strong> về mặt học thì không quan trọng — tên database là tên file, đặt gì cũng chạy. Nhưng
@@ -702,7 +717,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 	</div>
 
 	<div class="callout diff">
-		<strong>(b) Lời giải thích phổ biến về <code>autoGenerate</code> ngược với chính code đi kèm</strong>
+		<strong>(b) Điểm lệch #3 — lời giải thích phổ biến về <code>autoGenerate</code> ngược với chính code đi kèm</strong>
 		<p>
 			Cách <code>autoGenerate</code> thường được giảng nghe rất hợp lý: "thuộc tính <code>autoGenerate</code> tự động nói với
 			Room sinh ra các số tăng dần cho field này", kèm thêm rằng theo thuật ngữ database đây là <em>surrogate key</em> /
@@ -711,7 +726,9 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		<p>
 			Nhưng code ngay bên trên là <code>@PrimaryKey(autoGenerate = <strong>false</strong>)</code>. Với <code>false</code>,
 			Room <strong>không</strong> sinh số nào — bạn <em>bắt buộc</em> phải tự cấp <code>id</code> khi insert. Và đây
-			<strong>không</strong> phải surrogate key, mà là <em>natural key</em> (khoá tự nhiên): id lấy từ bên ngoài.
+			<strong>không</strong> phải surrogate key, mà là <em>natural key</em> (khoá tự nhiên): id lấy từ bên ngoài. Cũng chú ý
+			phạm vi của thuộc tính này: <code>autoGenerate</code> chỉ nói về việc <em>không cấp id</em> khi insert có được Room tự
+			sinh khoá hay không — nó không có nghĩa "mọi field đều được tự sinh giá trị".
 		</p>
 		<p>
 			<strong>Điều đáng chú ý: code mới là cái đúng cho app này.</strong> Mỗi công thức đã có <code>id</code> do API
@@ -727,31 +744,23 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 	</div>
 
 	<div class="callout note">
-		<strong>(c) <code>fallbackToDestructiveMigration()</code> — dòng đáng sợ nhất trong file, và gần như không ở đâu cảnh báo</strong>
+		<strong>(c) <code>fallbackToDestructiveMigration()</code> — đọc kỹ trước khi mang sang app thật</strong>
 		<p>
-			Dòng này xuất hiện trong <code>Room.databaseBuilder(...)</code> ở mục 10 mà thường không được bình luận một chữ nào. Nó
-			cần được hiểu rõ:
+			Dòng này nằm trong <code>Room.databaseBuilder(...)</code> ở mục 10 và thường không được bình luận gì. Khi bạn
+			<strong>đổi cấu trúc bảng</strong> ở bản cập nhật app — thêm cột, đổi tên cột, xoá cột — và tăng <code>version</code>
+			trong <code>@Database</code>, Room cần biết cách chuyển dữ liệu cũ sang cấu trúc mới; việc đó gọi là
+			<strong>migration</strong>. Dòng này nói với Room: <strong>nếu không tìm được đường migrate, hãy xoá sạch database và
+			tạo lại từ đầu</strong> — app không crash, nhưng toàn bộ bookmark của người dùng biến mất sau khi cập nhật.
 		</p>
 		<p>
-			<em>Migration</em> (di trú dữ liệu) là việc xảy ra khi bạn <strong>đổi cấu trúc bảng</strong> ở bản cập nhật app — thêm
-			cột, đổi tên cột, xoá cột — và tăng <code>version</code> trong <code>@Database</code> từ 1 lên 2. Lúc đó, trên máy người
-			dùng đang có database phiên bản 1 với dữ liệu thật. Room cần biết cách chuyển dữ liệu cũ sang cấu trúc mới.
-		</p>
-		<p>
-			<code>fallbackToDestructiveMigration()</code> nói với Room: <strong>nếu không tìm được đường migrate, hãy xoá sạch
-			database và tạo lại từ đầu.</strong> App không crash — nhưng toàn bộ bookmark của người dùng <em>biến mất</em> sau khi
-			cập nhật app.
-		</p>
-		<p>
-			<strong>Nên hiểu thế nào:</strong> khi đang học và đang phát triển, dòng này rất tiện (không phải viết migration cho một
-			database toàn dữ liệu test). Nhưng với app thật đã có người dùng, đây là lựa chọn phải cân nhắc rất kỹ, và cách đúng là
-			viết <code>Migration</code> cụ thể. Nối lại với cảnh báo ở Chương 9 — "dữ liệu này mất khi người dùng xoá app" — bạn có
-			thêm một trường hợp nữa: <em>dữ liệu cũng có thể mất khi bạn cập nhật app, nếu bạn để dòng này.</em>
+			Khi đang học và phát triển, dòng này rất tiện. Với app đã có người dùng thật thì không. Cách viết migration đúng là
+			nội dung bài mở rộng <strong>O5</strong> — khoá chính không dạy nó, chỉ cần bạn nhận ra dòng này <em>không vô hại</em>
+			khi gặp trong code thật.
 		</p>
 	</div>
 
 	<div class="callout diff">
-		<strong>(d) Cả khối <code>getInstance()</code> là code không bao giờ chạy</strong>
+		<strong>(d) Điểm lệch #2 — cả khối <code>getInstance()</code> là code không bao giờ chạy</strong>
 		<p>
 			Đây là điểm lệch đáng chú ý nhất về mặt code. Trong bảy điểm giải thích ở mục 10 phần a, có tới <strong>5 điểm (#3–#7)
 			dành cho khối singleton này</strong> — tức phần lớn công sức giải thích đổ vào đó. Nhưng ở Chương 10.3, mục 14, hướng dẫn
@@ -802,8 +811,9 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 			<code>{AAF}/RecipeApp.kt</code> (58–64).
 		</p>
 		<p>
-			<strong>Phần bổ sung ngoài giáo trình:</strong> bảng 5 chiến lược <code>androidx.room.OnConflictStrategy</code> · cảnh
-			báo mất dữ liệu khi migration · giải thích "vì sao" cho khối singleton.
+			<strong>Phần bổ sung ngoài giáo trình:</strong> khung "quyết định chính sách" cho
+			<code>onConflict</code> (theo tài liệu <code>androidx.room.OnConflictStrategy</code>) · ví dụ kiểm tra nhanh mục 8 ·
+			giải thích "vì sao" cho khối singleton · giới hạn phạm vi "Room bắt được gì lúc biên dịch".
 		</p>
 	</div>
 </section>
