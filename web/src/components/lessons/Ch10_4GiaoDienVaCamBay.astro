@@ -1,5 +1,8 @@
 ---
 // Chương 10.4 — Nối dữ liệu Room vào giao diện thật, rồi đọc lại cả Chương 10 bằng đầu phê phán.
+// Learning job: đường Room→UI trên code thật; LaunchedEffect ở mức đầy đủ (C4 chỉ chạm lần đầu — kế hoạch C4→R4);
+// chọn key; rememberUpdatedState vs remember; rememberCoroutineScope vs LaunchedEffect;
+// quẹt-để-xoá; chỗ bọc withContext(IO) dư (R3 đã hứa); đọc code mẫu phê phán; bảng đối chiếu phiên bản.
 // Code Kotlin trích nguyên văn từ aaf-materials/10-room-db/projects/final/ theo Quyết định #7 (docs/PROJECT_PLAN.md).
 // Phần giải thích tự viết tiếng Việt, diễn giải lại — không copy nguyên văn tài liệu gốc.
 import { Code } from "astro:components";
@@ -52,18 +55,32 @@ fun ShowBookmarks(viewModel: RecipeViewModel) {
 }`;
 
 const recipeDetailsCode = `@Composable
-fun RecipeDetails(recipeId: Int, databaseRecipeId: Int) {
+fun RecipeDetails(recipeId: Int? = null, databaseRecipeId: Int? = null) {
+  val scope = rememberCoroutineScope()
   val prefs = LocalPrefsProvider.current
   val repository = LocalRepositoryProvider.current
   val viewModel: RecipeViewModel = viewModel(factory = viewModelFactory {
     RecipeViewModel(prefs, repository)
   })
+  val recipeState = remember { mutableStateOf<RecipeInformationResponse?>(null) }
   // ...
-  LaunchedEffect(Unit) {
-    if (recipeId != 0) {
-      viewModel.queryRecipe(recipeId)         // lấy từ mạng
-    } else {
-      viewModel.getBookmark(databaseRecipeId) // lấy từ database
+  if (recipeId != null) {
+    LaunchedEffect(Unit) {
+      scope.launch {
+        viewModel.recipeState.collect { state -> recipeState.value = state }
+      }
+      scope.launch {
+        viewModel.queryRecipe(recipeId)          // đường 1: lấy từ mạng
+      }
+    }
+  } else if (databaseRecipeId != null) {
+    LaunchedEffect(Unit) {
+      scope.launch {
+        viewModel.recipeState.collect { state -> recipeState.value = state }
+      }
+      scope.launch {
+        viewModel.getBookmark(databaseRecipeId)  // đường 2: lấy từ database
+      }
     }
   }`;
 
@@ -100,48 +117,82 @@ fun PreviewShowBookmarks() {
 	<div class="callout goals">
 		<strong>Bạn sẽ học được gì trong chương này</strong>
 		<ul>
-			<li>Cách màn hình danh sách bookmark đọc dữ liệu từ database và cho người dùng <em>quẹt để xoá</em> — cùng ba chi
-				tiết Compose trong file đó mà người mới thường bỏ qua: hai coroutine trong một
-				<code>LaunchedEffect</code>, <code>key</code> của <code>LazyColumn</code>, và
-				<code>rememberUpdatedState</code>.</li>
-			<li>Vì sao một màn hình chi tiết duy nhất phục vụ được <strong>hai đường vào</strong> khác nhau (vào từ kết quả
-				tìm kiếm thì gọi mạng, vào từ bookmark thì đọc database) mà phần vẽ giao diện không cần biết dữ liệu tới từ
-				đâu.</li>
-			<li>Vì sao khi ViewModel nhận thêm một tham số thì <em>mọi</em> chỗ tạo nó đều phải sửa — kể cả bốn hàm
-				<code>@Preview</code> — và hệ quả bất ngờ khi preview đọc CompositionLocal.</li>
-			<li>Màn hình Groceries dùng <strong>hai ViewModel cùng lúc</strong>, dữ liệu chảy một chiều từ database ra UI.</li>
-			<li>Bốn lựa chọn lưu trữ khác ngoài Room, và điều quan trọng nhất phải phân biệt: cái nào lưu <em>trên máy</em>,
-				cái nào lưu <em>trên server</em>.</li>
-			<li>Bảng tra nhanh <strong>7 chỗ lý thuyết và code mẫu không khớp</strong> trải khắp Chương 10, kèm lời khuyên nên
-				theo cái nào.</li>
-			<li>Những gì đã thay đổi từ phiên bản Room mà project mẫu ghim tới hôm nay, và phần tổng kết toàn bộ Chương 10.</li>
+			<li>Đọc được <strong>đường Room → UI</strong> trên file thật: dữ liệu đã lưu vào ViewModel ở đâu, giao diện đọc
+				state ở đâu, và một cú quẹt xoá đi ngược lại qua đúng những tầng nào cho tới dòng SQLite bị xoá.</li>
+			<li>Nói đúng <code>LaunchedEffect</code> chạy khi nào — vào composition, key đổi, rời composition — chọn
+				<code>key</code> bằng câu hỏi <em>"việc này phụ thuộc vào cái gì?"</em> (tránh cả ba bẫy key), và phân biệt được
+				<code>rememberUpdatedState</code> với <code>remember</code>, <code>rememberCoroutineScope</code> với
+				<code>LaunchedEffect</code> (bài này là nơi dạy <em>đầy đủ</em>; C4 mới chạm lần đầu).</li>
+			<li>Chứng minh được chỗ bọc <code>withContext(Dispatchers.IO)</code> trong code mẫu là <em>dư</em> — bằng cách đọc
+				xuống ViewModel — và nói được quy tắc: một lần đổi dispatcher cần một lý do chặn thread thật.</li>
+			<li>Chỉ ra được vì sao một màn hình chi tiết phục vụ được <strong>hai nguồn dữ liệu</strong> (mạng và database) mà
+				phần vẽ giao diện không cần biết dữ liệu tới từ đâu.</li>
+			<li>Đọc lại cả Chương 10 bằng đầu phê phán: bảng 7 điểm lệch kèm phân loại (bug / dư / lệch phiên bản / cách làm
+				hợp lệ khác), và bảng đối chiếu giữa bản Room project ghim với Android hôm nay.</li>
 		</ul>
+		<p>
+			<strong>Tại sao điều này quan trọng.</strong> Đây là bài kết Chương 10: đường ống dữ liệu bạn dựng ở 10.2–10.3
+			gặp người dùng thật, và đây cũng là bài "đọc code mẫu phê phán" chính thức của khoá — kỹ năng bạn sẽ dùng với mọi
+			codebase, không riêng Room.
+		</p>
+		<p>
+			<strong>Cần biết trước.</strong> <strong>Chương 10.3</strong> — repository, ba họ model, ViewModel bọc
+			<code>withContext(Dispatchers.IO)</code>, StateFlow. <strong>C4</strong> — lần chạm đầu với
+			<code>LaunchedEffect</code> và vòng đời composable. <strong>S4</strong> — ViewModel, UiState,
+			<code>collectAsStateWithLifecycle()</code>. <strong>S1</strong> — <code>suspend</code>, scope, dispatcher.
+			<strong>Chương 8</strong> — hai cách lắng nghe StateFlow từ Composable. <strong>Chương 9</strong> —
+			CompositionLocal, <code>@Preview</code>.
+		</p>
 	</div>
 	<p>
 		Ở Chương 10.3 bạn đã dựng xong toàn bộ đường ống dữ liệu: DAO nói chuyện với SQLite, <code>RecipeRepository</code>
 		bọc DAO lại thành một cửa duy nhất, <code>RecipeViewModel</code> gọi repository trong
-		<code>withContext(Dispatchers.IO)</code> rồi đẩy kết quả ra ngoài qua <code>StateFlow</code> (một dòng dữ liệu mà
-		giao diện có thể "lắng nghe" liên tục), <code>RecipeApp</code> tạo database và repository một lần cho cả app, và
-		<code>LocalRepositoryProvider</code> — một <code>CompositionLocal</code> (giá trị được phát xuống cả cây giao diện
-		mà không phải truyền qua từng tham số) — mang repository tới bất kỳ Composable nào cần.
+		<code>withContext(Dispatchers.IO)</code> rồi đẩy kết quả ra ngoài qua <code>StateFlow</code>,
+		<code>RecipeApp</code> tạo database và repository một lần cho cả app, và <code>LocalRepositoryProvider</code> mang
+		repository tới bất kỳ Composable nào cần.
 	</p>
 	<p>
-		Đường ống đã có, nhưng người dùng chưa thấy gì. Chương này đóng vòng: nối đầu ra của đường ống vào ba màn hình
-		thật — danh sách bookmark, trang chi tiết công thức, trang danh sách đi chợ — rồi chạy app và nhìn dữ liệu hiện
-		lên. Sau đó ta lùi lại một bước để đọc lại toàn bộ Chương 10 bằng đầu phê phán: chỗ nào code mẫu không khớp lý
-		thuyết, chỗ nào đã lỗi thời so với Android hôm nay, và cuối cùng là tổng kết cả bốn chương nhỏ.
+		Đường ống đã có, nhưng người dùng chưa thấy gì. Chương này đóng vòng: nối đầu ra của đường ống vào ba màn hình thật
+		— danh sách bookmark, trang chi tiết công thức, trang danh sách đi chợ — rồi chạy app và nhìn dữ liệu hiện lên. Sau
+		đó ta lùi lại một bước để đọc lại toàn bộ Chương 10 bằng đầu phê phán: chỗ nào code mẫu không khớp lý thuyết, chỗ
+		nào đã lỗi thời so với Android hôm nay, và cuối cùng là tổng kết cả bốn chương nhỏ.
 	</p>
 
 	<h2 id="bookmarks">16. Bookmarks — quẹt để xoá</h2>
 	<p>
-		Về mặt hướng dẫn từng bước, file <code>ui/recipes/ShowBookmarks.kt</code> chỉ cần <em>một</em> thay đổi duy nhất:
-		tìm <code>// TODO: Provide current item</code> và thay lời gọi bên dưới bằng
+		Về mặt hướng dẫn từng bước, file <code>ui/recipes/ShowBookmarks.kt</code> chỉ cần <em>một</em> thay đổi duy nhất: tìm
+		<code>// TODO: Provide current item</code> và thay lời gọi bên dưới bằng
 		<code>viewModel.deleteBookmark(currentItem)</code>. Nhưng file này chứa nhiều thứ đáng đọc hơn một dòng, nên đây là
-		phần cốt lõi của nó:
+		phần cốt lõi của nó (đoạn dưới đây rút gọn phần vẽ nền icon thùng rác):
 	</p>
 	<Code code={showBookmarksCode} lang="kotlin" theme="github-dark" />
+
+	<h3>16.1. Đọc đường Room → UI trên file này</h3>
 	<p>
-		Ba điểm đáng nắm trong file này:
+		Trước khi nói về từng chi tiết Compose, hãy trả lời câu hỏi chính: <em>dữ liệu đã lưu trong Room đi tới màn hình này
+		bằng con đường nào?</em> Ba chặng, theo đúng mạch đã dựng ở Chương 10.3:
+	</p>
+	<pre class="tree">ĐỌC — dữ liệu tới UI:
+  ViewModel.getBookmarks()        ← nơi dữ liệu persisted "vào" ViewModel (10.3, mục 13)
+      → gán _bookmarksState        (StateFlow; gán .value = phát giá trị mới)
+  ShowBookmarks lắng nghe          ← nơi Compose đọc state
+      → bookmarksState.collect &#123; bookmarkListState.value = it &#125;
+  LazyColumn(items)                ← nơi state thành dòng trên màn hình
+
+GHI — sự kiện quay lại (đường ngược):
+  cú quẹt trên một dòng            ← sự kiện người dùng
+      → confirmValueChange         (mục 16.5)
+      → viewModel.deleteBookmark(currentItem)
+      → repository → DAO (@Delete theo khoá chính) → SQLite</pre>
+	<p>
+		Một chi tiết cách lắng nghe đáng ghi nhận: file này dùng <strong>cách 2</strong> mà Chương 8 đã phân —
+		<code>collect</code> trong effect, vì mỗi lần danh sách đổi cần <em>làm gì đó</em> (ghi vào state cục bộ
+		<code>bookmarkListState</code>). Ở các file khác của cùng project (<code>RecipeList</code>,
+		<code>ChipRow</code>...) state chỉ được <em>đọc để vẽ</em>, nên chúng dùng cách 1 — <code>collectAsState()</code>.
+		Hai cách cho hai nhu cầu, không phải một cái đúng một cái sai.
+	</p>
+	<p>
+		Ba điểm trong file này người mới thường bỏ qua — và mỗi điểm là một bài học Compose:
 	</p>
 	<table class="api">
 		<thead>
@@ -151,58 +202,228 @@ fun PreviewShowBookmarks() {
 			<tr>
 				<td><code>LaunchedEffect(Unit)</code> với <strong>hai</strong> <code>scope.launch</code></td>
 				<td>Coroutine thứ nhất <em>lắng nghe lâu dài</em>: <code>bookmarksState.collect</code> — mỗi lần state đổi thì
-					cập nhật <code>bookmarkListState</code>. Coroutine thứ hai <em>chạy một lần</em>: gọi
-					<code>getBookmarks()</code> để nạp dữ liệu ban đầu. Tách hai cái là đúng, vì <code>collect</code> không bao
-					giờ kết thúc — nếu viết chung một <code>launch</code> thì dòng <code>getBookmarks()</code> sẽ không bao giờ
-					tới lượt chạy.</td>
+					cập nhật <code>bookmarkListState</code>. Coroutine thứ hai <em>chạy một lượt</em>: gọi
+					<code>getBookmarks()</code> để nạp dữ liệu ban đầu. Tách hai cái là bắt buộc, vì <code>collect</code> không
+					bao giờ kết thúc (Chương 8) — nếu viết chung một <code>launch</code> thì dòng
+					<code>getBookmarks()</code> sẽ không bao giờ tới lượt chạy.</td>
 			</tr>
 			<tr>
 				<td><code>key = &#123; index -> bookmarks[index].id &#125;</code></td>
-				<td>Cho <code>LazyColumn</code> biết định danh ổn định của từng dòng. Không có nó, khi xoá một dòng Compose có
-					thể tái sử dụng sai item và bạn thấy animation quẹt nhảy sang dòng khác.</td>
+				<td>Cho <code>LazyColumn</code> biết định danh ổn định của từng dòng (C4 đã dạy <code>key</code> của danh sách).
+					Không có nó, Compose định danh dòng bằng <em>vị trí</em>: xoá một dòng thì các dòng sau trượt lên và bị gán
+					nhầm state của vị trí cũ — animation quẹt nhảy sang dòng khác là hiện tượng điển hình.</td>
 			</tr>
 			<tr>
 				<td><code>rememberUpdatedState(recipe)</code> → <code>currentItem</code></td>
-				<td>Đây chính là <code>currentItem</code> cần truyền vào <code>deleteBookmark</code>. Nó đảm bảo lambda
-					<code>confirmValueChange</code> — được tạo <em>một lần</em> lúc dựng <code>dismissState</code> — luôn đọc
-					được <em>giá trị mới nhất</em> của <code>recipe</code>, chứ không giữ mãi giá trị lúc nó được tạo. Nếu truyền
-					thẳng <code>recipe</code>, bạn có thể xoá đúng thao tác nhưng nhầm công thức.</td>
+				<td>Đây chính là <code>currentItem</code> cần truyền vào <code>deleteBookmark</code>. Lambda
+					<code>confirmValueChange</code> được tạo ra một lần lúc dựng <code>dismissState</code> rồi được giữ lại dùng
+					qua nhiều lần vẽ lại — <code>rememberUpdatedState</code> bảo đảm khi lambda chạy, nó đọc được
+					<em>giá trị mới nhất</em> của <code>recipe</code>, chứ không giữ mãi bản chụp lúc lambda được tạo. Chi tiết
+					ở mục 16.4.</td>
 			</tr>
 		</tbody>
 	</table>
-	<p class="notice">
-		<strong>Một chỗ dư trong code mẫu:</strong> hai chỗ trong file này bọc lời gọi ViewModel trong
-		<code>withContext(Dispatchers.IO) &#123; ... &#125;</code> — nhưng bản thân <code>getBookmarks()</code> và
-		<code>deleteBookmark()</code> <em>đã</em> tự làm <code>withContext(Dispatchers.IO)</code> bên trong (xem Chương
-		10.3, mục 13). Nên đây là chuyển luồng hai lần. Không gây lỗi, chỉ là dư và làm lẫn trách nhiệm: <strong>quyết định
-		chạy ở luồng nào nên thuộc về ViewModel</strong>, còn UI chỉ nên
-		<code>scope.launch &#123; viewModel.getBookmarks() &#125;</code> — đúng như <code>GroceryList.kt</code> làm ở mục
-		18 dưới đây. Hai file trong cùng một project làm hai cách khác nhau cho cùng một việc.
+
+	<h3>16.2. <code>LaunchedEffect</code> ở mức đầy đủ: nó sống và chết thế nào</h3>
+	<p>
+		C4 đã chạm <code>LaunchedEffect</code> lần đầu với một nguyên tắc: thân hàm composable là chỗ trả lời
+		<em>"giao diện nên trông thế nào"</em>, còn việc có tác dụng ra ngoài (gọi mạng, ghi database, log) là
+		<em>hành động</em> — phải có chỗ riêng. Bài này là nơi nắm trọn vòng đời của chỗ riêng đó, vì từ đây trở đi bạn sẽ
+		gặp nó trong code thật thay vì ví dụ dựng sẵn.
+	</p>
+	<div class="callout mental">
+		<strong>Mô hình: <code>LaunchedEffect</code> là một coroutine gắn với vị trí composition của nó</strong>
+		<ul>
+			<li><strong>Vào composition → khởi động.</strong> Khi <code>ShowBookmarks</code> hiện lên, khối việc bắt đầu chạy.</li>
+			<li><strong>Còn trong composition, key không đổi → không chạy lại.</strong> Những lần vẽ lại thông thường
+				(recomposition) <em>không</em> khởi động lại khối việc.</li>
+			<li><strong>Key đổi → cái cũ bị huỷ, cái mới bắt đầu.</strong> Khối việc đang chạy bị dừng giữa chừng và một lượt
+				việc mới bắt đầu với giá trị key mới.</li>
+			<li><strong>Rời composition → bị huỷ.</strong> Màn hình bị thay, item bị cuộn ra khỏi
+				<code>LazyColumn</code>... thì coroutine được huỷ. Nếu vị trí đó vào lại composition, khối việc chạy lại từ đầu.</li>
+		</ul>
+		<p>
+			Vì vậy <code>LaunchedEffect(Unit)</code> — hay <code>LaunchedEffect(true)</code>, cùng ý nghĩa — <strong>không</strong>
+			nghĩa là "chạy đúng một lần, mãi mãi". Nó nghĩa là: <em>"key này không bao giờ đổi, nên effect giữ nguyên một
+			instance trong suốt thời gian vị trí composition này tồn tại."</em> Sống chết của nó gắn với vị trí, không gắn với
+			app. Câu "một lần mãi mãi" bỏ mất trường hợp rời-then-vào-lại — và đó chính là lớp lỗi khó tìm mà C4 đã cảnh báo.
+		</p>
+	</div>
+	<p>
+		Áp vào <code>ShowBookmarks</code>: cả hai coroutine (collect lâu dài + nạp ban đầu) đều được khởi động khi màn hình
+		vào composition, và cả hai bị huỷ khi màn hình rời composition. Đó chính xác là hành vi mong muốn cho một màn hình:
+		<em>lắng nghe khi đang hiện, thôi lắng nghe khi không còn hiện.</em>
+	</p>
+	<p>
+		Còn một đường viền cần nói đúng: ở đây khối <code>LaunchedEffect</code> <em>không</em> chạy việc gì trực tiếp — nó
+		phóng hai coroutine con vào <code>scope</code> (một <code>rememberCoroutineScope</code>, mục 16.4) rồi kết thúc ngay.
+		Việc tách hai coroutine con là bắt buộc vì <code>collect</code> không bao giờ trả về; còn việc phóng qua
+		<code>scope</code> thay vì dùng trực tiếp ngữ cảnh của effect là một cách viết <em>hợp lệ khác</em> — với key
+		<code>Unit</code> như ở đây, hai cách cho cùng hành vi (đều bị huỷ khi màn hình rời composition). Gặp code của người
+		khác viết một trong hai kiểu, đừng vội kết luận kiểu kia là sai.
 	</p>
 
+	<h3>16.3. Chọn key: "effect này phụ thuộc vào cái gì?"</h3>
+	<p>
+		Key của <code>LaunchedEffect</code> trả lời đúng một câu hỏi: <em>việc này phụ thuộc vào cái gì — cái gì đổi thì việc
+		phải chạy lại?</em> Câu trả lời của bạn chính là key. Với <code>ShowBookmarks</code>: khối việc là "mở màn hình thì
+		lắng nghe + nạp dữ liệu" — nó phụ thuộc vào việc <em>màn hình vừa được vào</em>, không phụ thuộc vào dữ liệu cụ thể
+		nào. <code>Unit</code> (không bao giờ đổi) là lựa chọn đúng ở đây.
+	</p>
+	<p>
+		So sánh với màn hình chi tiết ở mục 17: cũng <code>LaunchedEffect(Unit)</code>, và cũng đúng — vì mỗi lần điều hướng
+		sang một công thức khác, Compose tạo một <em>instance màn hình mới</em> (destination mới trong NavHost), nên
+		"vào composition" đã diễn ra lại. <code>recipeId</code> của một màn hình đang sống không bao giờ đổi.
+	</p>
+	<p>
+		Còn ba bẫy thì sao? Ngược lại của các ví dụ trên, đây là lúc <code>Unit</code> trở thành lỗi: nếu một
+		<em>composable duy nhất</em> được tái sử dụng với dữ liệu đổi (ví dụ một composable nhận <code>recipeId</code> làm
+		<em>tham số thường</em> và bên trong có <code>LaunchedEffect(Unit) &#123; load(recipeId) &#125;</code>), thì id đổi mà
+		effect không chạy lại — màn hình sẽ mãi hiện dữ liệu của id đầu tiên. Đó là bẫy thứ nhất: <strong>dùng
+		<code>Unit</code> khi việc thật ra phụ thuộc dữ liệu đang đổi</strong> — sửa bằng <code>LaunchedEffect(recipeId)</code>.
+		Bẫy thứ hai: <strong>thiếu key có ý nghĩa</strong> ở các tình huống C4 đã ví (log "đã xem tin nhắn X" mà quên key
+		<code>X</code>). Bẫy thứ ba: <strong>key không ổn định</strong> — truyền vào key một giá trị <em>được tạo mới mỗi lần
+		vẽ lại</em> (một danh sách được <code>copy()</code> lại, một object không so sánh bằng được) thì effect bị huỷ và
+		chạy lại liên tục dù chẳng có gì thật sự đổi. Chọn key bằng câu hỏi ở đầu mục này, cả ba bẫy đều tự lộ.
+	</p>
+
+	<h3>16.4. <code>rememberUpdatedState</code> và <code>rememberCoroutineScope</code></h3>
+	<p>
+		Hai công cụ còn lại trong file này giải hai bài toán khác nhau — và rất dễ bị nhầm với <code>remember</code> và
+		<code>LaunchedEffect</code> tương ứng.
+	</p>
+	<p>
+		<strong>Bài toán của <code>rememberUpdatedState</code>: một effect sống lâu, nhưng giá trị nó dùng thì đổi.</strong>
+		Lambda <code>confirmValueChange</code> được tạo một lần lúc dựng <code>dismissState</code> (bên trong nó dùng
+		<code>remember</code> giữ state) rồi được giữ qua nhiều lần vẽ lại. Nếu lambda giữ <em>bản chụp giá trị</em>
+		<code>recipe</code> lúc được tạo, thì mọi lần chạy sau nó vẫn "nhìn thấy" giá trị cũ. Cách giải:
+	</p>
+	<pre><code>val currentItem by rememberUpdatedState(recipe)</code></pre>
+	<p>
+		<code>rememberUpdatedState(recipe)</code> tạo một ô state và <em>cập nhật ô đó mỗi lần vẽ lại</em> với giá trị
+		<code>recipe</code> mới nhất; phép <code>by</code> (uỷ quyền, đã học với <code>by remember</code>) làm
+		<code>currentItem</code> đọc thẳng giá trị hiện tại. Lambda không được tạo lại, effect không bị khởi động lại — nhưng
+		khi nó chạy, nó đọc được giá trị mới nhất. Phân biệt cho nhớ: <strong><code>remember</code> giữ giá trị qua các lần
+		vẽ lại nhưng không tự cập nhật</strong>; <strong><code>rememberUpdatedState</code> giữ <em>và</em> cập nhật theo mỗi
+		lần vẽ lại</strong> — đúng cho thứ mà một lambda sống lâu cần đọc.
+	</p>
+	<p>
+		Một ghi nhận trung thực về chính file này: với <code>key = id</code> ổn định ở trên, một dòng luôn gắn với đúng một
+		id, nên rủi ro "đọc nhầm giá trị cũ" trong file này là nhỏ — <code>rememberUpdatedState</code> ở đây là lớp
+		phòng thủ hợp lệ chứ không phải chỗ bắt buộc. Nhưng đừng rút ra rằng nó thừa: đổi sang key theo vị trí, hoặc lambda
+		sống lâu hơn item, thì nó trở thành thứ chống bug xoá-nhầm-dòng. Học mẫu hình theo <em>bài toán nó giải</em>, không
+		theo một file cụ thể.
+	</p>
+	<p>
+		<strong>Bài toán của <code>rememberCoroutineScope</code>: coroutine không khởi động bởi composition, mà bởi sự
+		kiện.</strong> Đây là bảng quyết định gọn:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th></th><th><code>LaunchedEffect</code></th><th><code>rememberCoroutineScope()</code></th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Coroutine bắt đầu khi nào</strong></td>
+				<td>Ngay khi composable vào composition (hoặc key đổi) — <em>Compose phóng</em></td>
+				<td>Khi code của bạn gọi <code>scope.launch</code> — thường là trong một handler sự kiện — <em>bạn phóng</em></td>
+			</tr>
+			<tr>
+				<td><strong>Phục vụ việc gì</strong></td>
+				<td>Việc cần chạy mỗi khi vị trí này xuất hiện: nạp ban đầu, lắng nghe</td>
+				<td>Việc gắn với sự kiện xảy ra lúc nào chưa biết: quẹt để xoá, bấm nút</td>
+			</tr>
+			<tr>
+				<td><strong>Trong project này</strong></td>
+				<td><code>ShowBookmarks</code>, <code>GroceryList</code>, <code>RecipeDetails</code> — nạp + lắng nghe lúc mở màn hình</td>
+				<td><code>scope.launch</code> bên trong <code>confirmValueChange</code> của ShowBookmarks; các handler bookmark của <code>RecipeDetails</code></td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Cùng mạch này ở tầng trên: các hàm ViewModel (<code>getBookmarks()</code>, <code>deleteBookmark()</code>) là
+		<code>suspend</code> — chúng <em>không tự phóng</em>, chúng chờ ai đó phóng. Người phóng ở tầng UI chính là hai công
+		cụ này: <code>LaunchedEffect</code> cho việc "lúc vào màn hình", <code>rememberCoroutineScope</code> cho việc "khi
+		người dùng làm gì đó".
+	</p>
+
+	<h3>16.5. Quẹt để xoá: hành trình ngược của một cú quẹt</h3>
+	<p>
+		Đường ghi đã vẽ ở 16.1 — giờ đi từng mắt xích, vì có hai chi tiết hành vi đáng chú ý:
+	</p>
+	<pre class="tree">CÚ QUẸT (đường ghi, nhìn từ UI):
+  người dùng quẹt ngang một dòng
+    → confirmValueChange được gọi          ("hỏi trước khi làm")
+    → scope.launch &#123; ... viewModel.deleteBookmark(currentItem) ... &#125;
+    → lambda trả true NGAY → dòng trượt ra khỏi màn hình
+       → deleteBookmark (ViewModel)          → repository.deleteRecipe(...)
+       →                                     → repository.deleteRecipeIngredients(...)
+       → DAO @Delete xoá theo khoá chính      (10.3, mục 13.3: chỉ cần khoá chính)
+       → SQLite xoá dòng trên file
+       → _bookmarksState được gán lại danh sách mới</pre>
 	<div class="callout">
-		<strong><code>SwipeToDismiss</code> — hành vi Compose đáng chú ý</strong>
+		<strong><code>rememberDismissState(confirmValueChange = &#123; ... &#125;)</code> — "hỏi trước khi làm"</strong>
 		<p>
-			<code>rememberDismissState(confirmValueChange = &#123; ... &#125;)</code> hoạt động theo kiểu "hỏi trước khi làm":
-			khi người dùng quẹt hết, Compose gọi lambda này và <em>xem giá trị trả về</em>. Trả <code>true</code> thì dòng biến
-			mất; trả <code>false</code> thì dòng trượt về chỗ cũ.
+			Khi người dùng quẹt hết, Compose gọi lambda này và <em>xem giá trị trả về</em>: trả <code>true</code> thì dòng
+			biến mất; trả <code>false</code> thì dòng trượt về chỗ cũ. Đây là cơ chế cho phép bạn <em>can thiệp</em> trước khi
+			một hành vi huỷ diễn ra — ví dụ hiện hộp thoại xác nhận trước khi cho xoá.
 		</p>
 		<p>
-			Điều đáng chú ý trong code này: lambda phóng một coroutine xoá dữ liệu rồi trả <code>true</code>
+			Điều đáng chú ý trong code này: lambda phóng coroutine xoá dữ liệu rồi trả <code>true</code>
 			<strong>ngay</strong>, không chờ xoá xong. Nghĩa là UI luôn cho dòng biến mất, kể cả khi việc xoá dưới database
 			thất bại. Đây là cùng một đánh đổi bạn đã gặp ở Chương 9 (UI cập nhật trước khi ghi xuống đĩa): người dùng thấy
 			phản hồi tức thì, đổi lại app không xử lý được trường hợp thất bại. Với app học thì ổn; với app thật, đây là chỗ
-			cần một cơ chế hoàn tác hoặc thông báo lỗi.
-		</p>
-		<p>
-			Lưu ý về API: <code>SwipeToDismiss</code>, <code>rememberDismissState</code>, <code>DismissDirection</code> là API
-			Material 3 ở thời điểm project mẫu được viết và <strong>đã bị đánh dấu deprecated</strong> trong các bản Compose
-			Material 3 mới hơn — bản thay thế là <code>SwipeToDismissBox</code> kèm
-			<code>rememberSwipeToDismissBoxState</code>. Code mẫu vẫn chạy với version mà project ghim, nhưng nếu bạn nâng
-			Compose lên và thấy cảnh báo gạch ngang, đó là lý do. Cảnh báo này được nhắc lại ở mục "Cạm bẫy &amp; tài liệu lỗi
-			thời" cuối chương.
+			cần một cơ chế hoàn tác hoặc thông báo lỗi. Và để khỏi hiểu nhầm cơ chế: dòng biến mất là do <em>hai</em> thứ cùng
+			xảy ra — animation dismiss của <code>SwipeToDismiss</code>, và việc ViewModel gán lại
+			<code>_bookmarksState</code> làm <code>LazyColumn</code> bỏ item. Cái thứ hai là mối liên hệ thật giữa dòng trên
+			màn hình và dòng trong SQLite: UI không tự "biết" dòng đã xoá — nó chỉ vẽ lại theo state.
 		</p>
 	</div>
+	<div class="callout diff">
+		<strong>PROJECT/SOURCE vs CURRENT ANDROID: <code>SwipeToDismiss</code> đã đổi tên</strong>
+		<p>
+			<code>SwipeToDismiss</code>, <code>rememberDismissState</code>, <code>DismissDirection</code> là API Material 3
+			<strong>ở thời điểm project mẫu được viết</strong>. Trong các bản Compose Material 3 mới hơn, cả ba đã bị đánh dấu
+			<strong>deprecated</strong> — bản thay thế là <code>SwipeToDismissBox</code> kèm
+			<code>rememberSwipeToDismissBoxState</code> và <code>SwipeToDismissBoxValue</code>.
+		</p>
+		<p>
+			Code mẫu vẫn chạy đúng với version mà project ghim — deprecated nghĩa là <em>không khuyến nghị cho code mới</em>,
+			không phải <em>đã bị xoá</em>. Ý tưởng không đổi: vẫn là một state giữ hướng quẹt, một lambda xác nhận, một phần
+			nền vẽ icon — chỉ tên hàm và tên kiểu dữ liệu đổi. Nếu bạn nâng Compose lên và thấy cảnh báo gạch ngang, đó là lý
+			do; khi viết project mới, dùng bộ tên <code>*Box</code>. Cảnh báo này được nhắc lại ở phần Cạm bẫy cuối chương.
+		</p>
+	</div>
+
+	<h3>16.6. Chỗ bọc <code>withContext</code> dư — bằng chứng và quy tắc</h3>
+	<p class="notice">
+		<strong>Một chỗ dư trong code mẫu, và cách chứng minh nó dư:</strong> hai chỗ trong file này bọc lời gọi ViewModel
+		trong <code>withContext(Dispatchers.IO) &#123; ... &#125;</code> — quanh <code>viewModel.getBookmarks()</code> và
+		quanh <code>viewModel.deleteBookmark(currentItem)</code>. Nhưng bạn không thể kết luận "dư" chỉ bằng nhìn file này —
+		phải đọc xuống <strong>thân của hai hàm được gọi</strong> trong <code>RecipeViewModel.kt</code>: cả
+		<code>getBookmarks()</code> lẫn <code>deleteBookmark()</code> <em>đã</em> tự mở đầu bằng
+		<code>withContext(Dispatchers.IO)</code> bên trong (Chương 10.3, mục 13). Coroutine của UI chuyển sang luồng IO, rồi
+		vào hàm và chuyển sang IO lần nữa.
+	</p>
+	<p class="notice">
+		<strong>Vì sao là "dư" chứ không phải "lỗi":</strong> <code>withContext</code> lồng nhau hoàn toàn hợp lệ — coroutine
+		đã ở đúng dispatcher thì lần chuyển thứ hai gần như không tốn gì, và không có chuyện khoá hay deadlock. Vấn đề thuần
+		về thiết kế: <strong>quyết định "việc này chạy ở luồng nào" nên nằm ở một tầng duy nhất</strong> — ở đây là ViewModel.
+		UI tự bọc thêm là nhân đôi trách nhiệm: nếu ngày mai ViewModel đổi cách bố trí, UI của một màn hình vẫn bọc kiểu cũ
+		và bạn có hai chuẩn trong cùng một app. So sánh ngay trong project: <code>GroceryList.kt</code> viết gọn
+		<code>scope.launch &#123; viewModel.getIngredients() &#125;</code> (mục 18.3) — đúng khuôn "UI chỉ phóng, ViewModel
+		quyết định luồng".
+	</p>
+	<p class="notice">
+		<strong>Quy tắc mang đi — khi nào MỚI cần đổi dispatcher:</strong> một lần
+		<code>withContext(Dispatchers.IO)</code> cần một lý do thật: bạn sắp <em>chặn</em> một thread bằng công việc chờ
+		(đọc file kiểu chặn, truy cập API cũ không có bản <code>suspend</code>...). <strong>Đừng tự bọc
+		<code>withContext(IO)</code> chỉ vì bên dưới là Room:</strong> với hàm DAO <code>suspend</code>, Room tự lo việc
+		đưa truy vấn ra khỏi luồng chính (Chương 10.2 đã chốt: <code>suspend</code> ≠ tự đổi luồng, nhưng Room với hàm
+		<code>suspend</code> thì có), và tầng ViewModel của project này đã có một lần bọc có chủ đích. "Thấy Room → bọc IO"
+		ngược lại "Dispatchers.IO là xấu" — cả hai đều là quy tắc chép máy; cái đúng là <em>đọc xuống xem ai đã quyết định
+		luồng, rồi chỉ quyết định khi có lý do chặn thread thật.</em>
+	</p>
 
 	<h2 id="recipe-details">17. Recipe Details — một màn hình, hai nguồn dữ liệu</h2>
 	<p>
@@ -214,28 +435,46 @@ fun PreviewShowBookmarks() {
 		để thêm bookmark.
 	</p>
 	<Code code={recipeDetailsCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Chú ý cấu trúc thật của file: <strong>hai khối <code>LaunchedEffect(Unit)</code> riêng</strong>, mỗi khối thuộc về một
+		nhánh <code>if</code>. Chỉ nhánh nào đang hoạt động thì effect của nhánh đó mới vào composition — cùng một khuôn "một
+		collect lâu dài + một lượt nạp" như <code>ShowBookmarks</code>, lặp lại lần thứ hai.
+	</p>
 	<div class="callout">
 		<strong>Điều thú vị nhất về màn hình này: nó phục vụ hai đường vào khác nhau</strong>
 		<p>
 			Chú ý <code>RecipeDetails</code> nhận <em>hai</em> tham số id: <code>recipeId</code> và
-			<code>databaseRecipeId</code>. Lý do:
+			<code>databaseRecipeId</code> — cả hai đều là <code>Int? = null</code>, và mỗi đường điều hướng chỉ điền
+			<em>một</em> trong hai (MainActivity xây hai route riêng: <code>"details/&#123;recipeId&#125;"</code> điền
+			<code>recipeId</code>, <code>"bookmarks/&#123;recipeId&#125;"</code> điền <code>databaseRecipeId</code>). Lý do:
 		</p>
 		<ul>
 			<li>Vào từ <strong>kết quả tìm kiếm</strong> → công thức chưa có trong máy → phải gọi mạng:
 				<code>queryRecipe(recipeId)</code>.</li>
 			<li>Vào từ <strong>danh sách bookmark</strong> → công thức đã nằm trong database → đọc từ máy:
-				<code>getBookmark(databaseRecipeId)</code>. Không cần mạng, mở được cả khi offline.</li>
+				<code>getBookmark(databaseRecipeId)</code>. Không cần mạng — mở được cả khi offline.</li>
 		</ul>
 		<p>
-			Và điểm đáng chú ý: <strong>phần còn lại của màn hình không hề biết dữ liệu tới từ đâu.</strong> Cả hai đường đều
-			kết thúc bằng việc gán vào <code>_recipeState</code>, nên phần vẽ giao diện chỉ đọc một state duy nhất. Đây là ví
-			dụ cụ thể nhất trong cả Chương 10 cho lợi ích của kiến trúc ở Chương 10.1, mục 4: hai nguồn dữ liệu hoàn toàn khác
-			nhau, một đoạn UI.
+			Và điểm đáng chú ý nhất: <strong>phần còn lại của màn hình không hề biết dữ liệu tới từ đâu.</strong> Cả hai đường
+			đều kết thúc bằng việc gán vào <code>_recipeState</code>, nên phần vẽ giao diện chỉ đọc một state duy nhất. Đây là
+			ví dụ cụ thể nhất trong cả Chương 10 cho lợi ích của kiến trúc ở Chương 10.1, mục 4: hai nguồn dữ liệu hoàn toàn
+			khác nhau, một đoạn UI.
 		</p>
 		<p>
-			Cách phân biệt trong code là <code>if (recipeId != 0)</code> — dùng số 0 làm "không có giá trị". Đây là cách làm
-			đơn giản nhưng không lý tưởng; một <code>sealed class</code> hoặc kiểu <code>Int?</code> sẽ nói rõ ý định hơn. Ghi
-			nhận để bạn biết đó là chỗ có thể làm tốt hơn, không phải chuẩn mực để bắt chước.
+			Cách phân biệt trong code là kiểm tra <code>recipeId != null</code>: tham số nào khác <code>null</code> thì app đến
+			từ đường đó. Thiết kế này thực ra khá gọn — kiểu <code>Int?</code> nói đúng ý "có thể không có". Điểm còn đơn giản
+			hoá nằm ở MainActivity: route truyền tham số thiếu thì fallback <code>?: 0</code>, tức dùng số 0 làm "không có
+			giá trị" ở tầng điều hướng. Ghi nhận đó là chỗ có thể làm tốt hơn (một kiểu id tường minh hơn), không phải chuẩn
+			mực để bắt chước — cũng đừng nhầm nó với bản thân RecipeDetails, vốn dùng null-check.
+		</p>
+		<p>
+			Đặt cạnh nhau hai nguồn dữ liệu của app ở đây, bạn có bức tranh nguyên bản về một app thật: <strong>network
+			search</strong> cho dữ liệu chưa có trên máy, <strong>Room</strong> cho dữ liệu đã lưu — cùng sống sau một
+			repository, cùng kết thúc tại các StateFlow mà UI đọc. Cũng nhớ giới hạn của phát biểu này: đó là <em>bố cục của
+			app này</em>, không phải luật "mọi repository đều có nhiều nguồn" hay "Room luôn là nguồn chính" — app chỉ cần
+			Room là nguồn đáng tin cho đúng loại dữ liệu nó lưu bền (Chương 10.3, mục 14 đã chốt phạm vi đó). Ở mức cần nhớ:
+			màn hình bookmark của app này mở được khi không có mạng — đó là dấu hiệu nhận biết một phần dữ liệu đã thật sự
+			hiện diện cục bộ.
 		</p>
 	</div>
 
@@ -284,10 +523,10 @@ fun PreviewShowBookmarks() {
 	</p>
 	<Code code={groceryListCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Chú ý đoạn code <em>đã có sẵn</em> ngay phía trên: nó lắng nghe thay đổi của danh sách ingredient và đẩy sang
-		<code>groceryListViewModel</code>. Vậy nên nhìn cả khối <code>LaunchedEffect</code> thì thấy đúng khuôn "hai
-		coroutine" như <code>ShowBookmarks</code>: một cái <code>collect</code> lâu dài, một cái nạp dữ liệu lần đầu. Sau khi
-		thêm, chạy lại app và kiểm tra các nguyên liệu xuất hiện ở trang Groceries.
+		Chú ý hai điều trong đoạn này. Một: nó là <em>bản đối chiếu</em> cho mục 16.6 — cùng khuôn "một collect lâu dài + một
+		lượt nạp", nhưng lượt nạp gọi thẳng <code>scope.launch &#123; recipeViewModel.getIngredients() &#125;</code>, không bọc
+		thêm <code>withContext</code>. Hai: khối này nằm trong <code>LaunchedEffect(Unit)</code> — đúng nghĩa "mở màn hình thì
+		nạp và lắng nghe". Sau khi thêm, chạy lại app và kiểm tra các nguyên liệu xuất hiện ở trang Groceries.
 	</p>
 	<div class="callout">
 		<strong>Điều đáng chú ý về màn hình Groceries: <em>hai</em> ViewModel cùng lúc</strong>
@@ -358,12 +597,13 @@ fun PreviewShowBookmarks() {
 	<p>
 		Bảy điểm lệch dưới đây <strong>trải khắp cả Chương 10, từ 10.1 tới 10.4</strong> — suốt chương bạn đã gặp từng điểm
 		tại đúng chỗ nó xuất hiện. Đây là bảng gom lại một chỗ để tra nhanh, mỗi hàng ghi rõ nó thuộc chương nhỏ nào, kèm cột
-		<strong>nên theo cái nào</strong>, vì không phải lệch nào cũng có nghĩa "lý thuyết sai".
+		<strong>nên theo cái nào</strong> và cột <strong>phân loại</strong> — vì không phải lệch nào cũng có nghĩa "lý thuyết
+		sai", và mỗi loại cần một cách ứng xử khác nhau.
 	</p>
 	<div class="callout diff">
 		<table class="cmp">
 			<thead>
-				<tr><th>#</th><th>Ở đâu</th><th>Lý thuyết dạy</th><th>Code <code>final</code> thật</th><th>Nên theo cái nào</th></tr>
+				<tr><th>#</th><th>Ở đâu</th><th>Lý thuyết dạy</th><th>Code <code>final</code> thật</th><th>Nên theo cái nào</th><th>Phân loại</th></tr>
 			</thead>
 			<tbody>
 				<tr>
@@ -373,6 +613,7 @@ fun PreviewShowBookmarks() {
 					<td><code>"Recipes"</code> — <code>RecipeApp.kt:62</code></td>
 					<td><strong>Code.</strong> Đây là dòng thật sự chạy. Tên nào cũng được; chỉ cần biết file trên máy sẽ tên
 						<code>Recipes</code> khi bạn mở Device Explorer đi tìm.</td>
+					<td><strong>VALID</strong> — code chạy thật, hai tên đều hợp lệ</td>
 				</tr>
 				<tr>
 					<td>2</td>
@@ -386,6 +627,7 @@ fun PreviewShowBookmarks() {
 						cả app) là kiến thức đáng học và là cách làm chuẩn khi không có <code>Application</code> class. Ở project
 						này <code>RecipeApp</code> đã bảo đảm chỉ có một instance, nên <code>getInstance()</code> thành code chết.
 						Đừng ngạc nhiên khi đặt breakpoint mà không bao giờ dừng.</td>
+					<td><strong>REDUNDANT</strong> — code chết: khối được giải thích kỹ nhất chương lại không nằm trên đường chạy</td>
 				</tr>
 				<tr>
 					<td>3</td>
@@ -394,8 +636,8 @@ fun PreviewShowBookmarks() {
 					<td><code>@PrimaryKey(autoGenerate = false)</code> — <code>RecipeDb.kt:46</code></td>
 					<td><strong>Code, cho app này.</strong> ID tới từ API Spoonacular nên đó là natural key — tự sinh số mới sẽ
 						làm mất liên kết với server. Phần giải thích khái niệm vẫn đúng, chỉ là không áp vào đây.</td>
+					<td><strong>VALID</strong> — code đúng cho app này; khái niệm đúng cho trường hợp khác</td>
 				</tr>
-
 				<tr>
 					<td>4</td>
 					<td>Chương 10.1</td>
@@ -404,6 +646,7 @@ fun PreviewShowBookmarks() {
 						<code>app/build.gradle.kts</code> dòng 79 và 86</td>
 					<td><strong>Xoá một dòng.</strong> Gradle không báo lỗi nhưng đây là dư thừa do sao chép. Dòng 79 đã có từ
 						bản <code>starter</code>.</td>
+					<td><strong>REDUNDANT</strong> — build vẫn xanh, nhưng là dấu vết sao chép vô ích</td>
 				</tr>
 				<tr>
 					<td>5</td>
@@ -413,6 +656,7 @@ fun PreviewShowBookmarks() {
 						Bundle/Intent</strong> — navigation truyền <code>Int</code> id</td>
 					<td><strong>Không cần cho app này.</strong> Đây là chuẩn bị cho tương lai, chi phí gần như bằng 0 nên để
 						cũng không sao — nhưng biết rằng nó chưa được dùng sẽ giúp bạn không đi tìm "chỗ nào dùng Parcelable".</td>
+					<td><strong>REDUNDANT</strong> — dư vô hại, chuẩn bị cho tương lai</td>
 				</tr>
 				<tr>
 					<td>6</td>
@@ -421,6 +665,7 @@ fun PreviewShowBookmarks() {
 					<td>Entity nằm ở <code>data/database/</code></td>
 					<td><strong>Code.</strong> Và chính phần hướng dẫn từng bước cũng ghi <code>data/database</code>. Đây là lỗi
 						mô tả trong đoạn tổng quan, không phải lỗi trong bước làm.</td>
+					<td><strong>BUG/RISK</strong> — mô tả lệch có thật: làm theo mô tả là đặt entity sai thư mục</td>
 				</tr>
 				<tr>
 					<td>7</td>
@@ -431,6 +676,7 @@ fun PreviewShowBookmarks() {
 						gọi nào</td>
 					<td><strong>Biết là dư.</strong> Repository được viết rộng hơn nhu cầu thật. Không có hại, nhưng khi đọc code
 						bạn đừng mất thời gian tìm ý nghĩa khác nhau giữa hai hàm giống nhau — không có.</td>
+					<td><strong>REDUNDANT</strong> — API dự phòng, kiểm được bằng Find in Files (10.3, mục 15)</td>
 				</tr>
 			</tbody>
 		</table>
@@ -443,6 +689,11 @@ fun PreviewShowBookmarks() {
 		dependency thì nó chỉ áp dụng một lần và build vẫn xanh. Nhưng nó là dấu vết của việc sao chép khối dependency khi
 		thêm Room, và nếu bạn đọc file build để hiểu project cần những gì thì hai dòng giống nhau sẽ làm bạn tự hỏi mình có
 		đọc nhầm không. Xoá dòng 86 đi, không mất gì.
+	</p>
+	<p>
+		Cột phân loại ở trên còn một điều ngầm đáng chú ý: trong bảy điểm lệch, <strong>không điểm nào là bug chạy được
+		sai kết quả</strong> — chúng là code chết, dư thừa, mô tả lệch, hoặc cách làm khác. Code mẫu "chạy được" và "đúng" là
+		hai chuyện khác nhau, và tách hai chuyện đó ra chính là kỹ năng đọc phê phán mà cả chương luyện.
 	</p>
 
 	<h2 id="version">21. Project mẫu ghim bản nào, hôm nay khác gì?</h2>
@@ -462,22 +713,28 @@ fun PreviewShowBookmarks() {
 				<td>Version Room</td>
 				<td>Chương 10.1</td>
 				<td><code>room = "2.5.2"</code> (<code>libs.versions.toml</code> dòng 23)</td>
-				<td>Nhánh <code>androidx.room</code> 2.x đã lên 2.8.x và chuyển sang chế độ bảo trì. Mọi thứ trong Chương 10
+				<td>Nhánh <code>androidx.room</code> 2.x đã lên <strong>2.8.x</strong> (bản 2.8.4 ổn định, cuối 2025) và
+					<strong>vẫn đang được phát triển tích cực</strong> — các bản mới vẫn sửa lỗi và thêm tính năng, không phải
+					chế độ ngừng phát triển. KMP (Kotlin Multiplatform) vào Room 2.x từ bản 2.7.0. Mọi thứ trong Chương 10
 					<em>vẫn đúng nguyên</em>: annotation, DAO, builder không đổi.</td>
 			</tr>
 			<tr>
 				<td>Room thế hệ mới</td>
 				<td>Chương 10.1</td>
 				<td>Không có</td>
-				<td>Có <code>androidx.room:room-*</code> phiên bản 3.x (artifact group <code>androidx.room3</code>) hỗ trợ
-					<strong>Kotlin Multiplatform</strong> — cùng một DAO chạy được cả Android/iOS/desktop. API cốt lõi giống hệt
-					những gì bạn vừa học, nên kiến thức chuyển sang được nguyên vẹn.</td>
+				<td>Google phát hành thế hệ kế tiếp ở một <strong>nhóm artifact riêng</strong>: <code>androidx.room3</code>
+					(package <code>androidx.room3</code>, bản ổn định 3.0.2 năm 2026) — ưu tiên Kotlin Multiplatform, bắt buộc
+					KSP, và theo hướng coroutines-first (hàm DAO là <code>suspend</code> hoặc trả kiểu phản ứng như
+					<code>Flow</code>). Các annotation cốt lõi (<code>@Database</code>/<code>@Entity</code>/<code>@Dao</code>/<code>@Query</code>)
+					giữ hình dạng bạn đã học, nên kiến thức chuyển sang được — nhưng đây là thư viện nhóm khác, không phải "nâng
+					version tại chỗ" của <code>androidx.room</code>. Project này không yêu cầu nâng cấp; mức nhận diện là đủ.</td>
 			</tr>
 			<tr>
 				<td>Sinh code</td>
 				<td>Chương 10.1</td>
 				<td>KSP (<code>ksp(libs.room.compiler)</code>) — đây đã là lựa chọn hiện đại</td>
-				<td>Không đổi. KSP là cách chuẩn; <code>kapt</code> nay đã ngừng phát triển. Điểm cộng cho project mẫu.</td>
+				<td>Không đổi. KSP là cách chuẩn của Room 2.x; <code>kapt</code> nay đã ngừng phát triển — và thế hệ
+					<code>room3</code> còn bắt buộc KSP, bỏ hẳn đường kapt. Điểm cộng cho project mẫu.</td>
 			</tr>
 			<tr>
 				<td>Trả về <code>Flow</code> từ DAO</td>
@@ -498,8 +755,10 @@ fun PreviewShowBookmarks() {
 				<td><code>fallbackToDestructiveMigration()</code></td>
 				<td>Chương 10.2</td>
 				<td>Gọi không tham số</td>
-				<td>Bản mới yêu cầu tham số rõ ràng: <code>fallbackToDestructiveMigration(dropAllTables = true)</code> — buộc
-					bạn phải <em>nói ra</em> rằng mình đồng ý xoá dữ liệu, thay vì lỡ tay bật.</td>
+				<td>Room 2.6 đã thêm overload <code>fallbackToDestructiveMigration(dropAllTables: Boolean)</code>, và ở
+					2.8 bản không tham số <strong>đã bị bỏ hẳn</strong> — gọi kiểu cũ sẽ không biên dịch được trên bản mới.
+					Tham số buộc bạn phải <em>nói ra</em> mức phá huỷ mình chấp nhận (có xoá cả bảng ngoài quản lý của Room hay
+					không), thay vì lỡ tay bật hành vi xoá sạch.</td>
 			</tr>
 			<tr>
 				<td>Architecture Components</td>
@@ -543,8 +802,11 @@ fun PreviewShowBookmarks() {
 		<li><strong><code>onConflict</code> quyết định khi trùng khoá:</strong> <code>IGNORE</code> (bỏ qua bản mới),
 			<code>REPLACE</code> (ghi đè), <code>ABORT</code> (báo lỗi, mặc định). App này chọn <code>IGNORE</code> vì bookmark
 			cùng một công thức hai lần thì không cần làm gì.</li>
-		<li><strong>Mọi truy cập database phải ngoài luồng chính.</strong> DAO là <code>suspend</code>, và ViewModel bọc lời gọi
-			trong <code>withContext(Dispatchers.IO)</code>. Không có kỷ luật này, app sẽ đứng hình khi database chậm.</li>
+		<li><strong>Truy cập database phải ngoài luồng chính — và chỉ quyết định luồng ở một tầng.</strong> Hàm DAO là
+			<code>suspend</code> (Room tự đưa truy vấn suspend ra khỏi luồng chính); trong project này ViewModel là tầng
+			<em>chọn</em> bọc <code>withContext(Dispatchers.IO)</code> — một lựa chọn bố trí, không phải yêu cầu bắt buộc.
+			Bọc thêm ở UI là chuyển luồng hai lần: không lỗi, chỉ dư (mục 16.6). Không có kỷ luật luồng nào thì app đứng hình
+			khi database chậm.</li>
 		<li><strong>Repository là tầng ngăn cách:</strong> UI và ViewModel không bao giờ chạm DAO. Đổi từ Room sang thứ khác chỉ
 			cần sửa bên trong repository.</li>
 		<li><strong>Entity của database ≠ model của app.</strong> Project giữ ba họ model song song
@@ -552,14 +814,19 @@ fun PreviewShowBookmarks() {
 			<code>Conversions.kt</code> làm cầu nối. Nhờ vậy thay đổi schema database không lan ra khắp UI.</li>
 		<li><strong>Dữ liệu chảy một chiều:</strong> <code>UI → ViewModel → Repository → DAO → SQLite</code>, kết quả quay về
 			qua <code>StateFlow</code>. Một chiều nên khi sai bạn biết phải đi tìm ở đâu.</li>
+		<li><strong>Effect của Compose gắn với composition:</strong> <code>LaunchedEffect</code> vào composition thì chạy, key
+			đổi thì chạy lại (cái cũ bị huỷ), rời composition thì bị huỷ — việc phụ (gọi mạng, ghi database) có chỗ riêng là
+			vì thân composable chỉ trả lời "giao diện nên trông thế nào" (mục 16.2–16.3).</li>
 		<li><strong>Xoá dữ liệu cha phải xoá dữ liệu con.</strong> Project không khai <code>foreignKeys</code>, nên không có
 			cascade delete tự động — <code>deleteRecipeIngredients()</code> phải tự tìm và xoá từng nguyên liệu. Quên là database
 			đầy dữ liệu mồ côi và trang Groceries hiện món của công thức đã xoá.</li>
 		<li><strong><code>CompositionLocal</code> đưa repository xuống cả cây UI</strong> mà không phải truyền tham số xuyên
-			tầng — cùng cơ chế đã dùng cho navigation (Chương 8) và Prefs (Chương 9).</li>
-		<li><strong>Đọc code mẫu bằng đầu phê phán.</strong> Chương 10 có 7 chỗ lý thuyết và code không khớp (mục 20). Biết chỗ
-			nào là "code chết", chỗ nào là dư thừa, chỗ nào phần mô tả sai — đó là kỹ năng đọc codebase thật, không chỉ là học
-			Room.</li>
+			tầng — cùng cơ chế đã dùng cho navigation (Chương 8) và Prefs (Chương 9). Và mọi nơi hiển thị composable đó — kể cả
+			<code>@Preview</code> — đều phải cung cấp giá trị.</li>
+		<li><strong>Đọc code mẫu bằng đầu phê phán.</strong> Chương 10 có 7 chỗ lý thuyết và code không khớp (mục 20) — và
+			phân loại quan trọng hơn đếm số: code chết, dư thừa, mô tả lệch, lệch phiên bản, hay cách làm hợp lệ khác, mỗi loại
+			một cách ứng xử. Biết chỗ nào là "code chết", chỗ nào là dư thừa, chỗ nào phần mô tả sai — đó là kỹ năng đọc
+			codebase thật, không chỉ là học Room.</li>
 	</ul>
 
 	<h2 id="tiep-theo">23. Bước tiếp theo</h2>
@@ -573,13 +840,16 @@ fun PreviewShowBookmarks() {
 		<p>
 			Bạn đã đi hết ba tầng lưu trữ: <code>SharedPreferences</code>/DataStore cho giá trị nhỏ (Chương 9), và Room cho dữ
 			liệu có cấu trúc (Chương 10). Chương 11 — <em>Advanced Storage</em> — đi tiếp sang những thứ Room chưa giải quyết:
-			<strong>migration</strong> (đổi schema mà <em>không</em> xoá dữ liệu người dùng, tức là làm đúng cái mà
-			<code>fallbackToDestructiveMigration()</code> né tránh), quan hệ giữa các bảng khai báo tường minh, và các cách lưu
-			file/dữ liệu lớn.
+			<strong>lưu file</strong> (vùng nhớ riêng của app, file cache, external storage), <strong>Storage Access
+			Framework</strong> (để người dùng chỉ file thay vì app xin quyền tràn lan), và <strong>bảo vệ dữ liệu</strong>
+			(Keystore, mã hoá database).
 		</p>
 		<p>
-			Nói cách khác: Chương 10 dạy bạn <em>tạo</em> database; Chương 11 dạy bạn <em>sống chung</em> với nó khi app đã có
-			người dùng thật và bạn không được phép làm mất dữ liệu của họ.
+			Một chủ đề Chương 10 cố tình nhắc mà không dạy: <strong>migration</strong> — đổi schema database mà <em>không</em>
+			xoá dữ liệu người dùng, tức là làm đúng cái mà <code>fallbackToDestructiveMigration()</code> né tránh. Nó là bài
+			mở rộng riêng (O5) của khoá học, không nằm trên lộ trình chính. Nói cách khác: Chương 10 dạy bạn <em>tạo</em>
+			database; các bài tiếp theo dạy bạn <em>sống chung</em> với nó khi app đã có người dùng thật và bạn không được phép
+			làm mất dữ liệu của họ.
 		</p>
 	</div>
 
@@ -602,7 +872,8 @@ fun PreviewShowBookmarks() {
 			project mẫu và build thì không có gì xảy ra. Nhưng ngay khi bạn nâng Compose lên bản mới hơn — hoặc gõ lại đoạn này
 			trong một project mới — Android Studio sẽ gạch ngang tên hàm và hiện cảnh báo deprecated. Đó không phải bạn gõ sai:
 			đó là API cũ. Ý tưởng và cấu trúc không đổi (vẫn là một state giữ hướng quẹt, một lambda xác nhận, một phần nền vẽ
-			icon), chỉ đổi tên hàm và tên kiểu dữ liệu.
+			icon), chỉ đổi tên hàm và tên kiểu dữ liệu. Deprecated ≠ removed: API cũ còn đó, còn chạy, chỉ không còn là khuyến
+			nghị cho code mới.
 		</p>
 	</div>
 	<div class="callout warn">
@@ -629,16 +900,20 @@ fun PreviewShowBookmarks() {
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<div class="callout note">
 		<p class="src">
-			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 681–823 (ShowBookmarks · RecipeDetails · cập nhật tham
-			chiếu · lựa chọn lưu trữ khác · tổng kết). Ảnh minh hoạ trong giáo trình gốc: <code>img124–126.png</code> (nội dung các
-			ảnh này là ảnh chụp màn hình luồng bookmark, đã được diễn giải thành chữ ở mục 18.3).
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 679–823 (Bookmarks · Recipe Details · cập nhật tham
+			chiếu · previews · Groceries · lựa chọn lưu trữ khác · tổng kết). Ảnh minh hoạ trong giáo trình gốc: <code>img124–126.png</code> (ảnh chụp màn hình luồng bookmark — bấm lưu, mở danh sách, quẹt xoá — đã được diễn giải thành chữ ở mục 18.3).
 		</p>
 		<p class="src">
 			<strong>Code thật</strong> (nguyên văn, chỉ rút gọn phần vẽ icon và state trung gian):
-			<code>{AAF}/ui/recipes/ShowBookmarks.kt</code> (dòng 72–131; phân tích ba điểm Compose ở dòng 76–104; so sánh chỗ
-			bọc <code>withContext</code> ở dòng 83–87; phần <code>@Preview</code> ở dòng 134–144) ·
-			<code>{AAF}/ui/groceries/GroceryList.kt</code> (dòng 55–71; so sánh dòng 68–70) ·
-			<code>{AAF}/ui/RecipeDetails.kt</code> (dòng 86–120).
+			<code>{AAF}/ui/recipes/ShowBookmarks.kt</code> (dòng 73–131; hai coroutine trong LaunchedEffect ở dòng 77–88; hai
+			chỗ bọc <code>withContext</code> ở dòng 83–87 và 99–105; <code>rememberUpdatedState</code> ở dòng 96; preview ở
+			dòng 134–144) ·
+			<code>{AAF}/ui/RecipeDetails.kt</code> (dòng 86–120: hai nhánh <code>Int?</code> với hai khối LaunchedEffect; hai
+			lệnh bookmark ở dòng 178–186) ·
+			<code>{AAF}/ui/groceries/GroceryList.kt</code> (dòng 53–79; so sánh dòng 68–70) ·
+			<code>{AAF}/MainActivity.kt</code> (dòng 89–105: hai route điền hai tham số id) ·
+			<code>{AAF}/viewmodels/RecipeViewModel.kt</code> (dòng 154–159, 215–224: thân hàm đã tự bọc IO — bằng chứng cho
+			mục 16.6).
 		</p>
 		<p class="src">
 			<strong>Phiên bản đã ghim:</strong> <code>{AAF_GRADLE}/gradle/libs.versions.toml</code> (dòng 23, 79–81) và
@@ -646,10 +921,11 @@ fun PreviewShowBookmarks() {
 		</p>
 		<p class="src">
 			<strong>Phần bổ sung ngoài giáo trình:</strong> bảng 7 điểm lệch ở mục 20 (dựng bằng cách đọc từng file và
-			<code>diff</code> giữa <code>starter</code> và <code>final</code>) · cột "Hiện tại" của bảng phiên bản ở mục 21
-			(đối chiếu tài liệu AndroidX) · phân biệt local storage vs remote storage ở mục 19 · hai cảnh báo về
+			<code>diff</code> giữa <code>starter</code> và <code>final</code>, kèm cột phân loại) · cột "Hiện tại" của bảng
+			phiên bản ở mục 21 (đối chiếu release notes chính thức của AndroidX Room và Compose Material 3, lẫn nguồn Room
+			2.8.4) · mô hình vòng đời <code>LaunchedEffect</code> và bảng <code>rememberCoroutineScope</code> ở mục 16.2–16.4 ·
+			phân tích chỗ bọc IO dư ở mục 16.6 · phân biệt local storage vs remote storage ở mục 19 · hai cảnh báo về
 			<code>@Preview</code> và <code>SwipeToDismiss</code> deprecated ở mục Cạm bẫy.
 		</p>
 	</div>
 </section>
-
