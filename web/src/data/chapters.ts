@@ -16,7 +16,56 @@ export interface ChapterInfo {
   summaryVi: string; // tom tat 1 dong bang tieng Viet
   aafFolder: string; // thu muc tuong ung trong aaf-materials/ (cac chuong nho dung chung)
   hasProject: boolean; // chapter 1 khong co project Android that
+  stageId: StageId; // giai doan dich theo spec v2 §5 (IMP-010) — phan loai theo NOI SO HUU DICH,
+  //   khong theo Section Anh cu. Ch07 van la route song giua ch06/ch08 nhung stage dich
+  //   la `optional` (O1/AP2) — metadata nay chuan bi cho lan migrate sau, khong doi route.
 }
+
+// ---------------------------------------------------------------------------
+// Stage metadata (IMP-010) — tu vung giai doan dich cua khoa hoc, theo
+// docs/COURSE_REDESIGN_SPEC_432cbf8_v2.md §5 + plan §4b.2.
+// Day la du lieu CHUAN BI: chua co sidebar/homepage nao doc STAGES (IMP-011 lam),
+// va chua co route moi nao duoc tao. Ba stage (foundation/navigation/appendix)
+// chua co bai live — van phai dai dien duoc trong type.
+//
+// 10 gia tri day du, cam enum rut gon (plan §4b.2):
+export type StageId =
+  | "foundation" // F1–F2 — Nền tảng Kotlin (required prep, khong danh so giai doan)
+  | "android" // GĐ 1 — A1–A14, Android cơ bản
+  | "compose" // GĐ 2 — C1–C5, Jetpack Compose
+  | "state" // GĐ 3 — S1–S5, State & kiến trúc
+  | "navigation" // GĐ 4 — N1–N2, Điều hướng
+  | "network" // GĐ 5 — W1–W3, Mạng
+  | "data" // GĐ 6 — D1–D2 + R1–R4, Dữ liệu cục bộ
+  | "realworld" // GĐ 7 — X1–X2, Real-world / nâng cao
+  | "optional" // O1–O6 — track "Mở rộng"
+  | "appendix"; // AP1–AP3 — tham khảo
+
+export type StageKind = "core" | "optional" | "appendix";
+
+export interface StageInfo {
+  id: StageId;
+  /** Nhan hien thi cho nguoi hoc (tieng Viet, theo spec §5/§16). */
+  label: string;
+  /** Thu tu hoc: 1 = Nền tảng, 2..8 = 7 giai đoạn chính, 9 = Mở rộng, 10 = Phụ lục. */
+  order: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+  /** Phan loai track: core (bat buoc), optional ("Mở rộng"), appendix ("Phụ lục"). */
+  kind: StageKind;
+}
+
+/** Dinh nghia stage duy nhat cua khoa hoc — sidebar/registry sau nay doc tu day. */
+export const STAGES: readonly StageInfo[] = [
+  { id: "foundation", label: "Nền tảng", order: 1, kind: "core" },
+  { id: "android", label: "Giai đoạn 1 — Android cơ bản", order: 2, kind: "core" },
+  { id: "compose", label: "Giai đoạn 2 — Jetpack Compose", order: 3, kind: "core" },
+  { id: "state", label: "Giai đoạn 3 — State & kiến trúc", order: 4, kind: "core" },
+  { id: "navigation", label: "Giai đoạn 4 — Điều hướng", order: 5, kind: "core" },
+  { id: "network", label: "Giai đoạn 5 — Mạng", order: 6, kind: "core" },
+  { id: "data", label: "Giai đoạn 6 — Dữ liệu cục bộ", order: 7, kind: "core" },
+  { id: "realworld", label: "Giai đoạn 7 — Real-world", order: 8, kind: "core" },
+  { id: "optional", label: "Mở rộng (không bắt buộc)", order: 9, kind: "optional" },
+  { id: "appendix", label: "Phụ lục", order: 10, kind: "appendix" },
+];
 
 /** Khoa gom file .astro cho mot chuong: "10" (nguyen khoi) hoac "10_2" (chuong nho). */
 export function chapterFileKey(ch: Pick<ChapterInfo, "number" | "subNumber">): string {
@@ -80,6 +129,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Vì sao Android trông khổng lồ, chọn Kotlin thay vì Java/đa nền tảng, sandbox 2 chiều.",
         aafFolder: "01-welcome-to-android-and-kotlin",
         hasProject: false,
+        stageId: "android",
       },
       {
         number: 1,
@@ -90,6 +140,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Activity, Service, Content Provider, Broadcast Receiver; entry point, Intent, Content Resolver.",
         aafFolder: "01-welcome-to-android-and-kotlin",
         hasProject: false,
+        stageId: "android",
       },
       {
         number: 1,
@@ -100,6 +151,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Manifest khai báo gì cho hệ thống, resource hoạt động thế nào, chuỗi tham chiếu 3 tầng.",
         aafFolder: "01-welcome-to-android-and-kotlin",
         hasProject: false,
+        stageId: "android",
       },
       {
         number: 1,
@@ -110,6 +162,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Gradle biến code thành app cài được, bốn file build, bốn con số phiên bản, lộ trình 11 chương.",
         aafFolder: "01-welcome-to-android-and-kotlin",
         hasProject: false,
+        stageId: "android",
       },
       {
         number: 2,
@@ -120,6 +173,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Tải bản nào, cấu hình sau khi cài, 6 thông tin khi tạo project và hệ quả của từng cái.",
         aafFolder: "02-getting-started-with-android-studio",
         hasProject: true,
+        stageId: "android",
       },
       {
         number: 2,
@@ -130,6 +184,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Tạo AVD, bật USB Debugging trên máy thật, rồi đọc từng file project mới sinh ra.",
         aafFolder: "02-getting-started-with-android-studio",
         hasProject: true,
+        stageId: "android",
       },
       {
         number: 2,
@@ -140,6 +195,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Bấm Run, sửa chữ thấy đổi ngay với Live Edit, cập nhật IDE/SDK, và đối chiếu bản ghim 2023.",
         aafFolder: "02-getting-started-with-android-studio",
         hasProject: true,
+        stageId: "android",
       },
       {
         number: 3,
@@ -150,6 +206,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Activity là gì, onCreate() chạy khi nào, và thay toàn bộ MainActivity.kt để dựng app chat đầu tiên.",
         aafFolder: "03-android-fundamentals",
         hasProject: true,
+        stageId: "android",
       },
       {
         number: 3,
@@ -160,6 +217,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Vì sao chuỗi phải vào strings.xml, lớp R sinh ra từ đâu, đọc lỗi biên dịch đầu tiên và đặt breakpoint.",
         aafFolder: "03-android-fundamentals",
         hasProject: true,
+        stageId: "android",
       },
       {
         number: 3,
@@ -170,6 +228,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "AndroidManifest.xml khai gì với hệ điều hành, intent-filter mở app, và cái bẫy permission vs uses-permission.",
         aafFolder: "03-android-fundamentals",
         hasProject: true,
+        stageId: "android",
       },
       {
         number: 3,
@@ -180,6 +239,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Hai hệ theme song song, một hàm theme không ai gọi, và tám chỗ code mẫu đáng đọc bằng đầu phê phán.",
         aafFolder: "03-android-fundamentals",
         hasProject: true,
+        stageId: "android",
       },
       {
         number: 4,
@@ -188,6 +248,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Hệ thống build Gradle, build type, Version Catalog, ký app.",
         aafFolder: "04-gradle-basics-a-look-behind-the-curtain",
         hasProject: true,
+        stageId: "android",
       },
     ],
   },
@@ -201,6 +262,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Composable function, Layout Group, Modifier, Preview, Theme.",
         aafFolder: "05-jetpack-compose",
         hasProject: true,
+        stageId: "compose",
       },
       {
         number: 6,
@@ -209,6 +271,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "State, ViewModel, luồng dữ liệu một chiều (MVI).",
         aafFolder: "06-advanced-jetpack-compose",
         hasProject: true,
+        stageId: "state",
       },
       {
         number: 7,
@@ -217,6 +280,8 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Repository pattern, đồng bộ dữ liệu P2P bằng Ditto SDK.",
         aafFolder: "07-advanced-architecture",
         hasProject: true,
+        // Stage DICH là optional (nội dung O1/AP2) dù route đang sống giữa ch06/ch08.
+        stageId: "optional",
       },
       {
         number: 8,
@@ -225,6 +290,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Coroutine, Flow, gọi API bằng Retrofit, parse JSON bằng Moshi.",
         aafFolder: "08-networking",
         hasProject: true,
+        stageId: "network",
       },
     ],
   },
@@ -238,6 +304,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Lưu dữ liệu đơn giản bằng SharedPreferences.",
         aafFolder: "09-data-store",
         hasProject: true,
+        stageId: "data",
       },
       {
         number: 10,
@@ -248,6 +315,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "SQLite, ranh giới DataStore vs database, kiến trúc 5 lớp, thêm Room + KSP.",
         aafFolder: "10-room-db",
         hasProject: true,
+        stageId: "data",
       },
       {
         number: 10,
@@ -258,6 +326,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "@Entity, @Dao, @Database, truy vấn SQL được kiểm ngay lúc biên dịch.",
         aafFolder: "10-room-db",
         hasProject: true,
+        stageId: "data",
       },
       {
         number: 10,
@@ -268,6 +337,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Nối database vào app: Repository, ba họ model, ViewModel và luồng IO.",
         aafFolder: "10-room-db",
         hasProject: true,
+        stageId: "data",
       },
       {
         number: 10,
@@ -278,6 +348,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Bookmark, swipe để xoá, hai nguồn dữ liệu, cạm bẫy và kiến thức lỗi thời.",
         aafFolder: "10-room-db",
         hasProject: true,
+        stageId: "data",
       },
       {
         number: 11,
@@ -286,6 +357,7 @@ export const SECTIONS: SectionInfo[] = [
         summaryVi: "Mã hoá dữ liệu bằng SQLCipher và Encrypted Preferences.",
         aafFolder: "11-advanced-storage",
         hasProject: true,
+        stageId: "realworld",
       },
     ],
   },
