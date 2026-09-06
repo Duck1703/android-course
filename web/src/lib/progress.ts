@@ -1,5 +1,50 @@
 // Task 9 — tiện ích lưu tiến độ "đã học" trong localStorage của trình duyệt (không cần backend/DB).
 // Dùng chung cho: sidebar (BaseLayout), nút đánh dấu trên trang chapter (ProgressToggle), tóm tắt ở trang chủ.
+//
+// ─── CHÍNH SÁCH MIGRATION v5+ (IMP-013) ─────────────────────────────────────
+//
+// A. ĐỊNH DANH TIẾN ĐỘ LÀ SLUG CÔNG KHAI. Bookmark/tiến độ gắn vào
+//    `/chapters/<slug>/` — KHÔNG phải lessonId (A6, S4…). lessonId không bao giờ
+//    xuất hiện trong storage.
+//
+// B. ENTRY MIGRATION CHỈ ĐƯỢC THÊM KHI MỘT BATCH THẬT SỰ ĐỔI slug đang live
+//    (split/rename/move). Batch nào đổi slug thì trong CÙNG commit phải:
+//    1. thêm/cập nhật SPLIT_MAP với đúng slug mới,
+//    2. tăng SCHEMA_VERSION đúng 1 đơn vị,
+//    3. thêm redirect nếu old URL chết (theo REDIRECT_MAP trong registry),
+//    4. verify legacy credit đúng như SPLIT_MAP khai báo.
+//
+// C. SLUG GIỮ NGUYÊN KHÔNG CÓ ENTRY. Slug giữ nguyên URL (13 KEEP 1:1 + ch02-2
+//    sống tiếp với tư cách A6) KHÔNG được thêm vào SPLIT_MAP chỉ vì lessonId
+//    của nó đổi (vd A6 vẫn sống tại ch02-2-… dù id đổi từ "Chương 2.2" sang A6).
+//
+// D. NO-FABRICATE. Bài HỌC MỚI KHÔNG TỰ ĐỘNG "đã học". Bài hoàn toàn mới hoặc
+//    trích-ra-là-mới không bao giờ nhận completion từ storage cũ. Hiện tại:
+//    F1, F2, C5, S1, S5, N1, N2, O2–O6, AP1–AP3. Cơ chế migrate KHÔNG suy
+//    diễn credit theo stage/giãn cách/chủ đề/tiền quyết/chương-sách — chỉ
+//    entry khai báo tường minh trong SPLIT_MAP mới tạo credit thừa kế.
+//    Đặc biệt: S5 KHÔNG thừa kế completion của ch10-1; ch10-1 chỉ sang R1.
+//
+// E. 3 CASE ĐẶC BIỆT (chính sách chốt, CHƯA kích hoạt — batch thật sự mới thêm):
+//    1. ch02-2: fan-out-keep-source — old slug VẪN SỐNG với tư cách A6, nên
+//       entry tương lai phải là old → [old, a7-…] (union, không replace, không
+//       redirect). Cơ chế hiện tại đã hỗ trợ an toàn: `SPLIT_MAP[slug]` trả về
+//       mảng chứa chính old slug, `next.push(...replacement)` giữ old lại và
+//       thêm con mới, dedup chống trùng (xem migrateProgress + bài test).
+//    2. ch10-1: old → R1 ONLY. S5 không nhận credit. Old URL chết → redirect
+//       do batch + IMP-014 lo, không phải ở đây.
+//    3. ch07: old → O1. Kế nhiệm REDUCE trực tiếp — credit cố ý thừa kế vào
+//       track optional.
+//
+// F. NGUỒN CHUẨN: docs/TARGET_REGISTRY_v5.md (bảng 48 unit, SPLIT_MAP draft
+//    9 entry, REDIRECT_MAP 8 slug chết, legacy-credit policy). Số liệu đã khóa:
+//    22 URL hiện tại = 14 giữ nguyên + 8 chết. KHÔNG dùng số "15/22" cũ.
+//
+// G. SCHEMA_VERSION là phiên bản CẤU TRÚC SLUG của tiến độ — không phải version
+//    app, nội dung, hay registry. Hiện tại 4. Version 5 = batch migration thật
+//    ĐẦU TIÊN sau registry (pilot). Mỗi batch có entry mới tăng đúng 1 lần
+//    TRONG CÙNG commit đó (atomic) — không gán cứng sẵn dãy version tương lai.
+// ────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "hoc-android-tv:progress";
 const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
 
@@ -10,6 +55,14 @@ const SCHEMA_VERSION = 4;
 // của người học không còn ứng với trang nào — tiến độ của họ sẽ "bốc hơi".
 // Bảng này đổi slug cũ thành đủ các slug mới: đã học cả chương lớn = đã học tất cả
 // các chương nhỏ tách ra từ nó.
+//
+// Chú ý hai hành vi của migrateProgress phụ thuộc hình dạng entry:
+//   • entry thường (old chết): old → [con1, con2] — old bị thay.
+//   • entry keep-source (old VẪN SỐNG, vd ch02-2 = A6): old → [old, con] —
+//     vì thuật toán push nguyên mảng thay thế rồi dedup, old slug được GIỮ
+//     lại trong done (union semantics), không mất tiến độ tại URL cũ. Đây là
+//     cơ chế fan-out-keep-source mà IMP-013 đã kiểm bằng mô phỏng (case C/D).
+//     Batch ch02-2 tương lai chỉ cần khai đúng mảng này + bump version.
 const SPLIT_MAP: Record<string, string[]> = {
   "ch01-welcome-to-android-kotlin": [
     "ch01-1-android-va-kotlin",
@@ -53,6 +106,15 @@ function readRaw(): string[] {
  * Chạy MỘT LẦN cho mỗi phiên bản cấu trúc: đổi slug cũ thành các slug mới, giữ
  * nguyên tiến độ người học đã có. Đã chạy rồi thì chỉ tốn một lần đọc
  * localStorage, nên gọi bao nhiêu lần cũng không sao.
+ *
+ * Thuật toán (giữ nguyên từ v4, đã chứng minh đủ cho cả 2 mode — xem mô phỏng
+ * IMP-013 case B–F):
+ *   – duyệt từng slug trong done; nếu có trong SPLIT_MAP thì push NGUYÊN mảng
+ *     thay thế (entry keep-source chứa old slug → old được giữ lại), nếu không
+ *     giữ nguyên slug;
+ *   – dedup bằng Set: chạy lại bao nhiêu lần cũng ổn định tại một tập (old
+ *     không nhân đôi, con không nhân đôi);
+ *   – slug không liên quan đi qua nguyên vẹn (không bị đụng).
  */
 export function migrateProgress(): void {
   if (typeof localStorage === "undefined") return;
