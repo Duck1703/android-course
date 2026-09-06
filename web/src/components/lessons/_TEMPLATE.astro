@@ -1,0 +1,147 @@
+---
+// ============================================================================
+// _TEMPLATE.astro — BẢN MẪU dựng bài học (IMP-015). KHÔNG PHẢI BÀI HỌC THẬT.
+//
+// Cách dùng: copy file này → đặt tên theo registry (docs/TARGET_REGISTRY_v5.md
+// cột `component`, kebab→Pascal), thay mọi placeholder [ ] bên dưới, xoá các
+// comment hướng dẫn (`// →`) khi đã điền xong, rồi mới wire vào lessons.ts.
+//
+// An toàn build (đã kiểm):
+//  - Tên có tiền tố "_" → import.meta.glob trong lessonStats.ts LỌC BỎ
+//    (regex /^Ch(\d{2})…/ không khớp) → KHÔNG nhiễm COURSE_TOTALS/search stats.
+//  - File này KHÔNG được import ở lessons.ts → KHÔNG sinh route.
+//  - Không import quiz, không đọc progress, không có registry entry.
+//
+// Chuẩn biên tập: docs/LESSON_TEMPLATE.md (+ docs/COURSE_CONTENT_STANDARD.md).
+// Chính sách chất lượng: "Không cắt vì dài. Chỉ cắt khi nội dung thừa, sai
+// scope, trùng lặp, hoặc nên thuộc một learning job khác." — `minutes` chỉ là
+// ước lượng planning thông tin, KHÔNG phải hạn mức cắt nội dung.
+// ============================================================================
+import { Code } from "astro:components";
+
+// Khai báo mẫu cho TS-check khi chưa có block <Code> thật nào (placeholder này
+// không render gì — khi copy file, dòng này bị xoá cùng khuôn Code đầu tiên).
+void Code;
+
+// → CODE THẬT: khai const ở đây. Mỗi const = 1 đoạn code; ghi provenance
+//   (file thật + dòng đã kiểm) NGAY Ở comment trên từng const — nhưng số dòng
+//   chi tiết chỉ hiển thị cho người học trong #nguon, không nhồi vào thân bài.
+//   CHƯA mở file thật để kiểm thì KHÔNG được ghi số dòng.
+// Ví dụ khuôn (xoá khi dựng bài thật):
+// const tenDoanCode = `val demo = 1`; // aaf-materials/…/TenFile.kt dòng 40–52
+---
+
+<article class="lesson">
+	{/* ── 1+2. MỤC TIÊU (REQUIRED) — callout.goals, động từ đo được ── */}
+	{/* Mỗi mục tiêu ≥1 câu quiz phủ; ≤5 gạch đầu dòng */}
+	<div class="callout goals">
+		<strong>Sau bài này bạn sẽ</strong>
+		<ul>
+			<li>[Giải thích được / Tự viết được / Chỉ ra được … — việc 1]</li>
+			<li>[— việc 2]</li>
+			<li>[— việc 3]</li>
+		</ul>
+	</div>
+
+	{/* ── 3. VÌ SAO QUAN TRỌNG + BỐI CẢNH (REQUIRED, 2–3 câu) ── */}
+	<p>
+		[Vì sao việc này đụng đến việc thật người học sẽ làm. Nói trực tiếp khái niệm
+		và project mẫu — KHÔNG tự sự "sách/chapter/tác giả".]
+	</p>
+
+	{/* ── 4. CẦN BIẾT TRƯỚC (REQUIRED) ── */}
+	{/* Liệt kê khái niệm/lesson đã học mà bài dựa vào. Forward-ref thì ghi rõ
+	    "sẽ học đầy đủ ở [bài]" theo khuôn §4 của LESSON_TEMPLATE.md.
+	    Bảng phân loại A/B/C/D (đã dạy/dạy ở đây/JIT/defer) là VIỆC NỘI BỘ —
+	    để ở comment này, KHÔNG render cho người học:
+	    // A đã dạy: … | B dạy ở đây: … | C JIT: … (callout nào) | D defer: … */}
+	<p class="hint">
+		<strong>Cần biết trước.</strong> [khái niệm đã học — nêu bài; nếu concept
+		lạ lần đầu xuất hiện: giải thích vai trò tại chỗ, ghi rõ sẽ học đầy đủ ở
+		đâu. Chỉ giả định những gì lộ trình đích đã dạy trước bài này.]
+	</p>
+
+	{/* ── 5. MENTAL MODEL (REQUIRED cho khái niệm mới phi trực giác) ── */}
+	{/* 1 analogy / 1 khái niệm mới. Class: .callout.mental */}
+	<div class="callout mental">
+		<strong>[Tên khái niệm] là gì — hình dung thế nào?</strong>
+		<p>[Analogy ngắn, dễ nhớ, không kéo dài thành bài triết học.]</p>
+	</div>
+
+	{/* ── 6. KHỐI KHÁI NIỆM CHÍNH (REQUIRED, 1–3 khái niệm lớn) ── */}
+	{/* "Vì sao" TRƯỚC "làm thế nào" với khái niệm phản trực giác.
+	    Có thể dùng <h2 id="…"> đánh số/mục tiêu riêng của bài. */}
+	<h2 id="khai-niem-chinh">[Tên khối khái niệm]</h2>
+	<p>
+		[GIẢI THÍCH VÌ SAO khái niệm tồn tại trước khi đưa cú pháp. Cú pháp Kotlin
+		lạ lần đầu → hộp giải thích 2–4 câu ngay tại chỗ, không lạc đề.]
+	</p>
+
+	{/* ── 7. CODE THẬT (CONDITIONAL — chỉ khi bài có code project) ── */}
+	{/* Provenance: file thật `aaf-materials/<chapter>/…` + dòng đã kiểm (ghi
+	    trong #nguon / comment). KHÔNG bịa số dòng. Ví dụ minh hoạ (pseudocode)
+	    phải dán nhãn bằng chữ. Snippet dài → lược với "…" + chú thích. */}
+	{/* <Code code={tenDoanCode} lang="kotlin" theme="github-dark" /> */}
+	<p>
+		[Giải thích dòng cốt lõi sau mỗi block phi tầm thường — không dump không
+		giải thích.]
+	</p>
+
+	{/* ── 8. CHECKPOINT (RECOMMENDED; bắt buộc với bài >~1.200 từ) ──
+	    Khuôn: callout.note + details tự kiểm. Kiểm HIỂU từ những gì vừa dạy,
+	    không dạy lý thuyết mới, không tính điểm, không thay quiz cuối bài. */}
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>[Tình huống ngắn để dự đoán — chỉ dùng khái niệm vừa dạy.]</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>[Giải thích vì sao — kể cả nhánh sai của dự đoán.]</p>
+		</details>
+	</div>
+
+	{/* ── 9. CẠM BẪY (REQUIRED — đúng 1 h2 id="cam-bay" mỗi bài) ──
+	    Nhiều cạm bẫy liên quan được đánh số bên trong; KHÔNG tán rạc nhiều
+	    heading "Cạm bẫy". Tối đa 2 khối warn/diff liền kề. */}
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<div class="callout diff">
+		<strong>1. [Cạm bẫy / chỗ giáo trình lệch code thật]</strong>
+		<p>
+			[Diễn giải trung tính: "Lý thuyết mô tả… — code thật làm…" + nêu rõ
+			"nên theo cái nào". Wording "khác biệt", không "cảnh báo".]
+		</p>
+	</div>
+	{/* Drift phiên bản (CONDITIONAL — chỉ khi có drift thật, đã verify):
+	    API lịch sử → nói đúng danh nghĩa "code lịch sử — đọc được, không chép
+	    vào app mới" + "nên theo cái nào"; dòng thời gian chi tiết → AP3.
+	    Claim deprecated/current phải có nguồn chính thức + ngày kiểm ở #nguon. */}
+
+	{/* ── 10. TRACE ĐẦU–CUỐI (CONDITIONAL — khi bài nối mạch dùng-lại) ──
+	    Vd: S4 → S5, R2 → R3. Nối lại chuỗi "từ cú chạm → dữ liệu → UI". */}
+
+	{/* ── 11. TÓM TẮT (REQUIRED) — đúng lại các mục tiêu đầu bài ── */}
+	<h2 id="tom-tat">Tóm tắt</h2>
+	<ul class="keypoints">
+		<li>[Điểm chính 1]</li>
+		<li>[Điểm chính 2]</li>
+		<li>[Điểm chính 3]</li>
+	</ul>
+
+	{/* ── 12. NGUỒN (REQUIRED — đúng 1 h2 id="nguon"; chỗ DUY NHẤT có
+	    attribution) ── Nhóm được nhiều nguồn; số dòng = số dòng ĐÃ KIỂM. */}
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<p class="src">
+		<strong>Giáo trình gốc:</strong> [content/book/&lt;chapter&gt;.md — dòng x–y
+		nếu dùng].
+	</p>
+	<p class="src">
+		<strong>Code thật:</strong> [aaf-materials/&lt;chapter&gt;/…/TenFile.kt —
+		dòng x–y đã kiểm] · [file khác nếu dùng].
+	</p>
+	<p class="src">
+		<strong>Tài liệu chính thức:</strong> [developer.android.com/… — kiểm
+		ngày DD/MM/YYYY khi có claim phiên bản].
+	</p>
+
+	{/* ── KHÔNG nhúng quiz vào đây — Quiz là component riêng
+	    (<ComponentBase>Quiz.astro) ghép qua lessons.ts. Xem LESSON_TEMPLATE §10. */}
+</article>
