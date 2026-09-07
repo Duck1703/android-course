@@ -139,17 +139,19 @@ debugImplementation("androidx.compose.ui:ui-tooling")`;
 			</label>
 			<label>
 				<input type="radio" name="q4" value="d" /> <code>compileSdk = 34</code> nghĩa là app cài được lên mọi máy Android
-				từ 14 trở xuống, còn <code>minSdk</code> chỉ là con số để tham khảo
+				từ 14 trở xuống, còn <code>minSdk</code> chỉ là con số để tham khảo — máy Android 9 vẫn cài bình thường vì hệ điều
+				hành tự hạ yêu cầu xuống đúng mức máy đó, nên người viết app không cần quan tâm con số này khi chọn thiết bị kiểm thử
 			</label>
 			<p class="explain" hidden>				Ba con số này là chỗ dễ lẫn nhất khi mới đọc file build, và chúng trả lời ba câu khác nhau. Đáp án b tả đúng vai trò
 				của <code>targetSdk</code> chứ không phải <code>minSdk</code>: hệ thống dựa vào <code>targetSdk</code> để quyết định
 				bật hành vi mới hay giữ hành vi cũ cho app. Đáp án a sai ở cả hai nửa: chúng là ba thứ độc lập, và ở đây
 				<code>minSdk</code> vốn đã khác hai con số kia mà project vẫn build bình thường. Đã kiểm mọi file build của khoá
 				học: <code>minSdk = 30</code> ở tất cả — với project học thì đó là lựa chọn hợp lý (ít phải xử lý khác biệt giữa các
-				bản Android cũ), nhưng app thương mại thường hạ <code>minSdk</code> thấp hơn để với được nhiều máy hơn. Đáp án d gán
-				vai "quyết định cài được" cho <code>compileSdk</code> — ngược với thật: <code>compileSdk</code> là yêu cầu dành cho
-				<em>máy của bạn</em> lúc biên dịch, không giới hạn thiết bị nào; con số duy nhất chặn việc cài là <code>minSdk</code>,
-				nên nó không bao giờ là "số để tham khảo" (câu 7 của quiz Chương 2.3 kiểm riêng điểm này).
+				bản Android cũ), nhưng app thương mại thường hạ <code>minSdk</code> thấp hơn để với được nhiều máy hơn. Đáp án d sai
+				đúp: nó gán vai "quyết định cài được" cho <code>compileSdk</code> — ngược với thật: <code>compileSdk</code> là yêu cầu
+				dành cho <em>máy của bạn</em> lúc biên dịch, không giới hạn thiết bị nào — rồi bịa ra cơ chế "hệ điều hành tự hạ yêu
+				cầu": không có cơ chế đó, máy Android 9 không cài được app <code>minSdk = 30</code>, và con số duy nhất chặn việc cài
+				vẫn là <code>minSdk</code>, nên nó không bao giờ là "số để tham khảo" (câu 7 của quiz Chương 2.3 kiểm riêng điểm này).
 			</p>
 		</fieldset>
 
