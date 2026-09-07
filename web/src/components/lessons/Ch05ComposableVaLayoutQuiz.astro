@@ -13,11 +13,11 @@
 		<fieldset data-answer="b">
 			<legend>1. Compose nghĩ về giao diện khác cách cũ (XML + findViewById) ở điểm nào?</legend>
 			<label><input type="radio" name="q1" value="a" /> Bạn tạo object giao diện, giữ tham chiếu tới chúng, rồi ra lệnh cho từng object thay đổi khi dữ liệu đổi</label>
-			<label><input type="radio" name="q1" value="b" /> Bạn mô tả giao diện tương ứng với dữ liệu hiện tại bằng các hàm gọi lẫn nhau; Compose tự lo phần "phải sửa những gì"</label>
-			<label><input type="radio" name="q1" value="c" /> Bạn viết file XML mô tả cây giao diện, rồi dùng code Kotlin đi tìm từng view để gán dữ liệu</label>
+			<label><input type="radio" name="q1" value="b" /> Bạn mô tả giao diện tương ứng với dữ liệu hiện tại; Compose tự lo phần "phải sửa những gì"</label>
+			<label><input type="radio" name="q1" value="c" /> Bạn viết file XML mô tả cây giao diện, rồi dùng Kotlin đi tìm từng view để gán dữ liệu</label>
 			<label><input type="radio" name="q1" value="d" /> Bạn vẽ giao diện trực tiếp lên một canvas bằng toạ độ pixel, giống cách dựng game 2D</label>
 			<p class="explain" hidden>
-				Bốn công việc của Compose là <strong>mô tả</strong>: mỗi hàm nhận dữ liệu vào và trả lời "giao diện nên trông thế nào với dữ liệu này". Dữ liệu đổi thì bạn đưa ra mô tả mới — không giữ tham chiếu, không ra lệnh từng bước (declarative, không phải imperative). Đáp án a mô tả đúng cách cũ imperative; c là XML của hệ thống View; d là canvas của game, không phải Compose.
+				Bốn công việc của Compose là <strong>mô tả</strong>: mỗi hàm nhận dữ liệu vào và trả lời "giao diện nên trông thế nào với dữ liệu này" — các hàm composable gọi lẫn nhau tạo thành cây giao diện. Dữ liệu đổi thì bạn đưa ra mô tả mới — không giữ tham chiếu, không ra lệnh từng bước (declarative, không phải imperative). Đáp án a mô tả đúng cách cũ imperative; c là XML của hệ thống View; d là canvas của game, không phải Compose.
 			</p>
 		</fieldset>
 
@@ -37,9 +37,9 @@
 		<fieldset data-answer="b">
 			<legend>3. Trong <code>MainActivity.kt</code> khởi đầu, khối <code>setContent &#123; ... &#125;</code> chứa <code>Column</code>, <code>Text</code>, <code>Button</code> nhưng <strong>không có một chữ <code>@Composable</code> nào</strong>. Vì sao?</legend>
 			<label><input type="radio" name="q3" value="a" /> Vì <code>setContent</code> tự thêm <code>@Composable</code> vào mọi hàm bên trong nó lúc biên dịch</label>
-			<label><input type="radio" name="q3" value="b" /> Vì tham số <code>content</code> của <code>setContent</code> có kiểu <code>@Composable () -&gt; Unit</code>, nên khối lambda truyền vào đã là vùng composable hợp lệ</label>
+			<label><input type="radio" name="q3" value="b" /> Vì tham số <code>content</code> của <code>setContent</code> có kiểu <code>@Composable () -&gt; Unit</code> — khối lambda truyền vào đã là vùng composable</label>
 			<label><input type="radio" name="q3" value="c" /> Vì chỗ này viết sai — <code>@Composable</code> luôn bắt buộc, nên app sẽ không build được</label>
-			<label><input type="radio" name="q3" value="d" /> Vì <code>Column</code>, <code>Text</code>, <code>Button</code> không phải composable nên không cần nhãn</label>
+			<label><input type="radio" name="q3" value="d" /> Vì <code>Column</code>, <code>Text</code>, <code>Button</code> không phải composable nên không cần nhãn — nhãn chỉ dành cho hàm bạn tự viết, còn những hàm này có sẵn của thư viện thì thư viện đã khai giúp</label>
 
 			<p class="explain" hidden>
 				Nhãn <code>@Composable</code> nằm ngay trên <strong>kiểu của tham số</strong> trong định nghĩa <code>setContent</code> (đọc bằng Control-click vào định nghĩa gốc). Khối ngoặc nhọn bạn truyền vào là một lambda của Kotlin, và vì kiểu tham số yêu cầu composable nên khối đó <em>là</em> khối composable — không cần viết lại nhãn. Đáp án c sai về sự thật: app build và chạy bình thường.
@@ -52,7 +52,7 @@
 			<label><input type="radio" name="q4" value="a" /> Cú pháp riêng của Compose để khai báo phần tử con của layout</label>
 			<label><input type="radio" name="q4" value="b" /> Chỉ là cách trình bày code; viết <code>Column()</code> không có gì bên trong là như nhau</label>
 			<label><input type="radio" name="q4" value="c" /> Một khối khởi tạo (init block) chạy khi <code>Column</code> được tạo</label>
-			<label><input type="radio" name="q4" value="d" /> Lambda đuôi của Kotlin — tham số cuối <code>content</code> được đưa ra ngoài dấu ngoặc tròn</label>
+			<label><input type="radio" name="q4" value="d" /> Lambda đuôi của Kotlin — tham số cuối <code>content</code> được đưa ra ngoài dấu ngoặc</label>
 
 			<p class="explain" hidden>
 				Đây đúng <em>lambda đuôi</em> đã học ở Nền tảng Kotlin: khi tham số cuối cùng của hàm là một lambda, Kotlin cho phép đưa nó ra ngoài ngoặc tròn — viết đầy đủ là <code>Column(content = &#123; ... &#125;)</code>. Cấu trúc lồng nhau của code chính là cấu trúc lồng nhau trên màn hình.
@@ -73,12 +73,12 @@
 
 		<fieldset data-answer="a">
 			<legend>6. Đặt hai composable trực tiếp vào một <code>Surface</code> thì chuyện gì xảy ra?</legend>
-			<label><input type="radio" name="q6" value="a" /> Giao diện ra sai mà thường không có thông báo lỗi rõ ràng — <code>Surface</code> chỉ nhận đúng một con</label>
+			<label><input type="radio" name="q6" value="a" /> Giao diện ra sai mà thường không có thông báo lỗi rõ ràng</label>
 			<label><input type="radio" name="q6" value="b" /> Trình biên dịch báo lỗi ngay, project không build được</label>
 			<label><input type="radio" name="q6" value="c" /> App chạy nhưng tắt ngay khi mở, vì <code>Surface</code> ném exception như <code>TODO()</code></label>
 			<label><input type="radio" name="q6" value="d" /> Không sao cả — <code>Surface</code> nhận bao nhiêu con cũng được, chúng sẽ được xếp dọc</label>
 			<p class="explain" hidden>
-				<code>Surface</code> nhận <strong>đúng một</strong> composable con tại một thời điểm; vi phạm là lỗi giao diện dạng "im lặng" — không compile error, không crash rõ, bạn chỉ thấy UI sai. Cách chuẩn: cho <code>Surface</code> một <code>Box</code> hoặc <code>Column</code>, mọi thứ khác nằm trong con đó. Ba layout còn lại nhận bao nhiêu con cũng được; chuyện <code>TODO()</code> ném lỗi là một cạm bẫy khác — nó ném lúc <em>chạy tới</em> hàm chứa nó.
+				<code>Surface</code> nhận <strong>đúng một</strong> composable con tại một thời điểm — đó chính là lý do trong câu a. Vi phạm là lỗi giao diện dạng "im lặng" — không compile error, không crash rõ, bạn chỉ thấy UI sai. Cách chuẩn: cho <code>Surface</code> một <code>Box</code> hoặc <code>Column</code>, mọi thứ khác nằm trong con đó. Ba layout còn lại nhận bao nhiêu con cũng được; chuyện <code>TODO()</code> ném lỗi là một cạm bẫy khác — nó ném lúc <em>chạy tới</em> hàm chứa nó.
 			</p>
 		</fieldset>
 
@@ -87,17 +87,17 @@
 			<label><input type="radio" name="q7" value="a" /> Vì thiếu <code>@Composable</code> trên ba hàm đó, nên Compose không tìm thấy cây giao diện</label>
 			<label><input type="radio" name="q7" value="b" /> Vì project chưa khai dependency Material 3 trong Gradle</label>
 			<label><input type="radio" name="q7" value="c" /> Vì ba hàm rỗng không trả về gì cả, nên Activity kết thúc ngay</label>
-			<label><input type="radio" name="q7" value="d" /> Vì <code>TODO()</code> là một hàm Kotlin thật — nó <em>ném lỗi</em> khi được gọi, nên trình biên dịch không báo gì lúc build</label>
+			<label><input type="radio" name="q7" value="d" /> Vì <code>TODO()</code> là một hàm Kotlin thật — nó <em>ném lỗi</em> khi được gọi</label>
 
 			<p class="explain" hidden>
-				<code>TODO(...)</code> là hàm có sẵn của Kotlin, thân nó ném exception khi chạy tới — nên build được, cài được, rồi app dừng ngay lúc hàm đó được gọi. Muốn chạy thử phần đã xong thì đổi thành comment <code>// TODO - Implement</code>. Chi tiết của project mẫu: trong ba hàm sinh ra, <code>ChannelNameBar</code> <strong>không</strong> có <code>TODO()</code> vì bạn đã truyền tham số khi gọi, Android Studio coi hàm đã có phần khởi đầu.
+				<code>TODO(...)</code> là hàm có sẵn của Kotlin, thân nó ném exception khi chạy tới — nên build được, cài được, rồi app dừng ngay lúc hàm đó được gọi, còn lúc biên dịch thì không có gì báo lỗi. Muốn chạy thử phần đã xong thì đổi thành comment <code>// TODO - Implement</code>. Chi tiết của project mẫu: trong ba hàm sinh ra, <code>ChannelNameBar</code> <strong>không</strong> có <code>TODO()</code> vì bạn đã truyền tham số khi gọi, Android Studio coi hàm đã có phần khởi đầu.
 			</p>
 		
 		</fieldset>
 
 		<fieldset data-answer="a">
 			<legend>8. Sau khi tách giao diện thành nhiều composable nhỏ, <code>MainActivity</code> chỉ còn một lời gọi <code>ConversationContent()</code>. Lợi ích <strong>chủ đạo</strong> của việc tách này là gì?</legend>
-			<label><input type="radio" name="q8" value="a" /> Giao diện dễ đọc, sửa được từng mảnh, dùng lại được, và xem trước được riêng từng composable nhỏ</label>
+			<label><input type="radio" name="q8" value="a" /> Giao diện dễ đọc, sửa được từng mảnh, dùng lại được, xem trước được</label>
 			<label><input type="radio" name="q8" value="b" /> Bắt buộc — Compose không cho phép một hàm composable dài quá 50 dòng</label>
 			<label><input type="radio" name="q8" value="c" /> App chạy nhanh hơn vì Compose xử lý được ít code hơn mỗi khung hình</label>
 			<label><input type="radio" name="q8" value="d" /> Tách nhỏ giúp giảm dung lượng file APK khi đóng gói</label>
@@ -113,7 +113,7 @@
 			<label><input type="radio" name="q9" value="a" /> Cả hai đều là dữ liệu vào; composable con tự quyết định "gửi tin nhắn nghĩa là gì"</label>
 			<label><input type="radio" name="q9" value="b" /> Dữ liệu vào qua <code>onSend</code>; sự kiện ra qua <code>text</code> — tham số luôn là hướng ra</label>
 			<label><input type="radio" name="q9" value="c" /> Dữ liệu vào qua tham số <code>text</code>; sự kiện ra qua callback <code>onSend</code> mà composable con gọi khi người dùng bấm</label>
-			<label><input type="radio" name="q9" value="d" /> Cả hai đều là sự kiện ra; dữ liệu thật nằm trong một biến toàn cục của app</label>
+			<label><input type="radio" name="q9" value="d" /> Cả hai đều là sự kiện ra; dữ liệu thật nằm trong một biến toàn cục của app, và composable con đọc biến đó mỗi lần cần hiển thị</label>
 
 			<p class="explain" hidden>
 				Đúng hai đường: cha đưa dữ liệu xuống qua tham số thường; con không tự quyết "gửi nghĩa là gì" mà chỉ <em>gọi</em> hàm <code>onSend</code> (kiểu <code>() -&gt; Unit</code> — kiểu hàm đã học ở F1) khi người dùng bấm. Đây là bước đầu của mẫu state hoisting/UDF, sẽ học đầy đủ ở giai đoạn State &amp; kiến trúc; ở đây chỉ cần đọc được hai hướng của mũi tên.
@@ -126,7 +126,7 @@
 			<label><input type="radio" name="q10" value="a" /> Dependency injection — cho phép thay thế component lúc runtime mà không sửa code</label>
 			<label><input type="radio" name="q10" value="b" /> Kế thừa (inheritance) — các component con kế thừa nội dung từ component cha</label>
 			<label><input type="radio" name="q10" value="c" /> Recursion — composable gọi lại chính nó để vẽ nội dung lồng nhau</label>
-			<label><input type="radio" name="q10" value="d" /> Slot API — một "chỗ trống" mà bạn nhét giao diện gì vào cũng được, nên component không bị giới hạn chỉ hiện chữ</label>
+			<label><input type="radio" name="q10" value="d" /> Slot API — một "chỗ trống" mà bạn nhét giao diện gì vào cũng được</label>
 			<p class="explain" hidden>
 				Đó là <strong>slot</strong>: component chỉ định <em>chỗ</em>, còn <em>vẽ gì</em> do bạn quyết bằng cách truyền một composable. Nhờ vậy app bar hiện được icon, hàng nút, hay cả một <code>Column</code> căn giữa. Bạn đã gặp slot ngay từ <code>setContent</code> (tham số <code>content</code>) và ở <code>Column</code>/<code>Box</code>. Không phải DI, không phải kế thừa, cũng không phải recursion.
 			</p>
