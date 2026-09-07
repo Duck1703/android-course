@@ -189,8 +189,9 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 			<tr>
 				<td>1</td>
 				<td><code>class MainActivity : ComponentActivity()</code></td>
-				<td>Dấu <code>:</code> ở vị trí này nghĩa là "kế thừa từ" (tương tự <code>extends</code> của Java — cú pháp
-					Kotlin sẽ được dạy đầy đủ ở phần Nền tảng Kotlin). <code>ComponentActivity</code> là lớp có sẵn của thư
+				<td>Dấu <code>:</code> ở vị trí này nghĩa là "kế thừa từ" (tương tự <code>extends</code> của Java — dấu
+					<code>:</code> bạn đã gặp ở phần Nền tảng; chi tiết kế thừa sẽ được gloss đúng chỗ dùng, không cần ở đây).
+					<code>ComponentActivity</code> là lớp có sẵn của thư
 					viện AndroidX. <em>Bây giờ chưa cần biết nó làm gì bên trong</em> — chỉ cần biết phải kế thừa nó mới
 					hiển thị được nội dung lên màn hình.</td>
 			</tr>
@@ -232,7 +233,7 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		file là Composable vì nó có gắn <code>@Composable</code>.
 	</p>
 	<p>
-		Chi tiết này quan trọng ngay bây giờ vì <strong>Chương 3.2, mục 12</strong> sẽ cho bạn gặp đúng lỗi biên dịch
+		Chi tiết này quan trọng ngay bây giờ vì <strong>phần đọc lỗi của Chương 3.2b</strong> sẽ cho bạn gặp đúng lỗi biên dịch
 		phát sinh từ nó — một lỗi có thật khi bạn cố đọc chuỗi từ resource ở một chỗ trông như "đang ở trong Compose"
 		nhưng thật ra không phải. Nắm được "ranh giới nằm ở dấu ngoặc nào" thì lúc đó bạn sẽ đọc thông điệp lỗi ra ngay.
 	</p>
@@ -457,7 +458,7 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		hoá ra truyền được cả một mảnh giao diện. Trong code thật, nhãn đó là
 		<code>Text(text = stringResource(id = R.string.chat_entry_label))</code> — <code>{KT_FINAL}</code> dòng 65,
 		nghĩa là ngay cả nhãn của ô nhập cũng đọc chữ từ tài nguyên chứ không viết cứng. Cách <code>stringResource</code>
-		hoạt động là nội dung <strong>Chương 3.2, mục 11</strong>.
+		hoạt động là nội dung <strong>Chương 3.2a</strong>.
 	</p>
 	<h3 id="button">5.5. <code>Button</code> và thứ tự hai dòng trong <code>onClick</code></h3>
 	<p>
@@ -482,7 +483,7 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		Về cú pháp, phần chữ trong nút là một Composable đặt trong cặp <code>&#123; &#125;</code> đứng <em>sau</em>
 		<code>Button(...)</code> — trông như "hai khối ngoặc liền nhau". Kotlin có một quy tắc giải thích chuyện đó: nếu
 		tham số cuối cùng của một hàm là lambda, bạn được phép viết lambda đó ra ngoài dấu ngoặc tròn
-		(<em>trailing lambda</em> — cú pháp này cũng sẽ nằm trong phần Nền tảng Kotlin). Nên
+		(<em>trailing lambda</em> — quy tắc này đã có ở phần Nền tảng Kotlin). Nên
 		<code>Button(onClick = &#123;...&#125;) &#123; Text(...) &#125;</code> thực chất chỉ là cách viết gọn của
 		<code>Button(onClick = &#123;...&#125;, content = &#123; Text(...) &#125;)</code>. Biết quy tắc này một lần là
 		đọc được hầu hết code Compose — kể cả <code>Column &#123; ... &#125;</code> ở mục 5.1.
@@ -505,7 +506,7 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 	<pre class="tree">chatOutputTextView = findViewById(R.id.chat_output_text_view)</pre>
 	<p>
 		Đọc theo nghĩa từng phần: bạn đưa cho hệ thống một mã số tài nguyên (<code>R.id.chat_output_text_view</code> —
-		chữ <code>R</code> là <em>Resource</em>, bạn sẽ gặp lại nó rất kỹ ở <strong>Chương 3.2, mục 10</strong>), hệ
+		chữ <code>R</code> là <em>Resource</em>, bạn sẽ gặp lại nó rất kỹ ở <strong>Chương 3.2a</strong>), hệ
 		thống đi tìm trong giao diện đang hiển thị xem phần tử nào có id đó, rồi trả về cho bạn. Cách làm này có hai vấn
 		đề, và cả hai đều là lý do trực tiếp dẫn tới Compose:
 	</p>
@@ -617,12 +618,12 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 			phần.</li>
 	</ul>
 	<p>
-		<strong>Tiếp theo — Chương 3.2:</strong> đưa chuỗi ra khỏi code, lớp <code>R</code>, đọc lỗi biên dịch và dùng
+		<strong>Tiếp theo — Chương 3.2a và 3.2b:</strong> đưa chuỗi ra khỏi code, lớp <code>R</code>, đọc lỗi biên dịch và dùng
 		breakpoint. Toàn bộ chữ hiển thị trong app hiện đang được viết cứng ở đâu đó, và bạn sẽ dọn chúng vào
-		<code>strings.xml</code> — không phải để cho đẹp, mà vì đó là điều kiện để app hỗ trợ được nhiều ngôn ngữ. Trên
-		đường đi bạn sẽ gặp lớp <code>R</code> do trình biên dịch tự sinh, gặp <em>lỗi biên dịch đầu tiên</em> của khoá
-		học và học cách đọc thông điệp lỗi, rồi chạy app ở chế độ debug với breakpoint để nhìn thấy giá trị từng biến
-		ngay lúc code đang chạy.
+		<code>strings.xml</code> — không phải để cho đẹp, mà vì đó là điều kiện để app hỗ trợ được nhiều ngôn ngữ (Chương
+		3.2a). Trên đường đi bạn sẽ gặp lớp <code>R</code> do trình biên dịch tự sinh, gặp <em>lỗi biên dịch đầu tiên</em> của
+		khoá học và học cách đọc thông điệp lỗi, rồi chạy app ở chế độ debug với breakpoint để nhìn thấy giá trị từng biến
+		ngay lúc code đang chạy (Chương 3.2b).
 	</p>
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
@@ -676,7 +677,7 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		"kéo một <code>TextView</code> vào layout", "gán <code>android:id</code> rồi gọi
 		<code>findViewById</code>". Trong project của khoá học này, <strong>thư mục <code>layout/</code> không tồn
 		tại</strong> — đã kiểm bằng cách tìm mọi thư mục tên <code>layout</code> trong toàn bộ project mẫu, không có thư
-		mục nào ở bất kỳ chương nào trong 11 chương. Cây <code>res/</code> chỉ gồm chín thư mục:
+		mục nào ở bất kỳ chương nào của project mẫu. Cây <code>res/</code> chỉ gồm chín thư mục:
 		<code>drawable</code>, sáu thư mục <code>mipmap-*</code>, <code>values</code> và <code>xml</code>. Đừng tự tạo
 		<code>res/layout/</code> để làm theo hướng dẫn: bạn sẽ có một file XML không ai đọc, vì
 		<code>setContent</code> không hề nhìn tới nó. Dấu hiệu nhận ra tài liệu thuộc thời kỳ nào, trong một câu: thấy

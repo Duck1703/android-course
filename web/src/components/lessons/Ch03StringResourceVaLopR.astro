@@ -1,0 +1,442 @@
+---
+// A10 — "String resource & lớp R" · slug: ch03-string-resource-va-lop-r · display: 3.2a
+// Learning job: hệ thống resource — strings.xml, qualifier đa ngôn ngữ, lớp R, hai cách lấy chuỗi (mục 8–11).
+// Provenance: port từ Ch03_2StringResourceVaDebug.astro (split 2026-09), không viết lại; A11 sống ở
+// Ch03DocLoiBienDichVaDebug.astro (mục 12–15 — lỗi biên dịch & debug).
+// Nội dung diễn giải lại bằng tiếng Việt, không copy nguyên văn nguồn.
+// Code trích nguyên văn từ aaf-materials/ theo Quyết định #7 — ghi rõ file + dòng ở mục nguon.
+// Số dòng aaf-materials đã kiểm lại bằng lệnh thật (2026-09-05):
+//   final/res/values/strings.xml = 39/40 dòng: resources 34 · 5 string 35–39 · đóng 40.
+//   starter/res/values/strings.xml = 36/37 dòng: resources 35 · 1 string 36 · đóng 37.
+//   final/AndroidManifest.xml = 60/61 dòng: android:label="@string/app_name" ở 43 (<application>)
+//     và 51 (<activity>).
+
+import { Code } from "astro:components";
+
+const BOOK = "content/book/ch03-android-fundamentals.md";
+const AAF = "aaf-materials/03-android-fundamentals/projects";
+const KT_FINAL = `${AAF}/final/app/src/main/java/com/kodeco/chat/MainActivity.kt`;
+const STRINGS_FINAL = `${AAF}/final/app/src/main/res/values/strings.xml`;
+const STRINGS_START = `${AAF}/starter/app/src/main/res/values/strings.xml`;
+const MANIFEST_FINAL = `${AAF}/final/app/src/main/AndroidManifest.xml`;
+const stringsStartCode = `<resources>
+    <string name="app_name">Kodeco Chat</string>
+</resources>`;
+const stringsFinalCode = `<resources>
+    <string name="app_name">Kodeco Chat</string>
+    <string name="chat_display_default">Messages will display here</string>
+    <string name="chat_entry_default">Type your text here</string>
+    <string name="send_button">Send</string>
+    <string name="chat_entry_label">Enter Chat Text</string>
+</resources>`;
+const hardcodedStateCode = `var chatInputText by remember { mutableStateOf("Type your text here") }
+var chatOutputText by remember { mutableStateOf("Press Send to update this text")}`;
+const qualifierTreeCode = `res/
+├── values/strings.xml          <string name="send_button">Send</string>
+├── values-vi/strings.xml       <string name="send_button">Gửi</string>
+└── values-ja/strings.xml       <string name="send_button">送信</string>`;
+// Hai đoạn dưới đây là ví dụ minh hoạ do khoá học tự viết (không có trong project mẫu) — ghi rõ ở mục nguon.
+const stringsViCode = `<!-- res/values-vi/strings.xml -->
+<resources>
+    <string name="app_name">Kodeco Chat</string>
+    <string name="chat_display_default">Tin nhắn sẽ hiện ở đây</string>
+    <string name="chat_entry_default">Nhập chữ của bạn ở đây</string>
+    <string name="send_button">Gửi</string>
+    <string name="chat_entry_label">Nhập nội dung chat</string>
+</resources>`;
+const labelCode = `label = { Text(text = stringResource(id = R.string.chat_entry_label)) }`;
+const buttonTextCode = `Text(text = stringResource(id = R.string.send_button))`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Bạn sẽ học được gì trong bài này</strong>
+		<ul>
+			<li>Vì sao mọi chuỗi hiện trên màn hình đều phải <em>ra khỏi</em> code Kotlin và <strong>technical
+				debt</strong> (nợ kỹ thuật) nghĩa là gì rất cụ thể trong trường hợp này.</li>
+			<li>File <code>strings.xml</code> trước và sau: từ 1 chuỗi lên 5 chuỗi, chuỗi nào do code của bạn đọc và chuỗi
+				nào do chính hệ điều hành đọc; cơ chế <strong>qualifier</strong> (<code>values-vi/</code>) làm app đổi
+				ngôn ngữ mà không sửa một dòng Kotlin nào.</li>
+			<li>Lớp <code>R</code> do máy tự sinh mỗi lần build: nó là cái gì, ba hệ quả thực dụng dùng hằng ngày, kể cả
+				cách sửa khi <code>R</code> "chưa thấy" chuỗi bạn vừa thêm.</li>
+			<li>Hai cách lấy chuỗi trong Compose — <code>stringResource()</code> và
+				<code>context.getString()</code> — mỗi cách dùng ở đâu trong app chat, và vì sao chúng không tương đương.</li>
+		</ul>
+		<p>
+			Bài kế tiếp (Đọc lỗi biên dịch và debug) sẽ giải thích vì sao <code>stringResource</code> không gọi được trong
+			<code>remember</code> — trong bài này, chỗ "bị chặn" ấy chỉ cần ghi nhận là đủ.
+		</p>
+	</div>
+	<div class="callout">
+		<strong>Chương 3.1 để lại gì cho chương này</strong>
+		<p>
+			Hết Chương 3.1 bạn đã có một app chat chạy được: một <code>Column</code> xếp dọc ba thành phần — một
+			<code>Text</code> hiển thị tin nhắn, một <code>OutlinedTextField</code> để gõ, một <code>Button</code> tên
+			Send; hai biến state <code>chatInputText</code> và <code>chatOutputText</code> giữ chữ; bấm Send thì chữ
+			trong ô nhập nhảy lên trên và ô nhập được xoá trắng. Về mặt <em>hoạt động</em>, app đã xong.
+		</p>
+		<p>
+			Nhưng nhìn lại code thì mọi chữ hiện trên màn hình vẫn nằm <strong>viết cứng ngay trong Kotlin</strong>:
+			<code>"Type your text here"</code>, <code>"Press Send to update this text"</code>, <code>"Send"</code>. Chương
+			này sẽ dọn chúng ra một file riêng — và trên đường đi, bạn sẽ <em>làm sai một lần có chủ ý</em>: một đoạn code
+			trong chương này không biên dịch được, và điều đó là cố ý, vì cái lỗi ấy nói ra một luật nền tảng của Compose
+			mà đọc lý thuyết suông thì rất khó nhớ (bài kế tiếp sẽ kể trọn câu chuyện đó). Nếu bạn gõ theo và thấy Android
+			Studio gạch đỏ, bạn đang đi đúng đường.
+		</p>
+	</div>
+
+	<h2 id="tai-sao-strings">8. Vì sao chuỗi văn bản không nên nằm trong code Kotlin</h2>
+	<p>
+		Chữ hiện trên màn hình là một trong những thành phần quan trọng nhất của bất kỳ app nào — quan trọng đến mức
+		đáng dành hẳn một mục cho nó. Lập luận mở đầu rất đơn giản: app của bạn đang dùng nhãn tiếng Anh, nhưng đó
+		không có nghĩa tiếng Anh là ngôn ngữ duy nhất app <em>hỗ trợ được</em>. Hỗ trợ nhiều ngôn ngữ nghĩa là người
+		không đọc được tiếng Anh vẫn dùng được app — và bạn nên tính đến việc đó ngay từ bây giờ nếu định đưa app lên
+		Google Play Store.
+	</p>
+	<p>
+		Ở Chương 3.1, mục 5.2, bạn viết cứng chuỗi ngay trong code — hai giá trị mặc định của hai biến state trông như
+		thế này:
+	</p>
+	<Code code={hardcodedStateCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Cách này chạy tốt nếu bạn chỉ nhắm người dùng nói tiếng Anh. Câu hỏi đặt ra: vậy làm sao hỗ trợ thêm một, hai,
+		hay cả chục ngôn ngữ khác? Không lẽ mỗi ngôn ngữ một bản app riêng, mỗi bản sửa lại từng dòng Kotlin? Hãy tưởng
+		tượng kịch bản đó đi đến đâu: bạn có bản tiếng Anh và bản tiếng Việt, hai file <code>MainActivity.kt</code>
+		khác nhau ở đúng bốn chuỗi. Tuần sau bạn sửa một lỗi trong logic nút Send — bạn phải sửa hai lần. Thêm tiếng
+		Nhật là ba lần. Chỉ cần một lần bạn quên một bản, hai bản app bắt đầu <em>lệch hành vi</em> — và lỗi đó cực khó
+		phát hiện, vì mỗi bản chạy đúng khi đứng riêng.
+	</p>
+	<p>
+		Câu trả lời là <strong>String resource</strong> — chuỗi được rút ra khỏi code, đặt vào một file dữ liệu riêng,
+		rồi code chỉ tham chiếu tới <em>tên</em> của chuỗi. Chỉ có <em>một</em> bản code, nhiều bản dữ liệu. Vấn đề mà
+		nó xoá bỏ có tên riêng, và đáng nhớ tên: rải chuỗi khắp app là một dạng <strong>technical debt</strong> (nợ kỹ
+		thuật) — thuộc loại tệ nhất trong các loại nợ kỹ thuật. Nợ kỹ thuật là phần công việc <em>phát sinh thêm về
+		sau</em>, vì hôm nay bạn chọn cách dễ làm trước mắt thay vì cách đúng. Hình dung như vay tiền: hôm nay tiết kiệm
+		được 30 giây gõ, nhưng ba tháng sau phải trả bằng cả buổi chiều đi tìm và sửa.
+	</p>
+	<p>
+		Chỗ khiến nợ kỹ thuật loại này đặc biệt khó chịu: nó <em>không báo lỗi</em>. Một chuỗi cứng bị bỏ sót vẫn biên
+		dịch bình thường, vẫn chạy bình thường, chỉ là nó hiện sai ngôn ngữ. Trình biên dịch không có cách nào biết
+		<code>"Send"</code> là một chuỗi cần dịch chứ không phải một khoá kỹ thuật nào đó. Nghĩa là người duy nhất phát
+		hiện ra thiếu sót sẽ là người dùng — hoặc chính bạn, sau khi đã gửi bản dịch cho người khác và họ trả lại bảo
+		"sao vẫn còn chữ tiếng Anh trên nút". Vì vậy dùng <code>strings.xml</code> <em>ngay từ đầu</em> rẻ hơn nhiều so
+		với việc thêm vào sau khi project đã xong.
+	</p>
+	<p class="hint">
+		<strong>Ba lợi ích nữa mà bạn sẽ gặp trong công việc thật:</strong> (1) trùng lặp — cùng một chữ "Send" xuất
+		hiện ở 4 màn hình, sửa 1 chỗ là xong thay vì tìm 4 chỗ; (2) chuỗi có số lượng — Android có cơ chế
+		<em>plurals</em> để "1 tin nhắn" / "5 tin nhắn" ra đúng ngữ pháp từng ngôn ngữ, việc bạn không thể làm được bằng
+		cách nối chuỗi tay; (3) người dịch không cần đọc code — bạn gửi cho họ đúng một file XML, họ gửi lại một file
+		XML, không ai chạm vào Kotlin và không ai có cơ hội làm hỏng logic.
+	</p>
+	<p>
+		Có một điểm dễ bị hiểu ngược, nên nói rõ ngay: đưa chuỗi ra <code>strings.xml</code> <strong>không</strong> tự
+		động làm app nói được tiếng Việt. Nó chỉ làm app <em>sẵn sàng</em> để được dịch. Từ chuyên môn cho việc này là
+		<strong>localize</strong> (bản địa hoá): khi chuỗi đã ra khỏi code và được lấy qua ID resource, người ta nói
+		chuỗi đó "đã được localize" — không phải vì nó đã có bản dịch, mà vì nó đã <em>ở vị trí cho phép</em> được dịch.
+		Phân biệt hai chuyện này giúp bạn đọc tài liệu Android không bị lẫn.
+	</p>
+
+	<h2 id="strings-xml">9. File strings.xml — trước và sau</h2>
+	<p>
+		Trong Project navigator của Android Studio, mở <code>res/values</code> → <code>strings.xml</code>. Đây là chỗ
+		Android quy ước để lưu <em>toàn bộ</em> chuỗi của app, và nó tồn tại sẵn trong mọi project mới ngay từ lúc sinh
+		ra — bạn không phải tạo gì. Bản <code>starter</code> của Chương 3 chỉ có đúng 1 chuỗi:
+	</p>
+	<Code code={stringsStartCode} lang="xml" theme="github-dark" />
+	<p>
+		Một lưu ý nhỏ khi bạn mở file thật để đối chiếu: cả hai bản đều mở đầu bằng một khối comment giấy phép dài, nên
+		số dòng thật không khớp với đoạn code gọn ở trên — bản <code>starter</code> có chuỗi duy nhất ở dòng 36, phần
+		trước đó là giấy phép. Chi tiết này không quan trọng về kiến thức, nhưng nó tránh cho bạn cảm giác "mình mở sai
+		file". Đọc cú pháp một lần cho rõ: thẻ ngoài cùng <code>&lt;resources&gt;</code> bao mọi thứ; mỗi chuỗi là một
+		thẻ <code>&lt;string&gt;</code> có thuộc tính <code>name</code> — <em>tên</em> bạn sẽ gọi từ code — còn nội dung
+		nằm giữa thẻ mở và thẻ đóng. Tên phải là chữ thường, không dấu, dùng dấu gạch dưới thay khoảng trắng, và
+		<strong>không được trùng nhau</strong> trong cùng một file.
+	</p>
+	<p>
+		Vì sao tên phải theo đúng khuôn đó, chứ không phải chỉ là quy ước cho đẹp: cái tên này sẽ trở thành một
+		<em>property trong code Kotlin</em> (bạn sẽ thấy ở mục 10), nên nó phải là một định danh hợp lệ của Kotlin. Dấu
+		cách, dấu gạch ngang, chữ có dấu tiếng Việt đều không dùng được trong tên biến, nên chúng cũng không dùng được ở
+		đây. Chuỗi duy nhất có sẵn là <code>app_name</code>, và nó đáng chú ý vì một lý do: bạn sẽ không bao giờ gọi nó
+		từ Kotlin. Nó được đọc bởi chính hệ điều hành, thông qua một dòng trong <code>AndroidManifest.xml</code> — đó
+		là lý do tên app hiện đúng dưới icon ở màn hình chính. Nói chính xác hơn cho bạn thấy đường dây: trong manifest
+		của bản <code>final</code>, chuỗi này được tham chiếu <em>hai lần</em> — một lần ở thẻ
+		<code>&lt;application&gt;</code> (dòng 43) và một lần nữa ở thẻ <code>&lt;activity&gt;</code> (dòng 51), cả hai
+		đều viết là <code>android:label="@string/app_name"</code>. Cú pháp <code>@string/tên</code> chính là cách XML
+		tham chiếu tới một resource, tương ứng với <code>R.string.tên</code> ở phía Kotlin. Chi tiết về manifest là nội
+		dung <strong>Chương 3.3, mục 17</strong>.
+	</p>
+	<p>
+		App chat cần thêm 4 chuỗi nữa. Bản <code>final</code> đầy đủ như sau — 5 chuỗi, tương ứng dòng 35 tới 39 của
+		file thật:
+	</p>
+	<Code code={stringsFinalCode} lang="xml" theme="github-dark" />
+	<table class="api">
+		<thead><tr><th>Tên chuỗi</th><th>Dùng ở đâu</th><th>Nội dung</th></tr></thead>
+		<tbody>
+			<tr><td><code>app_name</code></td><td>Tên app dưới icon và trên thanh tiêu đề</td><td>"Kodeco Chat" — được tham chiếu từ <code>AndroidManifest.xml</code> qua <code>@string/app_name</code>.</td></tr>
+			<tr><td><code>chat_display_default</code></td><td>Chữ mặc định ở <code>Text</code> phía trên, trước khi có tin nhắn nào</td><td>"Messages will display here"</td></tr>
+			<tr><td><code>chat_entry_default</code></td><td>Giá trị ban đầu của ô nhập</td><td>"Type your text here"</td></tr>
+			<tr><td><code>send_button</code></td><td>Chữ trong nút</td><td>"Send"</td></tr>
+			<tr><td><code>chat_entry_label</code></td><td>Nhãn của <code>OutlinedTextField</code> — nhãn nổi phía trên ô nhập</td><td>"Enter Chat Text"</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Bảng trên cho thấy một điều về cấu trúc: trong 5 chuỗi thì <em>4</em> chuỗi được code Kotlin của bạn lấy ra, còn
+		<em>1</em> chuỗi (<code>app_name</code>) do hệ điều hành lấy. Chú ý cách đặt tên: bốn chuỗi mới đều mở đầu bằng
+		ngữ cảnh nơi chúng xuất hiện (<code>chat_</code>) hoặc bằng vai trò (<code>send_button</code>) — chuẩn đặt tên
+		phổ biến trong thực tế là <em>từ chung tới riêng</em> (<code>&lt;màn hình&gt;_&lt;thành phần&gt;_&lt;vai
+		trò&gt;</code>), để khi file có 300 chuỗi thì cái tên vẫn cho biết ngay nó thuộc màn hình nào và làm gì, và các
+		chuỗi cùng một màn hình nằm cạnh nhau trong autocomplete.
+	</p>
+	<p>
+		Hai giá trị mặc định của state cũng đáng để ý một chi tiết: chuỗi mặc định cho phần hiển thị trong app chạy thật
+		là <code>"Messages will display here"</code>, khác với chuỗi <code>"Press Send to update this text"</code> bạn
+		thấy ở bước viết cứng trong Chương 3.1. Nếu bạn gõ theo từng bước rồi thấy chữ trên màn hình đổi, đó là lý do —
+		và đây là một trong những chỗ dễ làm người mới tưởng mình làm sai, nên nó được ghi lại ở
+		<a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>.
+	</p>
+	<h3 id="da-ngon-ngu">9.1. Đa ngôn ngữ hoạt động ra sao</h3>
+	<p>
+		Cách thêm một ngôn ngữ nghe đơn giản đến mức khó tin: bạn <em>copy file</em> và thay nội dung bằng bản dịch.
+		Không sửa code. Không thêm thư viện. Nhưng chính vì nó đơn giản nên phần cơ chế phía sau thường bị bỏ qua — và
+		đó lại là lý do tồn tại của cả hệ thống resource:
+	</p>
+	<pre class="tree">{qualifierTreeCode}</pre>
+	<p>
+		Phần đuôi <code>-vi</code>, <code>-ja</code> gọi là <strong>qualifier</strong> (định tố). Lúc app chạy, Android
+		xem ngôn ngữ hệ thống của máy rồi tự chọn thư mục khớp nhất; không có thư mục khớp thì rơi về
+		<code>values/</code> mặc định. Nghĩa là bạn không bắt buộc phải dịch <em>hết</em> mọi chuỗi cho mọi ngôn ngữ:
+		chuỗi nào thiếu trong <code>values-vi/</code> sẽ tự lấy bản tiếng Anh, app vẫn chạy, không crash. Và điều quan
+		trọng nhất: code Kotlin của bạn <em>không đổi một chữ nào</em> — vẫn là <code>R.string.send_button</code> ở cả
+		ba trường hợp.
+	</p>
+	<p>
+		Để cụ thể hoá, đây là bản tiếng Việt đầy đủ của app chat nếu bạn muốn tự thử — tạo thư mục
+		<code>res/values-vi/</code> rồi đặt file <code>strings.xml</code> với nội dung này vào:
+	</p>
+	<Code code={stringsViCode} lang="xml" theme="github-dark" />
+	<p>
+		Chú ý ba điều trong đoạn trên. Thứ nhất: <em>tên</em> chuỗi không đổi, chỉ nội dung đổi — nếu bạn đổi tên thì
+		code không tìm được. Thứ hai: tên file vẫn là <code>strings.xml</code>, không phải <code>strings-vi.xml</code>;
+		qualifier nằm ở <em>tên thư mục</em>, không phải tên file. Thứ ba: <code>app_name</code> ở đây giữ nguyên
+		"Kodeco Chat" vì đó là tên riêng của sản phẩm — tên thương hiệu thường không dịch, và đây là quyết định của bạn
+		chứ không phải quy tắc kỹ thuật.
+	</p>
+	<p>
+		Cơ chế này giải thích luôn một điều bạn có thể đã thấy mà không hiểu: khi người dùng vào Settings của máy đổi
+		ngôn ngữ, Android <em>huỷ và dựng lại</em> Activity của bạn để nó có cơ hội đọc lại resource theo ngôn ngữ mới.
+		Đó gọi là một <em>configuration change</em> (thay đổi cấu hình) — đúng loại sự kiện bạn đã thấy trong bảng bốn
+		tình huống ở Chương 3.1, mục 3, nơi một ví dụ là xoay ngang màn hình. Một cơ chế, hai ứng dụng khác nhau — hệ
+		thống này tái sử dụng ý tưởng rất nhiều.
+	</p>
+	<p class="hint">
+		Cùng cơ chế qualifier này áp cho mọi loại resource, không riêng chuỗi: <code>drawable-hdpi/</code> cho mật độ
+		điểm ảnh, <code>values-night/</code> cho chế độ tối, <code>values-sw600dp/</code> cho màn hình rộng như tablet.
+		Trong chính project Chương 3 bạn đã thấy nó ở dạng thật: các thư mục <code>mipmap-hdpi</code> →
+		<code>mipmap-xxxhdpi</code> chứa cùng một icon app ở nhiều độ phân giải, và Android tự chọn cái vừa với màn
+		hình máy. Danh sách đầy đủ các loại resource có trong project được liệt kê ở <strong>Chương 3.3, mục 16</strong>.
+	</p>
+
+	<h2 id="lop-r">10. Lớp R — cầu nối giữa XML và Kotlin</h2>
+	<p>
+		Bạn đã gặp chữ "R" một lần rồi, ở Chương 3.1, mục 6.1 — trong đoạn code kiểu cũ
+		<code>findViewById(R.id.chat_output_text_view)</code>. Giờ là lúc nói rõ nó là gì. "R" là viết tắt của
+		<strong>Resource</strong>, và Android dùng các file resource để lưu những thứ như chuỗi và ảnh; ở thời kỳ trước
+		Compose, file layout XML cũng là một loại resource.
+	</p>
+	<p>
+		Cách hoạt động, nói theo đúng bản chất: <code>id</code> mà bạn truyền cho <code>stringResource</code> là một
+		<em>số nguyên</em> — gọi là <strong>resource identifier</strong>. Nhưng bạn không cần biết con số đó là bao
+		nhiêu; bạn để Android tra hộ qua lớp <code>R</code>. Mỗi chuỗi trong <code>strings.xml</code> được cấp một ID
+		vào <strong>lúc build</strong>, không phải lúc bạn gõ code, và cũng không phải lúc app chạy.
+	</p>
+	<p>
+		Diễn giải rõ hơn cho người mới, vì đây là chỗ rất hay bị hiểu mơ hồ: <code>R</code> là <strong>một file code do
+		máy tự sinh mỗi lần build</strong>. Nó không nằm trong code bạn viết, không có trong repo, không ai commit nó,
+		và bạn không bao giờ sửa nó bằng tay. Nội dung của nó đại khái là "chuỗi <code>send_button</code> = số
+		2131623938". Trình biên dịch làm việc với số vì số nhanh và gọn; con người làm việc với tên vì tên đọc được.
+		<code>R</code> chính là bảng tra giữa hai thế giới đó, và nó được sinh lại mỗi lần bạn build để luôn khớp với
+		nội dung file XML hiện tại.
+	</p>
+	<table class="api">
+		<thead><tr><th>Bạn viết</th><th>Nghĩa</th></tr></thead>
+		<tbody>
+			<tr><td><code>R.string.send_button</code></td><td>Chuỗi tên <code>send_button</code> trong <code>res/values/strings.xml</code></td></tr>
+			<tr><td><code>R.drawable.ic_launcher_background</code></td><td>Ảnh/vector trong <code>res/drawable/</code></td></tr>
+			<tr><td><code>R.style.Theme_KodecoChat</code></td><td>Style trong <code>res/values/themes.xml</code> (dấu <code>.</code> trong XML thành <code>_</code> trong <code>R</code>, vì dấu chấm trong Kotlin có nghĩa khác)</td></tr>
+			<tr><td><code>R.id.something</code></td><td>ID của View trong layout XML — <em>không dùng ở project này</em> vì không có file layout XML nào</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Nhìn bảng trên thì thấy quy luật: <code>R</code> có một tầng cho mỗi <em>loại</em> resource
+		(<code>string</code>, <code>drawable</code>, <code>style</code>, <code>id</code>, <code>color</code>...), rồi
+		dưới mỗi tầng là tên cụ thể. Nhớ quy luật này là đủ để tự đoán được đường dẫn cho bất kỳ resource nào bạn gặp
+		về sau. Ba hệ quả thực dụng của việc <code>R</code> được sinh lúc build — cả ba đều là thứ bạn dùng hằng ngày:
+	</p>
+	<ul>
+		<li><strong>Gõ sai tên chuỗi là lỗi biên dịch, không phải lỗi lúc chạy.</strong> <code>R.string.send_buton</code>
+			sẽ đỏ ngay trong IDE, trước cả khi app được build xong. Đây là ưu điểm lớn so với việc viết chuỗi cứng: với
+			chuỗi cứng, gõ sai chữ thì trình biên dịch không có cách nào biết — nó chỉ thấy một chuỗi hợp lệ, và bạn phát
+			hiện ra khi app đã lên tay người dùng.</li>
+		<li><strong>Autocomplete hoạt động.</strong> Thao tác cụ thể: gõ <code>R</code> rồi dấu <code>.</code>, Android
+			Studio liệt kê các nhóm resource; chọn <em>string</em>, gõ tiếp dấu <code>.</code> là ra danh sách mọi chuỗi
+			trong <code>strings.xml</code>. Nghĩa là bạn gần như không cần nhớ tên chuỗi: cứ gõ
+			<code>R.string.</code> rồi đọc danh sách.</li>
+		<li><strong>Vừa thêm chuỗi mà <code>R</code> chưa thấy</strong> thì thường chỉ cần build lại project (hoặc
+			<em>Sync Project with Gradle Files</em>) để <code>R</code> được sinh lại. Đây là một trong những lỗi làm người
+			mới mất nhiều thời gian nhất một cách vô ích: code đúng hoàn toàn, chỉ là bảng tra chưa được cập nhật. Nếu
+			<code>R.string.tên_mới</code> đỏ mà bạn chắc chắn đã thêm chuỗi vào XML, hãy build lại trước khi đi tìm
+			nguyên nhân khác.</li>
+	</ul>
+	<p>
+		Còn một chi tiết đáng biết trước khi sang mục sau: <code>stringResource</code> là một <em>method của Compose
+		UI</em> — nó nạp một chuỗi từ file resource XML, nhận đúng một tham số tên <code>id</code>. Nó không phải hàm của
+		Kotlin, cũng không phải hàm của Android nói chung; nó thuộc riêng Compose. Chi tiết "nó thuộc Compose" nghe như
+		thông tin phân loại vô hại, nhưng nó sẽ trở thành nguyên nhân của lỗi biên dịch đầu tiên trong khoá học —
+		câu chuyện đó là mạch mở đầu của bài kế tiếp (Đọc lỗi biên dịch và debug). Đừng quên phải thêm
+		<code>import androidx.compose.ui.res.stringResource</code> — trong file <code>final</code> nó nằm ở dòng
+		48, dòng import cuối cùng.
+	</p>
+
+	<h2 id="hai-cach-lay-chuoi">11. Hai cách lấy chuỗi — chọn cái nào</h2>
+	<p>
+		Mở bản <code>final</code> của <code>MainActivity.kt</code> ra, bạn thấy app này dùng <em>cả hai</em> cách lấy
+		chuỗi, ở hai vị trí khác nhau, trong cùng một file. Đó không phải sự thiếu nhất quán — mỗi vị trí bị ràng buộc
+		bởi luật khác nhau. Bản <code>final</code> có đúng hai chỗ dùng <code>stringResource</code>:
+	</p>
+	<Code code={labelCode} lang="kotlin" theme="github-dark" />
+	<Code code={buttonTextCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Cả hai đều nằm bên trong một cặp ngoặc <em>mô tả giao diện</em> — <code>label = &#123; ... &#125;</code> của
+		<code>OutlinedTextField</code> và thân của <code>Button</code>. Còn hai chuỗi mặc định của state thì nằm trong
+		lambda tính giá trị ban đầu của <code>remember</code> (Chương 3.1, mục 5.2) và phải đi đường
+		<code>context.getString()</code> — vì sao <code>stringResource</code> không dùng được tại đó là câu chuyện của
+		bài kế tiếp, phần đọc lỗi. Nhìn theo cách đó thì hai cách lấy chuỗi trong cùng một file không phải
+		hai gu viết code, mà là hai hệ quả của luật vị trí gọi hàm.
+	</p>
+	<table class="cmp">
+		<thead><tr><th></th><th><code>stringResource(id = ...)</code></th><th><code>context.getString(...)</code></th></tr></thead>
+		<tbody>
+			<tr><td>Bản chất</td><td>Composable function của Compose UI</td><td>Method thường của <code>Context</code></td></tr>
+			<tr><td>Gọi được ở đâu</td><td>Chỉ trong vùng Composable</td><td>Ở đâu cũng được, miễn có <code>Context</code></td></tr>
+			<tr><td>Cần <code>Context</code>?</td><td>Không — nó tự lấy qua <code>LocalContext</code></td><td>Có — phải có sẵn một <code>Context</code></td></tr>
+			<tr><td>Đổi ngôn ngữ lúc đang chạy</td><td>Tự đọc lại chuỗi mới khi cấu hình đổi</td><td>Giá trị đã tính xong, nằm trong <code>remember</code> nên <em>không</em> tự đổi</td></tr>
+			<tr><td>Vị trí trong app chat</td><td>2 chỗ: nhãn ô nhập (dòng 65), chữ nút Send (dòng 72)</td><td>2 chỗ: hai chuỗi mặc định của state (dòng 56, 57)</td></tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		<strong>Quy tắc nhớ:</strong> ưu tiên <code>stringResource()</code> ở mọi nơi trong Compose. Chỉ dùng
+		<code>context.getString()</code> khi bị chặn — tức khi bạn đang ở ngoài vùng Composable. Lý do của thứ tự ưu
+		tiên này nằm ở hàng thứ tư của bảng, và nó là hàng quan trọng nhất.
+	</p>
+	<p>
+		Hàng "đổi ngôn ngữ lúc đang chạy" đáng mở ra, vì đây là khác biệt <em>thật</em> giữa hai cách, không phải chi
+		tiết học thuật. Hình dung một người dùng đang mở app chat, rồi chuyển sang Settings đổi ngôn ngữ máy từ English
+		sang tiếng Việt, rồi quay lại app. Android huỷ và dựng lại Activity (đúng cơ chế configuration change ở mục
+		9.1), giao diện được vẽ lại từ đầu. Kết quả: nhãn ô nhập và chữ trên nút <strong>đổi</strong> sang tiếng Việt,
+		vì hai chỗ đó gọi <code>stringResource</code> mỗi lần vẽ. Còn hai chuỗi mặc định của state thì
+		<strong>không đổi</strong>, vì chúng đã được cất trong <code>remember</code> ở lần tính đầu tiên. Một màn hình,
+		một app, hai hành vi khác nhau — và người dùng chỉ thấy "app dịch nửa vời". Đây là một sự <strong>đánh
+		đổi</strong>: bạn được phép lấy chuỗi ở ngoài vùng Composable, đổi lại chuỗi đó mất khả năng tự cập nhật. Rất
+		nhiều tài liệu trình bày hai cách này như hai lựa chọn ngang hàng — mô tả đó bỏ mất đúng cái làm nên khác biệt,
+		nên nó được ghi lại đầy đủ ở <a href="#cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</a>.
+	</p>
+	<p>
+		Và để công bằng với app chat: ở đây hạn chế đó gần như vô hại. Hai chuỗi mặc định chỉ hiện đúng lúc app mới mở,
+		người dùng gõ một câu là chúng bị thay ngay. Đây là ví dụ tốt cho một thói quen nên giữ: nhận ra một điểm yếu kỹ
+		thuật <em>không</em> đồng nghĩa với việc phải sửa nó ngay. Biết nó tồn tại, đánh giá tác động thật trong app của
+		mình, rồi quyết định — đó mới là cách làm việc của người có kinh nghiệm.
+	</p>
+
+	<div class="callout">
+		<strong>Tổng kết — String resource &amp; lớp R</strong>
+		<ul>
+			<li><strong>Chuỗi phải ra khỏi Kotlin.</strong> Rải chuỗi cứng khắp app là <em>technical debt</em> không báo
+				lỗi; <code>strings.xml</code> ngay từ đầu rẻ hơn sửa lại sau. Đưa chuỗi ra file là "đã localize" — sẵn sàng
+				dịch, chưa phải đã có bản dịch.</li>
+			<li><strong>Qualifier</strong> (<code>values-vi/</code>) làm app đổi ngôn ngữ mà không sửa một dòng Kotlin:
+				tên chuỗi không đổi, qualifier nằm ở <em>tên thư mục</em>; chuỗi thiếu thì tự rơi về <code>values/</code>.
+				Đổi ngôn ngữ là một <em>configuration change</em> — Android huỷ và dựng lại Activity.</li>
+			<li><strong>Lớp <code>R</code></strong> là file code do máy sinh lại mỗi lần build, bảng tra giữa <em>tên</em>
+				chuỗi và <em>số</em> ID. Ba hệ quả: gõ sai tên là lỗi biên dịch · autocomplete hoạt động · vừa thêm chuỗi mà
+				<code>R</code> chưa thấy thì build lại là xong.</li>
+			<li><strong>Hai cách lấy chuỗi:</strong> <code>stringResource()</code> là hàm Compose, dùng trong các slot mô
+				tả giao diện; <code>context.getString()</code> là method thường của <code>Context</code>, dùng ở nơi bị
+				chặn. Hai cách không tương đương — cái thứ nhất tự đọc lại khi ngôn ngữ máy đổi, cái thứ hai thì không.
+				Vì sao có chỗ "bị chặn": bài kế tiếp (Đọc lỗi biên dịch và debug) sẽ giải thích.</li>
+		</ul>
+		<p>
+			<em>Kiểm tra nhanh trước khi sang bài kế tiếp:</em> (1) trong 5 chuỗi của <code>strings.xml</code>, chuỗi nào
+			không được code Kotlin lấy ra, và ai lấy nó? (2) bạn muốn thêm bản tiếng Việt — file đặt ở đâu và tên file là
+			gì? (3) bạn vừa thêm một chuỗi mới vào XML mà <code>R.string.tên_mới</code> bị gạch đỏ — việc đầu tiên nên
+			làm là gì?
+		</p>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Chỗ dưới đây là nơi người mới mất nhiều thời gian nhất trong phạm vi bài này: phần tài liệu phổ thông trình bày
+		hai lựa chọn như thể chúng tương đương. Vì sao có chỗ "bị chặn" không gọi được <code>stringResource</code> —
+		câu chuyện của bài kế tiếp.
+	</p>
+	<p class="notice">
+		<strong>1. Hai cách lấy chuỗi <em>không</em> tương đương — chọn sai là app không đổi ngôn ngữ khi người dùng đổi
+		locale.</strong> Phần lớn tài liệu đặt <code>stringResource(id = ...)</code> và
+		<code>context.getString(...)</code> cạnh nhau như hai lựa chọn ngang hàng, kiểu "cái nào cũng ra chuỗi, tuỳ chỗ
+		mà dùng". Mô tả đó bỏ mất đúng cái làm nên khác biệt. Kịch bản kiểm được ngay trên app chat: người dùng đang mở
+		app, sang Settings đổi ngôn ngữ máy, quay lại. Android huỷ và dựng lại Activity, nên nhãn ô nhập (dòng 65) và
+		chữ nút Send (dòng 72) <strong>đổi</strong> sang ngôn ngữ mới vì chúng gọi <code>stringResource</code> mỗi lần
+		vẽ. Nhưng hai chuỗi mặc định của state (dòng 56, 57) <strong>không đổi</strong>, vì
+		<code>context.getString()</code> đã tính xong một lần và kết quả bị <code>remember</code> cất lại. Người dùng
+		thấy một màn hình dịch nửa vời, và không có lỗi nào để bạn đi tìm. Cách chữa khi bạn <em>cần</em> chuỗi trong
+		state cũng đổi theo: truyền chuỗi đó vào làm key của <code>remember</code> (bài kế tiếp) — đổi lại chữ người dùng
+		đang gõ dở sẽ bị xoá về mặc định. Nói cách khác đây là một đánh đổi phải chọn có ý thức, không phải hai gu viết
+		code. Nguyên tắc mặc định: ưu tiên <code>stringResource()</code>, chỉ dùng <code>context.getString()</code> khi
+		thật sự bị chặn.
+	</p>
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 193–203 (mục "Managing Strings in Your App": vì sao
+			chuỗi quan trọng, hỗ trợ nhiều ngôn ngữ, Google Play Store, câu trả lời là String resource) · dòng 205–227
+			(mở <code>res/values/strings.xml</code>, nội dung 1 chuỗi của bản starter, lý do dùng
+			<code>strings.xml</code> ngay từ đầu và cách thêm ngôn ngữ bằng cách copy file, nội dung 5 chuỗi của bản
+			final) · dòng 229–255 (đổi <code>label</code> sang <code>stringResource</code>, nhắc lại "R" là Resource,
+			định nghĩa <code>stringResource</code> là method của Compose UI nhận một tham số <code>id</code> là resource
+			identifier dạng số nguyên, cách autocomplete <code>R.</code> → <code>string</code> → tên chuỗi, đổi chữ trong
+			nút) · dòng 257–265 (chạy lại app, chuỗi đã <em>localized</em>, thử đổi chuỗi mặc định của state và bị gạch
+			đỏ) · dòng 297–303 (technical debt: định nghĩa và câu "rải chuỗi khắp app là một trong những loại nợ kỹ thuật
+			tệ nhất") · dòng 295 (liên kết tài liệu chính thức về string resource, có nhắc string array và plurals).
+			Ảnh minh hoạ trong giáo trình gốc: <code>img49.png</code>, <code>img50.png</code> (autocomplete của
+			<code>R.</code>) — khoá học này diễn giải lại bằng chữ và bảng, không kèm ảnh.
+		</li>
+		<li>
+			<strong>Code thật đã đối chiếu:</strong> <code>{STRINGS_START}</code> — tổng 37 dòng: header license dòng 1–33 ·
+			<code>&lt;resources&gt;</code> dòng 35 · đúng 1 chuỗi <code>app_name</code> dòng 36 · thẻ đóng dòng 37 (đoạn
+			code ở mục 9). <code>{STRINGS_FINAL}</code> — tổng 40 dòng: header license dòng 1–32 ·
+			<code>&lt;resources&gt;</code> dòng 34 · 5 chuỗi dòng 35–39 · thẻ đóng dòng 40 (đoạn code và bảng ở mục 9).
+			<code>{KT_FINAL}</code> — tổng 80 dòng: import <code>LocalContext</code> dòng 47 và import
+			<code>stringResource</code> dòng 48 (mục 10) · hai <code>remember</code> với
+			<code>context.getString(...)</code> dòng 56–57 (bảng ở mục 11) ·
+			nhãn <code>stringResource(id = R.string.chat_entry_label)</code> trong <code>OutlinedTextField</code> dòng 65
+			(mục 11) · <code>Text(text = stringResource(id = R.string.send_button))</code> dòng 72 (mục 11).
+			<code>{MANIFEST_FINAL}</code> — tổng 61 dòng:
+			<code>android:label="@string/app_name"</code> xuất hiện hai lần, ở thẻ <code>&lt;application&gt;</code> dòng
+			43 và thẻ <code>&lt;activity&gt;</code> dòng 51 (đường dây <code>app_name</code> ở mục 9).
+		</li>
+		<li>
+			<strong>Phần bổ sung ngoài giáo trình:</strong> kịch bản "một bản app cho mỗi ngôn ngữ" và hai bản app lệch
+			hành vi ở mục 8 · ba lợi ích thực tế của <code>strings.xml</code> (trùng lặp, plurals, người dịch không đọc
+			code) — app chat không dùng plurals, chỉ nêu cơ chế trong hint · phân biệt "đã localize" với "đã có bản dịch"
+			ở mục 8 · giải thích cú pháp <code>&lt;resources&gt;</code>/<code>&lt;string&gt;</code> và lý do tên chuỗi
+			phải là định danh Kotlin hợp lệ ở mục 9 · bảng 5 chuỗi kèm cột "dùng ở đâu" · chuẩn đặt tên "từ chung tới
+			riêng" · cây thư mục qualifier và bản dịch <code>res/values-vi/strings.xml</code> đầy đủ (do khoá học tự
+			viết, không có trong project mẫu) · nối qualifier với configuration change đã học ở Chương 3.1 và với các
+			thư mục <code>mipmap-*</code> thật · giải thích lớp <code>R</code> là file sinh lúc build cùng bảng bốn dạng
+			<code>R.string</code>/<code>R.drawable</code>/<code>R.style</code>/<code>R.id</code> và ba hệ quả thực dụng ·
+			bảng so sánh hai cách lấy chuỗi kèm hàng "vị trí trong app chat" ở mục 11 · cạm bẫy 1 (hai cách lấy chuỗi
+			không tương đương).
+		</li>
+	</ul>
+</section>

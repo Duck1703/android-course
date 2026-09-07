@@ -52,10 +52,11 @@ const kotlinDslSnippet = `android {
 			<li>Định vị được hai vùng đầu tiên của Android Studio — <strong>Editor</strong> và <strong>Project navigator</strong> — và phản xạ "đợi Gradle Sync xong đã".</li>
 		</ul>
 		<p>
-			Chương 2 gồm ba chương nhỏ: <strong>2.1</strong> (bài này) — cài Android Studio và tạo project đầu tiên ·
-			<strong>2.2</strong> — dựng <strong>máy ảo</strong> (AVD) hoặc bật máy Android thật bằng <strong>USB
-			Debugging</strong>, rồi đọc từng file Android Studio vừa tự sinh ra · <strong>2.3</strong> — chạy app thật, đổi chữ
-			trên màn hình nhờ <strong>Live Edit</strong>, và cách cập nhật Android Studio cùng Android SDK về sau.
+			Chương 2 gồm bốn bài: <strong>2.1</strong> (bài này) — cài Android Studio và tạo project đầu tiên ·
+			<strong>2.2a</strong> — dựng <strong>máy ảo</strong> (AVD) hoặc bật máy Android thật bằng <strong>USB
+			Debugging</strong> · <strong>2.2b</strong> — đọc từng file Android Studio vừa tự sinh ra · <strong>2.3</strong> —
+			chạy app thật, đổi chữ trên màn hình nhờ <strong>Live Edit</strong>, và cách cập nhật Android Studio cùng Android
+			SDK về sau.
 		</p>
 	</div>
 
@@ -71,8 +72,9 @@ const kotlinDslSnippet = `android {
 		</p>
 		<p>
 			Vì vậy mục tiêu duy nhất của Chương 2 rất hẹp: <strong>đi từ "máy chưa có gì" đến "app do chính mình build đang chạy
-			trên thiết bị"</strong>. Ba chương nhỏ lần lượt lo ba việc: <strong>(1)</strong> dựng môi trường làm việc — chương
-			bạn đang đọc; <strong>(2)</strong> có một thiết bị để chạy app — Chương 2.2; <strong>(3)</strong> build, cài và chạy
+			trên thiết bị"</strong>. Bốn bài lần lượt lo bốn việc: <strong>(1)</strong> dựng môi trường làm việc — chương
+			bạn đang đọc; <strong>(2)</strong> có một thiết bị để chạy app — Chương 2.2a; <strong>(3)</strong> đọc hiểu
+			project vừa sinh ra — Chương 2.2b; <strong>(4)</strong> build, cài và chạy
 			app — Chương 2.3. Trên đường đi bạn sẽ gặp vài màn hình và vài dòng code chưa hiểu — đó là chuyện đã tính trước:
 			chúng sẽ được mổ ra ở phần Jetpack Compose và phần state. Chương bạn đang đọc kết thúc ở đúng chỗ này:
 			<strong>bạn có một project trên đĩa và hiểu mình đã chọn gì trong wizard</strong>.
@@ -186,7 +188,7 @@ const kotlinDslSnippet = `android {
 		khung. "Empty" (trống) chỉ có nghĩa là <em>không có tính năng nào</em>, chứ không có nghĩa là không có file: bộ khung
 		gồm code Kotlin, file khai báo app, file tài nguyên (chuỗi, màu, theme, icon), hai file cấu hình Gradle, và cả hai
 		file test mẫu — đã đếm trên project mẫu Chương 2: <strong>4 file Kotlin</strong> trong phần code chính, 10 file XML,
-		cộng 2 file test. Chương 2.2, mục 7 sẽ mở <strong>9 file quan trọng nhất</strong> trong số đó và giải thích từng cái.
+		cộng 2 file test. Chương 2.2b sẽ mở <strong>9 file quan trọng nhất</strong> trong số đó và giải thích từng cái.
 		Một chi tiết dễ đọc trượt nhưng nói lên cả định hướng của khoá học: phụ đề của template Empty Activity là
 		<em>"Creates a new empty activity with Jetpack Compose"</em> — nghĩa là ngay từ project trống, bạn <strong>đã đang
 		dùng Jetpack Compose</strong> — cách dựng giao diện bằng code Kotlin — chứ không phải layout XML kiểu cũ. Vì sao
@@ -265,7 +267,7 @@ const kotlinDslSnippet = `android {
 	<p>
 		Dòng <code>include(":app")</code> nói rằng project này có đúng một module tên <code>app</code>. Đó là lý do trong
 		Project navigator bạn thấy một mục tên <code>app</code> — không phải Android Studio tự bày ra, mà vì file này khai
-		như vậy. Hai file Gradle này là hai trong số những file mà <strong>Chương 2.2, mục 7</strong> sẽ mở ra đọc.
+		như vậy. Hai file Gradle này là hai trong số những file mà <strong>Chương 2.2b</strong> sẽ mở ra đọc.
 	</p>
 	<h3>Ô "Minimum SDK" — ba con số hay bị gộp làm một</h3>
 	<p>
@@ -378,7 +380,7 @@ const kotlinDslSnippet = `android {
 	<p class="hint">
 		<strong>Lời trấn an cho phần còn lại của cửa sổ:</strong> ngoài hai vùng trên, Android Studio còn nhiều bảng, menu và
 		nút mà bạn chưa biết dùng để làm gì — không cần đi tìm hiểu hết bây giờ. File trong project cũng vậy: project vừa sinh
-		ra có sẵn khoảng một chục file bạn không viết dòng nào, và <strong>Chương 2.2, mục 7 sẽ mở từng file và giải thích nó
+		ra có sẵn khoảng một chục file bạn không viết dòng nào, và <strong>Chương 2.2b sẽ mở từng file và giải thích nó
 		làm gì</strong> — project của Chương 2 là project Android <strong>nhỏ nhất của cả khoá học</strong> (chỉ 4 file
 		Kotlin), nên hiểu trọn bộ xương của nó là việc khả thi trong một buổi.
 	</p>
@@ -432,9 +434,9 @@ const kotlinDslSnippet = `android {
 		</ul>
 	</div>
 	<p>
-		<strong>Tiếp theo — Chương 2.2:</strong> project đã có, nhưng chưa có chỗ nào để chạy nó. Chương 2.2 dựng thiết bị và
-		đọc project: tạo một <strong>máy ảo</strong> (AVD) hoặc bật máy Android thật bằng <strong>USB Debugging</strong>, rồi
-		mở <em>từng file</em> trong project vừa sinh ra — <code>MainActivity.kt</code>, <code>AndroidManifest.xml</code>, ba
+		<strong>Tiếp theo — Chương 2.2a và 2.2b:</strong> project đã có, nhưng chưa có chỗ nào để chạy nó. Chương 2.2a dựng
+		thiết bị — tạo một <strong>máy ảo</strong> (AVD) hoặc bật máy Android thật bằng <strong>USB Debugging</strong> — rồi
+		Chương 2.2b mở <em>từng file</em> trong project vừa sinh ra — <code>MainActivity.kt</code>, <code>AndroidManifest.xml</code>, ba
 		file trong <code>ui/theme/</code>, hai file Gradle — và giải thích mỗi file làm gì.
 	</p>
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
