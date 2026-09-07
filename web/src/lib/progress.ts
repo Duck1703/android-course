@@ -41,10 +41,11 @@
 //    22 URL hiện tại = 14 giữ nguyên + 8 chết. KHÔNG dùng số "15/22" cũ.
 //
 // G. SCHEMA_VERSION là phiên bản CẤU TRÚC SLUG của tiến độ — không phải version
-//    app, nội dung, hay registry. Hiện tại 7 = 6 (Stage 1: ch02-2 fan-out +
-//    ch03-2 split) + 1 vì sửa entry ch01 monolith (typo dead slug → slug live,
-//    map content đổi nên mọi máy phải re-run: correct-criterion §12.4 đơn điệu
-//    theo thứ tự thực thi — không gán cứng sẵn dãy version tương lai).
+//    app, nội dung, hay registry. Hiện tại 8 = 7 + 1 (Stage 2: ch05 monolith
+//    split → C1–C4). Lịch sử: 6 = Stage 1 (ch02-2 fan-out + ch03-2 split); 7 =
+//    +1 vì sửa entry ch01 monolith (typo dead slug → slug live, map content
+//    đổi nên mọi máy phải re-run: correct-criterion §12.4 đơn điệu theo thứ tự
+//    thực thi — không gán cứng sẵn dãy version tương lai).
 // ────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "hoc-android-tv:progress";
 const MIGRATION_KEY = "hoc-android-tv:progress-migrated";

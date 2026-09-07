@@ -165,9 +165,13 @@ IconButton(onClick = onDismiss) &#123;
 
 	<div class="callout note">
 		<strong>Tự kiểm tra 2.</strong>
+		<p>
+			Chuỗi <code>Modifier.padding(12.dp).clickable &#123; … &#125;.size(24.dp)</code> cho một icon 24dp. Vùng
+			chạm rộng bao nhiêu, và sửa thế nào?
+		</p>
 		<details>
 			<summary>Xem đáp án</summary>
-			<p>Vùng chạm chỉ khoảng <strong>24dp</strong>: <code>padding</code> đã chèn 12dp <em>trước khi</em> <code>clickable</code> được đăng ký, nên phần đệm nằm ngoài vùng bấm (C2 mục 6). Đổi thành <code>Modifier.clickable &#123; … &#125;.padding(12.dp).size(24.dp)</code> thì vùng bấm bao trọn cả phần đệm ⇒ 24 + 12 × 2 = <strong>48dp</strong>, mà hình icon không to lên. Đây là cùng một quy tắc thứ tự bạn đã học, lần này với hậu quả accessibility.</p>
+			<p>Vùng chạm chỉ khoảng <strong>24dp</strong>: <code>padding</code> đã chèn 12dp <em>trước khi</em> <code>clickable</code> được đăng ký, nên phần đệm nằm ngoài vùng bấm (chương 5.2, mục 6). Đổi thành <code>Modifier.clickable &#123; … &#125;.padding(12.dp).size(24.dp)</code> thì vùng bấm bao trọn cả phần đệm ⇒ 24 + 12 × 2 = <strong>48dp</strong>, mà hình icon không to lên. Đây là cùng một quy tắc thứ tự bạn đã học, lần này với hậu quả accessibility.</p>
 		</details>
 	</div>
 
@@ -243,6 +247,9 @@ Row(modifier = Modifier.padding(vertical = 8.dp)) &#123;
 
 	<div class="callout note">
 		<strong>Tự kiểm tra 3.</strong>
+		<p>
+			Vì sao "ô nhập đổi sang màu đỏ khi sai" là chưa đủ, dù ai cũng thấy màu đỏ nghĩa là lỗi?
+		</p>
 		<details>
 			<summary>Xem đáp án</summary>
 			<p>Ba lý do độc lập: (1) người bị hạn chế nhận biết màu có thể không phân biệt được viền đỏ với viền xám; (2) người dùng TalkBack <strong>không nhận được màu chút nào</strong> — màu không nằm trong bản chú thích; (3) ngay cả khi thấy đỏ, người dùng vẫn không biết <em>sai cái gì</em> nên không biết sửa thế nào. Thêm một dòng chữ nói rõ vấn đề giải quyết cả ba.</p>
@@ -506,11 +513,11 @@ fun ThongBaoLoi(soTinChuaGui: Int, onDismiss: () -> Unit) &#123;
 
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p class="notice">
-		<strong>(a) "Cứ thêm mô tả cho mọi thứ là an toàn."</strong> Đây là kết luận sai phổ biến nhất sau khi học accessibility lần đầu, và nó tạo ra ba lỗi một lúc. Ảnh nền trang trí có mô tả ⇒ mỗi lần lướt tới nội dung thật, người dùng phải nghe trước một câu vô nghĩa. Một <code>Button</code> đã có chữ "Gửi" mà icon bên trong cũng mô tả <code>"Gửi"</code> ⇒ nghe thành "Gửi Gửi", vì nút tự gộp mô tả của các con. Gắn thêm <code>Modifier.semantics &#123; &#125;</code> lên một <code>Checkbox</code> hay <code>Switch</code> là công vô ích — chúng đã tự thông báo đúng loại và trạng thái, còn mô tả bạn tự viết sẽ là thứ đầu tiên lạc hậu khi chức năng đổi. Trong khi đó thứ <strong>luôn</strong> phải có mô tả lại thường bị quên: mọi thành phần <strong>bấm được</strong> mà không có chữ hiển thị nào bên cạnh. Quy tắc gọn: điền phần Compose không thể tự đoán, đừng điền phần đã có người làm sẵn.</p>
+		<strong>(l) "Cứ thêm mô tả cho mọi thứ là an toàn."</strong> Đây là kết luận sai phổ biến nhất sau khi học accessibility lần đầu, và nó tạo ra ba lỗi một lúc. Ảnh nền trang trí có mô tả ⇒ mỗi lần lướt tới nội dung thật, người dùng phải nghe trước một câu vô nghĩa. Một <code>Button</code> đã có chữ "Gửi" mà icon bên trong cũng mô tả <code>"Gửi"</code> ⇒ nghe thành "Gửi Gửi", vì nút tự gộp mô tả của các con. Gắn thêm <code>Modifier.semantics &#123; &#125;</code> lên một <code>Checkbox</code> hay <code>Switch</code> là công vô ích — chúng đã tự thông báo đúng loại và trạng thái, còn mô tả bạn tự viết sẽ là thứ đầu tiên lạc hậu khi chức năng đổi. Trong khi đó thứ <strong>luôn</strong> phải có mô tả lại thường bị quên: mọi thành phần <strong>bấm được</strong> mà không có chữ hiển thị nào bên cạnh. Quy tắc gọn: điền phần Compose không thể tự đoán, đừng điền phần đã có người làm sẵn.</p>
 	<p class="notice">
-		<strong>(b) "Icon 24dp thì vùng bấm 24dp, và UI nhìn ổn trên máy mình là ổn."</strong> Hai nửa của cùng một thói quen: nói trước một con số mà đáng ra phải để ngón tay và nội dung quyết định. <code>Modifier.padding(12.dp).clickable &#123; … &#125;</code> để lại vùng bấm đúng 24dp cho một icon 24dp (đổi thứ tự là xong — chương 5.2, mục 6). Truyền <code>Modifier.height(36.dp)</code> vào một <code>Button</code> là <strong>lấy lại</strong> mức tối thiểu mà Material vừa cho bạn. <code>Modifier.height(40.dp)</code> quanh một dòng <code>Text</code> trông ổn trên máy bạn rồi cắt mất chữ ở cỡ chữ lớn nhất. Cả ba <strong>không hiện ra trong <code>@Preview</code></strong>, và cũng không hiện ra trên điện thoại đang để thiết lập mặc định của bạn — chỉ hiện khi có ngón tay thật và thiết lập thật (mục 27).</p>
+		<strong>(m) "Icon 24dp thì vùng bấm 24dp, và UI nhìn ổn trên máy mình là ổn."</strong> Hai nửa của cùng một thói quen: nói trước một con số mà đáng ra phải để ngón tay và nội dung quyết định. <code>Modifier.padding(12.dp).clickable &#123; … &#125;</code> để lại vùng bấm đúng 24dp cho một icon 24dp (đổi thứ tự là xong — chương 5.2, mục 6). Truyền <code>Modifier.height(36.dp)</code> vào một <code>Button</code> là <strong>lấy lại</strong> mức tối thiểu mà Material vừa cho bạn. <code>Modifier.height(40.dp)</code> quanh một dòng <code>Text</code> trông ổn trên máy bạn rồi cắt mất chữ ở cỡ chữ lớn nhất. Cả ba <strong>không hiện ra trong <code>@Preview</code></strong>, và cũng không hiện ra trên điện thoại đang để thiết lập mặc định của bạn — chỉ hiện khi có ngón tay thật và thiết lập thật (mục 27).</p>
 	<p class="notice">
-		<strong>(c) "Đổi sang màu đỏ là đủ để báo lỗi."</strong> Màu <strong>không</strong> nằm trong phần mô tả mà dịch vụ hỗ trợ đọc, nên nếu tín hiệu duy nhất của "có lỗi" là viền đỏ thì với người dùng TalkBack thông tin đó <strong>không tồn tại</strong> — chưa kể người khó phân biệt màu và người đang để màn hình ở chế độ đơn sắc. Cách sửa rẻ nhất là thêm một dòng chữ nói thẳng vấn đề: chữ phục vụ cả người thấy màu <strong>và</strong> dịch vụ hỗ trợ, nên bạn không phải làm hai lần.</p>
+		<strong>(n) "Đổi sang màu đỏ là đủ để báo lỗi."</strong> Màu <strong>không</strong> nằm trong phần mô tả mà dịch vụ hỗ trợ đọc, nên nếu tín hiệu duy nhất của "có lỗi" là viền đỏ thì với người dùng TalkBack thông tin đó <strong>không tồn tại</strong> — chưa kể người khó phân biệt màu và người đang để màn hình ở chế độ đơn sắc. Cách sửa rẻ nhất là thêm một dòng chữ nói thẳng vấn đề: chữ phục vụ cả người thấy màu <strong>và</strong> dịch vụ hỗ trợ, nên bạn không phải làm hai lần.</p>
 
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<p class="src">
