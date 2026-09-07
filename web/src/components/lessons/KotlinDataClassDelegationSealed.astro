@@ -1,0 +1,857 @@
+---
+// ============================================================================
+// F2 — Kotlin đủ để học Compose, Phần 2 (class · data class · generics · by · sealed)
+//
+// Định danh theo docs/TARGET_REGISTRY_v5.md:
+//   lessonId: F2 · slug: kotlin-data-class-delegation-sealed · stage: foundation · badge: F2
+//   Component: KotlinDataClassDelegationSealed.astro · Quiz: KotlinDataClassDelegationSealedQuiz.astro
+//   (quiz là component riêng, ghép qua lessons.ts — không nhúng vào file này)
+//
+// Learning job: Kotlin recognition part 2 — class cơ bản, data class (so sánh giá trị, copy,
+// destructuring), generics recognition (List<T>), by delegation (tách Kotlin vs Compose trong
+// by remember / by preferencesDataStore), sealed state (sealed interface + object + biến thể).
+// KHÔNG dạy: when, inheritance sâu, extension functions, scope functions, coroutine.
+//
+// Provenance: dựng từ bản thảo đã chấp nhận docs/drafts/f2-kotlin-foundation.md (2026-09);
+// code minh hoạ do khoá học tự viết — không thuộc project mẫu aaf-materials.
+// ============================================================================
+import { Code } from "astro:components";
+
+// Mục 1 — class cơ bản: khai báo và tạo object.
+const classMessageCode = `class Message(
+    val text: String,
+    val isMine: Boolean
+)`;
+
+const messageCreateCode = `val message = Message(
+    text = "Xin chào",
+    isMine = true
+)
+
+println(message.text)   // "Xin chào"`;
+
+// Mục 2 — data class.
+const dataClassCode = `data class Message(
+    val text: String,
+    val isMine: Boolean
+)`;
+
+// Mục 3 — so sánh theo giá trị.
+const equalityCode = `val a = Message("Hello", true)
+val b = Message("Hello", true)
+
+a == b   // true với data class`;
+
+// Mục 4 — copy.
+const copyCode = `val original = Message(
+    text = "Hello",
+    isMine = false
+)
+
+val updated = original.copy(isMine = true)`;
+
+// Mục 5 — destructuring.
+const destructureCode = `val message = Message("Xin chào", true)
+
+val (text, isMine) = message`;
+
+// Mục 6 — generics: đọc dấu ngoặc nhọn.
+const genericsCode = `val names: List<String> = listOf("An", "Bình", "Chi")`;
+
+const genericsVariantsCode = `List<Message>   // danh sách phần tử là Message
+List<Int>       // danh sách phần tử là Int`;
+
+const genericsTCode = `List<T>`;
+
+const genericsShapesCode = `List<Message>              // danh sách tin nhắn — bạn sẽ viết thật ở Stage Compose
+MutableStateFlow<UiState>  // "hộp state mà UI lắng nghe" — của phần State & kiến trúc
+Result<Message>            // "kết quả: hoặc thành công chứa Message, hoặc lỗi" — sẽ gặp ở phần Mạng`;
+
+// Mục 7 — by: uỷ quyền đọc/ghi thuộc tính.
+const byBasicCode = `// Cách viết thường: đọc qua .value
+val count = state.value
+
+// Cách viết uỷ quyền: đọc thẳng tên biến
+val count by state`;
+
+const byDelegateCode = `val count by state`;
+
+// Mục 8 — mối nối Compose: by remember.
+const byRememberCode = `var name by remember {
+    mutableStateOf("")
+}`;
+
+const nameStateCode = `// Tượng trưng cho hình dạng bên dưới (không phải code bạn sẽ viết):
+val nameState = remember { mutableStateOf("") }
+
+// đọc:
+println(nameState.value)
+// ghi:
+nameState.value = "Mới"`;
+
+// Mục 9 — cùng cơ chế, delegate khác: preferencesDataStore.
+const dataStoreCode = `val Context.dataStore by preferencesDataStore(
+    name = "settings"
+)`;
+
+// Mục 10 — sealed state.
+const booleanStateCode = `// Cách "ba boolean" — làm được, nhưng dễ hỏng:
+var isLoading = false
+var hasError = false
+var hasData = false`;
+
+const sealedUiStateCode = `sealed interface UiState
+
+object Loading : UiState
+
+data class Success(
+    val messages: List<Message>
+) : UiState
+
+data class Error(
+    val message: String
+) : UiState`;
+
+const booleanVsSealedCode = `// Boolean rời: đọc code phải tự ghép, ghi code có thể tạo tổ hợp vô nghĩa
+if (isLoading) ... else if (hasError) ... else if (hasData) ...
+
+// Sealed state: một giá trị, một biến thể tại một thời điểm — các nhánh trùng khớp họ kiểu
+val state: UiState = ...`;
+
+// Mục 11 — ghép F1 + F2, không dùng Android API.
+const combinedExampleCode = `// F2: data class + List<T>
+data class Message(
+    val text: String,
+    val isMine: Boolean
+)
+
+// F2: sealed state — họ trạng thái của một "màn hình chat" giả lập
+sealed interface ChatUiState
+
+object Loading : ChatUiState
+
+data class Loaded(
+    val messages: List<Message>
+) : ChatUiState
+
+data class Failed(
+    val reason: String
+) : ChatUiState
+
+fun describe(state: ChatUiState): String =
+    if (state is Loaded) {
+        val messages = state.messages             // is-kiểm tra rồi truy cập thuộc tính
+        val mine = messages.filter { it.isMine }  // F1: filter + it
+        "\${messages.size} tin — \${mine.size} của tôi"
+    } else if (state is Failed) {
+        state.reason
+    } else {
+        "Đang tải…"
+    }
+
+fun demo() {
+    val initial = Loaded(emptyList())             // một biến thể, rỗng
+    val received = initial.copy(                  // F2: copy — tạo bản mới
+        messages = listOf(
+            Message("Chào!", true),
+            Message("Học Kotlin nhé", false)
+        )
+    )
+    println(describe(received))                   // "2 tin — 1 của tôi"
+    println(received == Loaded(                   // F2: so theo giá trị
+        listOf(Message("Chào!", true), Message("Học Kotlin nhé", false))
+    ))                                            // true
+}`;
+
+// Mục 12 — bài kiểm tra cuối: đoạn code "kiểu Compose".
+const finalSnippetCode = `sealed interface NoteUiState
+
+object Loading : NoteUiState
+
+data class Ready(
+    val notes: List<Note>
+) : NoteUiState
+
+data class Note(
+    val id: Int,
+    val title: String,
+    val done: Boolean
+)
+
+fun noteTitleOf(state: NoteUiState): String? =
+    if (state is Ready && state.notes.size > 0) state.notes[0].title else null
+
+fun notesScreen() {
+    var state by remember { mutableStateOf<NoteUiState>(Loading) }
+
+    val firstTitle: String? = noteTitleOf(state)
+
+    Button(onClick = {
+        if (state is Ready) {
+            val current = state as Ready
+            state = current.copy(
+                notes = current.notes.filter { !it.done }
+            )
+        }
+    }) {
+        Text(text = firstTitle ?: "Chưa có ghi chú")
+    }
+}`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Sau bài này bạn sẽ</strong>
+		<ul>
+			<li>Nhận ra một khai báo <code>class</code> cơ bản: đọc được tham số khởi tạo, và vì sao <code>val</code> trong tham số biến thành thuộc tính đọc được của object.</li>
+			<li>Giải thích được <code>data class</code> làm gì khác <code>class</code> thường: so sánh theo <strong>giá trị</strong>, <code>toString</code> đọc được, <code>copy(...)</code> tạo bản mới không sửa bản cũ (và giới hạn "copy nông"), cùng destructuring — biết khi nào nó làm code khó đọc.</li>
+			<li>Đọc được các hình dạng generic: <code>List&lt;String&gt;</code>, <code>List&lt;Message&gt;</code>, <code>List&lt;T&gt;</code>, <code>MutableStateFlow&lt;UiState&gt;</code> — ở mức "đọc được dấu ngoặc nhọn", không sâu hơn.</li>
+			<li>Hiểu được <code>by</code> là cơ chế gì của Kotlin (uỷ quyền việc đọc/ghi thuộc tính), tách rõ phần Kotlin và phần Compose trong <code>var name by remember &#123; mutableStateOf("") &#125;</code>, và nhận ra cùng cơ chế đó trong <code>by preferencesDataStore(...)</code>.</li>
+			<li>Hiểu được ý tưởng <strong>sealed state</strong>: mô hình hoá một màn hình bằng một họ trạng thái có giới hạn thay vì một đống boolean rời rạc.</li>
+			<li>Nhìn một đoạn code Compose 25–35 dòng và chỉ ra <strong>từng</strong> cấu trúc Kotlin — không còn cấu trúc Kotlin nào chưa được dạy.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Tại sao điều này quan trọng.</strong> F1 cho bạn đọc <em>biểu thức</em>; F2 cho bạn đọc <em>cấu trúc dữ liệu và
+		thuộc tính</em> — đúng hai thứ Compose dựa vào để mô tả trạng thái giao diện. Gần như mọi state trong
+		code Android hiện đại là một trong: data class, danh sách data class, hoặc một giá trị thuộc họ
+		sealed. Học xong bài này, câu "đây là Kotlin hay là Compose?" luôn có câu trả lời rõ.
+	</p>
+	<p class="hint">
+		<strong>Cần biết trước.</strong> F1 — val/var, kiểu và suy luận, hàm/tham số/giá trị trả về, expression body,
+		nullability <code>?.</code>/<code>?:</code>, List + map/filter, lambda + <code>it</code> + trailing lambda, kiểu hàm. Bài này dùng
+		chúng như công cụ, không dạy lại.
+	</p>
+
+	<h2 id="class">1. Class: đủ dùng, không hơn</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		Đến giờ, mỗi biến của bạn chỉ <em>một</em> mẩu dữ liệu: một chuỗi, một số. Nhưng một tin nhắn thật cần
+		nhiều mẩu đi cùng nhau: nội dung, ai gửi, mấy giờ. Ba biến rời (<code>text</code>, <code>isMine</code>, <code>time</code>) là ba chỗ
+		phải giữ đồng bộ — truyền thiếu một cái là vỡ. Giải pháp: định nghĩa một <strong>kiểu</strong> gói các mẩu đó
+		thành một giá trị duy nhất.
+	</p>
+	<Code code={classMessageCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc từng mảnh:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Mảnh</th><th>Nghĩa là gì</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>class</code></td>
+				<td>Từ khoá định nghĩa một kiểu mới — một <strong>khuôn</strong>: mô tả "một Message gồm những gì".</td>
+			</tr>
+			<tr>
+				<td><code>Message(...)</code></td>
+				<td>Danh sách <strong>tham số khởi tạo</strong>: muốn tạo ra một Message thì phải cung cấp những gì.</td>
+			</tr>
+			<tr>
+				<td><code>val text: String</code></td>
+				<td>Tham số vừa là dữ liệu khởi tạo, vừa — vì có chữ <code>val</code> — trở thành <strong>thuộc tính</strong> (property) đọc được trên object tạo ra.</td>
+			</tr>
+			<tr>
+				<td><em>(thân rỗng)</em></td>
+				<td>Class này chỉ mô tả dữ liệu, chưa có hành vi — và điều đó hoàn toàn hợp lệ.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Tạo ra một <strong>object</strong> (một bản sao cụ thể từ khuôn) bằng cách gọi tên class như gọi hàm:
+	</p>
+	<Code code={messageCreateCode} lang="kotlin" theme="github-dark" />
+	<p>Hai điểm cần nói chính xác:</p>
+	<ul>
+		<li>
+			<code>message</code> là một <code>val</code> — <em>tên</em> không gán lại được (F1). Còn các <em>thuộc tính</em> bên trong object thì
+			do chính chúng quyết định: khai <code>val</code> trong constructor → chỉ đọc; khai <code>var</code> → có thể gán lại qua
+			object. Câu hỏi "đổi được không" giờ có hai tầng: đổi <em>tên trỏ tới object khác</em> (do <code>val</code>/<code>var</code>
+			của biến) và đổi <em>giá trị thuộc tính bên trong</em> (do <code>val</code>/<code>var</code> của thuộc tính).
+		</li>
+		<li>
+			<code>Message(...)</code> ở ví dụ trên là <strong>lời gọi tạo object</strong>, không phải khai báo — cùng cú pháp gọi hàm
+			mà bạn biết, giờ dùng để "đúc" một bản từ khuôn.
+		</li>
+	</ul>
+	<p>
+		Chỉ cần vậy để đọc code. Những khái niệm OOP còn lại (kế thừa, visibility, constructor phụ…) <strong>không
+		nằm trong bài này</strong> — bạn chỉ cần nhận ra khuôn hình "class + tham số khởi tạo + val/var" ở mọi nơi
+		nó xuất hiện. Dấu <code>:</code> sau tên class (kiểu <code>class MainActivity : ComponentActivity()</code> mà bạn sẽ gặp
+		ở giai đoạn Android) liên quan tới kế thừa — được gloss đúng lúc ở đó, không dạy ở đây.
+	</p>
+
+	<h2 id="data-class">2. Data class: khuôn làm sẵn cho dữ liệu</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		<code>Message</code> ở mục 1 là <em>khuôn dữ liệu thuần</em> — không có hành vi gì. Với các khuôn như vậy, Kotlin
+		cung cấp một phiên bản có thêm vài tính năng làm sẵn, đúng những việc code Android làm đi đi lại lại.
+		Thêm một chữ <code>data</code>:
+	</p>
+	<Code code={dataClassCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Vì sao Android cần đúng khuôn hình này? Nhìn quanh code bạn sắp học: <strong>mô hình cho UI</strong> (một tin
+		nhắn, một mục danh sách), <strong>mô hình cho database</strong> (một dòng trong bảng), <strong>mô hình cho mạng</strong> (một
+		kết quả API), <strong>giá trị state</strong> (tình trạng màn hình). Tất cả đều là "một giá trị gồm nhiều thuộc
+		tính", không có hành vi phức tạp. <code>data class</code> là công cụ chính xác cho hình đó — và vì phổ biến
+		đến vậy, quy ước chung: <em>khi một class chỉ là dữ liệu, viết <code>data class</code>.</em>
+	</p>
+	<p>Ba thứ <code>data</code> làm thêm, ở mức bạn cần:</p>
+	<ol>
+		<li><strong>So sánh theo giá trị</strong> (mục 3).</li>
+		<li>
+			<strong><code>toString()</code> đọc được</strong>: in ra <code>Message(text=Xin chào, isMine=true)</code> thay vì một mã băm vô
+			nghĩa — tiết kiệm hàng giờ debug qua Logcat.
+		</li>
+		<li><strong><code>copy(...)</code></strong> và <strong>destructuring</strong> (mục 4, mục 5).</li>
+	</ol>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Khai báo nào sau đây đúng cú pháp Kotlin để tạo object từ
+			<code>data class Message(val text: String, val isMine: Boolean)</code>?
+			<strong>(1)</strong> <code>val m = Message("Hi", true)</code> · <strong>(2)</strong> <code>val m = Message(text = "Hi")</code> ·
+			<strong>(3)</strong> <code>val m = data Message("Hi", true)</code> · <strong>(4)</strong> <code>val m: Message = Message(text = "Hi", isMine = false)</code>
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				Đáp án đúng là <strong>(1)</strong> và <strong>(4)</strong>. Dòng (2) thiếu tham số khởi tạo bắt buộc <code>isMine</code> nên
+				không compile. Dòng (3) sai vì <code>data</code> chỉ dùng lúc <em>định nghĩa</em>, không dùng lúc <em>tạo object</em>.
+			</p>
+		</details>
+	</div>
+
+	<h2 id="so-sanh-gia-tri">3. So sánh theo giá trị</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		Hai tin nhắn do hai lần tạo khác nhau nhưng <em>nội dung như nhau</em> — chúng có "bằng nhau" không? Với
+		class thường, Kotlin mặc định so sánh <em>sự nhận diện</em> (hai tên có trỏ tới cùng một object không).
+		Với dữ liệu, thứ bạn gần như luôn muốn hỏi là: <em>nội dung có khớp nhau không</em>.
+	</p>
+	<Code code={equalityCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>data class</code> tự sinh việc so sánh <strong>thuộc tính-cờ-thuộc-tính</strong>: <code>a == b</code> true khi mọi thuộc tính
+		khớp (<code>text</code> bằng <code>text</code>, <code>isMine</code> bằng <code>isMine</code>), bất kể a và b là hai object riêng biệt được tạo
+		hai lần. Với class thường, kết quả là <code>false</code> — vì mặc định so <em>nhận diện</em>, không so nội dung.
+	</p>
+	<p>
+		Đây chính là hành vi "giá trị" mà tên <code>data</code> hàm ý: object của bạn được đối xử như một <em>giá trị</em>
+		(hai bản chép cùng nội dung coi như bằng nhau) chứ không phải một <em>thực thể</em> (mỗi lần tạo là một
+		cái riêng). Trong code state của Compose, hành vi này là nền của việc "state có thay đổi không?" —
+		nhưng bạn chưa cần biết cơ chế đó, chỉ cần nhớ: <strong>data class so theo nội dung.</strong>
+	</p>
+	<p>
+		Một câu cảnh báo để khỏi lạc đề: ở đây ta quan tâm <em>giá trị dữ liệu</em>. Kotlin còn có toán tử so
+		sánh nhận diện <code>===</code> (hai tên trỏ đúng một object) — biết là tồn tại, chưa cần dùng, không học sâu
+		trong bài này.
+	</p>
+
+	<h2 id="copy">4. Copy(...): tạo bản mới, không sửa bản cũ</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		Thuộc tính của <code>Message</code> là <code>val</code> — chỉ đọc. Vậy khi tin nhắn <em>đổi trạng thái</em> (ví dụ: đã được đánh
+		dấu quan trọng), làm sao? Không sửa được, thì… tạo một bản mới với thuộc tính cần đổi:
+	</p>
+	<Code code={copyCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc chính xác ba điều:</p>
+	<ol>
+		<li>
+			<strong><code>original</code> không bị sửa</strong> — vẫn là <code>Message(text=Hello, isMine=false)</code>. Gọi <code>copy</code> không đụng
+			vào bản cũ.
+		</li>
+		<li>
+			<strong><code>updated</code> là một giá trị MỚI</strong> — <code>Message(text=Hello, isMine=true)</code>. Hai object khác nhau,
+			nội dung khác nhau ở đúng chỗ bạn truyền.
+		</li>
+		<li>
+			<strong>Tham số không truyền giữ nguyên giá trị cũ</strong> — <code>copy(isMine = true)</code> chỉ đổi <code>isMine</code>; <code>text</code>
+			được lấy từ <code>original</code>. Muốn đổi chỗ nào thì truyền tên chỗ đó (tham số đặt tên — F1), còn lại
+			giữ nguyên.
+		</li>
+	</ol>
+	<p>
+		Mối nối về sau, ghi một câu để nhớ: <strong>khi một UI state thay đổi, code Android hiện đại sẽ tạo một
+		giá trị state mới (thường qua <code>copy</code>) thay vì sửa state cũ tại chỗ.</strong> Vì sao và cơ chế nó hoạt động
+		với giao diện là nội dung phần State &amp; kiến trúc — ở đây bạn chỉ cần nắm hình: <em>đổi = tạo bản mới</em>.
+	</p>
+	<p>
+		Một giới hạn cần nói cho chính xác, ngắn gọn: <code>copy</code> là <strong>nông</strong> (shallow). Nó tạo object mới với
+		các giá trị thuộc tính được <em>chép qua</em>; nếu một thuộc tính trỏ tới một object <em>thay đổi được</em> (ví dụ
+		một MutableList), object bên trong đó <strong>không</strong> được nhân bản — hai bản copy vẫn chia sẻ nó. Với
+		data class toàn <code>val</code> chứa String/Int/List chỉ-đọc như đa số code Android, điều này gần như không
+		bao giờ cắn bạn; chỉ đừng tưởng <code>copy</code> "nhân bản sâu cả cây dữ liệu".
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Với <code>val m1 = Message("Hi", true)</code>, sau <code>val m2 = m1.copy(text = "Xin chào")</code>:
+			<strong>(1)</strong> <code>m1.text</code> là gì? <strong>(2)</strong> <code>m2.isMine</code> là gì? <strong>(3)</strong> <code>m1 == m2</code> true hay false?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>(1)</strong> <code>"Hi"</code> — bản gốc không đổi. <strong>(2)</strong> <code>true</code> — thuộc tính không truyền giữ nguyên.
+				<strong>(3)</strong> false — <code>text</code> khác nhau nên nội dung khác nhau.
+			</p>
+		</details>
+	</div>
+
+	<h2 id="destructuring">5. Destructuring: tách giá trị thành các tên</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		Có lúc bạn chỉ cần <em>hai mẩu</em> trong một giá trị, và viết <code>message.text</code>, <code>message.isMine</code> lặp đi lặp
+		lại. Kotlin cho phép tách một data class thành các biến đặt tên theo thứ tự thuộc tính:
+	</p>
+	<Code code={destructureCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Sau dòng này, <code>text</code> là <code>"Xin chào"</code> và <code>isMine</code> là <code>true</code> — hai biến cục bộ riêng. <strong>Thứ tự khớp
+		thứ tự thuộc tính trong khai báo class</strong>, không khớp theo tên: vị trí đầu nhận thuộc tính đầu
+		(<code>text</code>), vị trí hai nhận thuộc tính hai (<code>isMine</code>). Tên bên trái do bạn đặt — đặt sai thứ tự là
+		nhận nhầm dữ liệu, mà trình biên dịch không thể cảnh báo vì tên là do bạn chọn.
+	</p>
+	<p>
+		Cảnh báo thực dụng: tiện ở giá trị 2–3 thuộc tính; từ 4–5 thuộc tính trở lên, destructuring khó đọc
+		và dễ lệch vị trí — khi đó dùng <code>val text = message.text</code> trực tiếp thì rõ ràng hơn. (Bên dưới,
+		Kotlin sinh các hàm truy vị trí <code>component1()</code>, <code>component2()</code>… — biết là cơ chế để hiểu vì sao
+		"theo thứ tự", không cần dùng.)
+	</p>
+	<p>
+		Bạn sẽ gặp destructuring chủ yếu trong vòng lặp <code>for ((key, value) in …)</code> và vài API Kotlin —
+		nhận diện được là đủ.
+	</p>
+
+	<h2 id="generics">6. Generics: đọc được dấu ngoặc nhọn</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		Ở F1 bạn đã dùng <code>listOf("An", "Bình")</code> và Kotlin tự suy ra kiểu. Giờ đọc kiểu đó ra một cách tường
+		minh:
+	</p>
+	<Code code={genericsCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>List&lt;String&gt;</code> đọc là: <strong>"một List mà phần tử bên trong là String"</strong>. Dấu ngoặc nhọn là chỗ <em>nói
+		rõ loại dữ liệu bên trong hộp</em>. Mô hình tư duy: <strong><code>Hộp&lt;Loại bên trong&gt;</code></strong> — List là hộp, <code>String</code> là
+		loại bên trong.
+	</p>
+	<p>Đổi loại bên trong thì đọc y hệt:</p>
+	<Code code={genericsVariantsCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Chú ý hình dáng ngữ nghĩa: <code>List&lt;Message&gt;</code> <strong>không</strong> phải "một cú pháp List đặc biệt" — nó vẫn là
+		List, chỉ khai báo rõ phần tử là gì. Lợi ích trình biên dịch mang lại rất thật: <code>messages[0].text</code>
+		compile được; <code>numbers[0].text</code> báo lỗi ngay lúc biên dịch, vì <code>Int</code> không có thuộc tính <code>text</code>.
+	</p>
+	<h3 id="t-la-gi"><code>T</code> là gì?</h3>
+	<p>Khi đọc tài liệu hoặc chữ ký hàm, bạn sẽ gặp:</p>
+	<Code code={genericsTCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>T</code> không phải một kiểu thật — nó là <strong>placeholder</strong> (tham số kiểu): "kiểu cụ thể bên trong sẽ được
+		cung cấp ở chỗ khác". Đọc <code>fun reversed(): List&lt;T&gt;</code> của <code>List&lt;T&gt;</code> là: "trả về danh sách cùng loại phần
+		tử với danh sách gốc". Gặp <code>T</code>, đừng tìm định nghĩa của nó — hãy hỏi <em>ai cung cấp T</em>, và thường câu
+		trả lời nằm ngay cách dùng: <code>List&lt;Message&gt;</code> tức là chỗ dùng đã cung cấp <code>T = Message</code>.
+	</p>
+	<h3 id="cac-hinh-dang-android">Các hình dạng Android sắp gặp</h3>
+	<Code code={genericsShapesCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Cả ba đều là cùng một kỹ năng đọc: <em>hộp <code>&lt;</code> loại-bên-in <code>&gt;</code></em>. <code>MutableStateFlow</code>, <code>Result</code> là API
+		bạn sẽ học ý nghĩa ở từng phần tương ứng — ở đây chỉ cần đọc được hình dạng và không bị dụi mắt bởi
+		dấu ngoặc.
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Biến khai <code>val messages: List&lt;Message&gt;</code> — câu nào đúng?
+			<strong>(1)</strong> <code>messages</code> chứa các <code>String</code> · <strong>(2)</strong> <code>messages[0]</code> có kiểu <code>Message</code> ·
+			<strong>(3)</strong> <code>messages[0].text</code> compile được (giả sử Message có thuộc tính <code>text</code>) ·
+			<strong>(4)</strong> <code>messages</code> là một <code>Message</code>
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				Đáp án đúng là <strong>(2)</strong> và <strong>(3)</strong>. Dòng (1) sai loại bên trong; dòng (4) nhầm hộp với nội dung.
+			</p>
+		</details>
+	</div>
+
+	<h2 id="by">7. By: uỷ quyền việc đọc/ghi thuộc tính</h2>
+	<p>
+		Đây là khái niệm quan trọng nhất của bài — và dễ hiểu sai nhất, nên bắt đầu từ <strong>sự khác biệt cú
+		pháp</strong> mà bạn sẽ thấy khắp nơi trong code Compose:
+	</p>
+	<Code code={byBasicCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Trước hết: <strong>hai dòng này KHÔNG tương đương nhau một cách máy móc</strong> — dòng thứ hai là một cơ chế
+		khác, không chỉ là cách viết gọn của dòng thứ nhất. Nó là một <em>sự tương phản tư duy</em> đúng chỗ này,
+		chứ không phải đẳng thức.
+	</p>
+	<h3 id="van-de-by-giai-quyet">Vấn đề mà <code>by</code> giải quyết</h3>
+	<p>
+		Đôi khi một object khác là người <em>nắm quyền quyết định</em> việc đọc/ghi một thuộc tính diễn ra ra sao:
+		mỗi lần đọc có nên tính lại không? Ghi vào thì có phải báo cho ai đó biết không? Có nên lưu cache?
+		Kotlin cho phép bạn nói: <strong>"việc đọc/ghi thuộc tính này, tôi uỷ quyền cho object X xử lý"</strong> — và đó
+		là chữ <code>by</code>:
+	</p>
+	<Code code={byDelegateCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc là: biến <code>count</code> không tự chứa giá trị; <strong>mỗi lần code đọc <code>count</code>, Kotlin đi hỏi <code>state</code></strong> ("cho
+		tôi giá trị"), và mọi phép <em>ghi</em> (nếu khai <code>var</code>) cũng được chuyển cho <code>state</code> xử lý. <code>state</code> gọi là
+		<strong>delegate</strong> (bên uỷ quyền) — nó kiểm soát hành vi đọc/ghi, không phải chỉ là "bí danh" của biến.
+		Điểm phân biệt quan trọng: <em>bí danh</em> là hai tên cho cùng một chỗ nhớ; <em>uỷ quyền</em> là hai cơ chế — đọc
+		<code>count</code> là một lời hỏi được chuyển tiếp, và bên nhận được quyền làm gì đó trước/trong/sau khi trả
+		giá trị (tính lại, ghi nhớ, phát thông báo…). Chính chỗ "làm gì đó" là nơi Compose cài viễn cảnh
+		"UI biết state đổi".
+	</p>
+	<h3 id="phan-biet-voi-val-x">Phân biệt với <code>val x = state.value</code> lần cuối, bằng hành vi</h3>
+	<ul>
+		<li>
+			<code>val x = state.value</code> — <em>đọc một lần, gán kết quả</em>. Sau đó <code>x</code> là giá trị tĩnh; state đổi, <code>x</code>
+			không đổi theo.
+		</li>
+		<li>
+			<code>val x by state</code> — <em>mỗi lần đọc <code>x</code> là một lần hỏi <code>state</code></em>. Chuyện gì xảy ra ở từng lần hỏi
+			(trả giá trị mới? giá trị cũ? thông báo ai đó?) do delegate quyết định.
+		</li>
+	</ul>
+	<p>
+		Vì thế đừng dịch <code>by</code> thành "bằng" hay "= ". Dịch sát nghĩa: <strong>"việc đọc/ghi tên này, giao cho
+		bên sau chữ <code>by</code> lo."</strong>
+	</p>
+	<p>
+		Chưa dạy ở đây, có chủ đích: cơ chế <em>làm sao</em> một object trở thành delegate được (các hàm toán tử
+		<code>getValue</code>/<code>setValue</code>, giao diện <code>ReadOnlyProperty</code>…) — ngoài phạm vi nền tảng. Bạn chỉ cần nhận ra
+		<code>by</code> và dịch đúng câu trên.
+	</p>
+
+	<h2 id="by-remember">8. Mối nối Compose: <code>by remember &#123; mutableStateOf(...) &#125;</code></h2>
+	<p>
+		Bây giờ đọc đúng dòng bạn sẽ <em>nhìn thấy</em> khắp code Compose, lần này tách rõ hai tầng:
+	</p>
+	<Code code={byRememberCode} lang="kotlin" theme="github-dark" />
+	<table class="api">
+		<thead>
+			<tr><th>Mảnh</th><th>Thuộc về</th><th>Vai trò ở mức đọc</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>var</code></td>
+				<td><strong>Kotlin</strong></td>
+				<td>Khai biến cho phép <em>ghi</em> — cần <code>var</code> (không phải <code>val</code>) vì code sẽ gán lại <code>name</code> khi người dùng gõ.</td>
+			</tr>
+			<tr>
+				<td><code>by</code></td>
+				<td><strong>Kotlin</strong></td>
+				<td>Uỷ quyền việc đọc/ghi thuộc tính <code>name</code> cho object bên phải — đúng cơ chế mục 7.</td>
+			</tr>
+			<tr>
+				<td><code>&#123; mutableStateOf("") &#125;</code></td>
+				<td><strong>Kotlin</strong> (lambda)</td>
+				<td>Một lambda không tham số, trả về object state — nhớ lại lambda và trailing lambda từ F1.</td>
+			</tr>
+			<tr>
+				<td><code>remember &#123; ... &#125;</code></td>
+				<td><strong>Compose</strong></td>
+				<td>API của Compose: tạo object một lần và <em>nhớ nó qua các lần vẽ lại</em>.</td>
+			</tr>
+			<tr>
+				<td><code>mutableStateOf("")</code></td>
+				<td><strong>Compose</strong></td>
+				<td>API của Compose: tạo "ô nhớ có thông báo" — khi giá trị đổi, Compose biết và vẽ lại chỗ đang đọc nó.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Đọc khối code bằng hai tầng Kotlin/Compose tách bạch: <strong>Compose cung cấp một object state có hành vi
+		đặc biệt; Kotlin <code>by</code> là cơ chế giúp code của bạn đọc/ghi nó như một biến thường.</strong>
+	</p>
+	<p>Không uỷ quyền thì sao? Về khái niệm, object state <em>phơi</em> giá trị của nó qua một thuộc tính <code>.value</code>:</p>
+	<Code code={nameStateCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Với <code>by</code>, code của bạn đọc/ghi <code>name</code> — mọi phép đọc/ghi được chuyển tiếp cho object state, nơi nó
+		tự xử lý (kể cả việc "nói cho Compose biết có gì vừa đổi"). Câu chính xác cần nhớ: <strong>uỷ quyền giúp
+		việc đọc/ghi diễn ra như biến thường; hành vi "thông báo UI vẽ lại" nằm ở object state (Compose),
+		không nằm ở chữ <code>by</code></strong> — <code>by</code> chỉ là đường chuyển tiếp.
+	</p>
+	<p>
+		Một chi tiết bạn sẽ gặp khi đọc code Compose giờ có lời giải ở mức nhận diện: vì sao thiếu
+		<code>import androidx.compose.runtime.getValue</code> (và <code>setValue</code> khi dùng <code>var</code>) là lỗi? Vì Compose <em>cung
+		cấp</em> khả năng uỷ quyền qua một bộ hàm hỗ trợ của Kotlin; thiếu import là thiếu bộ chuyển tiếp đó.
+		Bạn không cần biết chữ ký hàm — chỉ cần nhớ: <strong>uỷ quyền cần bên uỷ quyền hỗ trợ, hỗ trợ đó nằm
+		trong import.</strong>
+	</p>
+	<p>
+		Dừng lại đúng chỗ: cách object state hoạt động bên trong (recomposition, state hoisting, snapshot)
+		là nội dung phần State &amp; kiến trúc. Ở đây mục tiêu chỉ là: <em>nhìn dòng <code>var x by remember &#123;...&#125;</code> và
+		kể đúng tên từng mảnh, biết mảnh nào là Kotlin mảnh nào là Compose.</em>
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Trong <code>var chatInputText by remember &#123; mutableStateOf("") &#125;</code>, mảnh nào là Kotlin, mảnh nào là Compose?
+			<strong>(1)</strong> <code>by</code> — Kotlin · <strong>(2)</strong> <code>remember</code> — Kotlin · <strong>(3)</strong> <code>mutableStateOf</code> — Compose ·
+			<strong>(4)</strong> <code>var</code> — Compose
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				Đáp án đúng là <strong>(1)</strong> và <strong>(3)</strong>. <code>remember</code> và <code>mutableStateOf</code> là API Compose; <code>var</code> và <code>by</code> là từ khoá Kotlin.
+			</p>
+		</details>
+	</div>
+
+	<h2 id="by-datastore">9. Cùng cơ chế, delegate khác: <code>by preferencesDataStore(...)</code></h2>
+	<p>
+		Để chứng minh <code>by</code> là <strong>của Kotlin, không phải của Compose</strong>, đây là hình dạng bạn sẽ gặp ở phần Dữ
+		liệu cục bộ:
+	</p>
+	<Code code={dataStoreCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Ở mức này, chưa cần hiểu <code>Context</code> là gì (Android sẽ dạy), chưa cần biết DataStore là gì (phần Dữ
+		liệu cục bộ sẽ dạy), và chưa cần học <em>extension property</em> — thuộc tính được "gắn thêm" vào kiểu có
+		sẵn từ bên ngoài (khoá sẽ gloss khi lần đầu dùng thật). Cái cần thấy chỉ có vậy:
+	</p>
+	<ul>
+		<li>
+			<strong>Cú pháp <code>by</code> y hệt mục 7</strong> — cùng một cơ chế ngôn ngữ Kotlin.
+		</li>
+		<li>
+			Chỉ khác <strong>bên uỷ quyền</strong>: lần này delegate là <code>preferencesDataStore(...)</code> — một object lo việc
+			tạo/quản lý kho lưu trữ thay vì một state giao diện.
+		</li>
+		<li>
+			Nói một câu theo đúng nghĩa: <em>"việc tạo và giữ <code>dataStore</code> này, tôi giao cho
+			<code>preferencesDataStore</code> lo"</em> — mỗi lần truy cập <code>dataStore</code> là một lần hỏi delegate, và delegate
+			bảo đảm hành vi đúng (không tạo bản mới lung tung, tạo đúng một kho với tên đó).
+		</li>
+	</ul>
+	<p>
+		Đây cũng là ví dụ cho kỹ năng đọc tổng: gặp <code>by</code> ở bất kỳ đâu, câu hỏi đúng luôn là <em>"bên uỷ quyền
+		ở đây là ai, và nó kiểm soát hành vi đọc/ghi ra sao?"</em> — câu hỏi đó dẫn bạn tới đúng tài liệu của
+		phần tương ứng.
+	</p>
+
+	<h2 id="sealed-state">10. Sealed state: một họ trạng thái có giới hạn</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		Một màn hình chat tại một thời điểm chỉ có thể đang ở <strong>một</strong> trong vài tình huống: đang tải, tải
+		thành công (có dữ liệu), hoặc tải lỗi. Cách viết bằng boolean rời rạc:
+	</p>
+	<Code code={booleanStateCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Vấn đề của cách này không phải là <em>không chạy được</em>, mà là nó <strong>không diễn đạt được ràng buộc</strong>: three
+		booleans tạo ra tám tổ hợp, trong đó chỉ có ba tổ hợp có nghĩa (<code>isLoading</code> và <code>hasError</code> cùng true
+		nghĩa là gì?). Mỗi chỗ đọc code phải tự nhớ (hoặc tự đoán) rằng các boolean này <em>loại trừ nhau</em>, và
+		mỗi chỗ ghi code có thể vô tình tạo ra tổ hợp vô nghĩa.
+	</p>
+	<p>Cách Kotlin diễn đạt đúng ý: một kiểu đại diện cho <em>họ trạng thái khép kín</em>:</p>
+	<Code code={sealedUiStateCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc từng mảnh — chỉ cần nhận diện, không sâu hơn:</p>
+	<ul>
+		<li>
+			<strong><code>sealed</code></strong> — từ khoá nói: <em>"họ kiểu bên dưới này là có giới hạn, được khai báo rõ tại đây."</em>
+			Nghĩa chính xác: mọi biến thể của <code>UiState</code> phải được khai báo trong cùng nơi Kotlin kiểm soát
+			(cùng file/module với khai báo sealed). Ranh giới của họ kiểu là <strong>chủ ý của người viết</strong>, không
+			phải ai ở đâu cũng đẻ thêm biến thể được.
+		</li>
+		<li>
+			<strong><code>interface</code></strong> — ở đây chỉ cần đọc là <em>"một kiểu chung đặt tên cho cả họ"</em>: <code>UiState</code> là cái tên
+			để chỉ <em>bất kỳ</em> trạng thái nào trong họ. (Interface trong Kotlin có đời sống sâu hơn — không nằm
+			trong bài này.)
+		</li>
+		<li>
+			<strong><code>class Loading : UiState</code></strong> — một biến thể của họ, không mang dữ liệu. Chú ý dấu <code>:</code> — trong
+			ví dụ này nghĩa là <em>"kiểu bên trái thuộc họ kiểu bên phải"</em> (Loading là một UiState). Đây là <em>toàn
+			bộ</em> ý nghĩa của <code>:</code> mà bài này dùng; kế thừa sâu hơn không dạy ở đây.
+		</li>
+		<li>
+			<strong><code>object Loading</code></strong> — từ khoá <code>object</code> khai <em>một bản duy nhất tồn tại sẵn</em> của kiểu đó: không cần
+			<code>Loading()</code>, dùng thẳng tên <code>Loading</code>. Vì "đang tải" không cần dữ liệu gì, cả app chỉ cần đúng một
+			giá trị Loading. Nhận diện được vậy là đủ — pattern singleton sâu hơn không dạy ở đây.
+		</li>
+		<li>
+			<strong><code>data class Success(...) : UiState</code></strong> — biến thể <em>có mang dữ liệu</em> (danh sách tin nhắn), và nó
+			vẫn là data class đầy đủ: <code>==</code> theo giá trị, <code>copy</code>, destructuring — đúng như mục 2–5.
+		</li>
+	</ul>
+	<p>
+		Cách đọc mô hình này — điểm quan trọng nhất của phần: <strong>biến state có kiểu <code>UiState</code>, và tại mỗi
+		thời điểm nó giữ đúng <em>một</em> biến thể, biến thể nào thì mang đúng dữ liệu của biến thể đó.</strong>
+		<code>Loading</code> không thể "đồng thời" chứa tin nhắn; <code>Error</code> bắt buộc mang thông báo lỗi; dữ liệu chỉ tồn
+		tại khi <code>Success</code>. Ràng buộc trước đây phải <em>nhớ trong đầu</em> (booleans loại trừ nhau) giờ được <em>viết
+		vào kiểu</em> — trình biên dịch kiểm tra giúp bạn.
+	</p>
+	<p>So sánh hai cách mô tả cùng một màn hình:</p>
+	<Code code={booleanVsSealedCode} lang="kotlin" theme="github-dark" />
+	<p>
+		(Thao tác <em>rẽ nhánh</em> trên sealed state — cấu trúc <code>when</code> của Kotlin — là công cụ tự nhiên đi kèm;
+		<code>when</code> <strong>không</strong> phải mục tiêu học của bài này: khoá sẽ gloss nó đúng chỗ dùng đầu tiên. Ở đây chỉ
+		cần mô hình dữ liệu: <em>một giá trị, một biến thể, họ có giới hạn.</em>)
+	</p>
+	<p>
+		Một cảnh báo chính xác: sealed kiểm soát <strong>họ biến thể được phép khai báo</strong>, không kiểm soát số
+		<em>lần tạo object</em>: bạn có thể có nhiều giá trị <code>Success</code> với dữ liệu khác nhau — chúng là các giá trị
+		riêng của cùng một biến thể. "Chỉ một object tồn tại" là nhầm với <code>object</code>; sealed nói về <em>giới hạn
+		biến thể</em>, không phải <em>số lượng instance</em>.
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Với họ <code>UiState</code> ở trên, câu nào đúng?
+			<strong>(1)</strong> <code>Success(listOf(...))</code> tạo được nhiều giá trị khác nhau · <strong>(2)</strong> Có thể thêm biến thể
+			<code>class Timeout : UiState</code> trong file khác · <strong>(3)</strong> <code>Loading</code> cần gọi <code>Loading()</code> để có bản dùng ·
+			<strong>(4)</strong> <code>Error("404")</code> mang theo dữ liệu
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				Đáp án đúng là <strong>(1)</strong> và <strong>(4)</strong>. Dòng (2) sai — sealed giới hạn nơi khai báo biến thể. Dòng (3) sai —
+				<code>object</code> dùng thẳng tên, không tạo bản mới.
+			</p>
+		</details>
+	</div>
+	<p>
+		<strong>Bạn sẽ gặp ở đâu:</strong> đúng họ <code>UiState</code> này (Loading/Success/Error) là hình mẫu trung tâm của phần
+		State &amp; kiến trúc và phần Mạng. Từ bây giờ, mỗi lần thấy <code>sealed interface UiState</code> bạn đã biết:
+		đây là <em>danh sách các trạng thái hợp lệ của một màn hình, viết ra thành kiểu</em>.
+	</p>
+
+	<h2 id="ghep-f1-f2">11. Ghép F1 + F2: một ví dụ không dùng Android API</h2>
+	<p>
+		Tất cả công cụ từ hai bài nền tảng, ghép thành một mô hình hoàn chỉnh — không một dòng Android:
+	</p>
+	<Code code={combinedExampleCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc lại và tự điểm danh: data class, sealed họ, <code>object</code> biến thể rỗng, <code>List&lt;Message&gt;</code>,
+		<code>copy</code>, so sánh theo giá trị — và từ F1: tham số có kiểu, expression body, lambda + <code>it</code>,
+		string template, <code>size</code>. Hai cấu trúc Kotlin nhỏ được gloss một câu: <code>state is Loaded</code>
+		(toán tử <code>is</code> — "giá trị có thuộc biến thể Loaded không") và <code>emptyList()</code> (hàm tạo List rỗng,
+		cùng họ với <code>listOf</code> đã biết). Không một dòng nào cần Android.
+	</p>
+
+	<h2 id="bai-kiem-tra">12. Bài kiểm tra cuối: đoạn code "kiểu Compose"</h2>
+	<p>
+		Đoạn dưới đây là <em>hình dạng</em> code Compose thật — và theo thiết kế của bài kiểm tra này, <strong>mọi cấu
+		trúc Kotlin trong đó đều đã được dạy ở F1 hoặc F2</strong>. Nhiệm vụ: chỉ ra từng mảnh và phân loại Kotlin
+		hay Compose. Lời giải nằm ngay dưới.
+	</p>
+	<Code code={finalSnippetCode} lang="kotlin" theme="github-dark" />
+	<p>Điểm danh từng mảnh:</p>
+	<ul>
+		<li>
+			<strong>Kotlin (F2):</strong> <code>sealed interface NoteUiState</code>; <code>object Loading</code>; <code>data class</code> <code>Ready</code>, <code>Note</code>;
+			<code>:</code> nghĩa "thuộc họ kiểu" tại hai chỗ khai biến thể; <code>List&lt;Note&gt;</code> và <code>mutableStateOf&lt;NoteUiState&gt;</code>
+			(generic recognition); <code>by</code> (uỷ quyền đọc/ghi <code>state</code> cho object Compose); <code>copy(...)</code> tạo state
+			mới.
+		</li>
+		<li>
+			<strong>Kotlin (F1):</strong> <code>var</code>/<code>val</code>, kiểu trả về <code>String?</code>, nullability <code>?:</code>, lambda <code>&#123; ... &#125;</code> làm tham số,
+			trailing lambda (<code>Button(...) &#123; Text(...) &#125;</code>), <code>it</code>, <code>filter</code>, string template, expression body,
+			<code>if</code>/<code>else if</code>, index <code>notes[0]</code>, <code>size</code>.
+		</li>
+		<li>
+			<strong>Compose (chưa học — sẽ học ở Stage Compose):</strong> <code>@Composable</code> (ẩn trong chữ ký thật của
+			<code>notesScreen</code>), <code>remember</code>, <code>mutableStateOf</code>, <code>Button</code>, <code>Text</code>, <code>onClick</code> như một thuộc tính kiểu
+			<code>() -&gt; Unit</code>.
+		</li>
+	</ul>
+	<p>
+		Hai mảnh Kotlin nhỏ xuất hiện lần đầu và được gloss đúng một câu ngay trong đoạn, không mở rộng:
+	</p>
+	<ul>
+		<li>
+			<code>state is Ready</code> — <strong>toán tử <code>is</code></strong>: hỏi <em>"giá trị này có thuộc biến thể <code>Ready</code> không?"</em> (đúng
+			hay sai). Nó là công cụ tự nhiên khi đọc sealed state; khoá sẽ dùng lại nó ở các bài sau, và
+			<code>when</code> đi kèm sẽ được gloss tại chỗ dùng đầu tiên — <code>is</code> không phải mục tiêu học mới của bài này.
+		</li>
+		<li>
+			<code>state as Ready</code> — <strong>toán tử <code>as</code></strong>: <em>chuyển cách nhìn</em> giá trị sang biến thể đó, để truy cập được
+			<code>current.notes</code>. Cặp <code>is</code>-kiểm-tra-then-<code>as</code> (kiểm tra rồi mới chuyển) là cách đọc an toàn; các
+			biến thể khác của <code>as</code> (như <code>as?</code>) không dùng ở đây và chưa cần biết.
+		</li>
+		<li>
+			<code>state is Ready &amp;&amp; state.notes.size &gt; 0</code> — <strong>toán tử <code>&amp;&amp;</code></strong> là "và": cả hai điều kiện cùng đúng
+			thì biểu thức mới đúng; <code>&gt;</code> là "lớn hơn" (so sánh số, cho ra đúng/sai); và trong <code>filter &#123; !it.done &#125;</code>, dấu
+			<strong><code>!</code></strong> là phủ định — "tin <em>không</em> đã hoàn thành".
+		</li>
+	</ul>
+	<p>
+		Đó là <strong>toàn bộ</strong> số cấu trúc Kotlin của đoạn — không có <code>let</code>, <code>run</code>, <code>apply</code>, <code>also</code>, <code>ifEmpty</code>,
+		<code>takeIf</code>, <code>as?</code>, <code>return@</code>, <code>when</code>, hay extension function nào. Bản chất kiểm tra: <strong>bạn không cần
+		hiểu Compose làm gì, nhưng phải gọi đúng tên từng cấu trúc Kotlin.</strong> Nếu làm được, F1 + F2 đã hoàn
+		thành việc của chúng — phần còn lại của code Android là khái niệm, và khái niệm sẽ được dạy ở từng
+		bài riêng.
+	</p>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p class="notice">
+		<strong>1. Coi <code>copy(...)</code> là "sửa bản gốc".</strong> <code>copy</code> luôn tạo giá trị mới; bản gốc nguyên vẹn. Nhầm hai
+		điều này dẫn tới code "đổi state mà UI không cập nhật" hoặc hai biến trỏ hai giá trị không như mong
+		đợi. Quy tắc đọc: sau <code>val x = y.copy(...)</code>, <code>y</code> y như cũ, <code>x</code> là bản mới.
+	</p>
+	<p class="notice">
+		<strong>2. Tưởng <code>copy</code> là nhân bản sâu.</strong> <code>copy</code> chép <em>giá trị các thuộc tính</em>; object bên trong mà thuộc
+		tính trỏ tới (một danh sách thay đổi được, một object khác) không được nhân bản — hai bản vẫn chia
+		sẻ nó. Với data class toàn <code>val</code> và List chỉ-đọc như code Android thường dùng, hiếm khi thành vấn
+		đề; chỉ đừng tưởng nó "deep".
+	</p>
+	<p class="notice">
+		<strong>3. Nhầm <code>List&lt;Message&gt;</code> với "cú pháp List đặc biệt".</strong> Ngoặc nhọn chỉ khai báo <em>loại bên trong
+		hộp</em>. Không có "List kiểu Message riêng" — chỉ có List, và trình biên dịch biết phần tử là gì.
+	</p>
+	<p class="notice">
+		<strong>4. Tưởng <code>by</code> là từ khoá của Compose.</strong> <code>by</code> là Kotlin thuần — gặp ở <code>by remember</code>, <code>by
+		preferencesDataStore</code>, <code>by viewModels()</code>: cùng một cơ chế, khác delegate. Khi thấy <code>by</code>, hỏi: "bên
+		uỷ quyền là ai?"
+	</p>
+	<p class="notice">
+		<strong>5. Tưởng thuộc tính uỷ quyền chỉ là "bí danh".</strong> Bí danh = hai tên, một chỗ nhớ. Uỷ quyền = mỗi
+		phép đọc/ghi là một lời chuyển tiếp cho delegate, và delegate có hành vi riêng (tính lại, ghi nhớ,
+		thông báo). Chính hành vi đó là chỗ sức mạnh nằm — nên cũng là chỗ dễ hiểu sai nếu nghĩ "chỉ là
+		cách viết gọn".
+	</p>
+	<p class="notice">
+		<strong>6. Tưởng <code>sealed</code> nghĩa là "chỉ một object tồn tại".</strong> Sealed giới hạn <em>họ biến thể được khai báo
+		ở đâu</em>; không giới hạn số instance. <code>Success</code> tạo được bao nhiêu giá trị cũng được. "Một bản duy
+		nhất" là chuyện của <code>object</code> — và đó là <em>một</em> cách khai báo, không phải ý nghĩa của sealed.
+	</p>
+	<p class="notice">
+		<strong>7. Destructuring giá trị nhiều trường.</strong> <code>val (a, b, c, d, e) = bigObject</code> đọc không biết a là gì
+		và lệch thứ tự thì nhận nhầm dữ liệu mà không có lỗi. Từ ~4 trường trở lên: dùng truy cập thuộc tính
+		trực tiếp.
+	</p>
+	<p class="notice">
+		<strong>8. Đọc <code>data class</code> như "class dành cho database".</strong> <code>data class</code> là công cụ Kotlin tổng quát cho
+		<em>giá trị dữ liệu</em> — dùng cho UI model, state, network model, database model như nhau. Không gắn với
+		bất kỳ tầng kiến trúc nào.
+	</p>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+	<ul class="keypoints">
+		<li><code>class Message(val text: String, …)</code> định nghĩa kiểu; tham số khởi tạo có <code>val</code>/<code>var</code> trở thành thuộc tính của object; tạo object bằng cú pháp gọi <code>Message(...)</code>.</li>
+		<li><code>data class</code> = class dữ liệu với ba món làm sẵn: so sánh theo <strong>giá trị</strong>, <code>toString</code> đọc được, <code>copy(...)</code> + destructuring.</li>
+		<li><code>a == b</code> với data class so thuộc tính-cờ-thuộc-tính — hai lần tạo, nội dung khớp thì bằng.</li>
+		<li><code>copy(isMine = true)</code> tạo giá trị mới; bản gốc không đổi; tham số không truyền giữ nguyên. Copy là nông đối với object bên trong thuộc tính trỏ tới.</li>
+		<li>Destructuring <code>val (a, b) = value</code> đặt tên theo <em>thứ tự</em> thuộc tính; tiện ở 2–3 trường, bỏ qua khi nhiều hơn.</li>
+		<li>Generic: <code>Hộp&lt;Loại-bên-trong&gt;</code> — <code>List&lt;Message&gt;</code>, <code>MutableStateFlow&lt;UiState&gt;</code>, <code>Result&lt;T&gt;</code>; <code>T</code> là placeholder được cung cấp ở chỗ dùng. Chỉ cần đọc được ngoặc nhọn.</li>
+		<li><code>by</code> = uỷ quyền việc đọc/ghi thuộc tính cho một delegate; không phải gán, không phải bí danh; mỗi lần truy cập là một lời chuyển tiếp mà delegate kiểm soát hành vi.</li>
+		<li><code>var name by remember &#123; mutableStateOf("") &#125;</code>: <code>var</code> + <code>by</code> + lambda là <strong>Kotlin</strong>; <code>remember</code> + <code>mutableStateOf</code> là <strong>Compose</strong>; hành vi "thông báo vẽ lại" nằm ở object state.</li>
+		<li>Sealed state: một kiểu đại diện cho <em>họ trạng thái khép kín</em>; một giá trị state giữ đúng một biến thể tại một thời điểm; thay ba boolean rời bằng một <code>UiState</code> — ràng buộc được viết vào kiểu.</li>
+		<li><code>object</code> = khai một bản duy nhất dùng thẳng tên; dùng cho biến thể không mang dữ liệu.</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Tài liệu Kotlin chính thức (kotlinlang.org):</strong> Classes (constructor properties) · Data Classes
+			(equality, copy, destructuring) · Object declarations · Generics: type parameters
+			(<code>List&lt;T&gt;</code> recognition) · Delegated properties (khái niệm <code>by</code>) · Sealed classes/interfaces.
+		</li>
+		<li>
+			<strong>Android Developers (developer.android.com):</strong> State and Jetpack Compose (mối nối
+			<code>by remember</code>) · DataStore (mối nối <code>by preferencesDataStore</code>) — chỉ làm mối nối khái niệm; API
+			được dán nhãn "Compose/Android — sẽ học ở giai đoạn tương ứng".
+		</li>
+		<li>
+			<strong>Đoạn code minh hoạ:</strong> do khoá học tự viết, không thuộc project mẫu aaf-materials; đoạn kiểm
+			tra cuối (mục 12) được thiết kế để MỌI cấu trúc Kotlin đều đã dạy ở F1/F2
+			(<code>is</code>/<code>as</code>/<code>&amp;&amp;</code> được gloss đúng một câu tại chỗ).
+		</li>
+	</ul>
+</section>

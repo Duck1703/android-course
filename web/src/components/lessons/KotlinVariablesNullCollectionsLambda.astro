@@ -1,0 +1,909 @@
+---
+// F1 — Kotlin đủ để học Compose, Phần 1 (bài Nền tảng).
+// lessonId F1 · slug kotlin-variables-null-collections-lambda · stage foundation (badge "F1").
+// Learning job: Kotlin vừa đủ để ĐỌC code Compose — val/var + kiểu + suy luận, hàm (expression
+// body, tham số mặc định/đặt tên), null safety (`?`, `?.`, `?:`, `!!` nhận diện), List +
+// map/filter/joinToString, lambda + it + trailing lambda, function type ở mức "đọc ra hình dạng".
+// KHÔNG dạy Compose, coroutines, `when`, scope functions, generics, data class, `by` (F2 và các
+// giai đoạn sau sở hữu); các nhắc-tới chỉ là mốc định hướng một dòng.
+// Nguồn nội dung: dựng từ bản thảo đã chấp nhận docs/drafts/f1-kotlin-foundation.md (2026-09);
+// đoạn code minh hoạ do khoá học tự viết — không thuộc project mẫu aaf-materials.
+import { Code } from "astro:components";
+
+const valBasicCode = `val name = "Duc"`;
+
+const valVarCode = `val name = "Duc"
+name = "Khác"   // ❌ KHÔNG compile được — val không cho gán lại
+
+var count = 0
+count = count + 1   // ✅ var cho phép gán lại`;
+
+const explicitTypeCode = `val username: String = "Duc"`;
+
+const stringTemplateCode = `val name = "Duc"
+val greeting = "Xin chào $name"   // greeting == "Xin chào Duc"`;
+
+const funFullCode = `fun greet(name: String): String {
+    return "Xin chào $name"
+}`;
+
+const funUnitCode = `fun showWelcome(name: String): Unit {
+    println("Chào $name, sẵn sàng học Kotlin!")
+}`;
+
+const funUnitOmittedCode = `fun showWelcome(name: String) {        // Unit được hiểu ngầm
+    println("Chào $name, sẵn sàng học Kotlin!")
+}`;
+
+const expressionBodyCode = `fun double(x: Int) = x * 2`;
+
+const expressionBodyEquivCode = `fun double(x: Int) = x * 2
+
+fun double(x: Int): Int {
+    return x * 2
+}`;
+
+const defaultArgsCode = `fun createMessage(
+    text: String,
+    isImportant: Boolean = false
+): String {
+    return if (isImportant) "❗ $text" else text
+}`;
+
+const defaultArgsCallCode = `createMessage("Học Kotlin nhé")            // "Học Kotlin nhé"        — dùng mặc định false
+createMessage("Đừng quên sync!", true)     // "❗ Đừng quên sync!"`;
+
+const namedArgsCode = `createMessage(
+    text = "Đừng quên sync!",
+    isImportant = true
+)`;
+
+const namedArgsMultiCode = `// Không ai nhớ nổi true thứ hai nghĩa là gì:
+sendNotification("Học Kotlin nhé", true, false)
+
+// Gọi bằng tên thì tự giải thích:
+sendNotification(
+    text = "Học Kotlin nhé",
+    showBadge = true,
+    playSound = false
+)`;
+
+const nullableCode = `var nickname: String? = null`;
+
+const safeCallCode = `var nickname: String? = null
+
+val length = nickname?.length`;
+
+const elvisCode = `var nickname: String? = null
+
+val displayName = nickname ?: "Chưa có tên"`;
+
+const elvisEquivCode = `val displayName = nickname ?: "Chưa có tên"
+
+// tương đương viết thường:
+val displayName2 = if (nickname != null) nickname else "Chưa có tên"
+
+// và còn kết hợp được:
+val len = nickname?.length ?: 0     // "độ dài nếu có, ngược lại 0"`;
+
+const notNullAssertCode = `val length = nickname!!.length   // chạy được nếu nickname khác null…
+                                  // …và CRASH (NullPointerException) nếu nó là null`;
+
+const listOfCode = `val names = listOf("An", "Bình", "Chi")`;
+
+const mapCode = `val lengths = names.map { it.length }   // [2, 4, 3]`;
+
+const filterCode = `val shortNames = names.filter { it.length <= 3 }   // ["An", "Chi"]`;
+
+const joinToStringCode = `val text = names.joinToString(", ")   // "An, Bình, Chi"`;
+
+const lambdaVarCode = `val greet = { name: String ->
+    "Xin chào $name"
+}`;
+
+const lambdaCallCode = `greet("Duc")            // "Xin chào Duc"`;
+
+const lambdaNamedCode = `names.map { name ->
+    name.uppercase()
+}`;
+
+const itCode = `names.map { it.uppercase() }`;
+
+const trailingBeforeCode = `doSomething({ value ->
+    println(value)
+})`;
+
+const trailingAfterCode = `doSomething { value ->
+    println(value)
+}`;
+
+const trailingColumnCode = `// Cùng một nghĩa, bên phải dễ đọc hơn hẳn:
+Column({ header() }, { body() }, { footer() })
+
+Column {
+    header()
+    body()
+    footer()
+}`;
+
+const trailingPairCode = `show({ a -> a * 2 })
+show { a -> a * 2 }`;
+
+const functionTypeCode = `val onClick: () -> Unit`;
+
+const runAppCode = `fun runApp(onStart: () -> Unit) {   // nhận một hành vi tên onStart
+    println("App chuẩn bị…")
+    onStart()                         // chạy hành vi đó
+}
+
+runApp { println("Bắt đầu!") }        // trao hành vi bằng trailing lambda`;
+
+const composePreviewCode = `val chatHistory = listOf(
+    ChatMessage(text = "Chào bạn!", isMine = false),
+    ChatMessage(text = "Học Kotlin vui quá", isMine = true),
+)
+
+fun unreadCount(messages: List<ChatMessage>): Int =
+    messages.filter { !it.isMine }.size
+
+fun badgeText(count: Int): String? =
+    if (count > 0) "$count tin mới" else null
+
+fun chatScreen() {
+    val unread = unreadCount(chatHistory)
+    val badge = badgeText(unread) ?: ""
+
+    Button(
+        onClick = {
+            chatHistory.map { it.text }
+                .joinToString("\\n")
+                .let { println(it) }   // ①
+        }
+    ) {
+        Text(text = badge.ifEmpty { "Đã đọc hết" })   // ②
+    }
+}`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Sau bài này bạn sẽ…</strong>
+		<ul>
+			<li>Đọc được một dòng khai báo Kotlin (<code>val</code>/<code>var</code>, kiểu tường minh hay suy luận) và nói được biến đó có được gán lại hay không.</li>
+			<li>Đọc được một hàm Kotlin: tên, tham số, giá trị trả về — kể cả dạng viết gọn (expression body) và tham số mặc định/tham số đặt tên.</li>
+			<li>Hiểu được <code>String?</code> nghĩa là gì, đọc được <code>?.</code> và <code>?:</code>, và biết vì sao <strong>không</strong> dùng <code>!!</code> để "im lặng" trình biên dịch.</li>
+			<li>Làm được việc nhỏ với <code>List</code>: biến đổi từng phần tử bằng <code>map</code>, lọc bằng <code>filter</code>, ghép chuỗi bằng <code>joinToString</code>.</li>
+			<li>Đọc được một lambda: nhận vào gì, trả về gì; hiểu được <code>it</code> là gì và không phải là gì; nhận ra cú pháp trailing lambda; và nhận diện được kiểu hàm như <code>() -&gt; Unit</code> ở mức "đọc ra hình dạng".</li>
+			<li>Nhìn một đoạn code Compose 20–30 dòng và chỉ ra được những phần Kotlin đã học ở bài này, những phần chưa học (F2 sẽ dạy), và những phần là của Android/Compose (không phải Kotlin nền).</li>
+		</ul>
+	</div>
+	<div class="callout">
+		<strong>Tại sao điều này quan trọng</strong>
+		<p>
+			Từ bài sau trở đi, gần như mỗi dòng code bạn gặp trong khoá là Kotlin. Người mới hay bị kẹt không phải vì logic
+			khó, mà vì <em>cú pháp</em> nhìn lạ: <code>?:</code>, <code>-&gt;</code>, <code>&#123; it &#125;</code>, trailing
+			lambda. Học xong bài này, bạn đọc code Android/Compose mà cú pháp không còn là rào cản — thứ còn lại để học là
+			khái niệm, và khái niệm sẽ được dạy ở từng bài riêng.
+		</p>
+	</div>
+	<p class="hint">
+		<strong>Cần biết trước.</strong> Chỉ cần biết "biến" và "if/else" là gì ở mức khái niệm lập trình chung. Không cần
+		biết Kotlin, Java, hay bất kỳ framework nào. Nếu bạn đã làm quen một ngôn ngữ khác (Python, JavaScript), nhiều chỗ
+		sẽ thấy quen — chỉ khác cách viết.
+	</p>
+
+	<h2 id="val-var">1. Giá trị và biến: <code>val</code>, <code>var</code>, và kiểu dữ liệu</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		Mọi chương trình đều phải <em>nhớ</em> thứ gì đó: tên người dùng, số lần bấm, một chuỗi cần hiển thị. Cái chỗ nhớ
+		đó là <strong>biến</strong>. Trong Kotlin, tạo một biến bằng một dòng:
+	</p>
+	<Code code={valBasicCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc dòng này theo từng mảnh:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Mảnh</th><th>Nghĩa là gì</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>name</code></td>
+				<td>Tên của biến — nhãn để bạn dùng lại giá trị đó ở chỗ khác.</td>
+			</tr>
+			<tr>
+				<td><code>"Duc"</code></td>
+				<td>Giá trị được gán vào. Đặt trong dấu nháy kép → Kotlin hiểu đây là <strong>chuỗi ký tự</strong> (kiểu <code>String</code>).</td>
+			</tr>
+			<tr>
+				<td><code>=</code></td>
+				<td>Phép gán: "đưa giá trị bên phải vào chỗ nhớ mang tên bên trái".</td>
+			</tr>
+			<tr>
+				<td><code>val</code></td>
+				<td>Từ khoá khai báo: biến này <strong>không được gán lại</strong>.</td>
+			</tr>
+			<tr>
+				<td><em>(không viết kiểu)</em></td>
+				<td>Kotlin <strong>tự suy ra</strong> kiểu từ giá trị bên phải — đây là <code>String</code>, không cần bạn viết.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Chuyện "Kotlin tự biết kiểu" gọi là <strong>type inference</strong> (suy luận kiểu). Bạn khai báo giá trị, trình
+		biên dịch nhìn vào giá trị mà kết luận kiểu — <code>val age = 26</code> suy ra <code>Int</code>,
+		<code>val isLogged = true</code> suy ra <code>Boolean</code>, <code>val name = "Duc"</code> suy ra <code>String</code>.
+	</p>
+	<h3><code>val</code> và <code>var</code>: một khác biệt, đúng một</h3>
+	<p>
+		Cặp từ khoá này giải quyết đúng một câu hỏi: <em>sau khi gán, tôi có được gán giá trị khác thay thế không?</em>
+	</p>
+	<Code code={valVarCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc cẩn thận câu này, vì nó chính xác hơn nhiều người nghĩ:</p>
+	<div class="callout note">
+		<strong><code>val</code> cấm gán lại chỗ nhớ đó. Nó không hứa "giá trị bên trong sẽ không bao giờ đổi".</strong>
+		<p>
+			Ví dụ: một <code>val</code> trỏ tới một danh sách thì bạn vẫn có thể <em>thay đổi nội dung</em> danh sách đó
+			(mục 4 sẽ quay lại). Điều bị cấm chỉ là viết <code>name = &lt;giá trị khác&gt;</code> lần thứ hai. Vì vậy đừng
+			dịch <code>val</code> thành "hằng số" kiểu <code>const</code> của ngôn ngữ khác — dịch sát nghĩa hơn là
+			<strong>"gán một lần, rồi chỉ đọc"</strong> (read-only). <code>var</code> thì tự do gán lại bao nhiêu lần cũng
+			được.
+		</p>
+	</div>
+	<p>
+		Vì sao Kotlin muốn bạn mặc định dùng <code>val</code>? Không phải để câu chữ đẹp: một biến không bao giờ bị gán
+		lại thì bạn đọc code ở đâu cũng biết chắc giá trị của nó — không cần lần theo cả hàm xem có chỗ nào đổi nó không.
+		Quy tắc thực dụng: <strong>bắt đầu bằng <code>val</code>; chỉ chuyển sang <code>var</code> khi trình biên dịch
+		phàn nàn rằng bạn thật sự cần gán lại.</strong> Trong code Compose bạn sẽ gặp tỷ lệ <code>val</code> áp đảo, trừ
+		đúng những chỗ state cần thay đổi.
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			<code>var score = 10</code> rồi <code>val maxScore = score</code>. Dòng nào dưới đây compile được?
+			(1) <code>score = 15</code> · (2) <code>maxScore = 15</code> · (3) Cả hai · (4) Không cái nào.
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				Chỉ dòng (1) — <code>score</code> là <code>var</code> nên gán lại được; <code>maxScore</code> là
+				<code>val</code> nên cấm gán lại, <em>dù</em> nó được sao từ một <code>var</code>. Loại <code>val</code>/
+				<code>var</code> gắn với chính biến đó, không "lây" qua giá trị được gán cho nó.
+			</p>
+		</details>
+	</div>
+	<h3>Kiểu tường minh: khi nào thì viết ra?</h3>
+	<p>Suy luận kiểu tiện, nhưng có lúc bạn muốn tự viết kiểu ra — bằng dấu hai chấm:</p>
+	<Code code={explicitTypeCode} lang="kotlin" theme="github-dark" />
+	<p>Ba tình huống viết kiểu tường minh là hợp lý:</p>
+	<ol>
+		<li>
+			<strong>Biến chưa có giá trị ngay lúc khai báo</strong> — phải nói trước kiểu thì Kotlin mới biết chỗ nhớ này
+			chứa gì (bài sau bạn sẽ gặp trường hợp này với biến state).
+		</li>
+		<li>
+			<strong>Muốn ép việc:</strong> giá trị bên phải là số nguyên nhưng bạn <em>muốn</em> nó là <code>Long</code> hay
+			<code>Double</code> — viết kiểu ra là tuyên bố rõ ý mình.
+		</li>
+		<li>
+			<strong>Làm tài liệu:</strong> tên biến chưa rõ, kiểu hiện ra giúp người đọc. (Nhưng ưu tiên đổi tên biến trước
+			khi phải resort tới ghi kiểu.)
+		</li>
+	</ol>
+	<p>
+		Ngoài ba trường hợp đó, để Kotlin tự suy — code gọn hơn và vẫn an toàn tuyệt đối, vì suy luận kiểu được kiểm tra
+		lúc biên dịch chứ không phải "đoán mò lúc chạy".
+	</p>
+	<h3>Các kiểu cơ bản bạn sẽ gặp suốt</h3>
+	<table class="api">
+		<thead>
+			<tr><th>Kiểu</th><th>Chứa gì</th><th>Ví dụ</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>String</code></td><td>chuỗi ký tự, trong nháy kép</td><td><code>"Xin chào"</code></td></tr>
+			<tr><td><code>Int</code></td><td>số nguyên</td><td><code>42</code></td></tr>
+			<tr><td><code>Double</code></td><td>số thập phân</td><td><code>3.14</code></td></tr>
+			<tr><td><code>Boolean</code></td><td>đúng/sai</td><td><code>true</code>, <code>false</code></td></tr>
+		</tbody>
+	</table>
+	<p>
+		Bốn kiểu này phủ phần lớn biến bạn gặp ở giai đoạn đầu. Kotlin cũng có <code>Long</code>, <code>Float</code>,
+		<code>Char</code>… — nhận ra tên là đủ, chưa cần học chi tiết.
+	</p>
+	<p>Một chi tiết chạy suốt bài này, gặp ở mọi ví dụ tiếp theo:</p>
+	<Code code={stringTemplateCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Ký tự <code>$</code> đặt trong chuỗi nhúng giá trị của biến vào giữa chuỗi — gọi là <strong>string template</strong>.
+		Bạn sẽ thấy nó gần như mọi chuỗi trong code Android (nội dung tin nhắn, nhãn nút…). Có thể chèn cả biểu thức:
+		<code>"Tổng: &#36;&#123;a + b&#125;"</code> — bọc trong <code>&#36;&#123; &#125;</code> khi nhiều hơn một biến.
+	</p>
+
+	<h2 id="ham">2. Hàm: đóng gói một việc để gọi lại</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		Cùng một câu chào cần hiện ở ba chỗ khác nhau. Viết ba lần là ba chỗ phải sửa khi đổi lời chào. Giải pháp mọi
+		ngôn ngữ đều có: gói việc đó vào một <strong>hàm</strong> (function) đặt tên, rồi gọi tên ở mọi nơi.
+	</p>
+	<Code code={funFullCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc từng mảnh — đây là khuôn mà mọi hàm Kotlin đều theo:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Mảnh</th><th>Nghĩa là gì</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>fun</code></td>
+				<td>Từ khoá khai báo hàm.</td>
+			</tr>
+			<tr>
+				<td><code>greet</code></td>
+				<td>Tên hàm — thứ bạn gọi ở chỗ khác: <code>greet("Duc")</code>.</td>
+			</tr>
+			<tr>
+				<td><code>(name: String)</code></td>
+				<td><strong>Danh sách tham số</strong>: hàm nhận vào một giá trị, gọi tạm là <code>name</code>, và giá trị đó phải là <code>String</code>.</td>
+			</tr>
+			<tr>
+				<td><code>: String</code> <em>(sau ngoặc)</em></td>
+				<td><strong>Kiểu trả về</strong>: hàm này đưa ra một <code>String</code> cho người gọi.</td>
+			</tr>
+			<tr>
+				<td><code>return "..."</code></td>
+				<td>Lệnh trả kết quả về cho người gọi hàm.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Gọi hàm thì đúng như bạn đoán: <code>greet("Duc")</code> trả về <code>"Xin chào Duc"</code>. Giá trị
+		<code>"Duc"</code> được truyền vào <strong>tham số</strong> <code>name</code> — nói cách khác, tham số là biến cục
+		bộ của hàm, được gán giá trị ngay lúc gọi.
+	</p>
+	<h3>Kiểu trả về <code>Unit</code>: "không có kết quả đáng kể"</h3>
+	<p>
+		Vì sao phải chú ý kiểu trả về? Vì nhiều hàm chỉ <em>làm việc</em> chứ không <em>cho lại kết quả</em> để dùng tiếp:
+	</p>
+	<Code code={funUnitCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>Unit</code> là kiểu trả về của "hàm này không đưa ra kết quả đáng kể nào cho người gọi". Không bắt được giá
+		trị nào có nghĩa từ nó — gọi là xong việc. (Hàm <code>showWelcome</code> này in một dòng chữ ra console bằng
+		<code>println(...)</code> — hàm in sẵn của Kotlin, chỉ để minh hoạ "làm việc mà không trả gì về".) Kotlin cho phép
+		bỏ luôn <code>: Unit</code>:
+	</p>
+	<Code code={funUnitOmittedCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Hai cách viết tương đương nhau. Chú ý chính xác: <code>Unit</code> <em>không</em> đơn thuần là "void" của Java/C —
+		nó là một <em>kiểu thật</em> có đúng một giá trị (cũng tên là <code>Unit</code>), vì vậy mọi hàm Kotlin đều trả về
+		<em>thứ gì đó</em>; với hàm không cần kết quả thì thứ đó là <code>Unit</code> và bạn gần như không bao giờ phải dùng
+		giá trị đó. Cách dịch bàng bản thân: <strong>"hàm làm việc xong là xong, không có gì để nhận lại"</strong>. Từ khoá
+		này bạn sẽ gặp lại sắp tới trong kiểu hàm <code>() -&gt; Unit</code> (mục 6) — vì thế đừng bỏ qua.
+	</p>
+	<h3>Expression body: hàm một dòng viết kiểu một dòng</h3>
+	<p>
+		Nhiều hàm chỉ có đúng một dòng <code>return</code>. Kotlin cho phép bỏ cặp ngoặc nhọn và cả từ khoá
+		<code>return</code>, gán <em>biểu thức</em> thẳng vào hàm:
+	</p>
+	<Code code={expressionBodyCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc là: "hàm <code>double</code> nhận một <code>Int</code> tên <code>x</code>, và <em>kết quả của hàm</em> chính là
+		biểu thức <code>x * 2</code>". Kiểu trả về cũng không cần viết — Kotlin suy ra <code>Int</code> từ biểu thức. Hai
+		khai báo sau tương đương:
+	</p>
+	<Code code={expressionBodyEquivCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Dạng gọn gọi là <strong>expression body</strong> (thân-hàm-dạng-biểu-thức); dạng ngoặc nhọn là
+		<strong>block body</strong>. Quy tắc chọn: việc gì tính ra một giá trị ngay → expression body; cần vài bước, vòng
+		lặp, if/else nhiều dòng → block body. Code Compose và code Android trong khoá dùng cả hai dạng liên tục, nên bạn
+		phải đọc trôi cả hai.
+	</p>
+	<h3>Tham số mặc định: tham số "có thể không truyền"</h3>
+	<p>
+		Hàm càng nhiều tham số thì người gọi càng phải viết dài. Kotlin cho phép gán giá trị mặc định cho tham số — ai
+		không truyền thì dùng giá trị đó:
+	</p>
+	<Code code={defaultArgsCode} lang="kotlin" theme="github-dark" />
+	<p>Giờ gọi được cả hai kiểu:</p>
+	<Code code={defaultArgsCallCode} lang="kotlin" theme="github-dark" />
+	<h3>Tham số đặt tên: gọi hàm mà đọc hiểu ngay</h3>
+	<p>
+		Chữ <code>true</code> đứng thứ hai trong ví dụ trên có một vấn đề: người đọc phải <em>nhớ</em> tham số thứ hai của
+		<code>createMessage</code> là gì. Kotlin cho phép gọi kèm tên tham số:
+	</p>
+	<Code code={namedArgsCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Cùng một ý nghĩa với cách viết theo thứ tự, nhưng đọc không cần mở định nghĩa hàm. Lợi ích thật nổ ra khi hàm có
+		nhiều tham số cùng kiểu:
+	</p>
+	<Code code={namedArgsMultiCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Một quy ước đáng nhớ: khi một tham số <em>đầu tiên</em> đã được gọi bằng tên, Kotlin yêu cầu các tham số sau đó
+		cũng gọi bằng tên (dùng vị trí xen lẫn tên sẽ báo lỗi trừ khi tên đứng sau vị trí đúng thứ tự). Thực tế: hoặc toàn
+		vị trí, hoặc toàn tên — code sạch hơn cả.
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Với hàm <code>fun send(msg: String, retry: Int = 3): Unit</code>, hai lời gọi nào sau đây hợp lệ?
+			(1) <code>send("hi")</code> · (2) <code>send("hi", 1)</code> · (3) <code>send(msg = "hi")</code> ·
+			(4) <code>send(retry = 1)</code>
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				(1), (2), (3) đều hợp lệ — <code>retry</code> có mặc định nên được bỏ qua. Dòng (4) thiếu tham số bắt buộc
+				<code>msg</code>, không compile được: giá trị mặc định chỉ giúp tham số <em>có</em> mặc định, không cứu được
+				tham số bắt buộc bị bỏ quên.
+			</p>
+		</details>
+	</div>
+	<p>
+		<strong>Bạn sẽ gặp ở đâu:</strong> mọi hàm Compose đều có tham số mặc định (màu, cỡ chữ, decoration…), và code
+		Android gọi hàm bằng tên tham số là thường — <code>Text(text = "...")</code>, <code>Button(onClick = &#123; ... &#125;)</code>.
+		Hai phần này của Kotlin là "vé vào cửa" để đọc giao diện.
+	</p>
+
+	<h2 id="null-safety">3. Null safety: khi giá trị có thể không tồn tại</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		Có những giá trị <em>đôi lúc không tồn tại</em>: biệt danh của tài khoản (người dùng chưa đặt), ảnh đại diện (chưa
+		tải lên), tin nhắn đang soạn (chưa gõ gì). Trong Kotlin, tình huống "có thể không có giá trị" được đưa thẳng vào hệ
+		thống kiểu:
+	</p>
+	<Code code={nullableCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc: biến <code>nickname</code> chứa một <code>String</code>, <strong>hoặc</strong> chứa <code>null</code> — cái
+		đánh dấu "không có giá trị nào cả". Dấu <code>?</code> bám đuôi kiểu (<code>String?</code>) là cách khai báo điều
+		đó. Còn <code>String</code> (không có <code>?</code>) là hứa hẹn <em>"biến này chắc chắn chứa một chuỗi, không bao
+		giờ null"</em> — trình biên dịch sẽ bắt lỗi ngay nếu bạn cố gán <code>null</code> vào <code>String</code> thường.
+	</p>
+	<p>
+		Chú ý chính xác: <code>nickname</code> không "rỗng" và cũng không "trống" — nó đang <strong>chứa giá trị
+		null</strong>, tức một giá trị đặc biệt nghĩa là <em>không có giá trị nào</em>. Phân biệt này quan trọng: chuỗi rỗng
+		<code>""</code> là một <code>String</code> thật có độ dài 0; <code>null</code> thì <strong>không phải chuỗi</strong>,
+		không có độ dài, không gọi được gì từ nó cả.
+	</p>
+	<h3><code>?.</code>: safe call — "nếu có thì làm, không có thì thôi"</h3>
+	<p>
+		Câu hỏi tự nhiên: nếu <code>nickname</code> có thể là <code>null</code>, làm sao hỏi "biệt danh dài mấy chữ?" mà
+		không làm vỡ chương trình? Gọi thẳng <code>nickname.length</code> sẽ không compile được — Kotlin cấm từ trước, vì
+		đó chính là nơi null làm crash.
+	</p>
+	<p>Công cụ đầu tiên là <strong>safe call</strong> <code>?.</code>:</p>
+	<Code code={safeCallCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc <code>?.</code> là: <em>"nếu bên trái có giá trị thật → gọi <code>.length</code> như thường; nếu là
+		<code>null</code> → toàn bộ biểu thức cho ra <code>null</code>, không gọi gì cả, không crash."</em>
+	</p>
+	<p>
+		Chú ý <strong>kiểu kết quả</strong>: <code>String</code> có <code>length</code> là <code>Int</code>, nhưng
+		<code>nickname?.length</code> có kiểu là <code>Int?</code> — vì kết quả hoặc là một số, hoặc là <code>null</code>.
+		Safe call "lan truyền" tính được-null: mỗi lần thêm <code>?.</code> là kết quả có thêm một lần <em>có thể</em>
+		null. <code>nickname?.uppercase()?.length</code> cũng cho <code>Int?</code>.
+	</p>
+	<h3><code>?:</code>: Elvis operator — "không có thì dùng cái này"</h3>
+	<p>
+		<code>Int?</code> vẫn hơi khó dùng (một biến "có thể là số"). Thường bạn muốn <em>quyết định luôn</em>: nếu null
+		thì dùng giá trị thay thế. Đó là việc của <strong>Elvis operator</strong> <code>?:</code>:
+	</p>
+	<Code code={elvisCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc <code>?:</code> là: <em>"nếu bên trái có giá trị → dùng nó; nếu null → dùng bên phải."</em> Ở đây
+		<code>displayName</code> có kiểu <code>String</code> — chắc chắn không null, vì cả hai nhánh đều cho ra một chuỗi
+		thật. Ba dòng sau tương đương nhau, Elvis là cách gọn:
+	</p>
+	<Code code={elvisEquivCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Cặp <code>?.</code> + <code>?:</code> là cặp ruột của Kotlin; trong code Android bạn sẽ thấy chúng dày đặc: đọc
+		tham số đích từ Intent, đọc setting, xử lý kết quả tra cứu… Nắm chắc hai ký hiệu này là bạn hoá giải được phần lớn
+		dấu hỏi đỏ thời mới học.
+	</p>
+	<h3>Toán tử thứ ba: <code>!!</code> — và vì sao không nên</h3>
+	<p>
+		Kotlin còn một toán tử thứ ba liên quan tới null: <code>!!</code>. Nó nói với trình biên dịch: <em>"tôi bảo đảm đây
+		không phải null — cứ coi như có, và nếu tôi sai thì cho app crash."</em>
+	</p>
+	<Code code={notNullAssertCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đừng dùng nó như một giải pháp thông thường. <code>!!</code> không xoá được vấn đề null — nó chỉ <em>chuyển lỗi
+		biên dịch thành lỗi lúc chạy</em>, trên máy người dùng thật, vào lúc không ai kiểm soát. Trong hầu hết trường hợp,
+		<code>?.</code> hoặc <code>?:</code> diễn đạt đúng ý hơn và an toàn hơn. Bạn có thể gặp <code>!!</code> trong code
+		người khác — đủ để <em>nhận ra</em>, nhưng hãy coi mỗi lần gặp như một nơi đáng nghi ngờ.
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Với <code>var city: String? = null</code>, biểu thức nào dưới đây cho ra kiểu <code>String</code> (không phải
+			<code>String?</code>)? (1) <code>city</code> · (2) <code>city?.uppercase()</code> · (3) <code>city ?: "Không rõ"</code> ·
+			(4) <code>city?.uppercase() ?: "Không rõ"</code>
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				(3) và (4) — cả hai đều có nhánh "nếu null thì…" cho ra chuỗi thật. Dòng (1) là <code>String?</code>; dòng
+				(2) là <code>String?</code> vì safe call giữ tính được-null. Quy tắc chung: <code>?:</code> là chỗ tính
+				được-null bị "chốt" lại thành kiểu chắc chắn.
+			</p>
+		</details>
+	</div>
+	<p>
+		<strong>Chưa dạy ở đây, để bài sau:</strong> <code>?</code> còn xuất hiện trong kiểu như
+		<code>List&lt;Recipe?&gt;</code> hay <code>Bundle?</code> gắn với class — cơ chế giống hệt, chỉ thêm chỗ khác; bạn
+		đã đủ nền để đọc khi gặp. <code>!!</code> được nhắc chỉ để bạn đừng bị sốc, không phải để dùng.
+	</p>
+
+	<h2 id="collections">4. Collections: làm việc với một danh sách giá trị</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		App luôn phải xử lý <em>một nhóm</em> thứ: danh sách món ăn, danh sách tin nhắn, danh sách tên. Kotlin gọi chúng là
+		<strong>collection</strong>, và ở giai đoạn này bạn chỉ cần một loại phổ biến nhất: <strong>List</strong> — danh
+		sách có thứ tự, phần tử đánh số từ 0.
+	</p>
+	<Code code={listOfCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>listOf(...)</code> tạo ra một List các chuỗi; Kotlin suy ra kiểu <code>List&lt;String&gt;</code>. Bạn đọc
+		được số phần tử (<code>names.size</code>), đọc phần tử theo vị trí (<code>names[0]</code> là <code>"An"</code> — vị
+		trí gọi là <em>index</em>, đánh số từ 0), và duyệt qua từng phần tử.
+	</p>
+	<p>Một lưu ý chính xác nhưng dễ hiểu: biến <code>names</code> là <code>val</code>, nghĩa là <em>không gán lại
+	được</em> — nhưng "không gán lại" khác với "nội dung không đổi". Kotlin có hai mặt của chuyện này:</p>
+	<ul>
+		<li>
+			Mức <strong>tên</strong>: <code>val</code> cấm gán <code>names = listOf(...)</code> khác. Luôn luôn.
+		</li>
+		<li>
+			Mức <strong>nội dung</strong>: List mà Kotlin trả về từ <code>listOf</code> là một <em>giao diện chỉ-đọc</em>
+			(read-only) nhìn từ tham chiếu này — bạn <strong>không</strong> có phương thức thêm/xoá/sửa trên nó (không
+			<code>names.add(...)</code>), nên trong code thường nó hoạt động như bất biến. Kotlin còn có <code>MutableList</code>
+			— bản có thật phương thức <code>add</code>/<code>remove</code> — nhưng ở giai đoạn này bạn gần như chỉ gặp và dùng
+			List; gặp <code>MutableList</code> thì nhận ra tên là đủ.
+		</li>
+	</ul>
+	<p>
+		Cách nói an toàn: <strong>List là danh sách có thứ tự, đọc được theo index, và "chỉ đọc" từ phía bạn cầm — muốn thay
+		đổi nội dung thì tạo danh sách mới.</strong> Tư duy "tạo bản mới thay vì sửa bản cũ" sẽ quay lại liên tục trong
+		Android (mục 5 và các bài Compose sau).
+	</p>
+	<h3>Ba việc làm với List suốt khoá: <code>map</code>, <code>filter</code>, <code>joinToString</code></h3>
+	<p>Toàn bộ phần này xoay quanh một List mẫu:</p>
+	<Code code={listOfCode} lang="kotlin" theme="github-dark" />
+	<p><strong><code>map</code> — biến mỗi phần tử thành một giá trị khác.</strong></p>
+	<Code code={mapCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>map</code> chạy qua <strong>từng phần tử</strong>, áp dụng khối code trong <code>&#123; &#125;</code> lên phần
+		tử đó, rồi gom kết quả thành <em>một List mới</em> (độ dài bằng List gốc, nhưng là kết quả biến đổi). Ở đây khối
+		<code>it.length</code> đo độ dài mỗi tên → kết quả là một <code>List&lt;Int&gt;</code>. Câu tự nhiên cần nhớ:
+		<strong>"map: biến mỗi phần tử thành một giá trị khác."</strong> Chú ý: <code>names</code> không đổi — bạn nhận về
+		danh sách <em>mới</em>.
+	</p>
+	<p><strong><code>filter</code> — giữ lại phần tử đạt điều kiện.</strong></p>
+	<Code code={filterCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>filter</code> cũng chạy qua từng phần tử, nhưng khối code phải trả ra <code>Boolean</code> — đúng
+		(<code>true</code>) thì phần tử <em>được giữ lại</em> vào danh sách mới, sai thì bị bỏ. Số phần tử kết quả có thể
+		ít hơn, không bao giờ nhiều hơn. Câu cần nhớ: <strong>"filter: giữ lại phần tử đạt điều kiện."</strong>
+	</p>
+	<p><strong><code>joinToString</code> — ghép các phần tử thành chuỗi.</strong></p>
+	<Code code={joinToStringCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>joinToString</code> làm đúng một việc: ghép mọi phần tử thành <em>một chuỗi</em>, chèn phần ngăn cách bạn chỉ
+		định giữa các phần tử (thường dùng cho hiện thị, log, debug). Câu cần nhớ:
+		<strong>"joinToString: ghép các phần tử thành chuỗi."</strong>
+	</p>
+	<p>
+		Ba hàm này phủ phần lớn việc xử lý danh sách trong code Android giai đoạn đầu: từ dữ liệu thô → <code>filter</code>
+		lấy phần cần → <code>map</code> biến đổi thành dạng cần hiển thị → <code>joinToString</code> (hoặc hiển thị từng
+		phần tử trong UI). Chúng là hàm <em>thư viện chuẩn Kotlin</em>, không phải của Android — gặp ở mọi project Kotlin,
+		không chỉ Android.
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Với <code>val nums = listOf(1, 2, 3, 4)</code>, kết quả của <code>nums.filter &#123; it &gt; 2 &#125;</code> là
+			gì? Và của <code>nums.map &#123; it * 10 &#125;</code>?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<code>[3, 4]</code> và <code>[10, 20, 30, 40]</code>. Chú ý <code>filter</code> trả về đúng kiểu phần tử gốc,
+				<code>map</code> trả về kiểu theo khối biến đổi — và cả hai đều cho danh sách <em>mới</em>,
+				<code>nums</code> gốc không hề đổi.
+			</p>
+		</details>
+	</div>
+
+	<h2 id="lambda">5. Lambda: khối code có thể cầm trên tay</h2>
+	<p>
+		Đây là phần quan trọng nhất của bài. Compose <em>là</em> lambdas: mọi khối <code>&#123; &#125;</code> bạn thấy
+		trong code giao diện đều là lambda. Làm chủ phần này là làm chủ nửa đọc của Compose.
+	</p>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>
+		Đến giờ, "code" của bạn luôn nằm ngay tại chỗ nó chạy. Nhưng có tình huống bạn muốn <em>cất một khối code vào một
+		biến</em> và <em>chạy nó sau</em> — ví dụ: "khối lệnh xử lý khi nút được bấm" phải nằm sẵn đó, chờ người dùng bấm;
+		bạn không thể viết nó ngay lúc dựng giao diện. Cái bạn cần trao cho nút là <em>khối code</em>, không phải
+		<em>kết quả</em> của khối code.
+	</p>
+	<p>
+		Kotlin gọi cái đó là <strong>lambda</strong> — một khối code có thể lưu vào biến hoặc trao đi như một giá trị:
+	</p>
+	<Code code={lambdaVarCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc: biến <code>greet</code> <em>chứa một khối code</em>. Khối đó nhận một tham số kiểu <code>String</code> (tên
+		cục bộ là <code>name</code>), và <em>kết quả của khối</em> là biểu thức cuối cùng — <code>"Xin chào $name"</code>.
+		Chạy khối bằng cách gọi như hàm:
+	</p>
+	<Code code={lambdaCallCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Điểm quan trọng nhất, dễ nhầm nhất: khai báo <code>val greet = &#123; ... &#125;</code> <strong>không chạy</strong>
+		khối code; nó chỉ <em>cất</em> khối code. Khối chỉ chạy khi có người <em>gọi</em> nó (<code>greet("Duc")</code>).
+		Đó là khác biệt giữa <strong>gọi hàm</strong> (thực thi ngay) và <strong>truyền hàm</strong> (trao khối code đi để
+		người khác gọi sau) — cặp khái niệm này nắm vững thì mọi callback/sự kiện về sau đều dễ.
+	</p>
+	<h3>Lambda trong <code>map</code>/<code>filter</code>: khối code nhận phần tử vào</h3>
+	<p>Quay lại mục 4 với ánh mắt mới:</p>
+	<Code code={lambdaNamedCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Giờ bạn biết <code>&#123; name -&gt; ... &#125;</code> là một lambda với tham số đặt tên <code>name</code>.
+		<code>map</code> làm việc như sau: với <em>mỗi</em> phần tử của <code>names</code>, nó <strong>gọi lambda bạn
+		trao</strong>, truyền phần tử đó vào tham số <code>name</code>, lấy kết quả trả về gom thành List mới. Cách nói tự
+		nhiên: "<code>map</code> cho lambda ăn từng phần tử, gom kết quả." <code>filter</code> tương tự — lambda trả
+		<code>Boolean</code> quyết định giữ hay bỏ.
+	</p>
+	<h3><code>it</code>: tên mặc định cho tham số duy nhất</h3>
+	<p>
+		Lambda chỉ có <em>một</em> tham số thì Kotlin cho phép bỏ luôn <code>name -&gt;</code>, và gọi tham số đó bằng tên
+		mặc định <strong><code>it</code></strong>:
+	</p>
+	<Code code={itCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Hai cách viết này hoàn toàn tương đương. <code>it</code> không phải biến toàn cục hay từ khoá của Android — nó chỉ
+		là <strong>tên mặc định Kotlin gán cho tham số duy nhất của lambda</strong> khi bạn không đặt tên. Quy tắc:
+	</p>
+	<ul>
+		<li>Lambda một tham số → được dùng <code>it</code> (hoặc đặt tên riêng nếu muốn rõ nghĩa hơn).</li>
+		<li>Lambda nhiều tham số → <strong>bắt buộc</strong> đặt tên (<code>&#123; a, b -&gt; ... &#125;</code>), không dùng được <code>it</code>.</li>
+	</ul>
+	<p>
+		Khi nào nên đặt tên thay vì dùng <code>it</code>? Khi lambda <em>lồng nhau</em> (hai <code>it</code> ở hai tầng sẽ
+		mù mất) hoặc khi đọc không rõ <code>it</code> là gì. Trong code ngắn kiểu <code>map &#123; it.length &#125;</code>,
+		dùng <code>it</code> là tự nhiên.
+	</p>
+	<h3>Trailing lambda: khối cuối cùng được mời ra ngoài ngoặc</h3>
+	<p>
+		Giờ là cú pháp bạn sẽ thấy <em>khắp nơi</em> trong Compose. Bắt đầu từ cách viết "đầy đủ":
+	</p>
+	<Code code={trailingBeforeCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>doSomething</code> là một hàm nhận lambda; bạn truyền lambda trong ngoặc tròn như một tham số. Kotlin cho
+		phép một rút gọn: <strong>nếu tham số cuối cùng của hàm là lambda, bạn được viết lambda ra ngoài ngoặc tròn</strong>:
+	</p>
+	<Code code={trailingAfterCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Hai cách viết này ý nghĩa y hệt nhau. Vì sao Kotlin cho phép? Cầm lên một lý do thật: tham số cuối thường là
+		<em>hành vi</em> (khối code), các tham số trước là <em>dữ liệu</em>. Đưa khối code ra ngoài làm lời gọi đọc như một
+		khối công việc riêng — đặc biệt quý khi khối dài hoặc khi nó <em>lồng khối khác bên trong</em>:
+	</p>
+	<Code code={trailingColumnCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Quy tắc tra ngược khi đọc code lạ: thấy <code>&#123;</code> đứng ngay sau tên hàm hoặc sau <code>)</code> của lời
+		gọi hàm → đó là trailing lambda, tức tham số cuối cùng. Trong Compose, <code>Column &#123; ... &#125;</code>,
+		<code>Button(...) &#123; ... &#125;</code> đều là đúng hình dạng này.
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>Hai dòng sau có cùng ý nghĩa không? Vì sao có thể viết dòng thứ hai?</p>
+		<Code code={trailingPairCode} lang="kotlin" theme="github-dark" />
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				Cùng ý nghĩa — lambda là tham số cuối cùng của <code>show</code>, nên được mời ra ngoài ngoặc (trailing
+				lambda). Dòng 1 là cách viết đầy đủ, lambda nằm trong ngoặc tròn như một tham số bình thường.
+			</p>
+		</details>
+	</div>
+	<p>
+		<strong>Bạn sẽ gặp ở đâu:</strong> trong code Compose bạn sắp viết ở giai đoạn tiếp theo: khối
+		<code>setContent &#123; ... &#125;</code>, <code>Column &#123; ... &#125;</code>, và đặc biệt
+		<code>onValueChange = &#123; chatInputText = it &#125;</code> — một lambda một tham số dùng đúng <code>it</code>.
+		Học xong mục này, dòng đó đọc ra là: "trao cho <code>onValueChange</code> một khối code một tham số; mỗi lần nội
+		dung ô nhập đổi, khối được gọi với nội dung mới tên là <code>it</code>."
+	</p>
+
+	<h2 id="function-type">6. Function type: "hình dạng" của một hàm</h2>
+	<p>
+		Khi một lambda được cất vào biến hoặc trao qua tham số, nó cần có <em>kiểu</em> — và kiểu của hàm mô tả
+		<em>hình dạng</em> của nó: nhận vào gì, trả ra gì.
+	</p>
+	<Code code={functionTypeCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc <code>() -&gt; Unit</code> là: <strong>"một hàm không nhận tham số nào và không trả về kết quả đáng kể"</strong>
+		— ngoặc rỗng là danh sách tham số, <code>Unit</code> (mục 2) là "không có kết quả". Đây đúng là kiểu mà một nút bấm
+		cần: việc cần làm khi bấm — không cần dữ liệu vào, không cần kết quả ra.
+	</p>
+	<p>Ba hình dạng bạn sẽ gặp nhiều nhất:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Kiểu hàm</th><th>Đọc là</th><th>Ví dụ dùng</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>() -&gt; Unit</code></td><td>không nhận gì, không trả gì</td><td><code>onClick</code> của nút</td></tr>
+			<tr><td><code>(String) -&gt; Unit</code></td><td>nhận một <code>String</code>, không trả gì</td><td><code>onValueChange</code> của ô nhập</td></tr>
+			<tr><td><code>(Int) -&gt; String</code></td><td>nhận một <code>Int</code>, trả một <code>String</code></td><td>biến đổi số thành nhãn</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Kiểu hàm xuất hiện ở <strong>khai báo biến</strong> (như trên) và ở <strong>tham số của hàm</strong> — khi một hàm
+		cần nhận "một hành vi" từ bên ngoài:
+	</p>
+	<Code code={runAppCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc <code>fun runApp(onStart: () -&gt; Unit)</code>: tham số <code>onStart</code> có <em>kiểu hàm</em>
+		<code>() -&gt; Unit</code> — tức "một khối code không tham số, không kết quả". Trong thân hàm, gọi
+		<code>onStart()</code> là <em>thực thi</em> khối code đó. Đây là chỗ hai khái niệm "truyền hàm" và "gọi hàm"
+		(mục 5) gặp nhau.
+	</p>
+	<p>
+		Đây là mức bạn cần: <strong>nhận diện hình dạng</strong> khi gặp <code>() -&gt; Unit</code>,
+		<code>(String) -&gt; Unit</code> trong chữ ký hàm Android/Compose — biết đó là "hàm nhận (cái gì), trả (cái gì)".
+		Viết các hàm bậc cao phức tạp, đặt biệt danh kiểu (<code>typealias</code>), hay những kỹ thuật higher-order nâng cao
+		là chủ đề khác, không nằm trong bài này.
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Kiểu <code>(String) -&gt; Unit</code> mô tả hàm thế nào? (1) nhận <code>String</code>, trả <code>String</code> ·
+			(2) nhận <code>String</code>, không cần kết quả · (3) không nhận gì, trả <code>Unit</code> · (4) nhận một
+			<code>Unit</code>
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				(2). Bên trái mũi tên là tham số, bên phải là kiểu trả về — <code>(String) -&gt; Unit</code> nhận một
+				<code>String</code> và trả <code>Unit</code>, tức "không có kết quả đáng kể".
+			</p>
+		</details>
+	</div>
+
+	<h2 id="doc-compose">7. Nhìn vào một đoạn code "kiểu Compose"</h2>
+	<p>
+		Đoạn dưới đây <em>giống hình dạng</em> code giao diện bạn sẽ viết bằng Compose vài bài nữa. <strong>Chưa cần hiểu
+		Compose</strong> — chỉ cần đọc và chỉ ra từng mảnh Kotlin bạn đã học. Đáp án gợi ý nằm ngay dưới.
+	</p>
+	<Code code={composePreviewCode} lang="kotlin" theme="github-dark" />
+	<p>Chỉ ra trong đoạn trên:</p>
+	<ul>
+		<li>
+			<strong><code>val</code></strong> với suy luận kiểu — <code>chatHistory</code>, <code>unread</code>, <code>badge</code>.
+		</li>
+		<li>
+			<strong>Hàm</strong> với tham số có kiểu và kiểu trả về — <code>unreadCount</code>, <code>badgeText</code>,
+			<code>chatScreen</code> (không trả gì → <code>Unit</code> ngầm định).
+		</li>
+		<li><strong>Expression body</strong> với <code>=</code> — cả ba hàm đều viết gọn.</li>
+		<li>
+			<strong>Tham số đặt tên + mặc định</strong> — <code>text = ...</code>, <code>isMine = ...</code> khi gọi "khởi tạo".
+		</li>
+		<li>
+			<strong>Nullable</strong> — <code>badgeText</code> trả <code>String?</code> (có thể không có badge), <code>?: ""</code>
+			là Elvis "nếu null thì chuỗi rỗng".
+		</li>
+		<li>
+			<strong>List + <code>filter</code></strong> — <code>messages.filter &#123; !it.isMine &#125;</code> giữ lại tin
+			<em>không phải của mình</em> (dấu <code>!</code> là phủ định — "không phải").
+		</li>
+		<li><strong>Lambda + <code>it</code></strong> — <code>&#123; !it.isMine &#125;</code>, <code>&#123; it.text &#125;</code>.</li>
+		<li>
+			<strong>Trailing lambda</strong> — <code>Button(...) &#123; Text(...) &#125;</code>: khối <code>&#123; Text(...) &#125;</code>
+			đứng sau ngoặc tròn, đúng quy tắc "tham số cuối là lambda thì mời ra ngoài".
+		</li>
+		<li>
+			<strong>Kiểu hàm</strong> — tham số <code>onClick</code> của <code>Button</code> có kiểu <code>() -&gt; Unit</code>:
+			không tham số, không kết quả.
+		</li>
+	</ul>
+	<p>Còn những gì bạn <em>chưa</em> cần hiểu — và đây là ranh giới bài học:</p>
+	<ul>
+		<li>
+			<code>ChatMessage(...)</code> tạo object từ class, <code>List&lt;ChatMessage&gt;</code> viết kiểu có tham số — là
+			nội dung <strong>F2</strong> (data class, generics ở mức nhận diện). Ở đây chỉ cần thấy: khối gọi giống một hàm,
+			và List chứa "thứ gì đó" tên <code>ChatMessage</code>.
+		</li>
+		<li>
+			<code>Text</code>, <code>Button</code>, <code>chatScreen</code> là <em>hàm của Compose</em> — hiện chưa cần biết
+			chúng vẽ gì, chạy ra sao.
+		</li>
+		<li>
+			Hai chỗ đánh dấu ① (<code>let</code>) và ② (<code>ifEmpty</code>) là hàm thư viện bạn <strong>chưa</strong> học:
+			gặp code thật bạn sẽ thấy nữa — cách đọc đúng là "một khối code nhận giá trị vào", và chúng sẽ được gloss đúng chỗ
+			dùng đầu tiên. Không cần tra trước.
+		</li>
+	</ul>
+	<p>
+		Nếu bạn đọc đoạn trên và thấy <em>cú pháp Kotlin không còn làm bạn giật mình</em> — dù chưa hiểu Compose làm gì —
+		thì bài này đã xong việc của nó. Còn một kiểu khai báo bạn chỉ mới đọc lời mô tả ở mục 1, chưa gặp trong code:
+		biến chưa có giá trị ngay (<code>val x: Int</code>) — và <code>class</code>/<code>data class</code> — F2 sẽ nối tiếp.
+	</p>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p class="notice">
+		<strong>1. Nhầm <code>val</code> với "object không bao giờ đổi".</strong> <code>val</code> chỉ cấm <em>gán lại
+		tên</em>. Một <code>val</code> trỏ tới object thay đổi được thì object vẫn thay đổi được qua tham chiếu khác; và
+		ngược lại, object bất biến thì <code>var</code> trỏ tới cũng không làm nó đổi được — chỉ đổi được chỗ <em>trỏ</em>.
+		Câu hỏi đúng khi đọc code: "tên này có được gán lại không?" — không phải "giá trị này có đổi không?".
+	</p>
+	<p class="notice">
+		<strong>2. Nhầm <code>String?</code> với "chuỗi rỗng".</strong> <code>""</code> là một chuỗi thật, có độ dài 0, gọi
+		được mọi hàm chuỗi. <code>null</code> <strong>không phải chuỗi</strong> — không có độ dài, không gọi được gì. Kiểm
+		tra "chuỗi rỗng hay không" dùng <code>isEmpty()</code>; kiểm tra "có giá trị hay không" dùng <code>?.</code>/<code>?:</code>
+		— hai việc, hai công cụ.
+	</p>
+	<p class="notice">
+		<strong>3. Dùng <code>!!</code> để "im" trình biên dịch.</strong> Báo đỏ của Kotlin về null là trình biên dịch đang
+		<em>cứu bạn khỏi crash tương lai</em>. Bọc <code>!!</code> là bênh lỗi từ lúc biên dịch sang lúc chạy — trên máy
+		người dùng. Thử <code>?.</code> và <code>?:</code> trước; nếu <em>thật sự</em> chắc chắn không null, thường là chỗ
+		đó nên cấu trúc lại.
+	</p>
+	<p class="notice">
+		<strong>4. Tưởng mọi lambda đều có <code>it</code>.</strong> <code>it</code> chỉ tồn tại khi lambda có đúng
+		<em>một</em> tham số. Lambda hai tham số buộc đặt tên (<code>&#123; key, value -&gt; ... &#125;</code>); dùng
+		<code>it</code> ở đó là lỗi biên dịch. Và <code>it</code> là tên <em>tham số</em>, không phải biến toàn cục — mỗi
+		lambda một <code>it</code> riêng.
+	</p>
+	<p class="notice">
+		<strong>5. Nhầm gọi hàm với truyền hàm.</strong> <code>greet("Duc")</code> là <em>gọi</em> (thực thi ngay, lấy kết
+		quả). <code>onClick = &#123; greet("Duc") &#125;</code> là <em>truyền</em> (cất khối code, chạy khi có sự kiện).
+		Chữ "gọi được cầm đi" này giải thích vì sao code Android có những khối <code>&#123; &#125;</code> "chưa chạy ngay
+		lúc đọc tới".
+	</p>
+	<p class="notice">
+		<strong>6. Lạc trong ngoặc nhọn lồng nhau.</strong> Lambda lồng lambda là chuyện thường ở Compose. Mẹo đọc: tìm
+		<code>-&gt;</code> gần nhất để biết lambda đó nhận gì; đếm ngoặc nhọn mở/đóng theo cặp; đặt tên lambda bằng tham số
+		(thay vì <code>it</code>) khi lồng hai tầng để tránh nhầm hai <code>it</code>.
+	</p>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+	<ul class="keypoints">
+		<li>
+			<code>val</code> = gán một lần, chỉ đọc; <code>var</code> = cho gán lại. Mặc định chọn <code>val</code>;
+			"không gán lại được" ≠ "giá trị bên trong không đổi".
+		</li>
+		<li>
+			Kotlin tự suy kiểu từ giá trị; viết kiểu tường minh (<code>: String</code>) khi biến chưa có giá trị ngay, khi
+			muốn khác kiểu suy luận, hoặc làm tài liệu.
+		</li>
+		<li>
+			Hàm: <code>fun tên(tham_số: Kiểu): Kiểu_trả_về &#123; return ... &#125;</code>; <code>Unit</code> = không có kết
+			quả đáng kể; expression body <code>fun f(x: Int) = x * 2</code> cho hàm một biểu thức; tham số mặc định bỏ được
+			khi gọi; gọi bằng tên tham số cho lời gọi tự giải thích.
+		</li>
+		<li>
+			<code>Kiểu?</code> = có thể là null. <code>?.</code> = có thì gọi, không thì null. <code>?:</code> = null thì
+			dùng giá trị thay thế. <code>!!</code> = "tin mình đi" — biết là có, đừng dùng thường.
+		</li>
+		<li>
+			<code>List</code> = danh sách có thứ tự, đọc theo index, chỉ-đọc từ phía cầm; <code>map</code> biến mỗi phần tử,
+			<code>filter</code> giữ phần tử đạt điều kiện, <code>joinToString</code> ghép thành chuỗi — đều trả danh sách/chuỗi mới.
+		</li>
+		<li>
+			Lambda = khối code cầm được, truyền được; <code>it</code> = tên mặc định của tham số duy nhất; trailing lambda =
+			tham số cuối được mời ra ngoài ngoặc.
+		</li>
+		<li>
+			Kiểu hàm <code>() -&gt; Unit</code>, <code>(String) -&gt; Unit</code>, <code>(Int) -&gt; String</code> = hình dạng
+			"nhận gì → trả gì" của một hành vi; Android/Compose dùng chúng cho mọi sự kiện (onClick, onValueChange…).
+		</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Tài liệu Kotlin chính thức (kotlinlang.org):</strong> Basic Syntax (val/var, string template) · Functions
+			(Unit, expression body, default/named arguments) · Null Safety (<code>?.</code>, <code>?:</code>,
+			<code>!!</code>) · Collections Overview &amp; Collection Operations (<code>listOf</code>, <code>map</code>,
+			<code>filter</code>, <code>joinToString</code>) · Lambdas &amp; Higher-Order Functions (trailing lambda,
+			<code>it</code>, function types).
+		</li>
+		<li>
+			<strong>Đoạn code minh hoạ:</strong> toàn bộ code trong bài do khoá học tự viết cho mục đích dạy Kotlin nền —
+			không trích từ project mẫu aaf-materials; hình dạng đoạn "kiểu Compose" ở mục 7 cố ý giống code bạn sẽ viết ở
+			giai đoạn Jetpack Compose.
+		</li>
+	</ul>
+</section>
