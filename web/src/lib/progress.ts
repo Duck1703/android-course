@@ -25,12 +25,12 @@
 //    entry khai báo tường minh trong SPLIT_MAP mới tạo credit thừa kế.
 //    Đặc biệt: S5 KHÔNG thừa kế completion của ch10-1; ch10-1 chỉ sang R1.
 //
-// E. 3 CASE ĐẶC BIỆT (chính sách chốt, CHƯA kích hoạt — batch thật sự mới thêm):
+// E. 3 CASE ĐẶC BIỆT (chính sách chốt):
 //    1. ch02-2: fan-out-keep-source — old slug VẪN SỐNG với tư cách A6, nên
-//       entry tương lai phải là old → [old, a7-…] (union, không replace, không
-//       redirect). Cơ chế hiện tại đã hỗ trợ an toàn: `SPLIT_MAP[slug]` trả về
-//       mảng chứa chính old slug, `next.push(...replacement)` giữ old lại và
-//       thêm con mới, dedup chống trùng (xem migrateProgress + bài test).
+//       entry là old → [old, ch02-doc-project-mau (A7)] (union, không replace,
+//       không redirect). Cơ chế hiện tại đã hỗ trợ an toàn: `SPLIT_MAP[slug]`
+//       trả về mảng chứa chính old slug, `next.push(...replacement)` giữ old
+//       lại và thêm con mới, dedup chống trùng (xem migrateProgress + bài test).
 //    2. ch10-1: old → R1 ONLY. S5 không nhận credit. Old URL chết → redirect
 //       do batch + IMP-014 lo, không phải ở đây.
 //    3. ch07: old → O1. Kế nhiệm REDUCE trực tiếp — credit cố ý thừa kế vào
@@ -41,15 +41,16 @@
 //    22 URL hiện tại = 14 giữ nguyên + 8 chết. KHÔNG dùng số "15/22" cũ.
 //
 // G. SCHEMA_VERSION là phiên bản CẤU TRÚC SLUG của tiến độ — không phải version
-//    app, nội dung, hay registry. Hiện tại 5 = batch migration THẬT ĐẦU TIÊN
-//    sau registry (pilot Ch10: ch10-1 → R1). Mỗi batch có entry mới tăng đúng 1
-//    lần TRONG CÙNG commit đó (atomic) — không gán cứng sẵn dãy version tương lai.
+//    app, nội dung, hay registry. Hiện tại 6 = batch migration thứ hai (Stage 1:
+//    ch02-2 fan-out-keep-source + ch03-2 dead-source split). Mỗi batch có entry
+//    mới tăng đúng 1 lần TRONG CÙNG commit đó (atomic) — không gán cứng sẵn dãy
+//    version tương lai.
 // ────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "hoc-android-tv:progress";
 const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
 
 // Phiên bản cấu trúc chương hiện tại. Tăng lên 1 mỗi lần tách/gộp chương.
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 // Khi một chương lớn được tách thành nhiều chương nhỏ, slug cũ trong localStorage
 // của người học không còn ứng với trang nào — tiến độ của họ sẽ "bốc hơi".
@@ -90,6 +91,24 @@ const SPLIT_MAP: Record<string, string[]> = {
   // IMP-020 (v5) — pilot: old R1 slug chết, đổi thành slug registry R1.
   // Credit ch10-1 cũ → R1 ONLY (S5 là bài mới, không tự done — chính sách §D).
   "ch10-1-vi-sao-can-database": ["ch10-room-la-gi-va-sqlite"],
+  // IMP-031 (v6) — Stage 1b: ch02-2 fan-out-keep-source (registry §7 entry 1).
+  // Old slug VẪN SỐNG với tư cách A6 (2.2a — máy ảo/máy thật), nên entry là
+  // old → [old, A7] (union semantics — xem chú thích keep-source ở trên):
+  // done cũ chứa ch02-2 → sau migrate chứa ch02-2 (A6) VÀ ch02-doc-project-mau
+  // (A7). KHÔNG redirect cho ch02-2 — URL không chết.
+  "ch02-2-may-ao-may-that-doc-project": [
+    "ch02-2-may-ao-may-that-doc-project",
+    "ch02-doc-project-mau",
+  ],
+  // IMP-032 (v6) — Stage 1c: ch03-2 dead-source split (registry §7 entry 2).
+  // Old slug CHẾT (route retired) → replace: A10 (3.2a — string resource/lớp R,
+  // đích của redirect) + A11 (3.2b — đọc lỗi & debug). Hai bài hoàn toàn mới
+  // về slug, nhưng nội dung kế nhiệm trực tiếp old ch03-2 nên credit chia đôi
+  // theo đúng mapping khai báo (registry §7 + §8).
+  "ch03-2-string-resource-va-debug": [
+    "ch03-string-resource-va-lop-r",
+    "ch03-doc-loi-bien-dich-va-debug",
+  ],
 };
 
 /** Đọc thô mảng slug, không chuyển đổi gì — dùng nội bộ để tránh gọi vòng. */

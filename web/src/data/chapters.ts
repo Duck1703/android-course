@@ -8,13 +8,16 @@
 //     hien thi o sidebar / trang chu.
 // Chuong chua tach thi khong co `subNumber` — moi thu chay y nhu truoc.
 export interface ChapterInfo {
-  number: number; // so chuong lon (10 cho ca 10.1 -> 10.4)
+  number: number; // so chuong lon (10 cho ca 10.1 -> 10.4); 0 = bài Nền tảng (F1/F2 — không thuộc chương sách)
   subNumber?: number; // 1 | 2 | 3... khi chuong da bi tach; undefined = chuong nguyen khoi
   slug: string; // don vi routable duy nhat, khop ten file trong content/book/ khi chua tach
   title: string; // tieu de hien thi cua dung chuong (nho) nay
   parentTitle?: string; // ten chuong lon, chi co khi da tach
+  label?: string; // nhan hien thi ghi de (`chapterLabel`): "2.2a"/"3.2b"/"F1" — khi tach
+  //   chen bai moi GIUA cac muc da co reference web ("Chương 3.3"…) hoac khi bai
+  //   khong thuoc chuong sach nao (Nền tảng). Khong co label thi suy tu number/subNumber.
   summaryVi: string; // tom tat 1 dong bang tieng Viet
-  aafFolder: string; // thu muc tuong ung trong aaf-materials/ (cac chuong nho dung chung)
+  aafFolder: string; // thu muc tuong ung trong aaf-materials/ (cac chuong nho dung chung); "" khi khong co project mau
   hasProject: boolean; // chapter 1 khong co project Android that
   stageId: StageId; // giai doan dich theo spec v2 §5 (IMP-010) — phan loai theo NOI SO HUU DICH,
   //   khong theo Section Anh cu. Ch07 van la route song giua ch06/ch08 nhung stage dich
@@ -99,9 +102,11 @@ export function chapterFileKey(ch: Pick<ChapterInfo, "number" | "subNumber">): s
   return ch.subNumber ? `${nn}_${ch.subNumber}` : nn;
 }
 
-/** Nhan hien thi: "10.2" khi da tach, "9" khi con nguyen khoi. */
-export function chapterLabel(ch: Pick<ChapterInfo, "number" | "subNumber">): string {
-  return ch.subNumber ? `${ch.number}.${ch.subNumber}` : String(ch.number);
+/** Nhan hien thi: "10.2" khi da tach, "9" khi con nguyen khoi; `label` ghi de
+ * khi tach chen bai moi giua cac muc da co reference web ("Chương 3.3"…") hoac
+ * khi bai khong thuoc chuong sach nao (Nền tảng F1/F2). */
+export function chapterLabel(ch: Pick<ChapterInfo, "number" | "subNumber" | "label">): string {
+  return ch.label ?? (ch.subNumber ? `${ch.number}.${ch.subNumber}` : String(ch.number));
 }
 
 /**
@@ -143,6 +148,38 @@ export interface SectionInfo {
 }
 
 export const SECTIONS: SectionInfo[] = [
+  {
+    // Nền tảng (F1–F2) — không thuộc chương sách nào: number = 0, subNumber tuỳ
+    // ý nội bộ (chỉ để nhóm hiển thị), label = F1/F2. `aafFolder` rỗng vì hai
+    // bài này dạy Kotlin thuần bằng code tự viết, không có project mẫu.
+    title: "Nền tảng",
+    chapters: [
+      {
+        number: 0,
+        subNumber: 1,
+        slug: "kotlin-variables-null-collections-lambda",
+        label: "F1",
+        title: "Kotlin đủ để học Compose — Phần 1: biến, hàm, null safety, collections, lambda",
+        parentTitle: "Nền tảng Kotlin",
+        summaryVi: "val/var, kiểu + suy luận, hàm, null safety ?./?:, List + map/filter, lambda + it + trailing lambda, function type.",
+        aafFolder: "",
+        hasProject: false,
+        stageId: "foundation",
+      },
+      {
+        number: 0,
+        subNumber: 2,
+        slug: "kotlin-data-class-delegation-sealed",
+        label: "F2",
+        title: "Kotlin đủ để học Compose — Phần 2: data class, `by`, sealed state, generics",
+        parentTitle: "Nền tảng Kotlin",
+        summaryVi: "Class, data class (==/copy/destructuring), đọc được List<T>, `by` uỷ quyền (tách Kotlin vs Compose), sealed state.",
+        aafFolder: "",
+        hasProject: false,
+        stageId: "foundation",
+      },
+    ],
+  },
   {
     title: "Section I: Introduction to Android Development",
     chapters: [
@@ -205,6 +242,7 @@ export const SECTIONS: SectionInfo[] = [
         number: 2,
         subNumber: 2,
         slug: "ch02-2-may-ao-may-that-doc-project",
+        label: "2.2a",
         title: "Chạy thử app: máy ảo (AVD) & máy thật",
         parentTitle: "Getting Started With Android Studio",
         summaryVi: "Tạo AVD với wizard ba bước, và biến máy Android thật thành thiết bị lập trình qua USB Debugging.",
@@ -216,6 +254,7 @@ export const SECTIONS: SectionInfo[] = [
         number: 2,
         subNumber: 3,
         slug: "ch02-doc-project-mau",
+        label: "2.2b",
         title: "Giải mã project mẫu: đọc toàn bộ project vừa sinh ra",
         parentTitle: "Getting Started With Android Studio",
         summaryVi: "Mở từng file Android Studio vừa tự sinh ra: MainActivity, Manifest, ba file theme, ba file Gradle, strings.xml.",
@@ -227,6 +266,7 @@ export const SECTIONS: SectionInfo[] = [
         number: 2,
         subNumber: 4,
         slug: "ch02-3-chay-app-va-cap-nhat",
+        label: "2.3",
         title: "Chạy app, cập nhật công cụ, và những gì đã lỗi thời",
         parentTitle: "Getting Started With Android Studio",
         summaryVi: "Bấm Run, sửa chữ thấy đổi ngay với Live Edit, cập nhật IDE/SDK, và đối chiếu bản ghim 2023.",
@@ -249,6 +289,7 @@ export const SECTIONS: SectionInfo[] = [
         number: 3,
         subNumber: 2,
         slug: "ch03-string-resource-va-lop-r",
+        label: "3.2a",
         title: "String resource và lớp R",
         parentTitle: "Android Fundamentals",
         summaryVi: "Vì sao chuỗi phải vào strings.xml, qualifier đổi ngôn ngữ không sửa code, và lớp R — bảng tra sinh lúc build.",
@@ -260,6 +301,7 @@ export const SECTIONS: SectionInfo[] = [
         number: 3,
         subNumber: 3,
         slug: "ch03-doc-loi-bien-dich-va-debug",
+        label: "3.2b",
         title: "Đọc lỗi biên dịch và debug",
         parentTitle: "Android Fundamentals",
         summaryVi: "Lỗi biên dịch đầu tiên — vì sao stringResource không gọi được trong remember — và breakpoint, Logcat để soi lỗi lúc chạy.",
@@ -271,6 +313,7 @@ export const SECTIONS: SectionInfo[] = [
         number: 3,
         subNumber: 4,
         slug: "ch03-3-manifest-intent-permission",
+        label: "3.3",
         title: "Manifest, Intent, Permission và Service",
         parentTitle: "Android Fundamentals",
         summaryVi: "AndroidManifest.xml khai gì với hệ điều hành, intent-filter mở app, và cái bẫy permission vs uses-permission.",
@@ -282,6 +325,7 @@ export const SECTIONS: SectionInfo[] = [
         number: 3,
         subNumber: 5,
         slug: "ch03-4-theme-va-doi-chieu",
+        label: "3.4",
         title: "Theme, chuỗi việc khi bấm Send, và đối chiếu code thật",
         parentTitle: "Android Fundamentals",
         summaryVi: "Hai hệ theme song song, một hàm theme không ai gọi, và tám chỗ code mẫu đáng đọc bằng đầu phê phán.",

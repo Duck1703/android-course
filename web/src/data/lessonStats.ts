@@ -12,7 +12,7 @@
 // ten khop. Moi stat record tuong ung 1 slug da dang ky; file nao khong duoc
 // registry tham chieu thi khong duoc doc, khong duoc dem.
 // ==========================================================================
-import { ALL_CHAPTERS, chapterFileKey } from "./chapters";
+import { ALL_CHAPTERS, chapterFileKey, type ChapterInfo } from "./chapters";
 import { LESSONS } from "./lessons";
 
 // eager: true => Vite noi cac file thanh string ngay luc build, khong can fs.
@@ -95,11 +95,80 @@ function countMatches(src: string, re: RegExp): number {
 // Chuong da tach thanh chuong nho dung them "_N": Ch10_2EntityDaoDatabase.astro,
 // Ch10_2Quiz.astro. Khoa gom vi the la STRING: "09" hoac "10_2".
 //
+// NGOAI LE KEY (IMP-031/032 batch Stage 1 — preserve-numbering contract):
+//   • Bai Nền tảng (F1/F2) không thuộc chương sách nào — file không theo quy uoc
+//     "ChNN" (KotlinVariables…). Key cua chung la slug (khong suy ra tu ChNN).
+//   • Split chèn-bài (2.2b/3.2a/3.2b) GIỮ key của chương cha (02_2 / 03_2) vì:
+//     (1) contract đánh số mục liên tục — bài con là phần của cùng "Chương 2.2/
+//     3.2" cũ; (2) đổi key sẽ phá bucket của anh em cùng key (02_2 = A6 + A7
+//     chia sẻ nguyên một glob bucket) và tạo key rác 02_4/03_5 không có file.
+//     Bucket 1 key chứa 2 lesson + 2 quiz là HỢP LỆ mới — resolve bên dưới ghép
+//     theo TÊN FILE CHÍNH XÁC từ LESSONS thay vì theo bucket đơn.
+//
 // CHINH SUA IMP-016: bucket khong con duoc lap tu toan bo file glob matched
 // (79 file pseudo-curriculum). Bucket chi lap tu NHUNG file ma registry tham
 // chieu — resolve theo quy uoc ten file chuan cua tung slug, roi CHECK TEN FILE
 // DO CO CHINH XAC la component live khong bang cach so voi danh sach file
 // registry-da-xac-nhan. Orphan/dormant khong bao gio duoc chon.
+
+// Key file cua 1 chapter: nhung file "ChNN[_N]*" suy ra tu chapterFileKey;
+// bai Nền tảng (khong theo quy uoc ChNN) key = slug la case-INSENSITIVE so
+// file: file "KotlinVariablesNullCollectionsLambda.astro" giong slug
+// "kotlin-variables-null-collections-lambda" bo dau gach ngang. Dung ham
+// khong phan biet hoa-thuong: PascalCase file ↔ kebab-case slug.
+//
+// DOI KEY CUC BO cho split chèn-bài (batch Stage 1): 02_2 giờ là HAI bài
+// (A6 + A7) và 03_2 là HAI bài (A10 + A11) — tất cả bốn file live vẫn mang
+// tiền tố 02_2/03_2 (Ch02_2MayAo…, Ch02DocProjectMau không có số; Ch03String…,
+// Ch03DocLoi…) nhưng registry subNumber phải tăng cho các bài sau (2.3 → 02_4,
+// 3.4 → 03_5) mà file của chúng vẫn tên Ch02_3*/Ch03_4*. Nên ánh xạ key file
+// theo slug quá trò trọc sẽ sai 2 slug này. Giải pháp: bảng GHIM key-file theo
+// slug — chỉ những slug lệch quy uoc mới được liệt kê; mọi slug còn lại suy ra
+// bằng chapterFileKey như cũ.
+const FILE_KEY_PIN: Record<string, string> = {
+  // A7 file Ch02DocProjectMau.astro không có số — key = tiền tố chương cha 02_2
+  "ch02-doc-project-mau": "02_2",
+  // A10/A11: file Ch03StringResourceVaLopR/Ch03DocLoiBienDichVaDebug — key = 03_2
+  "ch03-string-resource-va-lop-r": "03_2",
+  "ch03-doc-loi-bien-dich-va-debug": "03_2",
+};
+// Bảng ngược cho vòng quét file: "Ch02DocProjectMau" → "02_2" v.v. (tên file
+// không đuôi, cả lesson lẫn quiz).
+const pinByFile: Map<string, string> = new Map(
+  Object.entries(FILE_KEY_PIN).flatMap(([slug, key]) => {
+    const ch = ALL_CHAPTERS.find((c) => c.slug === slug);
+    if (!ch) return [];
+    // slug kebab → tên file: theo quy uoc kebab→Pascal (mỗi segment hoa đầu).
+    // Số dư: quy uoc đủ rộng cho 3 file ghim này; nếu sai tên, vòng resolve
+    // sẽ fail-loud ở bước đếm thiếu/thừa file.
+    const base = slug
+      .split("-")
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join("");
+    return [
+      [base, key],
+      [`${base}Quiz`, key],
+    ] as [string, string][];
+  })
+);
+function foundationKey(slug: string): string {
+  return slug.replace(/-/g, "").toLowerCase();
+}
+// Key-file của bài "ChNN" theo slug: bài 2.3 (A8) GIỮ nguyên tên file cũ
+// (Ch02_3*) dù subNumber registry đã đẩy lên 4 sau split chèn-bài — quy ước
+// "existing preserved components keep their current exact filenames"
+// (registry §9). 3.4 (A13) thì KHÔNG cần ghim: file Ch03_4* vẫn tự khớp key
+// "03_4" vì subNumber của ch03-3 (A12) là 4 và ch03-4 (A13) là 5… chính vì vậy
+// ch03-3 mới cần ghim về key file thật của nó là 03_3 (file Ch03_3*).
+const FILE_KEY_OVERRIDE: Record<string, string> = {
+  "ch02-3-chay-app-va-cap-nhat": "02_3",
+  "ch03-3-manifest-intent-permission": "03_3",
+  "ch03-4-theme-va-doi-chieu": "03_4",
+};
+function fileKeyOf(ch: Pick<ChapterInfo, "number" | "subNumber" | "slug">): string {
+  if (ch.number < 1) return foundationKey(ch.slug);
+  return FILE_KEY_PIN[ch.slug] ?? FILE_KEY_OVERRIDE[ch.slug] ?? chapterFileKey(ch);
+}
 
 /** File name quy uoc cho 1 slug: tu chapterFileKey (vd "10_2") + ten nhom tu
  * lessons.ts import. Vi ten file khong suy ra duoc tu slug mot minh, buoc
@@ -108,7 +177,7 @@ function countMatches(src: string, re: RegExp): number {
  * file bang quy uoc giong cu NHUNG chi cho slug DA DANG KY, va build fail
  * nghiem khi file khong ton tai. */
 // Quy uoc key file chuan cua registry: "09", "10_2"… (chapterFileKey).
-const legacyFileKey = chapterFileKey;
+const legacyFileKey = fileKeyOf;
 
 interface Bucket {
   lesson?: string;
@@ -116,22 +185,25 @@ interface Bucket {
 }
 const byKey = new Map<string, Bucket>();
 
-// Chi LOI NHUNG file "co kha nang" la live (khop quy uoc ChNN[_N]*) ROI loc
-// bang registry: 1 file chi vao bucket neu (a) khop quy uoc ten file, va
-// (b) key do thuoc 1 chapter da dang ky. File `_TEMPLATE.astro` va moi file
-// khong khop quy uoc tu bi loai; key khong thuoc registry thi bo qua.
-for (const [path, src] of Object.entries(RAW)) {
+// Chi LOI NHUNG file "co kha nang" la live (khop quy uoc ChNN[_N]* HOAC thuoc
+// Nền tảng không theo quy uoc) ROI loc bang registry: 1 file chi vao bucket
+// neu key do thuoc it nhat 1 chapter DANG KY. File `_TEMPLATE.astro` va moi
+// file key khong thuoc registry tu bi loai.
+for (const [path] of Object.entries(RAW)) {
   const file = path.slice(path.lastIndexOf("/") + 1);
   const m = /^Ch(\d{2})(?:_(\d+))?(.*)\.astro$/.exec(file);
-  if (!m) continue;
-  const key = m[2] ? `${m[1]}_${m[2]}` : m[1]!;
+  const key = m
+    ? m[2] ? `${m[1]}_${m[2]}` : m[1]!
+    : foundationKey(file.replace(/\.astro$/, "").replace(/Quiz$/, ""));
   // (b) loc membership: key phai ung voi it nhat 1 chapter DANG KY
   if (!ALL_CHAPTERS.some((c) => legacyFileKey(c) === key)) continue;
   const bucket = byKey.get(key) ?? {};
-  if (m[3] === "Quiz") bucket.quiz = src;
-  else bucket.lesson = src;
+  if (m && m[3] === "Quiz") bucket.quiz = path.slice(path.lastIndexOf("/") + 1);
+  else bucket.lesson = file;
   byKey.set(key, bucket);
 }
+void byKey; // bucket mo rong (lesson/quiz co the bi ghi de khi 2 file cung key
+// chia sẻ 02_2/03_2) — du lieu thuc duoc resolve lai chinh xac o filesByKey.
 
 // --- Validate toan ven Lesson/Quiz cho tung slug da dang ky -------------------
 // Tim file "ngu dong cung key": quy uoc cho nhieu file trung key. Bien phong
@@ -167,9 +239,19 @@ function resolveLiveFileNames(): { lesson: Record<string, string>; quiz: Record<
   const filesByKey = new Map<string, string[]>();
   for (const [path] of Object.entries(src)) {
     const file = path.slice(path.lastIndexOf("/") + 1);
+    // Key moi file: "ChNN[_N]*" suy ra tu quy uoc; file Nền tảng (không khớp
+    // quy uoc ChNN) key = tên file không đuôi (vd "KotlinVariables…Quiz").
     const m = /^Ch(\d{2})(?:_(\d+))?(.*)\.astro$/.exec(file);
-    if (!m) continue;
-    const key = m[2] ? `${m[1]}_${m[2]}` : m[1]!;
+    let key: string;
+    if (m) {
+      // A7/A10/A11: file KHÔNG mang số chương (Ch02DocProjectMau*, Ch03DocLoi*,
+      // Ch03StringResource*) nhưng thuộc key 02_2/03_2 của split chèn-bài —
+      // khớp qua bảng ghim (FILE_KEY_PIN) theo tên file thay vì theo số.
+      const noNumber = pinByFile.get(file.replace(/\.astro$/, ""));
+      key = noNumber ?? (m[2] ? `${m[1]}_${m[2]}` : m[1]!);
+    } else {
+      key = foundationKey(file.replace(/\.astro$/, "").replace(/Quiz$/, ""));
+    }
     if (!ALL_CHAPTERS.some((c) => legacyFileKey(c) === key)) continue;
     const list = filesByKey.get(key) ?? [];
     list.push(file);
@@ -183,26 +265,50 @@ function resolveLiveFileNames(): { lesson: Record<string, string>; quiz: Record<
     const files = filesByKey.get(key) ?? [];
     const lessonFiles = files.filter((f) => !/Quiz\.astro$/.test(f));
     const quizFiles = files.filter((f) => /Quiz\.astro$/.test(f));
-    if (lessonFiles.length === 0) {
+    // Key chia sẻ hợp lệ (batch Stage 1): 02_2 = A6 + A7 (2 lesson + 2 quiz),
+    // 03_2 = A10 + A11. Ghép theo VAI TRÒ: bucket key X có N lesson registered
+    // => mỗi lesson file thuộc 1 slug registered — resolve bằng cách loại dần:
+    // quiz đầu tiên về quiz slug 1, quiz thứ hai về quiz slug 2... theo THỨ TỰ
+    // ALPHABET TÊN FILE (ổn định, bất biến với thứ tự import) ghép với thứ tự
+    // slug alphabet. Với 02_2: Ch02_2MayAo…Quiz → ch02-2 (A6),
+    // Ch02DocProjectMauQuiz → ch02-doc-project-mau (A7); với 03_2:
+    // Ch03DocLoi…Quiz → ch03-doc…, Ch03String…Quiz → ch03-string… (alphabet
+    // file D ↔ S khớp alphabet slug d ↔ s). Lesson tương tự.
+    const registeredLessonSlugs = ALL_CHAPTERS.filter((c) => legacyFileKey(c) === key).map((c) => c.slug);
+    const registeredQuizSlugs = registeredLessonSlugs.filter((s) => LESSONS[s]?.Quiz);
+    const sortedLessonFiles = [...lessonFiles].sort();
+    const sortedQuizFiles = [...quizFiles].sort();
+    const sortedLessonSlugs = [...registeredLessonSlugs].sort();
+    const sortedQuizSlugs = [...registeredQuizSlugs].sort();
+    if (sortedLessonFiles.length === 0) {
       errors.push(`${ch.slug}: khong tim thay file Lesson cho key "${key}"`);
-    } else if (lessonFiles.length > 1) {
-      // Draft ngu dong trung key voi live: khong the tu chon. Fail to —
-      // ke toan phai resolve ro rang truoc khi build.
+    } else if (sortedLessonFiles.length > sortedLessonSlugs.length) {
+      // Nhiều ứng viên lesson hơn số slug registered = draft ngủ đông trùng key:
+      // không thể tự chọn. Fail to — kế toán phải resolve rõ ràng trước khi build.
       errors.push(
-        `${ch.slug}: nhieu ung vien Lesson cung key "${key}" (${lessonFiles.join(", ")}) — can resolve ro rang`
+        `${ch.slug}: nhieu ung vien Lesson cung key "${key}" (${sortedLessonFiles.join(", ")}) — can resolve ro rang`
+      );
+    } else if (sortedLessonFiles.length !== sortedLessonSlugs.length) {
+      errors.push(
+        `${ch.slug}: thieu file Lesson cho key "${key}" (co ${sortedLessonFiles.length}, can ${sortedLessonSlugs.length}: ${sortedLessonSlugs.join(", ")})`
       );
     } else {
-      lesson[ch.slug] = lessonFiles[0]!;
+      // So khớp 1-1: file alphabet ↔ slug alphabet. Với key đơn (1 file), đây
+      // chính là hành vi cũ.
+      const myIndex = sortedLessonSlugs.indexOf(ch.slug);
+      lesson[ch.slug] = sortedLessonFiles[myIndex]!;
     }
-    if (quizFiles.length > 1) {
+    if (sortedQuizFiles.length > sortedQuizSlugs.length) {
       errors.push(
-        `${ch.slug}: nhieu ung vien Quiz cung key "${key}" (${quizFiles.join(", ")})`
+        `${ch.slug}: nhieu ung vien Quiz cung key "${key}" (${sortedQuizFiles.join(", ")})`
       );
-    } else {
-      const quizFile = quizFiles[0];
-      if (quizFile) quiz[ch.slug] = quizFile;
-      // khong co quiz = hop le (tuong lai AP1–AP3: quizQuestions = 0)
+    } else if (sortedQuizFiles.length === sortedQuizSlugs.length && sortedQuizFiles.length > 0) {
+      const myIndex = sortedQuizSlugs.indexOf(ch.slug);
+      if (myIndex >= 0) quiz[ch.slug] = sortedQuizFiles[myIndex]!;
+    } else if (sortedQuizFiles.length === 1 && sortedQuizSlugs.length === 1) {
+      quiz[ch.slug] = sortedQuizFiles[0]!;
     }
+    // khong co quiz = hop le (tuong lai AP1–AP3: quizQuestions = 0)
   }
   // Doi chieu nguoc: moi slug co LESSONS entry? (tinh toan ven registry↔LESSONS)
   for (const ch of ALL_CHAPTERS) {

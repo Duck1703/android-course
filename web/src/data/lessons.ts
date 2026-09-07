@@ -1,6 +1,10 @@
 // Task 10 — registry lesson
 import type { AstroComponentFactory } from "astro/runtime/server/index.js";
 
+import KotlinVariablesNullCollectionsLambda from "../components/lessons/KotlinVariablesNullCollectionsLambda.astro";
+import KotlinVariablesNullCollectionsLambdaQuiz from "../components/lessons/KotlinVariablesNullCollectionsLambdaQuiz.astro";
+import KotlinDataClassDelegationSealed from "../components/lessons/KotlinDataClassDelegationSealed.astro";
+import KotlinDataClassDelegationSealedQuiz from "../components/lessons/KotlinDataClassDelegationSealedQuiz.astro";
 import Ch01_1AndroidVaKotlin from "../components/lessons/Ch01_1AndroidVaKotlin.astro";
 import Ch01_1Quiz from "../components/lessons/Ch01_1Quiz.astro";
 import Ch01_2AppComponent from "../components/lessons/Ch01_2AppComponent.astro";
@@ -13,12 +17,16 @@ import Ch02_1CaiDatVaTaoProject from "../components/lessons/Ch02_1CaiDatVaTaoPro
 import Ch02_1Quiz from "../components/lessons/Ch02_1Quiz.astro";
 import Ch02_2MayAoMayThatDocProject from "../components/lessons/Ch02_2MayAoMayThatDocProject.astro";
 import Ch02_2Quiz from "../components/lessons/Ch02_2Quiz.astro";
+import Ch02DocProjectMau from "../components/lessons/Ch02DocProjectMau.astro";
+import Ch02DocProjectMauQuiz from "../components/lessons/Ch02DocProjectMauQuiz.astro";
 import Ch02_3ChayAppVaCapNhat from "../components/lessons/Ch02_3ChayAppVaCapNhat.astro";
 import Ch02_3Quiz from "../components/lessons/Ch02_3Quiz.astro";
 import Ch03_1ActivityVaGiaoDien from "../components/lessons/Ch03_1ActivityVaGiaoDien.astro";
 import Ch03_1Quiz from "../components/lessons/Ch03_1Quiz.astro";
-import Ch03_2StringResourceVaDebug from "../components/lessons/Ch03_2StringResourceVaDebug.astro";
-import Ch03_2Quiz from "../components/lessons/Ch03_2Quiz.astro";
+import Ch03StringResourceVaLopR from "../components/lessons/Ch03StringResourceVaLopR.astro";
+import Ch03StringResourceVaLopRQuiz from "../components/lessons/Ch03StringResourceVaLopRQuiz.astro";
+import Ch03DocLoiBienDichVaDebug from "../components/lessons/Ch03DocLoiBienDichVaDebug.astro";
+import Ch03DocLoiBienDichVaDebugQuiz from "../components/lessons/Ch03DocLoiBienDichVaDebugQuiz.astro";
 import Ch03_3ManifestIntentPermission from "../components/lessons/Ch03_3ManifestIntentPermission.astro";
 import Ch03_3Quiz from "../components/lessons/Ch03_3Quiz.astro";
 import Ch03_4ThemeVaDoiChieu from "../components/lessons/Ch03_4ThemeVaDoiChieu.astro";
@@ -52,23 +60,42 @@ interface LessonEntry {
 }
 
 export const LESSONS: Partial<Record<string, LessonEntry>> = {
+  // Nền tảng (F1–F2) — bắt buộc trước giai đoạn 1. Bài hoàn toàn mới: KHÔNG có
+  // entry SPLIT_MAP nào trỏ tới hai slug này (chính sách no-fabricate, progress.ts §D).
+  "kotlin-variables-null-collections-lambda": {
+    Lesson: KotlinVariablesNullCollectionsLambda,
+    Quiz: KotlinVariablesNullCollectionsLambdaQuiz,
+  },
+  "kotlin-data-class-delegation-sealed": {
+    Lesson: KotlinDataClassDelegationSealed,
+    Quiz: KotlinDataClassDelegationSealedQuiz,
+  },
   // Chương 1 đã tách thành 4 chương nhỏ — mỗi chương nhỏ có quiz riêng ngay sau nội dung.
   "ch01-1-android-va-kotlin": { Lesson: Ch01_1AndroidVaKotlin, Quiz: Ch01_1Quiz },
   "ch01-2-app-component": { Lesson: Ch01_2AppComponent, Quiz: Ch01_2Quiz },
   "ch01-3-manifest-resources": { Lesson: Ch01_3ManifestResources, Quiz: Ch01_3Quiz },
   "ch01-4-gradle-va-ban-do": { Lesson: Ch01_4GradleVaBanDo, Quiz: Ch01_4Quiz },
-  // Chương 2 đã tách thành 3 chương nhỏ — mỗi chương nhỏ có quiz riêng.
+  // Chương 2 đã tách thành 4 chương nhỏ (2.1 · 2.2a máy ảo/máy thật · 2.2b giải mã
+  // project mẫu · 2.3) — mỗi chương nhỏ có quiz riêng. 2.2a giữ nguyên URL cũ
+  // (sống tiếp với tư cách A6); 2.2b là URL mới (A7).
   "ch02-1-cai-dat-va-tao-project": { Lesson: Ch02_1CaiDatVaTaoProject, Quiz: Ch02_1Quiz },
   "ch02-2-may-ao-may-that-doc-project": {
     Lesson: Ch02_2MayAoMayThatDocProject,
     Quiz: Ch02_2Quiz,
   },
+  "ch02-doc-project-mau": { Lesson: Ch02DocProjectMau, Quiz: Ch02DocProjectMauQuiz },
   "ch02-3-chay-app-va-cap-nhat": { Lesson: Ch02_3ChayAppVaCapNhat, Quiz: Ch02_3Quiz },
-  // Chương 3 đã tách thành 4 chương nhỏ — mỗi chương nhỏ có quiz riêng.
+  // Chương 3 đã tách thành 5 chương nhỏ (3.1 · 3.2a string resource/lớp R · 3.2b đọc
+  // lỗi & debug · 3.3 · 3.4) — mỗi chương nhỏ có quiz riêng. Old ch03-2 chết trong
+  // batch này → redirect 1 đích sang 3.2a (astro.config.mjs) + SPLIT_MAP (progress.ts).
   "ch03-1-activity-va-giao-dien": { Lesson: Ch03_1ActivityVaGiaoDien, Quiz: Ch03_1Quiz },
-  "ch03-2-string-resource-va-debug": {
-    Lesson: Ch03_2StringResourceVaDebug,
-    Quiz: Ch03_2Quiz,
+  "ch03-string-resource-va-lop-r": {
+    Lesson: Ch03StringResourceVaLopR,
+    Quiz: Ch03StringResourceVaLopRQuiz,
+  },
+  "ch03-doc-loi-bien-dich-va-debug": {
+    Lesson: Ch03DocLoiBienDichVaDebug,
+    Quiz: Ch03DocLoiBienDichVaDebugQuiz,
   },
   "ch03-3-manifest-intent-permission": {
     Lesson: Ch03_3ManifestIntentPermission,
