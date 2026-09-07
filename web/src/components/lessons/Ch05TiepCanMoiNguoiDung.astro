@@ -408,24 +408,6 @@ Row(modifier = Modifier.semantics(mergeDescendants = true) &#123;&#125;) &#123;
 		</tbody>
 	</table>
 
-	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
-	<p class="notice">
-		<strong>(a) "Cứ thêm mô tả cho mọi thứ là an toàn."</strong> Đây là kết luận sai phổ biến nhất sau khi học accessibility lần đầu, và nó tạo ra ba lỗi một lúc. Ảnh nền trang trí có mô tả ⇒ mỗi lần lướt tới nội dung thật, người dùng phải nghe trước một câu vô nghĩa. Một <code>Button</code> đã có chữ "Gửi" mà icon bên trong cũng mô tả <code>"Gửi"</code> ⇒ nghe thành "Gửi Gửi", vì nút tự gộp mô tả của các con. Gắn thêm <code>Modifier.semantics &#123; &#125;</code> lên một <code>Checkbox</code> hay <code>Switch</code> là công vô ích — chúng đã tự thông báo đúng loại và trạng thái, còn mô tả bạn tự viết sẽ là thứ đầu tiên lạc hậu khi chức năng đổi. Trong khi đó thứ <strong>luôn</strong> phải có mô tả lại thường bị quên: mọi thành phần <strong>bấm được</strong> mà không có chữ hiển thị nào bên cạnh. Quy tắc gọn: điền phần Compose không thể tự đoán, đừng điền phần đã có người làm sẵn.</p>
-	<p class="notice">
-		<strong>(b) "Icon 24dp thì vùng bấm 24dp, và UI nhìn ổn trên máy mình là ổn."</strong> Hai nửa của cùng một thói quen: nói trước một con số mà đáng ra phải để ngón tay và nội dung quyết định. <code>Modifier.padding(12.dp).clickable &#123; … &#125;</code> để lại vùng bấm đúng 24dp cho một icon 24dp (đổi thứ tự là xong — chương 5.2, mục 6). Truyền <code>Modifier.height(36.dp)</code> vào một <code>Button</code> là <strong>lấy lại</strong> mức tối thiểu mà Material vừa cho bạn. <code>Modifier.height(40.dp)</code> quanh một dòng <code>Text</code> trông ổn trên máy bạn rồi cắt mất chữ ở cỡ chữ lớn nhất. Cả ba <strong>không hiện ra trong <code>@Preview</code></strong>, và cũng không hiện ra trên điện thoại đang để thiết lập mặc định của bạn — chỉ hiện khi có ngón tay thật và thiết lập thật (mục 27).</p>
-	<p class="notice">
-		<strong>(c) "Đổi sang màu đỏ là đủ để báo lỗi."</strong> Màu <strong>không</strong> nằm trong phần mô tả mà dịch vụ hỗ trợ đọc, nên nếu tín hiệu duy nhất của "có lỗi" là viền đỏ thì với người dùng TalkBack thông tin đó <strong>không tồn tại</strong> — chưa kể người khó phân biệt màu và người đang để màn hình ở chế độ đơn sắc. Cách sửa rẻ nhất là thêm một dòng chữ nói thẳng vấn đề: chữ phục vụ cả người thấy màu <strong>và</strong> dịch vụ hỗ trợ, nên bạn không phải làm hai lần.</p>
-
-	<h2 id="tom-tat">Tóm tắt</h2>
-	<p>Bài này có <strong>năm</strong> điều cốt lõi. Nếu một tuần sau bạn chỉ còn nhớ năm thứ, hãy để chúng là năm thứ này.</p>
-	<ol>
-		<li><strong>Một giao diện luôn có hai bản mô tả.</strong> Phần vẽ ra màn hình, và phần <strong>semantics</strong> — nói <em>nghĩa, hành động, trạng thái</em> — mà dịch vụ hỗ trợ đọc. Bản thứ hai không tự khớp với bản thứ nhất.</li>
-		<li><strong><code>contentDescription</code> là để nói nghĩa, không phải để điền cho có.</strong> Mang thông tin ⇒ một câu chữ mô tả <strong>việc làm được</strong> (<code>"Xoá tin nhắn"</code>, không phải <code>"Icon thùng rác"</code>; và vì người dùng nghe được nó, nó thuộc <code>strings.xml</code>). Trang trí ⇒ <code>null</code>. Bấm được ⇒ <strong>luôn</strong> phải có tên gọi.</li>
-		<li><strong>Kích thước nhìn thấy ≠ vùng chạm.</strong> Icon 24dp, vùng chạm ít nhất <strong>48dp × 48dp</strong>. Component Material tương tác đã giữ mức đó; control tự dựng bằng <code>Box</code> + <code>clickable</code> thì bạn tự đặt.</li>
-		<li><strong>Giao diện phải sống được khi chữ to lên, và không được nói bằng màu.</strong> Cỡ chữ ghi bằng <code>sp</code>, mọi thứ khác bằng <code>dp</code>; đừng ép chiều cao hộp chứa chữ, đừng giả định chữ luôn một dòng; dùng cặp vai trò màu (<code>surface</code> / <code>onSurface</code>) để giữ phần tương phản; và mọi thông tin đang truyền bằng màu phải có thêm chữ hoặc hình đi kèm.</li>
-		<li><strong>Ưu tiên component có nghĩa sẵn, rồi tự kiểm bằng tay.</strong> Component Material trước → điền phần Compose không đoán được → chỉ tự viết semantics (ví dụ <code>mergeDescendants = true</code> cho một nhóm mảnh rời chỉ có nghĩa khi đi cùng nhau) khi cấu trúc hình ảnh không diễn đạt đúng ý nghĩa. Sau đó bật TalkBack + cỡ chữ lớn nhất và soi lại màn hình theo checklist mục 27 — <code>@Preview</code> không chứng minh được phần này.</li>
-	</ol>
-
 	<h2 id="luyen-tap">Luyện tập — soi một thanh thông báo nhỏ</h2>
 	<p>Dưới đây là một thanh thông báo "chưa gửi được tin" mà một người mới có thể viết. Nó <strong>compile được, chạy được, và trông tạm ổn</strong> trên máy của người viết. Tìm càng nhiều vấn đề accessibility càng tốt trước khi mở đáp án — mỗi vấn đề đều thuộc một mục bạn vừa đọc.</p>
 	<Code code={`@Composable
@@ -509,6 +491,27 @@ fun ThongBaoLoi(soTinChuaGui: Int, onDismiss: () -> Unit) &#123;
 	</ol>
 	<p><strong>Kiểm lại bằng tay</strong> (mục 27): bật TalkBack, lướt qua thanh này — phải nghe đúng hai thành phần: câu "Không thể kết nối — 3 tin nhắn chưa gửi", và nút "Đóng thông báo". Rồi tăng cỡ chữ lên mức lớn nhất: hàng phải cao lên, chữ không bị cắt, nút đóng vẫn bấm được.</p>
 	</details>
+
+	<div class="callout journey">
+		<strong>Tóm tắt — năm điều cốt lõi</strong>
+	<p>Bài này có <strong>năm</strong> điều cốt lõi. Nếu một tuần sau bạn chỉ còn nhớ năm thứ, hãy để chúng là năm thứ này.</p>
+	<ol>
+		<li><strong>Một giao diện luôn có hai bản mô tả.</strong> Phần vẽ ra màn hình, và phần <strong>semantics</strong> — nói <em>nghĩa, hành động, trạng thái</em> — mà dịch vụ hỗ trợ đọc. Bản thứ hai không tự khớp với bản thứ nhất.</li>
+		<li><strong><code>contentDescription</code> là để nói nghĩa, không phải để điền cho có.</strong> Mang thông tin ⇒ một câu chữ mô tả <strong>việc làm được</strong> (<code>"Xoá tin nhắn"</code>, không phải <code>"Icon thùng rác"</code>; và vì người dùng nghe được nó, nó thuộc <code>strings.xml</code>). Trang trí ⇒ <code>null</code>. Bấm được ⇒ <strong>luôn</strong> phải có tên gọi.</li>
+		<li><strong>Kích thước nhìn thấy ≠ vùng chạm.</strong> Icon 24dp, vùng chạm ít nhất <strong>48dp × 48dp</strong>. Component Material tương tác đã giữ mức đó; control tự dựng bằng <code>Box</code> + <code>clickable</code> thì bạn tự đặt.</li>
+		<li><strong>Giao diện phải sống được khi chữ to lên, và không được nói bằng màu.</strong> Cỡ chữ ghi bằng <code>sp</code>, mọi thứ khác bằng <code>dp</code>; đừng ép chiều cao hộp chứa chữ, đừng giả định chữ luôn một dòng; dùng cặp vai trò màu (<code>surface</code> / <code>onSurface</code>) để giữ phần tương phản; và mọi thông tin đang truyền bằng màu phải có thêm chữ hoặc hình đi kèm.</li>
+		<li><strong>Ưu tiên component có nghĩa sẵn, rồi tự kiểm bằng tay.</strong> Component Material trước → điền phần Compose không đoán được → chỉ tự viết semantics (ví dụ <code>mergeDescendants = true</code> cho một nhóm mảnh rời chỉ có nghĩa khi đi cùng nhau) khi cấu trúc hình ảnh không diễn đạt đúng ý nghĩa. Sau đó bật TalkBack + cỡ chữ lớn nhất và soi lại màn hình theo checklist mục 27 — <code>@Preview</code> không chứng minh được phần này.</li>
+	</ol>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p class="notice">
+		<strong>(a) "Cứ thêm mô tả cho mọi thứ là an toàn."</strong> Đây là kết luận sai phổ biến nhất sau khi học accessibility lần đầu, và nó tạo ra ba lỗi một lúc. Ảnh nền trang trí có mô tả ⇒ mỗi lần lướt tới nội dung thật, người dùng phải nghe trước một câu vô nghĩa. Một <code>Button</code> đã có chữ "Gửi" mà icon bên trong cũng mô tả <code>"Gửi"</code> ⇒ nghe thành "Gửi Gửi", vì nút tự gộp mô tả của các con. Gắn thêm <code>Modifier.semantics &#123; &#125;</code> lên một <code>Checkbox</code> hay <code>Switch</code> là công vô ích — chúng đã tự thông báo đúng loại và trạng thái, còn mô tả bạn tự viết sẽ là thứ đầu tiên lạc hậu khi chức năng đổi. Trong khi đó thứ <strong>luôn</strong> phải có mô tả lại thường bị quên: mọi thành phần <strong>bấm được</strong> mà không có chữ hiển thị nào bên cạnh. Quy tắc gọn: điền phần Compose không thể tự đoán, đừng điền phần đã có người làm sẵn.</p>
+	<p class="notice">
+		<strong>(b) "Icon 24dp thì vùng bấm 24dp, và UI nhìn ổn trên máy mình là ổn."</strong> Hai nửa của cùng một thói quen: nói trước một con số mà đáng ra phải để ngón tay và nội dung quyết định. <code>Modifier.padding(12.dp).clickable &#123; … &#125;</code> để lại vùng bấm đúng 24dp cho một icon 24dp (đổi thứ tự là xong — chương 5.2, mục 6). Truyền <code>Modifier.height(36.dp)</code> vào một <code>Button</code> là <strong>lấy lại</strong> mức tối thiểu mà Material vừa cho bạn. <code>Modifier.height(40.dp)</code> quanh một dòng <code>Text</code> trông ổn trên máy bạn rồi cắt mất chữ ở cỡ chữ lớn nhất. Cả ba <strong>không hiện ra trong <code>@Preview</code></strong>, và cũng không hiện ra trên điện thoại đang để thiết lập mặc định của bạn — chỉ hiện khi có ngón tay thật và thiết lập thật (mục 27).</p>
+	<p class="notice">
+		<strong>(c) "Đổi sang màu đỏ là đủ để báo lỗi."</strong> Màu <strong>không</strong> nằm trong phần mô tả mà dịch vụ hỗ trợ đọc, nên nếu tín hiệu duy nhất của "có lỗi" là viền đỏ thì với người dùng TalkBack thông tin đó <strong>không tồn tại</strong> — chưa kể người khó phân biệt màu và người đang để màn hình ở chế độ đơn sắc. Cách sửa rẻ nhất là thêm một dòng chữ nói thẳng vấn đề: chữ phục vụ cả người thấy màu <strong>và</strong> dịch vụ hỗ trợ, nên bạn không phải làm hai lần.</p>
+
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<p class="src">
 		<strong>Quan hệ với giáo trình gốc:</strong> <code>content/book/ch05-jetpack-compose.md</code> (941 dòng) chứa
