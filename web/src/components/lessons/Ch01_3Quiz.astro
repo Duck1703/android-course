@@ -10,7 +10,9 @@
 //   .../res/mipmap-anydpi/ic_launcher.xml (5 dòng), .../res/xml/data_extraction_rules.xml,
 //   08-networking/projects/final/app/src/main/AndroidManifest.xml (dòng 5 — uses-permission INTERNET),
 //   05|06|07-.../res/values/styles.xml (SplashTheme).
-// Quiz chấm bằng vanilla JavaScript phía client, không thêm framework.
+// 2026-09: chuyển sang harness chung web/src/scripts/quiz.ts — initQuiz sở hữu chấm MCQ, nhãn "Câu x/N",
+//   điểm #quiz-score và nút "Làm lại". Đồng thời mở rộng mỗi câu từ 3 lên 4 lựa chọn: thêm 1 lựa chọn sai-lạc
+//   thật bám nội dung bài cho mỗi câu, explain phản biện đủ. Không đổi câu hỏi, không đổi ý đáp án đúng.
 const FINAL = "aaf-materials/02-getting-started-with-android-studio/projects/final";
 
 // Manifest giả lập cho Bài tập 3 — KHÔNG phải file thật của aaf-materials, cố tình gài 3 lỗi:
@@ -43,8 +45,8 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 <section class="quiz" id="quiz">
 	<h2>Quiz nhanh</h2>
 	<p class="intro">
-		11 câu, chọn 1 đáp án cho mỗi câu rồi bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn
-		làm đúng, nên đọc hết.
+		11 câu, mỗi câu có 4 lựa chọn (a–d) — chọn 1 đáp án cho mỗi câu rồi bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau
+		khi chấm — kể cả câu bạn làm đúng, nên đọc hết.
 	</p>
 
 	<form id="quiz-form">
@@ -56,13 +58,18 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				<input type="radio" name="q1" value="c" /> App có những component nào, khả năng của chúng, cùng quyền (permission) và
 				tính năng phần cứng mà app cần
 			</label>
+			<label>
+				<input type="radio" name="q1" value="d" /> Màn hình nào người dùng xem nhiều nhất và nút nào được bấm nhiều nhất,
+				để hệ thống tối ưu app khi khởi chạy
+			</label>
 			<p class="explain" hidden>
 				Nguyên tắc gốc rất gọn: hệ thống phải biết app có component nào, nếu không nó sẽ không biết khởi chạy cái gì — và
 				manifest chính là danh sách đó, kèm mọi khả năng của từng component. Đáp án a nghe hợp lý vì điện thoại <em>có</em>
 				theo dõi thời lượng dùng app, nhưng đó là việc của hệ thống, không phải thứ bạn khai trong manifest. Đáp án b sai ở
 				chỗ manifest không chứa code: nó chỉ là bản <strong>khai báo</strong>, và hệ thống đọc nó <em>lúc cài app</em> — trước
-				khi một dòng code nào của bạn được chạy. Ngoài component, manifest còn khai <code>uses-permission</code> và tính năng
-				phần cứng (xem mục 6.3 của chương này).
+				khi một dòng code nào của bạn được chạy. Đáp án d nhầm manifest với số liệu đo lường khi chạy: manifest là khai báo
+				tĩnh bạn viết trước, không phải thống kê hành vi người dùng. Ngoài component, manifest còn khai
+				<code>uses-permission</code> và tính năng phần cứng (xem mục 6.3 của chương này).
 			</p>
 		</fieldset>
 
@@ -76,13 +83,15 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				chạy</strong>, đúng thời điểm bạn cố mở Activity đó
 			</label>
 			<label><input type="radio" name="q2" value="c" /> Android tự thêm giúp bạn vào manifest lúc build, nên không có lỗi nào</label>
+			<label><input type="radio" name="q2" value="d" /> App vẫn build, vẫn cài và vẫn chạy như thường — Activity khai trễ không ảnh hưởng gì cho tới lần build sau</label>
 			<p class="explain" hidden>
 				Đây là cạm bẫy tốn thời gian nhất của cả chương, nên đáng nhớ kỹ: lỗi manifest <strong>không</strong> bị bắt lúc build.
 				Trình biên dịch chỉ kiểm code Kotlin có hợp lệ hay không, mà class Activity của bạn thì hoàn toàn hợp lệ — nó chỉ chưa
 				được <em>khai báo</em> ở file XML bên cạnh. Đáp án a hấp dẫn vì đa số lỗi lập trình đều nổ lúc build, nhưng ở đây hai
 				việc đó tách rời nhau. Đáp án c sai vì manifest là chỗ <em>bạn</em> nói cho hệ thống biết ý định của mình, công cụ
-				không đoán hộ. Phản xạ đúng: app crash khi mở một màn hình mới → <strong>mở manifest kiểm trước</strong>, đừng đi tìm
-				lỗi trong code Kotlin hàng giờ.
+				không đoán hộ. Đáp án d nói nửa đầu đúng (build, cài đều qua) nhưng nửa sau sai tinh tế: app <em>không</em> "chạy như
+				thường" — cố mở Activity chưa khai là crash ngay, không đợi lần build nào cả. Phản xạ đúng: app crash khi mở một màn
+				hình mới → <strong>mở manifest kiểm trước</strong>, đừng đi tìm lỗi trong code Kotlin hàng giờ.
 			</p>
 		</fieldset>
 
@@ -99,14 +108,19 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				<input type="radio" name="q3" value="b" /> <code>android:exported="true"</code> + <code>android:label</code>
 			</label>
 			<label>
-				<input type="radio" name="q3" value="c" /> <code>android:name=".MainActivity"</code> + <code>android:theme</code>
+				<input type="radio" name="q3" value="c" /> Hai thuộc tính <code>android:name=".MainActivity"</code> và <code>android:theme="@style/Theme.KodecoChat"</code> khai trên thẻ activity
+			</label>
+			<label>
+				<input type="radio" name="q3" value="d" /> <code>android:allowBackup="true"</code> + <code>android:supportsRtl="true"</code>
 			</label>
 			<p class="explain" hidden>
 				<code>action.MAIN</code> nghĩa là "đây là điểm bắt đầu", còn <code>category.LAUNCHER</code> nghĩa là "hãy hiện app này
 				trong danh sách biểu tượng". Thiếu cặp này thì app <strong>vẫn build được</strong> nhưng không có icon nào để bấm mở —
 				một lỗi rất khó đoán. Đáp án b hấp dẫn vì <code>exported="true"</code> đúng là <em>điều kiện kèm theo</em> (Activity có
 				<code>intent-filter</code> buộc phải khai nó), nhưng bản thân nó không tạo ra biểu tượng. Đáp án c chỉ nói Activity
-				<em>tên gì</em> và <em>mặc giao diện nào</em>, không nói gì về việc mở app. Trong manifest thật của app Kodeco Chat, cặp
+				<em>tên gì</em> và <em>mặc giao diện nào</em>, không nói gì về việc mở app. Đáp án d là hai thuộc tính có thật trên
+				<code>&lt;application&gt;</code> nhưng nằm ngoài câu chuyện khởi chạy: một nói về sao lưu, một nói về bố cục phải-t
+				phải. Trong manifest thật của app Kodeco Chat, cặp
 				này nằm ở dòng 21 và 23 (xem mục 6.2 của chương này).
 			</p>
 		</fieldset>
@@ -120,6 +134,7 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				<code>true</code>
 			</label>
 			<label><input type="radio" name="q4" value="c" /> Activity này được phép truy cập internet và gửi dữ liệu ra ngoài</label>
+			<label><input type="radio" name="q4" value="d" /> Activity này được hệ thống ưu tiên khởi chạy trước các Activity khác khi app mở</label>
 			<p class="explain" hidden>
 				Đây là chỗ dễ hiểu sai nhất trong manifest, vì chữ "export" gợi ý chuyện đóng gói file (đáp án a) chứ không gợi ý
 				chuyện <em>ai được gọi ai</em>. Nghĩa thật rất hẹp: nó chỉ trả lời một câu — component ngoài app có được khởi chạy
@@ -127,7 +142,9 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				Android 12 (API 31), mọi component có <code>&lt;intent-filter&gt;</code> <strong>buộc phải khai rõ</strong>
 				<code>true</code> hay <code>false</code> — thiếu là <em>lỗi lúc build</em>. Lý do là bảo mật, nối thẳng với security
 				sandbox ở Chương 1.1, mục 3: trước đây giá trị mặc định làm nhiều app <em>vô tình</em> mở cửa cho app khác gọi vào màn
-				hình nội bộ của mình, nên hệ thống chuyển sang bắt bạn nói rõ ý định.
+				hình nội bộ của mình, nên hệ thống chuyển sang bắt bạn nói rõ ý định. Đáp án d nhầm <code>exported</code> với thứ
+				tự khởi chạy: app mở Activity nào trước do bạn khai <code>MAIN</code> + <code>LAUNCHER</code>, không phải do
+				<code>exported</code> — thuộc tính này chỉ trả lời câu "app ngoài có được gọi nó không".
 			</p>
 		</fieldset>
 
@@ -136,11 +153,14 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				5. Nhiều đoạn manifest mẫu trên mạng có <code>android:theme="@style/SplashTheme"</code>. Dán đúng đoạn đó vào project
 				Kodeco Chat của Chương 2 thì sao?
 			</legend>
-			<label><input type="radio" name="q5" value="a" /> Chạy bình thường, app có thêm màn hình chờ lúc mở</label>
+			<label><input type="radio" name="q5" value="a" /> Chạy bình thường, app chỉ có thêm một màn hình chờ hiện ra lúc người dùng mở app, và không cần khai báo hay cấu hình thêm bất cứ thứ gì nữa</label>
 			<label><input type="radio" name="q5" value="b" /> Build được nhưng app crash ngay lúc mở</label>
 			<label>
 				<input type="radio" name="q5" value="c" /> <strong>Không build được</strong> — project Chương 2 không có style nào tên
 				<code>SplashTheme</code>, nên tham chiếu resource không giải được
+			</label>
+			<label>
+				<input type="radio" name="q5" value="d" /> Android tự sinh sẵn style <code>SplashTheme</code> cho mọi project Android mới, nên dán tên style nào vào manifest hệ thống cũng đều hiểu và nhận
 			</label>
 			<p class="explain" hidden>
 				Đã tra khắp 11 project của khoá học: <code>SplashTheme</code> <strong>có thật</strong>, nhưng nằm ở dòng 46 của
@@ -150,6 +170,8 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				sánh nhất với câu 2: <strong>tham chiếu tới resource không tồn tại là lỗi lúc build</strong>, vì công cụ phải tra được
 				cái tên đó ngay khi biên dịch resource; còn thiếu khai báo component mới là lỗi lúc chạy. Cùng một file manifest, hai loại
 				lỗi ở hai thời điểm khác nhau — nhớ được cặp đối chiếu này là bạn đọc được phần lớn thông báo lỗi liên quan tới manifest.
+				Đáp án d sai vì resource không tự sinh theo tên bạn gõ: <code>SplashTheme</code> là một style người viết project
+				Chương 5–7 tự tạo, không phải style hệ thống — tên không có file khai ở <code>res/values/</code> thì không tồn tại.
 			</p>
 		</fieldset>
 
@@ -158,11 +180,18 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				6. Trong cả 11 project của khoá học, có bao nhiêu <strong>loại permission</strong> được khai báo trong manifest?
 			</legend>
 			<label>
-				<input type="radio" name="q6" value="a" /> Đúng <strong>một</strong> loại: <code>android.permission.INTERNET</code>,
-				xuất hiện lần đầu ở manifest project Chương 8 (dòng 5) rồi giữ nguyên qua Chương 9, 10, 11
+				<input type="radio" name="q6" value="a" /> Đúng <strong>một</strong> loại: <code>android.permission.INTERNET</code> —
+				xuất hiện lần đầu ở Chương 8 rồi giữ nguyên qua Chương 9, 10, 11
 			</label>
-			<label><input type="radio" name="q6" value="b" /> Mỗi chương một vài loại — camera, vị trí, bộ nhớ, danh bạ…</label>
+			<label>
+				<input type="radio" name="q6" value="b" /> Mỗi chương khai thêm một vài loại quyền mới — camera, vị trí, bộ nhớ, danh bạ,
+				micro… — tuỳ theo tính năng mới mà chương đó đem vào app
+			</label>
 			<label><input type="radio" name="q6" value="c" /> Không project nào khai permission nào</label>
+			<label>
+				<input type="radio" name="q6" value="d" /> Mỗi project tự khai cho mình một loại quyền khác hẳn với các project còn lại,
+				gộp cả khoá học lại là đủ mọi loại phổ biến
+			</label>
 			<p class="explain" hidden>
 				Lý do có đúng một loại nối thẳng với security sandbox ở Chương 1.1, mục 3: sandbox chặn cả chiều đi ra, nên app muốn
 				lên mạng tải dữ liệu công thức nấu ăn thì phải <em>xin</em> — bằng đúng một dòng
@@ -172,7 +201,8 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				tính năng phần cứng (<code>uses-feature</code>). Một chi tiết đáng biết: <code>INTERNET</code> thuộc loại
 				<em>normal permission</em> (quyền thường) — chỉ cần khai trong manifest là xong, hệ thống <strong>không</strong> hiện
 				hộp thoại hỏi người dùng. Những quyền có hộp thoại (camera, vị trí, micro) là loại <em>dangerous</em>, cần xin thêm
-				lúc app đang chạy.
+				lúc app đang chạy. Đáp án d là biến thể của b cùng sai một chỗ: toàn bộ 11 project là <em>một app duy nhất</em>
+				(Recipe Finder) đi qua các chương, nên nhu cầu quyền không đổi — đúng một loại từ đầu tới cuối.
 			</p>
 		</fieldset>
 
@@ -181,12 +211,15 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				7. Cùng một dòng <code>@string/app_name</code> trong manifest, mà app hiện tên tiếng Anh trên máy đặt tiếng Anh và
 				tên tiếng Việt trên máy đặt tiếng Việt. Cơ chế nào làm được điều đó?
 			</legend>
-			<label><input type="radio" name="q7" value="a" /> Android tự dịch chuỗi chữ sang ngôn ngữ của máy khi cài app</label>
-			<label><input type="radio" name="q7" value="b" /> Bạn phải viết một khối <code>if</code> kiểm ngôn ngữ máy rồi chọn chuỗi tương ứng</label>
+			<label><input type="radio" name="q7" value="a" /> Android tự động dịch toàn bộ chuỗi chữ có sẵn trong app sang ngôn ngữ mà chiếc máy của người dùng đang đặt, ngay tại thời điểm cài app vào máy đó</label>
+			<label><input type="radio" name="q7" value="b" /> Bạn phải tự viết một khối <code>if</code> kiểm tra xem ngôn ngữ mà chiếc máy đang đặt là gì, rồi mới chọn được chuỗi chữ hiển thị tương ứng cho từng trường hợp</label>
 			<label>
 				<input type="radio" name="q7" value="c" /> <strong>Hậu tố (qualifier) trên tên thư mục</strong> —
-				<code>res/values/strings.xml</code> là bản mặc định, <code>res/values-vi/strings.xml</code> là bản tiếng Việt, và hệ
-				thống tự khớp lúc chạy
+				<code>res/values/strings.xml</code> bản mặc định, <code>res/values-vi/</code> bản tiếng Việt, hệ thống tự khớp lúc chạy
+			</label>
+			<label>
+				<input type="radio" name="q7" value="d" /> Manifest bị hệ thống sao chép thành một bản riêng cho mỗi ngôn ngữ vào thời điểm
+				cài app, kèm theo chuỗi tên app đã được dịch sẵn trong từng bản như vậy
 			</label>
 			<p class="explain" hidden>
 				Cả hệ thống resource của Android xoay quanh đúng ý này: <strong>một cái tên trong code, nhiều bản trên đĩa</strong>.
@@ -195,7 +228,9 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				màn hình: <code>mipmap-hdpi/</code> đến <code>mipmap-xxxhdpi/</code> là cùng một tên
 				<code>ic_launcher</code> với năm bản ảnh khác nhau. Đáp án a sai vì Android <em>không</em> dịch hộ — bạn phải tự viết
 				bản dịch, hệ thống chỉ chọn giúp. Đáp án b chính là cách làm mà cơ chế này sinh ra để bạn <em>không</em> phải làm: nếu
-				phải viết <code>if</code> cho mỗi chuỗi thì thêm một ngôn ngữ là sửa khắp code. Ghi chú thực tế: project của khoá học
+				phải viết <code>if</code> cho mỗi chuỗi thì thêm một ngôn ngữ là sửa khắp code. Đáp án d sai vì manifest không được
+				sao chép theo ngôn ngữ — nó giữ nguyên <em>một</em> bản và chỉ trỏ tới <em>một</em> cái tên
+				<code>@string/app_name</code>; chuyện chọn bản nào là việc của hệ resource lúc chạy. Ghi chú thực tế: project của khoá học
 				<strong>không có</strong> thư mục <code>values-*</code> nào — app chỉ có một ngôn ngữ, nên bạn sẽ thấy cơ chế này ở
 				dạng lý thuyết trước khi thấy nó trong code.
 			</p>
@@ -207,10 +242,14 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 			</legend>
 			<label><input type="radio" name="q8" value="a" /> Một file ảnh <code>ic_launcher.png</code> duy nhất</label>
 			<label>
-				<input type="radio" name="q8" value="b" /> Một file XML <code>&lt;adaptive-icon&gt;</code> dài 5 dòng, bên trong lại
-				trỏ tiếp sang <code>@drawable/ic_launcher_background</code> và <code>@drawable/ic_launcher_foreground</code>
+				<input type="radio" name="q8" value="b" /> Một file XML <code>&lt;adaptive-icon&gt;</code> 5 dòng, bên trong lại trỏ
+				tiếp sang <code>@drawable/ic_launcher_background</code> và <code>ic_launcher_foreground</code>
 			</label>
 			<label><input type="radio" name="q8" value="c" /> Một hàm Kotlin vẽ icon bằng Compose</label>
+			<label>
+				<input type="radio" name="q8" value="d" /> Một thư mục <code>mipmap/</code> chứa sẵn icon cho mọi mức mật độ màn hình,
+				hệ thống đọc rồi gộp tất cả lại thành icon hoàn chỉnh lúc cài app
+			</label>
 			<p class="explain" hidden>
 				Đây là chuỗi tham chiếu <strong>3 tầng</strong>: manifest → <code>res/mipmap-anydpi/ic_launcher.xml</code> → hai file
 				vector trong <code>res/drawable/</code>. Nó là ví dụ cụ thể nhất trong project cho tính chất
@@ -218,7 +257,9 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				kế tiếp</em>: manifest không hề biết hình icon trông thế nào. Đáp án a là hình dung tự nhiên nhất và cũng từng đúng với
 				Android cũ, nhưng icon hiện đại phải chia lớp nền + lớp tiền cảnh để launcher tự cắt theo hình nó muốn (tròn, vuông
 				tròn góc, giọt nước) mà không làm méo hình chính. Đáp án c sai vì icon app do <em>launcher</em> vẽ, tức một app khác —
-				nó không chạy được code Compose của bạn, nó chỉ đọc resource.
+				nó không chạy được code Compose của bạn, nó chỉ đọc resource. Đáp án d thì dừng ở sai lệch nhẹ về cơ chế: các bản ảnh
+				theo mật độ không bị "gộp" vào nhau — hệ thống chỉ <em>chọn một</em> bản phù hợp với máy, còn bản adaptive-icon XML thì
+				trỏ tiếp xuống hai file drawable.
 			</p>
 		</fieldset>
 
@@ -233,13 +274,16 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 			</label>
 			<label><input type="radio" name="q9" value="b" /> Toàn bộ giao diện Compose đọc màu từ file này</label>
 			<label><input type="radio" name="q9" value="c" /> Chỉ file theme XML dùng, còn Compose thì không</label>
+			<label><input type="radio" name="q9" value="d" /> Chỉ khi app chạy trên máy Android cũ chưa hỗ trợ Compose thì hệ thống mới đọc file này</label>
 			<p class="explain" hidden>
 				<code>colors.xml</code> là <strong>code chết</strong>: Android Studio tự sinh nó khi tạo project mới, và nó là di sản
 				từ thời giao diện làm bằng XML. Màu thật của app nằm ở <code>ui/theme/Color.kt</code> (khai bằng Kotlin thuần, tên theo
 				hệ Material 3: <code>Purple80</code>, <code>Purple40</code>) và được <code>Theme.kt</code> dùng để dựng
 				<code>colorScheme</code>. Đáp án c là suy luận rất hợp lý — theme XML <em>thường</em> tham chiếu màu — nhưng mở
 				<code>themes.xml</code> ra thì nó rỗng: chỉ khai một style kế thừa
-				<code>android:Theme.Material.Light.NoActionBar</code>, không có <code>&lt;item&gt;</code> nào. Bài học rộng hơn:
+				<code>android:Theme.Material.Light.NoActionBar</code>, không có <code>&lt;item&gt;</code> nào. Đáp án d là quy tắc
+				không tồn tại: hệ resource không có chế độ "dự phòng XML khi máy cũ" — máy nào cũng đọc cùng một app, và file không
+				được tham chiếu thì không bao giờ được đọc, ở máy nào cũng vậy. Bài học rộng hơn:
 				<strong>file có mặt trong project không có nghĩa là file đang làm việc gì</strong>. Phản xạ đúng khi thấy một file XML
 				lạ là tìm xem nó có được tham chiếu ở đâu không, trước khi cố hiểu nó.
 			</p>
@@ -255,13 +299,19 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				<input type="radio" name="q10" value="c" /> Một khung rỗng — phần có nghĩa duy nhất là <strong>một dòng TODO trong
 				comment</strong>, nên file này chưa cấu hình gì và app dùng quy tắc sao lưu mặc định
 			</label>
+			<label>
+				<input type="radio" name="q10" value="d" /> Một file dùng cho quá trình build — nó khai thư viện cần tải và được
+				Gradle đọc trước khi tạo file cài đặt
+			</label>
 			<p class="explain" hidden>
 				Đáp án a hấp dẫn vì <em>tên file</em> hứa hẹn đúng như vậy, và manifest thì trỏ tới nó thật — nhưng mở ra mới thấy
 				<code>&lt;cloud-backup&gt;</code> chỉ bọc một comment ghi <code>TODO: Use ... to control what is backed up</code>. Đáp án
 				b sai vì đây là file XML nằm trong <code>res/</code>, không phải code. Cùng với <code>colors.xml</code> ở câu 9, file này
 				cho thấy ba loại file khác nhau mà Android Studio sinh sẵn, và đọc code thật là học cách phân biệt chúng: file đang hoạt
 				động thật (<code>mipmap-anydpi/ic_launcher.xml</code>), file là chỗ trống chờ bạn điền
-				(<code>data_extraction_rules.xml</code>), và file bị bỏ quên hoàn toàn (<code>colors.xml</code>).
+				(<code>data_extraction_rules.xml</code>), và file bị bỏ quên hoàn toàn (<code>colors.xml</code>). Đáp án d sai vì
+				file trong <code>res/xml/</code> là resource của app, không phải cấu hình build — chuyện khai thư viện là việc của
+				Gradle (bài 1.4), hoàn toàn một thế giới khác.
 			</p>
 		</fieldset>
 
@@ -276,13 +326,16 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 				nhưng là code mặc định do Android Studio sinh ra và được dọn dần ở các chương sau
 			</label>
 			<label><input type="radio" name="q11" value="c" /> Compose không đọc được resource chuỗi, nên trong Compose buộc phải viết cứng như vậy</label>
+			<label><input type="radio" name="q11" value="d" /> Chuỗi trong code chạy nhanh hơn chuỗi trong resource, nên app tối ưu phải viết cứng hết</label>
 			<p class="explain" hidden>
 				Mục 7.1 nói mọi chuỗi người dùng đọc được đều nên nằm trong <code>strings.xml</code> để app dịch được sang ngôn ngữ khác;
 				rồi chính project lại hardcode. Điều cần rút ra không phải "project sai" mà là <strong>biết nhận diện chỗ nào là chuẩn
 				nên theo, chỗ nào là code tạm</strong> — vì bạn sẽ đọc rất nhiều code có sẵn trong nghề này. Đáp án a nghe hợp lý nhưng
 				độ dài chuỗi không phải tiêu chí: chuỗi càng ngắn càng nhiều, và lúc muốn dịch app bạn phải đi sửa từng dòng code. Đáp
 				án c sai hẳn, và có bằng chứng ngay trong khoá học: từ Chương 3 code đã gọi
-				<code>stringResource(id = R.string.send_button)</code> đúng cách. Đối chiếu số chuỗi trong <code>strings.xml</code> theo
+				<code>stringResource(id = R.string.send_button)</code> đúng cách. Đáp án d là tối ưu hoá tưởng tượng: đọc resource là
+				một tra cứu nhỏ trong lúc vẽ giao diện, không phải nút thắt hiệu năng nào — cái giá thật của hardcode nằm ở lúc dịch
+				app, không phải lúc chạy. Đối chiếu số chuỗi trong <code>strings.xml</code> theo
 				chương thấy rõ quá trình dọn: Chương 2 có <strong>1</strong> chuỗi (<code>app_name</code>), Chương 3 lên
 				<strong>5</strong>, Chương 5–7 lên <strong>24–25</strong>. Còn <code>@string/app_name</code> ở manifest thì <em>đã</em>
 				làm đúng cách ngay từ đầu — cùng một project, hai cách làm.
@@ -290,6 +343,7 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 		</fieldset>
 
 		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
 		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
 	</form>
 
@@ -406,33 +460,10 @@ const brokenManifestCode = `<?xml version="1.0" encoding="utf-8"?>
 	</div>
 </section>
 <script>
-	const form = document.getElementById("quiz-form");
-	const scoreEl = document.getElementById("quiz-score");
+	// Chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
 
-	form?.addEventListener("submit", (e) => {
-		e.preventDefault();
-		const fieldsets = form.querySelectorAll("fieldset");
-		let correct = 0;
-
-		fieldsets.forEach((fs) => {
-			const answer = fs.getAttribute("data-answer");
-			const name = fs.querySelector("input")?.getAttribute("name");
-			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
-			const explain = fs.querySelector(".explain");
-			explain?.removeAttribute("hidden");
-
-			fs.classList.remove("correct", "incorrect");
-			if (picked && picked.value === answer) {
-				correct++;
-				fs.classList.add("correct");
-			} else {
-				fs.classList.add("incorrect");
-			}
-		});
-
-		if (scoreEl) {
-			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
-			scoreEl.removeAttribute("hidden");
-		}
-	});
+	initQuiz();
 </script>

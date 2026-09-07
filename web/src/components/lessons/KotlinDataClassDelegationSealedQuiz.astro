@@ -1,0 +1,230 @@
+---
+// ============================================================================
+// F2 Quiz — Kotlin đủ để học Compose, Phần 2 (class · data class · generics · by · sealed)
+//
+// Định danh theo docs/TARGET_REGISTRY_v5.md:
+//   lessonId: F2 · slug: kotlin-data-class-delegation-sealed · stage: foundation
+//   Quiz component: KotlinDataClassDelegationSealedQuiz.astro (ghép qua lessons.ts).
+//
+// 12 câu bám nội dung KotlinDataClassDelegationSealed.astro (bản thảo đã chấp nhận
+// docs/drafts/f2-kotlin-foundation.md): class + tham số val → thuộc tính · data class mua
+// thêm gì · so sánh theo giá trị · copy (bản gốc không đổi, tham số giữ nguyên, copy nông) ·
+// destructuring theo thứ tự · generic List<T> + T là placeholder · by ≠ gán/≠ bí danh ·
+// tách Kotlin/Compose trong by remember · thiếu import getValue · sealed (họ khép kín,
+// object, số instance). Cân đối vị trí đáp án a/b/c/d = 2/3/4/3 · length-rank 1..4 = 3/3/3/3.
+//
+// Harness: initQuiz từ web/src/scripts/quiz.ts sở hữu chấm bài, "Câu x/N", #quiz-score
+// (role="status" + aria-live) và nút #quiz-retry — script inline chỉ gọi init.
+// ============================================================================
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		12 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn
+		làm đúng, nên đọc hết.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="a">
+			<legend>1. Trong khai báo <code>class Message(val text: String, val isMine: Boolean)</code>, chữ <code>val</code> đặt trong tham số khởi tạo có tác dụng gì?</legend>
+			<label><input type="radio" name="q1" value="a" /> Biến mỗi tham số thành một thuộc tính (property) đọc được trên object tạo ra — nhờ vậy <code>message.text</code> đọc được giá trị đã truyền</label>
+			<label><input type="radio" name="q1" value="b" /> Đánh dấu tham số là tuỳ chọn — không truyền thì Kotlin tự điền chuỗi rỗng cho <code>String</code> và <code>false</code> cho <code>Boolean</code></label>
+			<label><input type="radio" name="q1" value="c" /> Chỉ đặt tên để lời gọi hàm được dễ đọc — giá trị truyền vào được dùng một lần rồi bỏ đi, không được lưu lại thành thuộc tính trên object nào cả</label>
+			<label><input type="radio" name="q1" value="d" /> Khai báo một biến cục bộ sống bên trong constructor — sau khi object tạo xong, biến đó biến mất và không còn đọc được từ bất kỳ chỗ nào khác</label>
+			<p class="explain" hidden>
+				Đáp án a đúng: <code>val</code> trong tham số khởi tạo vừa nhận dữ liệu lúc tạo object, vừa khai một
+				<strong>thuộc tính</strong> đọc được trên object — cú pháp gọi <code>Message(...)</code> sau đó dùng được
+				<code>message.text</code>, <code>message.isMine</code>. Đáp án b sai vì đây là tham số khởi tạo <em>bắt buộc</em> —
+				thiếu <code>isMine</code> là không compile (Kotlin không tự điền giá trị). Đáp án c sai vì giá trị được lưu thành
+				thuộc tính của object, không phải chỉ tồn tại lúc gọi. Đáp án d sai vì phạm vi của nó không phải biến cục bộ:
+				mọi chỗ nắm được object đều đọc được thuộc tính đó.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. Thêm chữ <code>data</code> trước <code>class</code> mua được những gì so với class thường?</legend>
+			<label><input type="radio" name="q2" value="a" /> Cho phép class được kế thừa và ghi đè hành vi — còn class thường thì không làm được điều đó</label>
+			<label><input type="radio" name="q2" value="b" /> Tự sinh getter/setter cho mọi thuộc tính — còn class thường thì phải tự viết từng cái một bằng tay</label>
+			<label><input type="radio" name="q2" value="c" /> So sánh <code>==</code> theo giá trị, <code>toString</code> đọc được, hàm <code>copy(...)</code> tạo bản mới, và tách giá trị bằng destructuring</label>
+			<label><input type="radio" name="q2" value="d" /> Gắn class vào một bảng database — đúng theo thiết kế của Kotlin, nên chỉ dùng được khi class mô tả dữ liệu lưu trong app</label>
+			<p class="explain" hidden>
+				Đáp án c liệt kê đúng ba món <code>data</code> làm thêm: so sánh <strong>theo giá trị</strong> (thuộc tính-cờ-thuộc-tính),
+				<code>toString()</code> đọc được (in <code>Message(text=Xin chào, isMine=true)</code> thay vì mã băm — cứu nhiều giờ
+				debug qua Logcat), <code>copy(...)</code> và destructuring. Đáp án a nói về kế thừa — không liên quan tới chữ
+				<code>data</code> và không nằm trong bài này. Đáp án b sai vì class Kotlin nào cũng truy cập thuộc tính trực tiếp
+				như vậy, không phải món của <code>data</code>. Đáp án d sai vì <code>data class</code> là công cụ Kotlin tổng quát
+				cho <em>giá trị dữ liệu</em> — dùng cho UI model, state, network model, database model như nhau, không gắn với
+				bất kỳ tầng kiến trúc nào.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>3. <code>val a = Message("Hello", true)</code> rồi <code>val b = Message("Hello", true)</code> — hai lần tạo riêng biệt. <code>a == b</code> cho kết quả gì với <code>data class</code>?</legend>
+			<label><input type="radio" name="q3" value="a" /> <code>false</code> — vì <code>==</code> mặc định so sự nhận diện, và hai object tạo từ hai lần gọi hàm tạo luôn là hai object khác nhau trong bộ nhớ</label>
+			<label><input type="radio" name="q3" value="b" /> <code>true</code> — data class so theo nội dung: mọi thuộc tính khớp thì bằng</label>
+			<label><input type="radio" name="q3" value="c" /> Không compile — muốn so sánh hai object data class thì phải gọi <code>a.equals(b)</code> thủ công, toán tử <code>==</code> không dùng được</label>
+			<label><input type="radio" name="q3" value="d" /> <code>true</code> hay <code>false</code> tuỳ runtime — hai lần tạo có thể rơi vào cùng một ô nhớ hoặc không, kết quả không dự đoán được</label>
+			<p class="explain" hidden>
+				Đáp án b đúng: <code>data class</code> tự sinh so sánh <strong>thuộc tính-cờ-thuộc-tính</strong> — <code>text</code> bằng
+				<code>text</code>, <code>isMine</code> bằng <code>isMine</code>, nên hai bản tạo hai lần cùng nội dung coi như bằng nhau. Đây là
+				hành vi "giá trị" mà tên <code>data</code> hàm ý. Đáp án a mô tả đúng hành vi của <em>class thường</em> — nhưng với
+				data class thì kết quả là <code>true</code>. Đáp án c sai vì <code>==</code> với data class chính là so theo giá trị; không cần
+				gọi <code>equals</code> thủ công. Đáp án d sai vì kết quả được quyết định lúc biên dịch bằng nội dung thuộc tính,
+				không phụ thuộc chuyện hai object nằm ở đâu trong bộ nhớ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>4. Với <code>val original = Message(text = "Hello", isMine = false)</code>, sau <code>val updated = original.copy(isMine = true)</code>, khẳng định nào đúng?</legend>
+			<label><input type="radio" name="q4" value="a" /> <code>original</code> bị đổi tại chỗ thành <code>isMine = true</code> — vì tên <code>copy</code> thực chất là cách gọi khác của phép sửa thuộc tính trên object hiện có</label>
+			<label><input type="radio" name="q4" value="b" /> <code>updated</code> là tên thứ hai trỏ tới cùng object <code>original</code> — mọi thay đổi trên một cái đều nhìn thấy được qua cái kia</label>
+			<label><input type="radio" name="q4" value="c" /> <code>updated</code> chỉ chứa <code>isMine = true</code> — các thuộc tính không được truyền vào copy sẽ bị bỏ rơi, không tồn tại trên object mới</label>
+			<label><input type="radio" name="q4" value="d" /> <code>original</code> nguyên vẹn với <code>isMine = false</code>; <code>updated</code> là object mới <code>Message(text=Hello, isMine=true)</code></label>
+			<p class="explain" hidden>
+				Đáp án d đúng cả ba điểm: <code>copy</code> không đụng bản cũ, tạo ra một giá trị MỚI, và tham số không truyền
+				được lấy từ <code>original</code> (<code>text</code> giữ nguyên <code>"Hello"</code>). Đáp án a sai — nhầm cốt lõi: <code>copy</code> luôn
+				tạo giá trị mới, bản gốc nguyên vẹn; quy tắc đọc là sau <code>val x = y.copy(...)</code>, <code>y</code> y như cũ. Đáp án b
+				nhầm uỷ quyền/bí danh với copy — hai object khác nhau, không phải hai tên một chỗ nhớ. Đáp án c sai vì
+				tham số không truyền <em>giữ nguyên giá trị cũ</em>, không hề bị mất.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>5. Giới hạn "copy là nông (shallow)" nghĩa là gì?</legend>
+			<label><input type="radio" name="q5" value="a" /> <code>copy</code> chỉ dùng được cho class có ít hơn bốn thuộc tính — vượt ngưỡng đó phải viết hàm tạo mới</label>
+			<label><input type="radio" name="q5" value="b" /> <code>copy</code> chép giá trị các thuộc tính; object bên trong mà thuộc tính trỏ tới không được nhân bản</label>
+			<label><input type="radio" name="q5" value="c" /> <code>copy</code> chỉ nhân bản tầng ngoài — còn mọi data class con lồng bên trong thì vẫn tự động được copy sâu theo cả cây dữ liệu</label>
+			<label><input type="radio" name="q5" value="d" /> <code>copy</code> tạo bản mới rồi xoá bản gốc — sau khi gọi, chỉ còn lại object vừa tạo, object cũ bị thu hồi bộ nhớ ngay lập tức</label>
+			<p class="explain" hidden>
+				Đáp án b đúng: <code>copy</code> tạo object mới với các giá trị thuộc tính được <em>chép qua</em>; object bên trong mà thuộc
+				tính trỏ tới không được nhân bản. Với data class toàn <code>val</code> chứa String/Int/List chỉ-đọc như đa số code
+				Android, điều này gần như không bao giờ cắn bạn — chỉ đừng tưởng <code>copy</code> "nhân bản sâu cả cây dữ liệu".
+				Đáp án c nói ngược ý "nông": cây dữ liệu lồng nhau <strong>không</strong> tự được copy sâu. Đáp án a sai vì nông/sâu không
+				liên quan tới số thuộc tính. Đáp án d sai vì bản gốc không bao giờ bị xoá — đúng nội dung cạm bẫy số 1.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>6. <code>val (text, isMine) = message</code> — dữ liệu được gán vào hai biến theo quy tắc nào?</legend>
+			<label><input type="radio" name="q6" value="a" /> Theo tên biến bên trái — Kotlin tìm thuộc tính cùng tên trong class để gán cho khớp, giống hệt cách truyền tham số đặt tên</label>
+			<label><input type="radio" name="q6" value="b" /> Theo bảng chữ cái tên thuộc tính — thuộc tính có tên xếp trước trong bảng chữ cái được gán vào biến đầu tiên</label>
+			<label><input type="radio" name="q6" value="c" /> Theo thứ tự khai báo thuộc tính — vị trí đầu nhận thuộc tính đầu; lệch thứ tự là nhận nhầm dữ liệu mà không có cảnh báo nào</label>
+			<label><input type="radio" name="q6" value="d" /> Theo kiểu dữ liệu — thuộc tính kiểu String luôn gán vào biến đầu, kiểu Boolean gán vào biến sau</label>
+			<p class="explain" hidden>
+				Đáp án c đúng: destructuring đặt tên <strong>theo thứ tự thuộc tính trong khai báo class</strong>, không khớp theo tên —
+				và trình biên dịch không thể cảnh báo vì tên bên trái do bạn chọn. Vì vậy nó tiện ở giá trị 2–3 thuộc tính;
+				từ ~4 trường trở lên, dùng truy cập thuộc tính trực tiếp thì rõ hơn (cạm bẫy số 7). Đáp án a sai — nhầm với
+				tham số đặt tên của <code>copy</code>/<code>Message(...)</code>; destructuring không đọc tên. Đáp án b sai vì thứ tự khai báo,
+				không phải thứ tự chữ cái. Đáp án d sai vì kiểu dữ liệu không quyết định vị trí — hai thuộc tính cùng kiểu
+				vẫn được tách theo vị trí khai báo.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>7. Biến khai <code>val messages: List&lt;Message&gt;</code> — cách đọc nào đúng, và vì sao <code>messages[0].text</code> compile được?</legend>
+			<label><input type="radio" name="q7" value="a" /> Một List mà phần tử bên trong là Message; compiler biết vậy nên <code>messages[0].text</code> compile được</label>
+			<label><input type="radio" name="q7" value="b" /> Một cú pháp List đặc biệt riêng cho Message — khác với List thường nên phải học lại cách dùng từ đầu</label>
+			<label><input type="radio" name="q7" value="c" /> Một Message chứa nhiều List con — dấu ngoặc nhọn cho biết Message này được chia thành bao nhiêu phần</label>
+			<label><input type="radio" name="q7" value="d" /> Một List chứa các chuỗi tên thuộc tính của Message — truy xuất một phần tử thì trả về <code>String</code></label>
+			<p class="explain" hidden>
+				Đáp án a đúng theo mô hình <strong><code>Hộp&lt;Loại bên trong&gt;</code></strong>: List là hộp, <code>Message</code> là loại bên trong —
+				nhờ khai báo rõ, compiler biết <code>messages[0]</code> có kiểu <code>Message</code> và do đó có thuộc tính <code>text</code>; viết
+				<code>numbers[0].text</code> với <code>List&lt;Int&gt;</code> thì báo lỗi ngay lúc biên dịch. Đáp án b sai vì <code>List&lt;Message&gt;</code>
+				không phải "cú pháp List đặc biệt" — vẫn là List, chỉ khai rõ phần tử là gì. Đáp án c đảo ngược hộp với nội
+				dung. Đáp án d sai vì phần tử là object <code>Message</code> thật, không phải tên thuộc tính dạng chuỗi.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>8. Trong chữ ký <code>List&lt;T&gt;</code>, chữ <code>T</code> là gì — và khi gặp nó cần làm gì?</legend>
+			<label><input type="radio" name="q8" value="a" /> Một kiểu thật tên T đã được khai báo sẵn trong thư viện chuẩn — trước khi đọc tiếp, cần tìm ra file nào định nghĩa nó</label>
+			<label><input type="radio" name="q8" value="b" /> Viết tắt cố định của kiểu Throwable — mọi List&lt;T&gt; đều là danh sách các lỗi bắt được lúc chạy app</label>
+			<label><input type="radio" name="q8" value="c" /> Một giá trị mặc định được tự điền khi danh sách rỗng — nhờ vậy code không cần kiểm tra null nữa</label>
+			<label><input type="radio" name="q8" value="d" /> Một placeholder (tham số kiểu) — đừng tìm định nghĩa; hãy hỏi <em>ai cung cấp T</em>: <code>List&lt;Message&gt;</code> tức là chỗ dùng đã cung cấp <code>T = Message</code></label>
+			<p class="explain" hidden>
+				Đáp án d đúng: <code>T</code> là <strong>placeholder</strong> — "kiểu cụ thể bên trong sẽ được cung cấp ở chỗ khác". Kỹ năng đọc đúng
+				là hỏi <em>ai cung cấp T</em>, và câu trả lời thường nằm ngay cách dùng. Đáp án a sai vì <code>T</code> không phải kiểu
+				thật có định nghĩa đâu đó — tìm định nghĩa của nó là đi lạc hướng. Đáp án b sai vì <code>T</code> chỉ là tên quy ước
+				cho tham số kiểu, không gắn với <code>Throwable</code> nào cả. Đáp án c sai vì <code>T</code> là chuyện <em>kiểu</em> lúc biên dịch,
+				không phải giá trị điền lúc chạy.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>9. <code>val count by state</code> — phát biểu nào đúng nhất về chữ <code>by</code>?</legend>
+			<label><input type="radio" name="q9" value="a" /> Là cách viết gọn tương đương máy móc của <code>val count = state.value</code> — hai dòng này đọc và ghi giá trị giống hệt nhau trong mọi tình huống</label>
+			<label><input type="radio" name="q9" value="b" /> Mỗi lần đọc <code>count</code> là một lời hỏi được chuyển tiếp cho delegate <code>state</code>; delegate kiểm soát hành vi đọc/ghi</label>
+			<label><input type="radio" name="q9" value="c" /> Gán giá trị hiện tại của <code>state</code> vào <code>count</code> đúng một lần rồi hai bên đi riêng — <code>state</code> đổi sau đó thì <code>count</code> giữ nguyên giá trị cũ</label>
+			<label><input type="radio" name="q9" value="d" /> Là từ khoá của Compose — chỉ tồn tại trong các file UI viết bằng Compose, không phải một cơ chế của Kotlin</label>
+			<p class="explain" hidden>
+				Đáp án b đúng: <code>state</code> là <strong>delegate</strong> — mỗi phép đọc/ghi được chuyển tiếp cho nó, và nó có quyền làm gì đó
+				trước/trong/sau khi trả giá trị (tính lại, ghi nhớ, phát thông báo). Đó là chỗ Compose cài "UI biết state
+				đổi". Đáp án a sai vì hai dòng KHÔNG tương đương máy móc: <code>val count = state.value</code> là đọc một lần rồi giữ
+				giá trị tĩnh. Đáp án c mô tả chính hành vi "gán một lần" — tức là dịch <code>by</code> thành <code>=</code>, sai bản chất uỷ
+				quyền. Đáp án d sai vì <code>by</code> là Kotlin thuần — gặp ở <code>by remember</code>, <code>by preferencesDataStore</code>, <code>by
+				viewModels()</code>: cùng một cơ chế, khác delegate.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>10. Trong <code>var name by remember &#123; mutableStateOf("") &#125;</code>, mảnh nào thuộc Kotlin, mảnh nào thuộc Compose?</legend>
+			<label><input type="radio" name="q10" value="a" /> Cả <code>remember</code> lẫn <code>by</code> đều là của Compose — Kotlin không đóng góp cơ chế nào trong dòng này cả</label>
+			<label><input type="radio" name="q10" value="b" /> <code>var</code> là của Compose vì cần cho UI vẽ lại; <code>mutableStateOf</code> là của Kotlin vì là một hàm thuần Kotlin</label>
+			<label><input type="radio" name="q10" value="c" /> <code>var</code> + <code>by</code> + lambda là Kotlin; <code>remember</code> + <code>mutableStateOf</code> là API Compose — hành vi "thông báo vẽ lại" nằm ở object state</label>
+			<label><input type="radio" name="q10" value="d" /> Cả bốn mảnh đều là Kotlin thuần — Compose chỉ là tên gọi của một phong cách viết code, không thêm cơ chế ngôn ngữ nào vào dòng này</label>
+			<p class="explain" hidden>
+				Đáp án c tách đúng hai tầng: <strong>Compose cung cấp object state có hành vi đặc biệt; Kotlin <code>by</code> là cơ chế giúp
+				code đọc/ghi nó như một biến thường</strong> — <code>var</code> khai biến ghi được, <code>by</code> uỷ quyền, lambda trả về object state. Đáp án a
+				sai vì <code>by</code> là Kotlin thuần (mục 7). Đáp án b đảo ngược cả hai mảnh: <code>var</code> là từ khoá Kotlin, còn
+				<code>mutableStateOf</code> là API Compose. Đáp án d sai vì <code>remember</code>/<code>mutableStateOf</code> là API của Compose —
+				chưa học ở đây, sẽ học ở Stage Compose.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>11. Dòng <code>var name by remember &#123; mutableStateOf("") &#125;</code> báo lỗi nếu thiếu <code>import androidx.compose.runtime.getValue</code> (và <code>setValue</code> khi có ghi). Vì sao?</legend>
+			<label><input type="radio" name="q11" value="a" /> Vì uỷ quyền cần bộ hàm hỗ trợ do bên delegate cung cấp — bộ đó nằm trong import; thiếu là thiếu đường chuyển tiếp</label>
+			<label><input type="radio" name="q11" value="b" /> Vì <code>getValue</code> là hàm khởi tạo của <code>mutableStateOf</code> — không import thì object state không bao giờ được tạo ra</label>
+			<label><input type="radio" name="q11" value="c" /> Vì import đó khai báo biến <code>name</code> cho compiler — thiếu là compiler không biết sự tồn tại của biến này</label>
+			<label><input type="radio" name="q11" value="d" /> Vì Android Studio cần import đó để bật gợi ý code — thiếu chỉ làm mất autocomplete, không ảnh hưởng gì tới biên dịch</label>
+			<p class="explain" hidden>
+				Đáp án a đúng ở mức cần nhớ: <strong>uỷ quyền cần bên uỷ quyền hỗ trợ, hỗ trợ đó nằm trong import</strong> — Compose
+				cung cấp khả năng uỷ quyền qua một bộ hàm hỗ trợ của Kotlin; thiếu import là thiếu bộ chuyển tiếp đó. Đáp
+				án b sai vì <code>mutableStateOf</code> tự tạo object state bình thường — chuyện object state được tạo hay không
+				không phụ thuộc <code>getValue</code>; cái thiếu là cơ chế chuyển tiếp đọc/ghi. Đáp án c sai vì biến <code>name</code> được khai
+				báo ngay trên dòng, không cần import nào khai hộ. Đáp án d sai vì đây là lỗi biên dịch thật, không phải
+				vấn đề tiện ích editor.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>12. Với <code>sealed interface UiState</code> (biến thể <code>object Loading</code>, <code>data class Success</code>, <code>data class Error</code>), khẳng định nào đúng?</legend>
+			<label><input type="radio" name="q12" value="a" /> Trong cả app chỉ được tồn tại đúng một object <code>Success</code> — vì sealed giới hạn số instance của mỗi biến thể trong họ</label>
+			<label><input type="radio" name="q12" value="b" /> Có thể thêm biến thể <code>class Timeout : UiState</code> từ một file khác — sealed chỉ là cái tên đặt cho họ kiểu, không chặn chỗ khai báo nào</label>
+			<label><input type="radio" name="q12" value="c" /> Muốn dùng <code>Loading</code> phải gọi <code>Loading()</code> để tạo một bản mới — mọi biến thể của họ đều cần một lời gọi tạo object</label>
+			<label><input type="radio" name="q12" value="d" /> Họ biến thể khép kín, khai báo trong cùng nơi Kotlin kiểm soát; <code>Loading</code> dùng thẳng tên; <code>Success</code> tạo được nhiều giá trị khác nhau</label>
+			<p class="explain" hidden>
+				Đáp án d gom đúng ba ý: <strong>sealed</strong> giới hạn <em>họ biến thể được khai báo ở đâu</em> (cùng file/module — ranh
+				giới là chủ ý của người viết); <strong><code>object</code></strong> khai một bản duy nhất tồn tại sẵn, dùng thẳng tên không cần
+				<code>Loading()</code>; và sealed không giới hạn số <em>instance</em> — nhiều giá trị <code>Success</code> với dữ liệu khác nhau là
+				hợp lệ. Đáp án a sai vì "chỉ một object tồn tại" là nhầm với <code>object</code>, không phải ý nghĩa của sealed. Đáp
+				án b sai vì đúng chỗ sealed chặn: không thêm biến thể được từ nơi khác. Đáp án c sai vì <code>Loading</code> là
+				<code>object</code> — bản duy nhất có sẵn, gọi <code>Loading()</code> là thừa.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+
+<script>
+	// IMP-001: chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>

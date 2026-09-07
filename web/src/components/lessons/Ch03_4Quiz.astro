@@ -55,20 +55,26 @@
 //   05/final/theme/Color.kt — bảng màu Blue/DarkBlue/Yellow/Red/Grey dòng 39–72.
 //   So starter với final của Chương 3: 3 file trong ui/theme/ (Color.kt, Theme.kt, Type.kt) chỉ khác nhau
 //     ở cách gói dòng trong khối comment giấy phép, thân code y hệt — hàm theme KHÔNG bị xoá.
+// 2026-09 — chuyển sang harness chung web/src/scripts/quiz.ts + chuẩn hoá 4 lựa chọn: mỗi câu 3 lựa chọn
+//   có thêm MỘT distractor thứ tư là hiểu lầm thật của người mới:
+//   câu 1 (đoán "style rỗng phải bị bỏ qua") · câu 2 (ghép theme vào cơ chế ưu tiên XML thấp hơn) ·
+//   câu 3 (quyết giữa ba vai của từng hệ) · câu 4 (ghép "không ai gọi" với "không còn trong project") ·
+//   câu 5 (tưởng nền cũng lấy theo phần con) · câu 6 (tưởng khoảng trống được lấp bằng XML) ·
+//   câu 7 (tưởng state thoát đĩa nhờ process sống lại) · câu 8 (quy "mất lời gọi theme" cho đúng quy tắc
+//   mới) · câu 9 (tưởng khối sinh lại khi bật compose) · câu 10 (gom resource/manifest vào Chương 4).
+//   Explain mỗi câu được mở rộng phản biện luôn lựa chọn mới. Distractor mới viết dài hơn đáp án để giảm
+//   tín hiệu "đáp án đúng là lựa chọn ngắn nhất" (trước đây 10/10).
 // Đáp án rải đều: a 4 câu (2, 6, 8, 10) · b 3 câu (1, 4, 9) · c 3 câu (3, 5, 7).
-// Ghi nhận (không sửa): 10/10 câu có đáp án đúng là lựa chọn NGẮN NHẤT — đúng theo kỹ thuật "distractor dài,
-//   đáp án ngắn" của chuẩn quiz, nhưng đây là tín hiệu đoán được MẠNH NHẤT trong cả 4 quiz của Chương 3
-//   (3.1 = 5/11 · 3.2 = 7/15 · 3.3 = 8/11 · 3.4 = 10/10). Nếu về sau rà lại chất lượng quiz cả khoá thì đây là
-//   file nên nới dài vài đáp án đúng TRƯỚC TIÊN — trước cả Ch03_3Quiz.astro.
-// Script gồm 2 phần: chấm MCQ + kiểm thứ tự của bài tập 1 (danh sách #send-order).
+// Script gồm 2 phần: chấm MCQ (harness chung) + kiểm thứ tự của bài tập 1 (danh sách #send-order).
 ---
 
 <section class="quiz" id="quiz">
 	<h2>Quiz nhanh</h2>
 	<p class="intro">
-		10 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau khi chấm — kể cả ở câu bạn
-		làm đúng, nên đọc hết: vế nói <em>vì sao hai lựa chọn còn lại sai</em> mới là chỗ dạy thêm. Nhiều câu ở đây hỏi về
-		những chỗ code làm khác với điều bạn tưởng, nên chọn sai ở lần đầu là bình thường và đáng giá hơn chọn đúng do đoán.
+		10 câu, mỗi câu có 4 lựa chọn (a–d) — chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau
+		khi chấm — kể cả ở câu bạn làm đúng, nên đọc hết: vế nói <em>vì sao các lựa chọn còn lại sai</em> mới là chỗ dạy thêm.
+		Nhiều câu ở đây hỏi về những chỗ code làm khác với điều bạn tưởng, nên chọn sai ở lần đầu là bình thường và đáng giá
+		hơn chọn đúng do đoán.
 	</p>
 	<form id="quiz-form">
 		<fieldset data-answer="b">
@@ -78,15 +84,19 @@
 			</legend>
 			<label>
 				<input type="radio" name="q1" value="a" /> File còn thiếu: một style phải có ít nhất một thẻ
-				<code>&lt;item&gt;</code> mới được hệ thống áp dụng, nên trên thực tế theme này bị bỏ qua lúc chạy
+				<code>&lt;item&gt;</code> mới có hiệu lực, nên theme này bị bỏ qua lúc chạy
 			</label>
 			<label>
-				<input type="radio" name="q1" value="b" /> Theme này không ghi đè thuộc tính nào của theme cha — nó chỉ là một
-				cái tên riêng đặt cho theme của hệ điều hành
+				<input type="radio" name="q1" value="b" /> Theme này không ghi đè thuộc tính nào của theme cha — nó chỉ là một cái
+				tên riêng được đặt cho theme của hệ điều hành
 			</label>
 			<label>
 				<input type="radio" name="q1" value="c" /> Các thuộc tính thật của theme nằm ở <code>res/values/colors.xml</code>;
 				<code>themes.xml</code> chỉ giữ phần tên, đó là cách Android tách màu ra khỏi theme
+			</label>
+			<label>
+				<input type="radio" name="q1" value="d" /> Các thuộc tính thật nằm gián tiếp trong các file mà theme cha tham
+				chiếu tới, nên không cần lặp lại: đổi màu trong <code>colors.xml</code> của hệ điều hành là theme này tự đổi theo
 			</label>
 			<p class="explain" hidden>
 				Thẻ <code>&lt;item&gt;</code> là cách duy nhất để một style <em>ghi đè</em> một thuộc tính của cha (ví dụ
@@ -97,7 +107,9 @@
 				bằng chứng nhìn thấy được là app mở ra nền sáng và không có thanh tiêu đề mặc định ở đỉnh. Đáp án c lẫn hai loại
 				resource: <code>colors.xml</code> chỉ khai <em>giá trị</em> màu (mỗi dòng một mã màu) để nơi khác tham chiếu tới,
 				nó không có cách nào gắn màu đó vào một theme; muốn gắn thì vẫn phải viết một thẻ <code>&lt;item&gt;</code> bên
-				trong style.
+				trong style. Đáp án d dừng ở nửa đúng ("thừa hưởng từ cha") rồi suy sai hệ quả: giá trị của theme cha là của
+				<em>nền tảng</em> — app không sửa được file <code>colors.xml</code> của hệ điều hành, và nếu muốn app mang màu riêng
+				thì cách duy nhất vẫn là thêm thẻ <code>&lt;item&gt;</code> vào style; theme này chọn cách không thêm gì cả.
 			</p>
 		</fieldset>
 		<fieldset data-answer="a">
@@ -107,8 +119,9 @@
 				Quy tắc ở đây là gì?
 			</legend>
 			<label>
-				<input type="radio" name="q2" value="a" /> Khai ở <code>&lt;application&gt;</code> là mặc định cho mọi Activity;
-				khai ở một <code>&lt;activity&gt;</code> thì ghi đè mặc định đó cho riêng Activity ấy
+				<input type="radio" name="q2" value="a" /> Khai ở <code>&lt;application&gt;</code> là giá trị mặc định áp cho mọi
+				Activity của app; khai ở riêng một <code>&lt;activity&gt;</code> thì ghi đè giá trị mặc định đó cho riêng Activity
+				được khai — mà không đụng tới các Activity khác
 			</label>
 			<label>
 				<input type="radio" name="q2" value="b" /> Hai dòng cộng dồn với nhau: hệ thống trộn hai theme lại, thuộc tính chỉ
@@ -120,6 +133,11 @@
 				<code>&lt;application&gt;</code> áp theme cho cửa sổ, còn dòng trên <code>&lt;activity&gt;</code> áp theme cho
 				phần nội dung vẽ bên trong cửa sổ đó
 			</label>
+			<label>
+				<input type="radio" name="q2" value="d" /> Cấp hẹp hơn luôn thắng: dòng trên <code>&lt;activity&gt;</code> chỉ có
+				hiệu lực khi nó trỏ tới một style khác với style cấp application — nếu hai giá trị trùng nhau thì dòng dưới bị
+				hệ thống bỏ hẳn, coi như chưa từng khai
+			</label>
 			<p class="explain" hidden>
 				Đây là quan hệ <em>mặc định và ghi đè</em>, giống hệt cách một thuộc tính khai ở phạm vi rộng bị thuộc tính khai ở
 				phạm vi hẹp lấn lượt. Ở app này hai giá trị giống nhau nên dòng 52 không làm thay đổi gì cả — nó chỉ có ích khi bạn
@@ -128,7 +146,9 @@
 				<code>&lt;application&gt;</code> cho Activity đó, chứ không hoà vào nhau; việc kế thừa thuộc tính chỉ diễn ra qua
 				<code>parent</code> bên trong định nghĩa của chính style. Đáp án c gán cho hai dòng này vai trò của
 				<em>hai hệ thống theme</em> ở câu 3 — cả hai dòng đều là theme XML của nền tảng, và bỏ dòng 52 đi thì Activity vẫn
-				chạy đúng theme vì nó nhận mặc định từ dòng 46.
+				chạy đúng theme vì nó nhận mặc định từ dòng 46. Đáp án d thêm một điều kiện không có: quan hệ mặc định–ghi đè chạy
+				<em>luôn</em> dù hai giá trị giống hay khác nhau — dòng ở <code>&lt;activity&gt;</code> vẫn được đọc và áp cho riêng
+				Activity ấy, chỉ là khi trùng giá trị thì áp xong cũng chẳng thấy khác gì.
 			</p>
 		</fieldset>
 		<fieldset data-answer="c">
@@ -146,7 +166,12 @@
 			</label>
 			<label>
 				<input type="radio" name="q3" value="c" /> Khác ở <em>ai áp dụng</em> và <em>áp cho cái gì</em>: hệ điều hành áp bản
-				XML cho cửa sổ trước khi code bạn chạy; code của bạn áp bản Kotlin cho các thành phần Material 3 vẽ bên trong
+				XML cho cửa sổ của app trước khi code bạn chạy; còn bản Kotlin do code của bạn áp, cho các thành phần Material 3
+				vẽ bên trong cửa sổ đó
+			</label>
+			<label>
+				<input type="radio" name="q3" value="d" /> Khác ở phạm vi quản lý màu: bản XML lo toàn bộ màu của app kể cả màu
+				vẽ trong Compose, còn bản Kotlin chỉ có vai đổi bảng màu khi chế độ tối bật — ngoài ra không có quyền gì hơn
 			</label>
 			<p class="explain" hidden>
 				Cách nhớ gọn nhất: theme XML là "khung cửa sổ" (nền cửa sổ, màu thanh trạng thái, có thanh tiêu đề hay không, hình
@@ -156,8 +181,11 @@
 				phòng cho máy cũ — app Compose chạy trên máy mới nhất vẫn cần nó, vì cửa sổ phải có hình dáng ngay từ mili-giây
 				đầu, trước khi một dòng Kotlin nào chạy. Đáp án b bịa ra một bước sinh code không tồn tại: <code>Theme.kt</code> là
 				file người viết, nằm trong <code>src/</code> và sửa được tay; thứ được sinh ra lúc build là lớp <code>R</code>, và
-				nó chỉ chứa hằng số ID. Bằng chứng nữa cho thấy hai hệ độc lập: ở Chương 3 bản XML có hiệu lực còn bản Kotlin không
-				ai gọi — chuyện của câu 4.
+				nó chỉ chứa hằng số ID. Đáp án d sai cả hai vế: hai hệ quản lý hai <em>vùng</em> khác nhau chứ không phải một cái
+				gồm cả của cái kia (màu trong Compose do theme Compose cấp — câu 5 chứng minh bằng chuyện nền lệch bảng màu khi
+				đảo thứ tự lồng); và đổi bảng màu sáng/tối chỉ là <em>một</em> việc theme Compose làm — nó còn cấp bộ chữ
+				(<code>Typography</code>) và hình dáng thành phần (<code>Shapes</code>). Bằng chứng nữa cho thấy hai hệ độc lập: ở
+				Chương 3 bản XML có hiệu lực còn bản Kotlin không ai gọi — chuyện của câu 4.
 			</p>
 		</fieldset>
 		<fieldset data-answer="b">
@@ -170,11 +198,16 @@
 				bạn phải viết lại hàm đó từ đầu
 			</label>
 			<label>
-				<input type="radio" name="q4" value="b" /> Vẫn còn nguyên trong file, nhưng không còn dòng nào gọi tới nó
+				<input type="radio" name="q4" value="b" /> Vẫn còn nguyên trong file của nó — và cả ba file trong thư mục
+				<code>ui/theme/</code> đều không bị đụng tới — nhưng không còn một dòng code nào trong project gọi tới nó nữa
 			</label>
 			<label>
 				<input type="radio" name="q4" value="c" /> Vẫn được áp dụng bình thường, vì dòng <code>android:theme</code> trong
 				manifest trỏ tới <code>Theme.KodecoChat</code> và hệ thống dùng chính hàm này để dựng theme cho Activity
+			</label>
+			<label>
+				<input type="radio" name="q4" value="d" /> Vẫn còn trong project nhưng không còn ai gọi, nên build tool dọn nó đi
+				lúc đóng gói: app đã cài lên máy không chứa mã của hàm này nữa
 			</label>
 			<p class="explain" hidden>
 				Bước "thay toàn bộ nội dung file" chỉ chạm vào <code>MainActivity.kt</code>, nên hàm theme còn nguyên — nó nằm ở
@@ -186,7 +219,10 @@
 				chỗ đọc "thay toàn bộ file" thành "xoá cả thư mục theme"; đối chiếu ba file trong <code>ui/theme/</code> giữa hai
 				bản cho thấy chúng giống nhau. Đáp án c là hiểu sai đáng nói nhất, và nó chính là câu 3 nhìn từ hướng khác:
 				<code>@style/Theme.KodecoChat</code> là một style XML, hệ điều hành không có cách nào gọi một hàm Kotlin từ đó.
-				Hệ quả nhìn thấy được: bật chế độ tối trên máy rồi mở app — nền vẫn sáng, chữ vẫn tối, nút vẫn màu tím mặc định
+				Đáp án d nửa sau đúng nửa trước: "không còn ai gọi" đúng, nhưng build tool không dọn "code chết" đi — hàm vẫn được
+				biên dịch và nằm trong app; nếu đúng như đáp án mô tả thì bật chế độ tối sẽ không có gì lạ, trong khi thực tế app
+				vẫn bỏ quên cả bộ màu tím trong <code>ui/theme/Color.kt</code> mà người dùng không bao giờ thấy. Hệ quả nhìn thấy
+				được: bật chế độ tối trên máy rồi mở app — nền vẫn sáng, chữ vẫn tối, nút vẫn màu tím mặc định
 				của Material 3 chứ không phải bộ màu trong <code>ui/theme/Color.kt</code>.
 			</p>
 		</fieldset>
@@ -204,8 +240,12 @@
 				<code>setContent</code> nên bảng màu của theme có hiệu lực cho mọi thành phần trong khối đó, bất kể thứ tự lồng
 			</label>
 			<label>
-				<input type="radio" name="q5" value="c" /> <code>Surface</code> vẽ nền bằng bảng màu <em>mặc định</em> thay vì bảng
-				màu của project, vì lúc nó chạy thì theme còn chưa được cấp
+				<input type="radio" name="q5" value="c" /> <code>Surface</code> vẽ nền bằng bảng màu <em>mặc định</em> của thư viện
+				thay vì bảng màu của project — vì lúc <code>Surface</code> chạy, theme còn chưa được cấp cho nó
+			</label>
+			<label>
+				<input type="radio" name="q5" value="d" /> Nền vẫn vẽ đúng màu của project vì <code>Surface</code> lấy màu thông
+				qua tham chiếu <code>MaterialTheme</code> toàn cục, chỉ phần con nằm bên trong <code>Surface</code> là mất theme
 			</label>
 			<p class="explain" hidden>
 				<code>KodecoChatTheme</code> không vẽ gì cả — việc của nó là <em>cấp</em> một bảng màu và bộ chữ cho phần cây giao
@@ -215,7 +255,9 @@
 				sáng. Đáp án b bỏ qua chi tiết cốt lõi rằng phạm vi hiệu lực của theme là <em>cây con bên trong nó</em>, không phải
 				cả khối <code>setContent</code>. Đáp án a nhầm sang một luật cú pháp không có: <code>KodecoChatTheme</code> là
 				Composable bình thường, lồng ở đâu cũng biên dịch được — và đó chính là chỗ khó chịu, vì bạn không nhận được cảnh
-				báo nào, chỉ thấy màu sai bằng mắt.
+				báo nào, chỉ thấy màu sai bằng mắt. Đáp án d sai ở giả định "tham chiếu toàn cục": cách duy nhất một thành phần nhận
+				bảng màu là nó nằm <em>bên trong</em> lời cấp — <code>MaterialTheme</code> không có biến toàn cục nào ngoài phạm vi
+				cấp, và "phần con mất theme" cũng ngược: con nằm bên trong <code>KodecoChatTheme</code> mới là bên có theme.
 			</p>
 		</fieldset>
 		<fieldset data-answer="a">
@@ -224,8 +266,8 @@
 				<code>KodecoChatTheme</code> trong project của từng chương.
 			</legend>
 			<label>
-				<input type="radio" name="q6" value="a" /> Chương 4 vẫn y nguyên tình trạng; Chương 5 mới có lời gọi theme, nhưng
-				là một hàm khác, khai ở một file khác
+				<input type="radio" name="q6" value="a" /> Chương 4 vẫn y nguyên tình trạng đó — vẫn chỉ đúng một kết quả là dòng
+				khai báo hàm; tới Chương 5 mới có lời gọi theme, nhưng là một hàm khác tên, khai ở một file khác
 			</label>
 			<label>
 				<input type="radio" name="q6" value="b" /> Chỉ Chương 3 thiếu lời gọi. Từ Chương 4, project quay lại gọi đúng hàm
@@ -234,6 +276,11 @@
 			<label>
 				<input type="radio" name="q6" value="c" /> Khoảng trống kéo dài tới hết khoá học: không project của chương nào bọc
 				giao diện trong một theme Compose, nên mọi app trong khoá học đều dùng bộ màu tím mặc định của Material 3
+			</label>
+			<label>
+				<input type="radio" name="q6" value="d" /> Khoảng trống được lấp từ Chương 4, nhưng bằng phía XML: project quay
+				lại khai mọi thuộc tính cần thiết trong <code>res/values/themes.xml</code>, nhờ vậy không cần lời gọi hàm nào trong
+				code Kotlin
 			</label>
 			<p class="explain" hidden>
 				Kết quả tìm chuỗi: Chương 4 cũng cho <strong>đúng 1</strong> kết quả — vẫn là dòng khai báo hàm, vẫn không ai gọi.
@@ -244,7 +291,9 @@
 				đúng về tinh thần "được lấp" nhưng sai cả mốc chương lẫn cách lấp, và sai theo hướng tai hại: nếu tin nó thì bạn sẽ
 				đi tìm chỗ sửa <code>ui/theme/</code> ở các chương sau và không bao giờ tìm ra. Đáp án c thì bi quan quá mức —
 				khoảng trống chỉ trải qua hai chương, và cách nó được lấp (bằng một hệ thống khác hẳn) đáng biết hơn bản thân
-				chuyện nó được lấp.
+				chuyện nó được lấp. Đáp án d lẫn hai hệ theme ở câu 3: theme XML chỉ tô khung cửa sổ — nền, thanh trạng thái, hình
+				dáng mở app; màu chữ và màu nút bên trong giao diện Compose không thể lấy từ <code>themes.xml</code> được, nên "lấp
+				bằng XML" không phải là một lựa chọn.
 			</p>
 		</fieldset>
 		<fieldset data-answer="c">
@@ -261,8 +310,12 @@
 				danh sách gần đây thì hệ thống xoá vùng nhớ đó nên chữ mất
 			</label>
 			<label>
-				<input type="radio" name="q7" value="c" /> Mất — chuỗi việc khi bấm Send không ghi gì xuống ổ đĩa, chữ chỉ tồn tại
-				trong bộ nhớ của tiến trình đang chạy
+				<input type="radio" name="q7" value="c" /> Mất — toàn bộ chuỗi việc khi bấm Send không ghi gì xuống ổ đĩa hết, câu
+				chữ chỉ tồn tại trong bộ nhớ của tiến trình đang chạy app
+			</label>
+			<label>
+				<input type="radio" name="q7" value="d" /> Còn — Android thường không thật sự tắt app khi bạn gạt khỏi danh sách
+				gần đây, tiến trình vẫn được giữ trong bộ nhớ dự phòng, nên lần mở sau còn nguyên mọi biến
 			</label>
 			<p class="explain" hidden>
 				Chuỗi bảy bước khi bấm Send dừng lại ở đúng ba chỗ, và đây là chỗ thứ nhất: nó <em>không</em> chạm tới ổ đĩa. Hai
@@ -272,7 +325,11 @@
 				<code>remember</code> một việc nó không làm: nó giữ giá trị qua các lần vẽ lại <em>trong bộ nhớ</em>, không ghi file
 				nào — muốn ghi thật thì cần DataStore hoặc database, và đó là hai chương riêng. Đáp án b lẫn hai tầng: cách người
 				dùng tắt app có ảnh hưởng tới việc tiến trình bị huỷ lúc nào, nhưng ở đây không có gì được ghi xuống đĩa ngay từ đầu
-				nên tắt kiểu nào cũng mất như nhau.
+				nên tắt kiểu nào cũng mất như nhau. Đáp án d đánh cược một chi tiết không đáng tin: hệ thống <em>có thể</em> giữ
+				tiến trình một lúc sau khi gạt app, nhưng đó là quyết định của bộ nhớ máy, không phải cam kết — nhả bộ nhớ là tiến
+				trình chết, và dù tiến trình có sống thì mở app bằng icon cũng không "hồi sinh" màn hình cũ với biến cũ: app mở lại
+				từ đầu, state khởi tạo lại từ giá trị ban đầu. Muốn dữ liệu sống qua lần mở lại thì bắt buộc phải ghi xuống nơi
+				bền hơn bộ nhớ.
 			</p>
 		</fieldset>
 		<fieldset data-answer="a">
@@ -281,8 +338,8 @@
 				Chuyện <em>lời gọi theme Compose bị mất</em> thuộc loại nào?
 			</legend>
 			<label>
-				<input type="radio" name="q8" value="a" /> Hệ quả không ai nói ra: bước làm đúng, app vẫn build và chạy, nhưng nó
-				âm thầm làm mất một thứ khác
+				<input type="radio" name="q8" value="a" /> Hệ quả không ai nói ra: bước làm vẫn đúng, app vẫn build và chạy bình
+				thường, nhưng nó âm thầm làm mất đi một thứ khác mà không có báo động nào
 			</label>
 			<label>
 				<input type="radio" name="q8" value="b" /> Nền tảng đã đổi theo thời gian: cách bọc theme Compose kiểu cũ nay đã có
@@ -291,6 +348,10 @@
 			<label>
 				<input type="radio" name="q8" value="c" /> Câu chữ sai thẳng về kỹ thuật: hướng dẫn gọi sai tên hàm theme, làm theo
 				thì không biên dịch được và bạn buộc phải sửa mới chạy được app
+			</label>
+			<label>
+				<input type="radio" name="q8" value="d" /> Quy tắc đã siết lại: các bản Compose mới bỏ yêu cầu bọc theme bằng tay,
+				nên không bọc là cách làm đúng chuẩn hôm nay, không còn là một thiếu sót nữa
 			</label>
 			<p class="explain" hidden>
 				Ba loại lệch và cách xử lý mỗi loại khác nhau hẳn, nên phân loại đúng là biết phải làm gì. Loại "hệ quả không ai nói
@@ -301,7 +362,9 @@
 				thuộc loại "nền tảng đã đổi" và liên quan tới Compose là cách khai compiler ở câu 9. Đáp án c mô tả loại nghiêm
 				trọng nhất — loại có ví dụ thật là chuyện gọi thẻ xin quyền là <code>&lt;permission&gt;</code> thay vì
 				<code>&lt;uses-permission&gt;</code> — nhưng ở đây tên hàm không sai chỗ nào, và điểm đáng chú ý của chuyện theme
-				đúng là nó <em>không</em> gây lỗi biên dịch.
+				đúng là nó <em>không</em> gây lỗi biên dịch. Đáp án d phát minh ra một quy tắc không tồn tại: không có bản Compose
+				nào "bỏ yêu cầu bọc theme" cả — bọc nội dung trong hàm theme vẫn là bước chuẩn của mọi project Compose; mất lời gọi
+				hôm nay vẫn là mất, chỉ là một mất mát không có báo động.
 			</p>
 		</fieldset>
 		<fieldset data-answer="b">
@@ -316,13 +379,17 @@
 				ảnh hưởng gì
 			</label>
 			<label>
-				<input type="radio" name="q9" value="b" /> Vì từ Kotlin 2.0, compiler Compose đi kèm chính bộ Kotlin — không còn số
-				phiên bản riêng để khai, thay vào đó bạn thêm một plugin
+				<input type="radio" name="q9" value="b" /> Vì từ Kotlin 2.0, compiler Compose được chuyển vào đi kèm luôn trong chính
+				bộ Kotlin — không còn số phiên bản riêng để khai nữa, thay vào đó bạn thêm một plugin vào file build
 			</label>
 			<label>
 				<input type="radio" name="q9" value="c" /> Vì project mới tạo chưa bật Compose; ngay khi bạn thêm
 				<code>buildFeatures &#123; compose = true &#125;</code> thì Android Studio sinh lại khối
 				<code>composeOptions</code> kèm con số khớp với bản Kotlin đang dùng
+			</label>
+			<label>
+				<input type="radio" name="q9" value="d" /> Vì <code>kotlinCompilerExtensionVersion</code> đã chuyển hẳn vào file
+				<code>gradle.properties</code> — cùng nơi khai phiên bản Gradle, để IDE đọc được trước cả khi build chạy
 			</label>
 			<p class="explain" hidden>
 				Compose cần một <em>compiler plugin</em> riêng để biến hàm <code>@Composable</code> thành code vẽ giao diện. Thời
@@ -337,7 +404,9 @@
 				bản build rơi về con số mặc định của Android Gradle Plugin, và nếu con số ấy không khớp bản Kotlin đang dùng, build
 				dừng kèm thông báo đòi đúng version Kotlin. Đáp án c đảo ngược chiều thời gian: hai khai báo đó không đi cùng nhau —
 				project hôm nay vẫn có <code>buildFeatures &#123; compose = true &#125;</code> nhưng vẫn không có
-				<code>composeOptions</code>.
+				<code>composeOptions</code>. Đáp án d ghép với một file có vai khác: <code>gradle.properties</code> cấu hình
+				<em>tiến trình Gradle</em> (bộ nhớ, bật AndroidX), không phải phiên bản các công cụ biên dịch — và con số
+				compiler khớp Kotlin là chuyện của plugin trong file build, không phải thuộc tính hệ thống.
 			</p>
 		</fieldset>
 		<fieldset data-answer="a">
@@ -346,8 +415,9 @@
 				tồn tại. Bốn thứ đó là nhóm nào?
 			</legend>
 			<label>
-				<input type="radio" name="q10" value="a" /> <code>buildFeatures &#123; compose = true &#125;</code> ·
-				<code>namespace</code> · <code>minSdk</code> · <code>compose-bom</code>
+				<input type="radio" name="q10" value="a" /> <code>buildFeatures &#123; compose = true &#125;</code> (bật compiler
+				Compose) · <code>namespace</code> · ba con số SDK (<code>compileSdk</code>/<code>minSdk</code>/<code>targetSdk</code>)
+				· <code>compose-bom</code>
 			</label>
 			<label>
 				<input type="radio" name="q10" value="b" /> <code>res/values/strings.xml</code> · lớp <code>R</code> ·
@@ -359,6 +429,11 @@
 				<code>&lt;uses-permission&gt;</code> · <code>android:theme</code> — vì tờ khai là thứ bản build gộp lại rồi đóng vào
 				file APK, nên nó thuộc phần công cụ build chứ không thuộc phần code
 			</label>
+			<label>
+				<input type="radio" name="q10" value="d" /> <code>setValue</code> · <code>stringResource</code> ·
+				<code>LocalContext</code> · <code>MaterialTheme</code> — bốn thứ này xuất hiện trong import của
+				<code>MainActivity.kt</code> mà Chương 3 chưa kịp giải thích, nên cũng phải đợi Chương 4
+			</label>
 			<p class="explain" hidden>
 				Bốn chỗ đó xuất hiện đúng ở bốn thời điểm khác nhau của Chương 3: <code>buildFeatures &#123; compose = true &#125;</code>
 				(dòng 73–75) bật compiler Compose, <code>namespace = "com.kodeco.chat"</code> (dòng 41) thay cho thuộc tính
@@ -367,13 +442,16 @@
 				trong hai file <code>build.gradle.kts</code> — đúng thứ Chương 4 mở ra, cùng với
 				<code>libs.versions.toml</code> và cơ chế tải thư viện từ mạng. Đáp án b bắt đúng một sự thật rồi suy rộng quá xa:
 				lớp <code>R</code> thật là do bản build sinh ra, nhưng bốn thứ nó liệt kê đều là file trong <code>res/</code>, không
-				phải dòng nào trong file Gradle — và chúng đã được học xong ở Chương 3.2 và 3.3. Đáp án c mắc cùng kiểu lỗi ở phía
+				phải dòng nào trong file Gradle — và chúng đã được học xong ở Chương 3.2a, 3.2b và 3.3. Đáp án c mắc cùng kiểu lỗi ở phía
 				manifest: bản build đúng là có gộp manifest của app với manifest của các thư viện, nhưng bốn thứ liệt kê là thẻ và
-				thuộc tính XML bên trong manifest, và chương này đã giải thích cả bốn — chúng không còn là câu hỏi bỏ ngỏ nào.
+				thuộc tính XML bên trong manifest, và chương này đã giải thích cả bốn — chúng không còn là câu hỏi bỏ ngỏ nào. Đáp án
+				d sai ở cả vị trí lẫn phận sự: bốn tên liệt kê nằm trong <em>code Kotlin</em> chứ không phải file Gradle, và chúng
+				đã có chủ ở các chương 3.1–3.4 — không thứ nào trong đó là nội dung Gradle.
 			</p>
 		</fieldset>
 
 		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
 		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
 	</form>
 	<h2>Bài tập</h2>
@@ -687,36 +765,15 @@ import com.kodeco.chat.ui.theme.KodecoChatTheme</code></pre>
 	</div>
 </section>
 <script>
-	const form = document.getElementById("quiz-form");
-	const scoreEl = document.getElementById("quiz-score");
+	// Chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách (2026-09).
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
 
-	form?.addEventListener("submit", (e) => {
-		e.preventDefault();
-		const fieldsets = form.querySelectorAll("fieldset");
-		let correct = 0;
+	initQuiz();
 
-		fieldsets.forEach((fs) => {
-			const answer = fs.getAttribute("data-answer");
-			const name = fs.querySelector("input")?.getAttribute("name");
-			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
-			const explain = fs.querySelector(".explain");
-			explain?.removeAttribute("hidden");
-
-			fs.classList.remove("correct", "incorrect");
-			if (picked && picked.value === answer) {
-				correct++;
-				fs.classList.add("correct");
-			} else {
-				fs.classList.add("incorrect");
-			}
-		});
-
-		if (scoreEl) {
-			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
-			scoreEl.removeAttribute("hidden");
-		}
-	});
-
+	// Bài sắp thứ tự nằm ngoài #quiz-form và harness không chấm phần này — giữ code chấm riêng
+	// trong cùng <script>, chạy sau initQuiz(), hành vi giữ nguyên như trước.
 	const checkOrderBtn = document.getElementById("check-order");
 	const orderResultEl = document.getElementById("order-result");
 
@@ -726,7 +783,7 @@ import com.kodeco.chat.ui.theme.KodecoChatTheme</code></pre>
 
 		items.forEach((li) => {
 			const correctValue = li.getAttribute("data-correct");
-			const select = li.querySelector("select");
+			const select = li.querySelector<HTMLSelectElement>("select");
 			const picked = select?.value;
 
 			li.classList.remove("correct", "incorrect");

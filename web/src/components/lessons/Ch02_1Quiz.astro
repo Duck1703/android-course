@@ -24,6 +24,11 @@
 //   đã quét cả aaf-materials/: 19 file app/build.gradle.kts đều ghi minSdk = 30, 0 file build.gradle
 //     kiểu Groovy
 // Mẩu Groovy ở câu 7 do khoá học tự viết để đối chiếu cú pháp — bộ project mẫu không có file Groovy.
+// Harness migration 2026-09: script chấm inline thay bằng harness chung web/src/scripts/quiz.ts (initQuiz
+//   + nút "Làm lại"); mỗi câu mở rộng 3 → 4 lựa chọn bằng một distractor d là nhầm lẫn thật của người mới
+//   (không đổi câu hỏi, đáp án đúng hay các lựa chọn cũ), phần giải thích phản biện luôn lựa chọn d mới.
+//   Vị trí đáp án đúng được bố trí lại khi thêm cột d: a = câu 1, 4, 7 · b = câu 2, 5, 8 · c = câu 3, 6, 9
+//   · d = câu 10; các đoạn giải thích kéo theo được cập nhật đúng theo vị trí mới.
 // Không có bài sắp thứ tự nên script chỉ chấm phần MCQ.
 
 const groovyBlock = `android {
@@ -41,9 +46,9 @@ const groovyBlock = `android {
 <section class="quiz" id="quiz">
 	<h2>Quiz nhanh</h2>
 	<p class="intro">
-		9 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau khi chấm — kể cả ở câu bạn
-		làm đúng, nên đọc hết: phần đáng giá nhất của mỗi câu là đoạn nói vì sao hai đáp án còn lại nghe rất hợp lý mà vẫn
-		sai, vì đó đúng là những nhầm lẫn khiến người mới ngồi sửa một thứ vốn không hỏng.
+		9 câu, mỗi câu 4 lựa chọn (a–d) — chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau
+		khi chấm — kể cả ở câu bạn làm đúng, nên đọc hết: phần đáng giá nhất của mỗi câu là đoạn nói vì sao các đáp án còn
+		lại nghe rất hợp lý mà vẫn sai, vì đó đúng là những nhầm lẫn khiến người mới ngồi sửa một thứ vốn không hỏng.
 	</p>
 
 	<form id="quiz-form">
@@ -53,27 +58,34 @@ const groovyBlock = `android {
 				thích trực tiếp điều nào dưới đây?
 			</legend>
 			<label>
-				<input type="radio" name="q1" value="a" /> Vì sao mỗi bản Android Studio chỉ build được app cho đúng một phiên
-				bản Android, nên nâng <code>compileSdk</code> là phải đổi cả IDE
+				<input type="radio" name="q1" value="a" /> Vì sao phím tắt, cách tìm file và cách đổi tên biến hàng loạt của nó
+				giống hệt IntelliJ IDEA hay PyCharm — thói quen dùng một IDE mang sang IDE kia gần như nguyên vẹn
 			</label>
 			<label>
-				<input type="radio" name="q1" value="b" /> Vì sao phím tắt, cách tìm file và cách đổi tên biến hàng loạt của nó
-				giống hệt IntelliJ IDEA hay PyCharm
+				<input type="radio" name="q1" value="b" /> Vì sao mỗi bản Android Studio chỉ build được app cho đúng một phiên
+				bản Android, nên nâng <code>compileSdk</code> là phải đổi cả IDE
 			</label>
 			<label>
 				<input type="radio" name="q1" value="c" /> Vì sao nó chỉ chạy nhanh trên chip Intel: nền IntelliJ vốn viết cho
 				x86 nên trên máy Mac chip Apple silicon nó luôn phải đi qua một lớp dịch
 			</label>
+			<label>
+				<input type="radio" name="q1" value="d" /> Vì sao cài Android Studio là có sẵn bộ Android SDK mới nhất: hai thứ
+				đó được phát hành cùng nhau như một gói
+			</label>
 			<p class="explain" hidden>
 				Cả ba thứ đều là thắc mắc thật của người mới cài, nhưng chỉ một thứ được <em>chính</em> câu định nghĩa đó trả
-				lời: ba IDE dùng chung một nền tảng, nên thói quen dùng một cái mang sang cái kia gần như nguyên vẹn. Câu định
+				lời: ba IDE dùng chung một nền tảng, nên thói quen dùng một cái mang sang cái kia gần như nguyên vẹn (đáp án a).
+				Câu định
 				nghĩa này còn giải thích thêm vì sao Android Studio nặng và nhiều menu — nó là editor cộng trình build cộng
 				trình gỡ lỗi cộng trình quản lý máy ảo cộng trình quản lý SDK cộng trình xem log gộp trong một cửa sổ, chứ không
 				phải một editor. Phần "Android" (Layout Inspector, Device Manager, Compose Preview, Logcat) là lớp Google phủ
-				lên trên, ruột bên dưới vẫn là IntelliJ. Đáp án a sai hẳn về bản chất: Google đã tách phiên bản Android Studio
+				lên trên, ruột bên dưới vẫn là IntelliJ. Đáp án b sai hẳn về bản chất: Google đã tách phiên bản Android Studio
 				khỏi phiên bản Android, một Studio build được app cho mọi bản SDK. Đáp án c trộn hai chuyện: chọn đúng loại chip
 				khi tải là việc thật và quan trọng, nhưng trang tải có sẵn bản riêng cho Apple silicon — tải đúng bản thì không
-				có lớp dịch nào, và chuyện này không liên quan tới nền IntelliJ.
+				có lớp dịch nào, và chuyện này không liên quan tới nền IntelliJ. Đáp án d là chuyện của <em>hai đường cập nhật
+				độc lập</em> — SDK không kèm theo IDE (quiz Chương 2.3, câu 5 kiểm riêng điểm này), không phải hệ quả của nền
+				IntelliJ.
 			</p>
 		</fieldset>
 
@@ -90,8 +102,12 @@ const groovyBlock = `android {
 				vào <code>app/build.gradle.kts</code> nếu muốn dùng Compose
 			</label>
 			<label>
-				<input type="radio" name="q2" value="c" /> Project không có <em>tính năng</em> nào, nhưng có sẵn cả bộ khung — và
-				khung đó <strong>đã dùng Jetpack Compose</strong>
+				<input type="radio" name="q2" value="c" /> Project không có <em>tính năng</em> nào, nhưng có sẵn cả bộ khung, và
+				khung đó <strong>đã dùng Jetpack Compose</strong>, không phải layout XML kiểu cũ
+			</label>
+			<label>
+				<input type="radio" name="q2" value="d" /> Project chỉ có một file <code>MainActivity.kt</code> duy nhất; mọi file
+				khác — resource, manifest, Gradle — do Android Studio tự sinh sau khi bạn bấm Run App lần đầu
 			</label>
 			<p class="explain" hidden>
 				"Empty" nói về tính năng, không nói về số file. Bộ khung sinh ra gồm code Kotlin, file khai báo app, file tài
@@ -103,6 +119,8 @@ const groovyBlock = `android {
 				<em>Empty Views Activity</em>, còn cái tên <em>Empty Activity</em> đã được chuyển sang bản Compose. Vì vậy cách
 				kiểm chắc chắn nhất không dựa vào tên mà là đọc phụ đề — có chữ "with Jetpack Compose" là template bạn cần. Đáp
 				án a thì ngược hẳn công dụng của template: template tồn tại đúng để bạn <em>không</em> phải tạo tay từng file.
+				Đáp án d cũng vậy — cả bộ khung đã có sẵn ngay khi bấm Finish, không có gì "tự sinh sau khi chạy"; Run App chỉ
+				build và cài app lên thiết bị thôi.
 			</p>
 		</fieldset>
 
@@ -123,6 +141,10 @@ const groovyBlock = `android {
 				<input type="radio" name="q3" value="c" /> <strong>Beta</strong> — vì đây là nhánh Google khuyến nghị cho người
 				học, còn Stable chỉ dành cho app đã phát hành lên Google Play
 			</label>
+			<label>
+				<input type="radio" name="q3" value="d" /> Nhánh nào cũng được — ba nhánh chỉ khác nhau về màu icon và tên gọi
+				đặt theo thứ tự chữ cái, còn tính năng và độ ổn định thì như nhau
+			</label>
 			<p class="explain" hidden>
 				Ba nhánh xếp trên đúng một trục: <strong>mới hơn thì kém ổn định hơn</strong>. Stable là bản mặc định trên trang
 				tải; Beta là bản thử của phiên bản kế tiếp, phải vào mục <em>preview</em> mới thấy; Canary là bản mới nhất và
@@ -130,9 +152,9 @@ const groovyBlock = `android {
 				"lỗi do IDE" trong vài phút, người mới thì mất cả buổi tối sửa code vốn không sai. Đáp án b mô tả một hạn chế
 				không tồn tại — Canary là bản Android Studio đầy đủ, làm được mọi việc bản Stable làm, nó chỉ hay hỏng hơn; lời
 				khuyên chính thức cho Canary gọn một câu là "dùng theo phán đoán của bạn", và với người mới nghĩa là đừng. Đáp
-				án c đảo ngược vai của Stable. Còn những cái tên như "Hedgehog" hay "Ladybug" chỉ là nickname đặt theo thứ tự
-				chữ cái, không nói gì về độ ổn định — project mẫu của khoá học dựng trên Hedgehog, nhưng bạn cứ tải bản Stable
-				hiện tại.
+				án c đảo ngược vai của Stable. Đáp án d sai đúng ở chỗ đáng nhớ: cái tên như "Hedgehog" hay "Ladybug" thì đúng
+				là nickname theo thứ tự chữ cái, nhưng ba nhánh khác nhau về <em>độ ổn định</em> — đó mới là điều đáng quan tâm,
+				chứ không phải tên gọi.
 			</p>
 		</fieldset>
 
@@ -142,49 +164,60 @@ const groovyBlock = `android {
 				<code>com.kodeco.chat</code> tới <em>từng ký tự</em>?
 			</legend>
 			<label>
-				<input type="radio" name="q4" value="a" /> Vì Google Play chỉ chấp nhận package bắt đầu bằng <code>com.</code>,
-				gõ khác đi thì lúc nộp app sẽ bị từ chối ngay ở bước tải lên
+				<input type="radio" name="q4" value="a" /> Vì nó vừa là danh tính duy nhất của app trên hệ Android và trên Google
+				Play, vừa quyết định đường dẫn thư mục chứa code của bạn
 			</label>
 			<label>
-				<input type="radio" name="q4" value="b" /> Vì nó là tên hiển thị dưới icon app trên máy, nên gõ sai là người
+				<input type="radio" name="q4" value="b" /> Vì Google Play chỉ chấp nhận package bắt đầu bằng <code>com.</code>, gõ khác đi thì lúc nộp app lên store sẽ bị từ chối ngay ở bước tải lên, kể cả khi app đã chạy tốt trên máy bạn
+			</label>
+			<label>
+				<input type="radio" name="q4" value="c" /> Vì nó là tên hiển thị dưới icon app trên máy, nên gõ sai là người
 				dùng thấy sai tên và bạn phải tạo lại project để sửa
-			</label>
-			<label>
-				<input type="radio" name="q4" value="c" /> Vì nó vừa là danh tính duy nhất của app trên hệ Android và trên Google
-				Play, vừa quyết định đường dẫn thư mục chứa code
+			</label>			<label>
+				<input type="radio" name="q4" value="d" /> Vì đó là tên tài khoản Google của người viết app — mỗi project cần
+				một package riêng để Android Studio biết gửi log build của ai cho ai
 			</label>
 			<p class="explain" hidden>
 				Hai vai cùng lúc — đó là điều làm ô này khác năm ô còn lại. Vai thứ nhất: <strong>hai app không được trùng
 				package name</strong>. Vai thứ hai: nó cũng là tên package Kotlin, nên nó sinh ra đường dẫn
 				<code>app/src/main/java/com/kodeco/chat/</code> — điền khác đi thì mọi đường dẫn file được nhắc trong các chương
-				sau sẽ lệch với máy bạn, và đó là kiểu lệch âm thầm khiến bạn tưởng mình đọc sai hướng dẫn. Đáp án b lẫn sang ô
+				sau sẽ lệch với máy bạn, và đó là kiểu lệch âm thầm khiến bạn tưởng mình đọc sai hướng dẫn. Đáp án c lẫn sang ô
 				<strong>Name</strong>: đó mới là tên hiển thị dưới icon, nó thành <code>app_name</code> ở dòng 2 của
-				<code>res/values/strings.xml</code>, và sửa nó chỉ cần đổi một dòng chứ không phải tạo lại project. Đáp án a bịa
+				<code>res/values/strings.xml</code>, và sửa nó chỉ cần đổi một dòng chứ không phải tạo lại project. Đáp án b bịa
 				ra một luật không tồn tại — <code>com.</code> chỉ là quy ước viết ngược tên miền, package hoàn toàn có thể bắt
-				đầu bằng <code>io.</code>, <code>dev.</code> hay <code>net.</code>.
+				đầu bằng <code>io.</code>, <code>dev.</code> hay <code>net.</code>. Đáp án d là một cơ chế không có thật:
+				package không dính gì tới tài khoản Google của bạn, và log build cũng không ai "gửi cho ai" cả — nó nằm trên
+				máy của bạn mà thôi.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="b">
 			<legend>5. Ô <code>Minimum SDK</code> khai báo điều gì?</legend>
 			<label>
-				<input type="radio" name="q5" value="a" /> Phiên bản Android mà máy ảo của bạn sẽ chạy khi test app
+				<input type="radio" name="q5" value="a" /> Phiên bản Android <strong>thấp nhất</strong> mà app chịu cài — mọi máy cũ hơn con số này không cài được app
 			</label>
 			<label>
-				<input type="radio" name="q5" value="b" /> Phiên bản Android <strong>thấp nhất</strong> mà app chịu cài
+			<label>
+				<input type="radio" name="q5" value="b" /> Phiên bản Android mà máy ảo của bạn sẽ chạy khi test app — con số này
+				gắn với <em>System Image</em> bạn chọn lúc tạo máy ảo, không phải với app
 			</label>
 			<label>
 				<input type="radio" name="q5" value="c" /> Bộ API dùng để biên dịch code, tức bạn được phép gọi những hàm nào
 			</label>
+			<label>
+				<input type="radio" name="q5" value="d" /> Phiên bản Android Studio dùng để gợi ý code trong editor — cứ cài
+				Studio mới nhất là ô này tự theo đó mà cập nhật
+			</label>
 			<p class="explain" hidden>
 				Đặt thấp thì nhiều máy cài được nhưng bạn không dùng được API mới; đặt cao thì ngược lại — nên nó là con số bạn
-				<em>tự chọn</em> theo tập người dùng muốn phục vụ, không phải một giá trị cố định của Android. Hai đáp án kia
-				đều là những con số thật nhưng thuộc chỗ khác, và đây đúng là ba thứ hay bị gộp làm một. Đáp án c là
-				<code>compileSdk</code>: bộ API dùng lúc biên dịch, không liên quan tới máy nào cài được app. Đáp án a là
-				<em>System Image</em> — thứ bạn chọn khi tạo máy ảo ở Chương 2.2, mục 5, hoàn toàn độc lập với
+				<em>tự chọn</em> theo tập người dùng muốn phục vụ, không phải một giá trị cố định của Android. Ba đáp án kia
+				đều là những con số thật nhưng thuộc chỗ khác, và đây đúng là các thứ hay bị gộp làm một. Đáp án c là
+				<code>compileSdk</code>: bộ API dùng lúc biên dịch, không liên quan tới máy nào cài được app. Đáp án b là
+				<em>System Image</em> — thứ bạn chọn khi tạo máy ảo ở Chương 2.2a, mục 5, hoàn toàn độc lập với
 				<code>minSdk</code>: app khai <code>minSdk 28</code> chạy tốt trên máy API 34, còn chiều ngược lại thì không.
-				Con số thứ ba là <code>targetSdk</code> = bản Android mà app được viết và kiểm thử cho. Project mẫu Chương 2
-				khai cả ba cạnh nhau trong <code>app/build.gradle.kts</code>: <code>minSdk = 30</code> dòng 12,
+				Đáp án d là ô không tồn tại trên màn hình tạo project: phiên bản Studio không tự đụng vào con số nào trong file
+				của bạn. Con số thứ tư là <code>targetSdk</code> = bản Android mà app được viết và kiểm thử cho. Project mẫu
+				Chương 2 khai cả ba cạnh nhau trong <code>app/build.gradle.kts</code>: <code>minSdk = 30</code> dòng 12,
 				<code>targetSdk = 34</code> dòng 13, <code>compileSdk = 34</code> dòng 8.
 			</p>
 		</fieldset>
@@ -205,6 +238,10 @@ const groovyBlock = `android {
 				<input type="radio" name="q6" value="c" /> Không có hệ quả nào trong bất kỳ tình huống nào — 28 và 30 là hai cách
 				ghi cùng một mức tương thích
 			</label>
+			<label>
+				<input type="radio" name="q6" value="d" /> Google Play sẽ từ chối project có hai con số lệch nhau như vậy, nên
+				bạn bắt buộc phải sửa hướng dẫn hoặc project để chúng khớp trước khi đi tiếp
+			</label>
 			<p class="explain" hidden>
 				Chênh lệch này có thật và đã được kiểm bằng cách quét toàn bộ bộ project mẫu: <strong>19 file
 				<code>app/build.gradle.kts</code></strong> trải trên 10 chương, <em>tất cả</em> đều ghi <code>minSdk = 30</code>
@@ -213,7 +250,9 @@ const groovyBlock = `android {
 				đó project mẫu sẽ báo kiểu "app không tương thích với thiết bị". Cách xử lý gọn: sửa <code>minSdk</code> trong
 				<code>app/build.gradle.kts</code> dòng 12 xuống 28 rồi sync lại, không cần tạo project mới. Đáp án b bịa ra một
 				phép đối chiếu không tồn tại — Gradle không biết gì về con số bạn đã điền trong wizard, giá trị trong file build
-				là nguồn duy nhất. Và điều quan trọng nhất của cả câu này: <strong>bạn không làm sai gì cả.</strong>
+				là nguồn duy nhất. Đáp án d cũng vậy: Google Play chỉ thấy app khi bạn nộp bản build lên, không hề "nhìn vào"
+				source code để so sánh hai con số. Và điều quan trọng nhất của cả câu này:
+				<strong>bạn không làm sai gì cả.</strong>
 			</p>
 		</fieldset>
 
@@ -224,16 +263,20 @@ const groovyBlock = `android {
 			</legend>
 			<pre class="quiz-code"><code>{groovyBlock}</code></pre>
 			<label>
-				<input type="radio" name="q7" value="a" /> Vì đoạn đó thiếu khối <code>defaultConfig</code> bắt buộc phải có
-				<code>versionCode</code>, thêm dòng đó vào là chạy
+				<input type="radio" name="q7" value="a" /> Vì đó là cú pháp <strong>Groovy</strong> — không dấu <code>=</code>,
+				nháy đơn — còn file <code>.gradle.kts</code> cần cú pháp Kotlin DSL, tức phải có dấu <code>=</code> và nháy kép
 			</label>
 			<label>
-				<input type="radio" name="q7" value="b" /> Vì đó là cú pháp <strong>Groovy</strong> — không dấu <code>=</code>,
-				nháy đơn — còn file <code>.gradle.kts</code> cần cú pháp Kotlin DSL
+				<input type="radio" name="q7" value="b" /> Vì đoạn đó thiếu khối <code>defaultConfig</code> bắt buộc phải có
+				<code>versionCode</code>, thêm dòng đó vào là chạy
 			</label>
 			<label>
 				<input type="radio" name="q7" value="c" /> Vì <code>namespace</code> và <code>compileSdk</code> không được đặt
 				trong khối <code>android</code>, chúng phải nằm ở <code>settings.gradle.kts</code>
+			</label>
+			<label>
+				<input type="radio" name="q7" value="d" /> Vì cú pháp Groovy đã bị Android bỏ hẳn từ 2023, nên dán đoạn nào viết
+				bằng Groovy vào file build đều không còn dịch được nữa
 			</label>
 			<p class="explain" hidden>
 				Hai dấu hiệu nhận biết Groovy nằm ngay trên bề mặt: <strong>không có dấu <code>=</code></strong> giữa tên thuộc
@@ -242,9 +285,11 @@ const groovyBlock = `android {
 				<code>minSdk = 30</code> (dòng 12). Đuôi file cũng đổi theo: Groovy là <code>build.gradle</code>, Kotlin DSL là
 				<code>build.gradle.kts</code> — toàn bộ project mẫu của khoá học dùng Kotlin DSL, đã quét và không có một file
 				Groovy nào. Nội dung hai bản y hệt nhau, chỉ khác cú pháp, nên gặp hướng dẫn cũ thì bạn <em>dịch</em> chứ không
-				bỏ. Đáp án a và c đều tự tin về những luật không có: <code>versionCode</code> không bắt buộc để đoạn này hợp lệ,
+				bỏ. Đáp án b và c đều tự tin về những luật không có: <code>versionCode</code> không bắt buộc để đoạn này hợp lệ,
 				và <code>namespace</code> cùng <code>compileSdk</code> đúng chỗ của chúng là trong khối <code>android</code> của
-				file build cấp module. Lợi thế thật của Kotlin DSL: vì nó là Kotlin thật, Android Studio gợi ý được tên thuộc
+				file build cấp module. Đáp án d sai vì Groovy vẫn còn được Gradle hỗ trợ đầy đủ và nhiều project ngoài kia vẫn
+				dùng — nó không phải "ngôn ngữ chết", chỉ là lựa chọn khác với project của khoá học. Lợi thế thật của Kotlin DSL:
+				vì nó là Kotlin thật, Android Studio gợi ý được tên thuộc
 				tính và gạch đỏ ngay lúc bạn gõ sai, thay vì để bạn phát hiện lúc build thất bại.
 			</p>
 		</fieldset>
@@ -266,6 +311,10 @@ const groovyBlock = `android {
 				<input type="radio" name="q8" value="c" /> Đợi cho sync xong: IDE đang tải thư viện và dựng bản đồ project, xong
 				thì gạch đỏ tự hết
 			</label>
+			<label>
+				<input type="radio" name="q8" value="d" /> Bấm <em>Invalidate Caches / Restart</em> ngay — gạch đỏ hàng loạt lúc
+				mới mở project là dấu hiệu cache của Studio hỏng và phải xoá cache thì mới hết
+			</label>
 			<p class="explain" hidden>
 				Editor gạch đỏ vì nó <em>chưa</em> biết các class bạn gọi đến từ đâu, không phải vì code sai. Gradle Sync đọc các
 				file cấu hình build, tải về thư viện được khai trong đó, rồi dựng lại trong bộ nhớ bản đồ đầy đủ của project: có
@@ -273,7 +322,9 @@ const groovyBlock = `android {
 				chạy và nút Run có thể mờ đi. Lần đầu tạo project trên một máy mới thường lâu nhất vì chưa có gì được tải sẵn.
 				Đáp án a nghe rất "chủ động" nhưng chính là cách tự tạo ra lỗi thật: import không hề thiếu, và khi IDE chưa sync
 				xong thì danh sách nó gợi ý có thể trỏ vào class trùng tên ở package khác. Đáp án b là phản ứng đắt nhất — làm
-				lại từ đầu một việc chỉ cần đợi ba mươi giây. Phản xạ nên luyện từ hôm nay và dùng suốt khoá học: <strong>gặp
+				lại từ đầu một việc chỉ cần đợi ba mươi giây. Đáp án d là "vũ khí hạng nặng" không cần thiết lúc này: Invalidate
+				Caches dành cho trường hợp cache thật sự hỏng sau nhiều lần dùng, còn sync đang chạy là chuyện bình thường của
+				lần mở đầu tiên. Phản xạ nên luyện từ hôm nay và dùng suốt khoá học: <strong>gặp
 				lỗi lạ trong Android Studio, việc đầu tiên là nhìn xuống đáy cửa sổ xem có gì đang chạy không.</strong> Bạn sẽ
 				sync lại mỗi lần thêm một thư viện mới.
 			</p>
@@ -296,6 +347,10 @@ const groovyBlock = `android {
 				<input type="radio" name="q9" value="c" /> <strong>Editor</strong> ở giữa; và <strong>Compose Preview</strong>
 				bên phải — nơi xem trước giao diện, vùng bạn sẽ dành phần lớn thời gian ở đó
 			</label>
+			<label>
+				<input type="radio" name="q9" value="d" /> <strong>Editor</strong> ở giữa; và <strong>Git</strong> ở đáy — nơi
+				xem lịch sử commit, vì làm việc với project thật thì luôn phải biết code ai sửa gì
+			</label>
 			<p class="explain" hidden>
 				Hai vùng đó đủ cho toàn bộ Chương 2, và bạn sẽ ở lâu nhất trong <strong>Editor</strong>. Về Project navigator có
 				một chi tiết khiến rất nhiều người mới đi tìm sai thư mục: cây bạn thấy trong đó <strong>không phải cây thư mục
@@ -303,13 +358,15 @@ const groovyBlock = `android {
 				Kotlin nằm dưới nhánh <code>app ▸ kotlin+java ▸ com.kodeco.chat</code>, còn đường dẫn thật là
 				<code>app/src/main/java/com/kodeco/chat/</code>; các file Gradle bị dồn vào nhóm <em>Gradle Scripts</em> ở cuối.
 				Muốn xem cây thật thì đổi ô chọn sang <em>Project</em>. Đáp án b nhắc hai công cụ có thật nhưng thuộc chương
-				sau — Device Manager là chỗ tạo máy ảo ở Chương 2.2, mục 5, còn Logcat dùng để đọc log khi app đã chạy. Đáp án c
+				sau — Device Manager là chỗ tạo máy ảo ở Chương 2.2a, mục 5, còn Logcat dùng để đọc log khi app đã chạy. Đáp án c
 				đúng nửa đầu nhưng sai chỗ quan trọng: Compose Preview là một khung bên trong vùng Editor, không phải một vùng
-				thứ hai, và nó chỉ hiện ra khi bạn mở file có hàm gắn <code>@Preview</code>.
+				thứ hai, và nó chỉ hiện ra khi bạn mở file có hàm gắn <code>@Preview</code>. Đáp án d tương tự: cửa sổ công cụ
+				Git có thật nhưng không phải hai vùng của chương này, và chương chưa đụng tới Git.
 			</p>
 		</fieldset>
 
 		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
 		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
 	</form>
 	<h2>Bài tập</h2>
@@ -449,33 +506,10 @@ const groovyBlock = `android {
 	</div>
 </section>
 <script>
-	const form = document.getElementById("quiz-form");
-	const scoreEl = document.getElementById("quiz-score");
+	// Harness migration 2026-09: chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
 
-	form?.addEventListener("submit", (e) => {
-		e.preventDefault();
-		const fieldsets = form.querySelectorAll("fieldset");
-		let correct = 0;
-
-		fieldsets.forEach((fs) => {
-			const answer = fs.getAttribute("data-answer");
-			const name = fs.querySelector("input")?.getAttribute("name");
-			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
-			const explain = fs.querySelector(".explain");
-			explain?.removeAttribute("hidden");
-
-			fs.classList.remove("correct", "incorrect");
-			if (picked && picked.value === answer) {
-				correct++;
-				fs.classList.add("correct");
-			} else {
-				fs.classList.add("incorrect");
-			}
-		});
-
-		if (scoreEl) {
-			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
-			scoreEl.removeAttribute("hidden");
-		}
-	});
+	initQuiz();
 </script>

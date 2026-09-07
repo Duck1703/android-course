@@ -1,0 +1,482 @@
+---
+// Quiz + bài tập cho A11 — "Đọc lỗi biên dịch và debug" · slug: ch03-doc-loi-bien-dich-va-debug · display: 3.2b.
+// Phạm vi: đúng mục 12–15 của Ch03DocLoiBienDichVaDebug.astro — lỗi biên dịch đầu tiên, bốn nơi IDE báo lỗi,
+// hai cách sửa, Context, phân biệt lỗi biên dịch/lúc chạy, breakpoint, Logcat/Log.d.
+// Provenance: port từ Ch03_2Quiz.astro (split 2026-09) — câu 7, 8, 9, 13, 14, 15 của quiz cũ; mỗi câu giữ
+// nguyên luận điểm + explain, thêm 1 distractor thứ tư, lời dẫn sửa cho đứng độc lập với bài A11
+// (thay nhắc "câu 7" cũ bằng "câu 1" của quiz này, thay "Chương 3.2, mục 11.2" bằng "mục 12.2").
+//   old q7  -> câu 1 (vì sao stringResource trong remember không biên dịch được)
+//   old q8  -> câu 2 (bốn nơi Android Studio báo lỗi + giới hạn của bóng đèn vàng)
+//   old q9  -> câu 3 (nguyên tắc chung của cả hai cách sửa hợp lệ)
+//   old q13 -> câu 4 (lỗi lúc chạy không ai báo cho bạn)
+//   old q14 -> câu 5 (breakpoint dòng 70: dừng TRƯỚC khi chạy dòng được đánh dấu)
+//   old q15 -> câu 6 (breakpoint tốt hơn println ở điểm nào)
+// Viết mới 4 câu theo đúng nội dung mục 12–15: câu 7 (breakpoint chỉ chạy với nút con bọ — mục 13.1–13.2) ·
+//   câu 8 (Step Over / Step Into / Resume — mục 13.3) · câu 9 (thẻ tag của Log.d — mục 13.4) ·
+//   câu 10 (vì sao IDE lần này không đề xuất cách sửa — mục 12.2).
+// Câu 1–6, 9–12 của quiz cũ và Bài tập 1–2 chuyển sang A10 (Ch03StringResourceVaLopRQuiz.astro);
+// Bài tập 3 (breakpoint dự đoán) port nguyên khối xuống đây.
+// Số dòng dưới đây tự mở file ra kiểm lại (2026-08-31), không lấy lại từ file khác:
+//   final/app/src/main/java/com/kodeco/chat/MainActivity.kt (wc -l = 79; file KẾT THÚC bằng ký tự xuống dòng
+//     nên editor hiện thêm một dòng trống thứ 80): license 1-32 · package 34 · import 36-48
+//     (13 dòng import, LocalContext 47, stringResource 48) · class MainActivity 50 · setContent 53 · Column 54
+//     · val context = LocalContext.current 55 · hai remember + context.getString 56-57 · Text(chatOutputText) 58
+//     · OutlinedTextField 60-66 (value 61, onValueChange 62-64, label = stringResource 65) · Button(onClick 68-71:
+//     dòng 69 chatOutputText = chatInputText, dòng 70 chatInputText = "") · Text(stringResource send_button) 72
+//     · dòng 73 là dòng trống dư trong bản gốc.
+// Phân bố đáp án: a 3 câu (4, 6, 9) · b 2 câu (1, 8) · c 3 câu (2, 3, 5) · d 2 câu (7, 10).
+// Chấm MCQ do harness chung web/src/scripts/quiz.ts phụ trách (IMP-001).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		10 câu, mỗi câu có 4 lựa chọn (a–d) — chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra
+		sau khi chấm — kể cả ở câu bạn làm đúng, nên đọc hết: chỗ dạy thêm nằm ở phần nói <em>vì sao các đáp án còn lại
+		sai</em>. Phần lớn đáp án sai ở đây là những chỗ hiểu lệch thật, loại làm người mới mất cả buổi tối, chứ không
+		phải lựa chọn bịa cho dễ loại.
+	</p>
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>
+				1. Vì sao <code>var chatInputText by remember &#123; mutableStateOf(stringResource(id = R.string.chat_entry_default)) &#125;</code>
+				không biên dịch được, dù dòng này nằm ngay trong <code>Column</code>?
+			</legend>
+			<label>
+				<input type="radio" name="q1" value="a" /> Vì <code>mutableStateOf</code> cần biết kiểu dữ liệu ngay lúc biên
+				dịch, mà <code>stringResource</code> chỉ trả về chuỗi lúc app chạy nên kiểu của state chưa xác định được
+			</label>
+			<label>
+				<input type="radio" name="q1" value="b" /> Vì <code>stringResource</code> là một Composable, còn lambda tính giá
+				trị ban đầu của <code>remember</code> không phải vùng gọi Composable được
+			</label>
+			<label>
+				<input type="radio" name="q1" value="c" /> Vì thứ tự sai: phải khai <code>val context = LocalContext.current</code>
+				trước đã, mọi lời gọi liên quan tới resource đều cần một <code>Context</code> có sẵn trong tầm nhìn
+			</label>
+			<label>
+				<input type="radio" name="q1" value="d" /> Vì <code>remember</code> của phiên bản Compose trong project này chưa
+				hỗ trợ đọc resource — phải nâng phiên bản thư viện lên thì dòng đó mới biên dịch được
+			</label>
+			<p class="explain" hidden>
+				Thông báo lỗi bắt đầu bằng <em>"Composable calls are not allowed inside the calculation parameter…"</em> — phần
+				đuôi nêu tên hàm <code>remember</code>, và câu chữ chính xác có thể khác chút tuỳ phiên bản Android Studio bạn
+				đang dùng. Chỗ làm người mới bối rối: đoạn code <em>trông như</em> đang ở trong Compose. Nhưng
+				cặp ngoặc của <code>remember</code> không mô tả giao diện — nó là <strong>công thức tính giá trị ban đầu</strong>,
+				và Compose chỉ chạy nó đúng một lần ở lần composition đầu rồi không bao giờ chạy lại. Một Composable bị đông cứng
+				như vậy là điều framework không cho phép, vì Composable phải chạy lại được mỗi khi có gì thay đổi. Quy tắc tự
+				phân biệt: cặp ngoặc này chứa <em>giao diện</em> hay chứa <em>việc cần làm</em>? Đáp án a nghe rất kỹ thuật nhưng
+				sai ở nền: <code>stringResource</code> khai báo trả về <code>String</code>, kiểu xác định rõ lúc biên dịch, và
+				<code>mutableStateOf</code> suy ra kiểu từ đó không có vấn đề gì. Đáp án c lẫn nguyên nhân với cách sửa —
+				<code>stringResource</code> tự lấy Context qua <code>LocalContext</code> nên nó <em>không</em> cần bạn khai biến
+				nào; thêm dòng đó vào mà vẫn để <code>stringResource</code> trong <code>remember</code> thì lỗi y nguyên. Đáp án
+				d gán lỗi cho phiên bản thư viện: không có phiên bản <code>remember</code> nào cho phép gọi Composable trong lambda
+				tính giá trị — đây là luật của mô hình Compose, không phải giới hạn phiên bản.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. Lúc lỗi ở câu 1 xuất hiện, Android Studio báo cho bạn ở những chỗ nào trong cửa sổ làm việc?</legend>
+			<label>
+				<input type="radio" name="q2" value="a" /> Chỉ ở vạch gạch đỏ dưới dòng code; muốn thấy lỗi ở dạng danh sách thì
+				phải bấm Build một lần, vì panel Problems chỉ được điền sau mỗi lần build
+			</label>
+			<label>
+				<input type="radio" name="q2" value="b" /> Ở vạch gạch đỏ, kèm một bóng đèn vàng — bấm vào là IDE đề xuất sẵn cách
+				sửa, vì nó suy được rằng lời gọi này phải chuyển sang cách lấy chuỗi qua <code>Context</code>
+			</label>
+			<label>
+				<input type="radio" name="q2" value="c" /> Ở bốn chỗ: gạch đỏ tại dòng, hình tròn đỏ kèm số lỗi ở góc trên-phải,
+				panel Problems, và các vạch đỏ nhỏ ở lề phải
+			</label>
+			<label>
+				<input type="radio" name="q2" value="d" /> Ở đúng một chỗ duy nhất — panel Problems — vì Android Studio cố ý gom
+				mọi lỗi vào một danh sách để tránh người mới bị choáng bởi nhiều tín hiệu cùng lúc
+			</label>
+			<p class="explain" hidden>
+				Bốn chỗ đó trả lời bốn câu hỏi khác nhau, nên biết cả bốn là đáng: gạch đỏ nói <em>chỗ nào sai</em> (đưa chuột lên
+				là hiện nội dung lỗi); hình tròn đỏ kèm số ở góc trên-phải trả lời <em>file này còn sạch không</em> trong một cái
+				nhìn; panel Problems cho bạn <em>đọc hết một lượt</em> khi có nhiều lỗi cùng lúc; các vạch nhỏ ở lề phải cho thấy
+				lỗi ở dòng 400 khi bạn đang đứng ở dòng 20 — bấm vào là nhảy tới đó. Cảnh báo (warning) dùng đúng bốn chỗ ấy, chỉ
+				đổi sang màu vàng. Đáp án a sai về thời điểm: cả bốn chỗ đều đến từ việc IDE phân tích code <em>trong lúc bạn
+				gõ</em>, nên bạn thấy lỗi này trước khi build lần nào — chính điều đó làm nó thuộc loại lỗi biên dịch. Đáp án b là
+				kỳ vọng rất hay có nhưng lần này không xảy ra: bóng đèn vàng chỉ sửa hộ được việc nó suy ra được, còn ở đây IDE
+				chỉ biết "chỗ này không được gọi Composable" mà không biết ý bạn là gì, nên nó không đề xuất gì. Ranh giới đáng
+				nhớ, chi tiết ở mục 12.2: lỗi cú pháp thì IDE sửa hộ được, lỗi thiết kế thì chỉ bạn
+				sửa được (câu 10 của quiz này). Đáp án d sai vì panel Problems chỉ là một trong bốn chỗ — không ai "gom hết" cả,
+				mỗi chỗ tồn tại vì trả lời một câu hỏi khác nhau.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>3. Hai cách sửa hợp lệ cho lỗi ở câu 1 có chung nguyên tắc gì?</legend>
+			<label>
+				<input type="radio" name="q3" value="a" /> Bỏ <code>remember</code> đi: chuỗi mặc định vốn không cần được nhớ qua
+				các lần vẽ lại, nên giữ nó trong state chỉ làm phát sinh đúng cái lỗi này
+			</label>
+			<label>
+				<input type="radio" name="q3" value="b" /> Đánh dấu <code>@Composable</code> cho chỗ chứa nó, để vùng bị cấm trở
+				thành vùng được phép gọi Composable
+			</label>
+			<label>
+				<input type="radio" name="q3" value="c" /> Lấy giá trị ở <em>ngoài</em> lambda của <code>remember</code> rồi mang
+				vào trong, để trong đó chỉ còn một giá trị đã tính xong
+			</label>
+			<label>
+				<input type="radio" name="q3" value="d" /> Bọc lời gọi trong <code>delay(0)</code> để Compose coi nó là một tác
+				vụ thường thay vì Composable, rồi lỗi tự biến mất
+			</label>
+			<p class="explain" hidden>
+				Cả hai cách sửa đều là một khuôn mẫu: <code>val context = LocalContext.current</code> ở thân
+				<code>Column</code> rồi gọi <code>context.getString(...)</code> bên trong (chính là dòng 55, 56, 57 của bản
+				<code>final</code>), hoặc gọi <code>stringResource</code> ở thân <code>Column</code> lấy ra một biến rồi truyền
+				biến đó vào <code>remember</code>. Lời gọi Composable đứng ở vùng dựng giao diện, còn trong lambda chỉ còn một
+				giá trị đã tính xong. Nhớ nguyên tắc thay vì nhớ mẹo là điều đáng làm nhất ở đây: cùng họ lỗi này còn có
+				<code>painterResource()</code> và <code>MaterialTheme.colorScheme</code>, những thứ không có phiên bản
+				<code>getString()</code> tương ứng để mà thay. Đáp án a đổi hành vi của app chứ không sửa lỗi: bỏ
+				<code>remember</code> thì ô nhập mất chữ ngay ở lần vẽ lại kế tiếp, tức không gõ được ký tự thứ hai. Đáp án b
+				không làm được về mặt kỹ thuật — bạn không đánh dấu <code>@Composable</code> cho tham số của
+				<code>remember</code> được, vì kiểu của tham số đó do chính định nghĩa <code>remember</code> quy định. Đáp án d bịa
+				một cơ chế không tồn tại: không có phép "ngụy trang" lời gọi Composable thành tác vụ thường — trình biên dịch xét
+				đúng bản chất của lời gọi, không xét cách bọc.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				4. Đảo thứ tự hai dòng trong <code>onClick</code> làm phần hiển thị luôn trống. Vì sao loại lỗi này khó chịu hơn
+				nhiều so với lỗi <em>"Composable calls are not allowed…"</em> ở câu 1?
+			</legend>
+			<label>
+				<input type="radio" name="q4" value="a" /> Vì không ai báo cho bạn: app vẫn biên dịch, vẫn chạy, Logcat không
+				có dòng lỗi nào — chỉ kết quả là sai, nên bạn phải tự đi tìm bằng breakpoint hoặc log
+			</label>
+			<label>
+				<input type="radio" name="q4" value="b" /> Vì lỗi xảy ra lúc app đang chạy thì luôn làm app dừng đột ngột, nên
+				mỗi lần thử lại bạn mất trạng thái đang có và phải bấm lại từ đầu cả chuỗi thao tác
+			</label>
+			<label>
+				<input type="radio" name="q4" value="c" /> Vì trình biên dịch chỉ kiểm được cú pháp, còn phép gán giữa hai biến
+				cùng kiểu <code>String</code> thì nó không kiểm được — đây là hạn chế riêng của Kotlin mà những ngôn ngữ kiểm kiểu
+				chặt hơn không có
+			</label>
+			<label>
+				<input type="radio" name="q4" value="d" /> Vì lỗi này chỉ hiện trên máy ảo chứ không hiện trên máy thật, nên nó
+				lọt qua các lần thử nhanh trên emulator và chỉ lộ ra khi có người dùng thật
+			</label>
+			<p class="explain" hidden>
+				Đây là ranh giới nền tảng nhất khi học lập trình: <strong>lỗi biên dịch</strong> tự giới thiệu — nó hiện ngay khi
+				bạn gõ, ở đúng dòng gây ra nó, kèm một câu giải thích. <strong>Lỗi lúc chạy</strong> thì không nói gì cả: app mở
+				lên bình thường, nút bấm được, chỉ là kết quả không như bạn nghĩ. Người phát hiện ra thường là người dùng, và họ
+				chỉ mô tả được rằng "bấm nút thì không thấy gì". Đó là lý do debug tồn tại. Đáp án b lẫn một <em>dạng</em> lỗi lúc
+				chạy với toàn bộ loại đó: crash chỉ là một dạng, và chính cái không crash mới là dạng khó tìm hơn — ở đây app
+				không crash lần nào. Đáp án c gán lỗi cho ngôn ngữ: cả hai thứ tự đều là code hợp lệ, gán chuỗi cho chuỗi, nên
+				không hệ thống kiểu nào — của Kotlin hay của ngôn ngữ nào khác — đoán được bạn <em>muốn</em> thứ tự nào. Đây là
+				lỗi logic, không phải lỗi kiểu dữ liệu. Đáp án d bịa một khác biệt máy thật/máy ảo: hành vi gán hai dòng này giống
+				hệt ở cả hai — thứ sai là <em>logic</em> của bạn, chạy đúng ở đâu thì sai ở đó.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				5. Trong <code>onClick</code> của nút Send có hai dòng: <code>chatOutputText = chatInputText</code> (dòng 69) rồi
+				<code>chatInputText = ""</code> (dòng 70). Đặt breakpoint ở <strong>dòng 70</strong> thì lúc app dừng, hai biến
+				mang giá trị gì?
+			</legend>
+			<label>
+				<input type="radio" name="q5" value="a" /> <code>chatInputText</code> rỗng, <code>chatOutputText</code> giữ chữ
+				bạn vừa gõ — đây là trạng thái sau khi cả hai dòng đã chạy xong
+			</label>
+			<label>
+				<input type="radio" name="q5" value="b" /> <code>chatInputText</code> giữ chữ bạn vừa gõ,
+				<code>chatOutputText</code> vẫn là chuỗi mặc định "Messages will display here"
+			</label>
+			<label>
+				<input type="radio" name="q5" value="c" /> Cả hai cùng mang chữ bạn vừa gõ — ô nhập vẫn còn chữ, phần hiển thị
+				thì đã nhận đúng chữ đó
+			</label>
+			<label>
+				<input type="radio" name="q5" value="d" /> Không đọc được giá trị nào ở thời điểm đó — breakpoint chỉ hiện giá trị
+				các biến <em>sau khi</em> toàn khối <code>onClick</code> đã chạy xong
+			</label>
+			<p class="explain" hidden>
+				Breakpoint dừng app <em>trước khi</em> chạy dòng được đánh dấu, không phải sau. Nên ở dòng 70: dòng 69 đã chạy
+				(chữ đã được chép sang <code>chatOutputText</code>), dòng 70 chưa chạy (ô nhập chưa bị xoá) — đúng khoảnh khắc
+				duy nhất mà cả hai biến cùng mang một giá trị. Chọn dòng nào để dừng vì thế không hề tuỳ ý: đáp án b là trạng
+				thái ở <em>dòng 69</em>, đáp án a là trạng thái sau khi cả khối chạy xong. Cùng một app, ba câu trả lời khác nhau
+				tuỳ chỗ bạn đặt chấm đỏ. Đáp án d sai chính chỗ làm nên giá trị của breakpoint: nó dừng <em>giữa</em> khối code,
+				đúng tại dòng được đánh dấu — nếu chỉ xem được sau khi hết khối thì nó chẳng hơn gì việc nhìn màn hình. Giá trị
+				của bài này là nó cho bạn <em>nhìn thấy</em> một trạng thái trung gian tồn tại
+				thật nhưng quá ngắn để thấy bằng mắt — và từ đó tự chứng minh được vì sao đảo thứ tự hai dòng làm phần hiển thị
+				luôn trống, thay vì phải tin lời cảnh báo.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				6. Bạn nghi một biến đang mang giá trị sai và muốn xem nó. Vì sao breakpoint thường tốt hơn việc chèn một dòng
+				in giá trị ra rồi chạy lại?
+			</legend>
+			<label>
+				<input type="radio" name="q6" value="a" /> Vì app dừng lại ngay tại đó và bạn xem được mọi biến trong phạm vi,
+				không cần đoán trước cần xem cái gì
+			</label>
+			<label>
+				<input type="radio" name="q6" value="b" /> Vì <code>println()</code> không chạy trên Android: nó không được biên
+				dịch vào bản debug, nên dòng in đó không bao giờ tạo ra kết quả nào để bạn đọc
+			</label>
+			<label>
+				<input type="radio" name="q6" value="c" /> Vì mỗi dòng in thêm vào là một lần app phải ghi ra ổ đĩa, đủ để làm
+				lệch thời điểm các sự việc xảy ra và làm lỗi biến mất khi bạn đang tìm nó
+			</label>
+			<label>
+				<input type="radio" name="q6" value="d" /> Vì Android Studio chỉ hiện bảng giá trị biến khi app chạy ở chế độ
+				debug; dòng <code>println()</code> trong bản thường bị hệ điều hành chặn không cho in ra gì cả
+			</label>
+			<p class="explain" hidden>
+				Vòng lặp "đoán cần xem gì → sửa code → build lại → chạy lại → bấm lại đúng chuỗi thao tác" lặp lại mỗi lần bạn
+				đoán sai. Một breakpoint cho bạn <em>toàn bộ</em> trạng thái tại một thời điểm, cộng ba nút Step Over / Step Into
+				/ Resume để đi tiếp, không build lại lần nào. Đáp án b nói quá thành sai: <code>println()</code> vẫn chạy và vẫn
+				hiện ra, chỉ là nó đi vào Logcat dưới thẻ chung của luồng ra chuẩn nên gần như không lọc được giữa hàng nghìn
+				dòng khác — cách đúng trên Android là <code>Log.d("thẻ", "nội dung")</code> với thẻ do bạn đặt. Đáp án c nhận ra
+				đúng một hiện tượng có thật nhưng gán cho sai công cụ: chính <em>breakpoint</em> mới là thứ làm lệch thời gian
+				nhiều nhất, vì nó giữ hẳn luồng chạy lại. Đó cũng là lý do với lỗi phụ thuộc thời gian thì log lại là công cụ hợp
+				hơn. Đáp án d đảo nguyên nhân: dòng println có in hay không không phụ thuộc chế độ chạy — nó luôn in, chỉ là in
+				ra nơi khó lọc; còn bảng giá trị biến là của breakpoint, không phải của println. Hai công cụ bổ sung nhau: log
+				cho bạn một chuỗi sự việc trải theo thời gian, breakpoint cho bạn soi sâu tại
+				một điểm.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>
+				7. Bạn đặt chấm đỏ breakpoint ở dòng 70, nhưng chạy app bằng <strong>nút Run</strong> thường rồi bấm Send. Chuyện
+				gì xảy ra — và vì sao?
+			</legend>
+			<label>
+				<input type="radio" name="q7" value="a" /> App dừng ở dòng 70 như thường, vì breakpoint gắn với dòng code chứ
+				không gắn với cách chạy — chỉ khác là panel Debug không mở lên
+			</label>
+			<label>
+				<input type="radio" name="q7" value="b" /> Android Studio tự xoá chấm đỏ trước khi chạy bản thường, và hiện một
+				cảnh báo rằng breakpoint đã bị gỡ
+			</label>
+			<label>
+				<input type="radio" name="q7" value="c" /> App dừng ở dòng 70 đúng một lần đầu tiên, rồi breakpoint tự gỡ sau lần
+				dừng đầu để app chạy tiếp bình thường
+			</label>
+			<label>
+				<input type="radio" name="q7" value="d" /> App hoạt động bình thường và không bao giờ dừng, dù chấm đỏ vẫn nằm đó
+				— breakpoint chỉ có tác dụng khi app chạy ở chế độ debug, vì chỉ chế độ đó mới gắn bộ máy theo dõi vào app
+			</label>
+			<p class="explain" hidden>
+				Đây là chỗ người mới hay tưởng breakpoint bị hỏng: chấm đỏ vẫn nằm nguyên ở lề, nhưng chạy bằng nút Run thường
+				thì app không bao giờ dừng. Breakpoint không phải cái bẫy nằm sẵn trong code — nó cần một bộ máy theo dõi gắn vào
+				app lúc chạy, và chỉ nút con bọ (chế độ debug) mới gắn bộ máy đó. Muốn app dừng thì chạy lại bằng nút con bọ,
+				không cần đụng gì tới chấm đỏ. Đáp án a sai vì panel Debug không phải thứ duy nhất thiếu: cả việc dừng lại cũng
+				không xảy ra — hai chế độ này khác nhau ở chính khả năng dừng. Đáp án b bịa hành vi gỡ chấm đỏ: Android Studio
+				không xoá breakpoint của bạn, và cũng không có cảnh báo nào như vậy. Đáp án c bịa hành vi "dừng một lần rồi tự
+				gỡ": breakpoint đứng yên cho tới khi bạn tự bấm lại vào nó — số lần dừng không giới hạn như vậy. Cái giá của chế
+			 độ debug là chạy chậm hơn chạy thường một chút (mục 13.1) — bạn đang trả giá cho khả năng dừng lại được.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				8. App đang dừng ở breakpoint trong <code>onClick</code>. Bạn muốn chạy đúng dòng hiện tại rồi dừng ngay ở dòng
+				kế — và chỉ vậy. Nút nào làm đúng việc đó?
+			</legend>
+			<label>
+				<input type="radio" name="q8" value="a" /> <em>Step Into</em> — để đi vào trong hàm đang được gọi ở dòng này và
+				xem bên trong nó làm gì
+			</label>
+			<label>
+				<input type="radio" name="q8" value="b" /> <em>Step Over</em> — chạy xong dòng hiện tại rồi dừng ở dòng kế tiếp,
+				không đi vào trong hàm nào
+			</label>
+			<label>
+				<input type="radio" name="q8" value="c" /> <em>Resume</em> — cho app chạy tiếp tới breakpoint kế tiếp hoặc tới
+				hết
+			</label>
+			<label>
+				<input type="radio" name="q8" value="d" /> Bấm lại nút Run — chạy lại app từ đầu, và lần này breakpoint sẽ dừng ở
+				dòng kế
+			</label>
+			<p class="explain" hidden>
+				Ba nút khi đang dừng ở breakpoint có ba vai khác nhau, và tên gọi nói đúng việc: <em>Step Over</em> chạy đúng một
+				dòng rồi dừng dòng kế — đúng yêu cầu của câu này; <em>Step Into</em> đi vào trong hàm đang được gọi (chỉ cần khi
+				bạn nghi lỗi nằm trong một hàm mình tự viết); <em>Resume</em> thì thả app chạy tiếp bình thường tới breakpoint kế
+				tiếp hoặc tới hết. Với người mới, 90% thời gian chỉ cần Step Over và Resume: Step Over để đi từng dòng xem giá trị
+				đổi ra sao, Resume để thoát ra khi đã xem xong. Đáp án a là nút liền kề dễ bấm nhầm: nó không dừng ở dòng kế mà
+				lặn xuống bên trong hàm của dòng hiện tại — với dòng gán giữa hai biến thì chẳng có gì để xem bên trong. Đáp án c
+				làm quá yêu cầu: Resume không dừng ở dòng kế, nó thả chạy luôn cho tới lần dừng kế tiếp hoặc hết chương trình. Đáp
+				án d restart cả app — mất trạng thái đang có và bỏ đi toàn bộ giá trị của việc đang dừng giữa chừng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>
+				9. Trong <code>Log.d("MainActivity", "truoc khi gan: out=$chatOutputText in=$chatInputText")</code>, tham số đầu
+				tiên <code>"MainActivity"</code> có việc gì?
+			</legend>
+			<label>
+				<input type="radio" name="q9" value="a" /> Là thẻ (tag) do bạn tuỳ ý đặt, để lọc dòng log của mình trong Logcat
+				khi có quá nhiều dòng từ app và hệ điều hành
+			</label>
+			<label>
+				<input type="radio" name="q9" value="b" /> Là mức độ của dòng log — viết tên class vào đó là bảo Logcat in dòng
+				này bằng màu của lỗi nghiêm
+			</label>
+			<label>
+				<input type="radio" name="q9" value="c" /> Là tên bắt buộc phải khớp chính xác tên class ghi log, nếu không dòng
+				log sẽ không hiện trong Logcat
+			</label>
+			<label>
+				<input type="radio" name="q9" value="d" /> Là tên thiết bị hoặc máy ảo mà dòng log được gửi tới — các máy khác
+				không thấy dòng này
+			</label>
+			<p class="explain" hidden>
+				Tham số đầu của <code>Log.d("thẻ", "nội dung")</code> là <em>thẻ</em> (tag): một chuỗi tuỳ bạn đặt, duy nhất để
+				lọc trong Logcat khi panel đang tràn hàng nghìn dòng từ cả app lẫn hệ điều hành. Mức độ của log nằm ở chữ cái
+				trong tên hàm, không nằm ở tham số: <code>d</code> là debug, ngoài ra còn <code>Log.i()</code> cho thông tin,
+				<code>Log.w()</code> cho cảnh báo, <code>Log.e()</code> cho lỗi — cùng cơ chế, chỉ khác mức độ và màu hiển thị
+				(đáp án b nhầm hai thứ đó). Đáp án c sai vì thẻ không có ràng buộc khớp tên class nào cả — "MainActivity" chỉ là
+				cái tên có nghĩa với người đọc; đúng là thư viện Timber về sau tự điền thẻ theo tên class cho bạn, nhưng đó là
+				tiện lợi của thư viện, không phải luật của <code>Log.d</code>. Đáp án d gán sai việc: log của một app chạy ở máy
+				nào thì nằm trong Logcat của máy đó — tham số thẻ không chọn thiết bị, nó chỉ dán nhãn cho dòng log.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>
+				10. Với nhiều lỗi khác, Android Studio đưa sẵn cách sửa qua bóng đèn vàng — bấm là xong. Vì sao với lỗi
+				<em>"Composable calls are not allowed inside the calculation parameter…"</em> thì IDE không đề xuất cách sửa nào?
+			</legend>
+			<label>
+				<input type="radio" name="q10" value="a" /> Vì lỗi nằm trong thư viện Compose chứ không nằm trong code của bạn,
+				nên IDE không được phép đề xuất sửa file của thư viện
+			</label>
+			<label>
+				<input type="radio" name="q10" value="b" /> Vì bóng đèn vàng chỉ hiện cho cảnh báo (warning) — với lỗi biên dịch
+				thì Android Studio cố tình tắt gợi ý để người mới tự đọc thông báo lỗi
+			</label>
+			<label>
+				<input type="radio" name="q10" value="c" /> Vì tính năng quick-fix phải bật trong Settings của Android Studio
+				trước, mặc định của bản mới đang tắt
+			</label>
+			<label>
+				<input type="radio" name="q10" value="d" /> Vì IDE chỉ biết "chỗ này không được gọi Composable" mà không biết ý
+				bạn muốn gì — lỗi cú pháp thì IDE sửa hộ được, lỗi thiết kế thì chỉ bạn sửa được
+			</label>
+			<p class="explain" hidden>
+				IDE hiểu luật: "trong lambda của <code>remember</code> không được gọi Composable". Nó <em>không</em> hiểu ý định
+				của bạn: bạn muốn chuỗi mặc định được dịch, nhưng lấy bằng cách nào — <code>context.getString()</code>, hay gọi
+				<code>stringResource</code> ở ngoài rồi truyền vào? Mỗi cách cho một hành vi khác nhau khi đổi ngôn ngữ, nên đây
+				là quyết định thiết kế mà chỉ người viết code mới chốt được. Chữ "không biết ý bạn muốn gì" trong đáp án d là
+				chìa khoá, và nó là ranh giới đáng nhớ giữa lỗi cú pháp (IDE sửa
+				được, vì chỉ có một cách đúng) và lỗi thiết kế (chỉ bạn sửa được, vì có nhiều cách đúng với ý nghĩa khác nhau).
+				Đáp án a sai chỗ: lỗi nằm ngay trong dòng code bạn vừa gõ — thông báo chỉ <em>trích dẫn</em> định nghĩa của
+				<code>remember</code>, không phải báo lỗi bên trong thư viện. Đáp án b sai về cơ chế: bóng đèn vàng hiện cả với
+				lỗi biên dịch ở nhiều tình huống khác, chỉ riêng chỗ này nó không có gì để đề xuất. Đáp án c bịa một tuỳ chọn:
+				quick-fix không phải tính năng cần bật trong Settings, và vấn đề ở đây không phải cấu hình.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+	<h2>Bài tập</h2>
+	<p class="intro">
+		Bài dưới đây không kiểm tra việc bạn nhớ chữ: nó cho bạn <em>dự đoán trước rồi kiểm bằng breakpoint</em> — cách
+		duy nhất biến debug từ mẹo thành kỹ năng.
+	</p>
+
+	<div class="exercise">
+		<h3>Bài tập 3 — Dự đoán trước, rồi dùng breakpoint để kiểm</h3>
+		<p>
+			Bài này bắt bạn <em>viết dự đoán ra giấy trước khi chạy</em>. Đó không phải hình thức: chỉ khi đã cam kết một dự đoán
+			thì việc thấy kết quả khác mới dạy được bạn điều gì. Mở bản <code>final</code>, tới khối
+			<code>Button(onClick = ...)</code> ở <strong>dòng 68–71</strong> — dòng 69 là
+			<code>chatOutputText = chatInputText</code>, dòng 70 là <code>chatInputText = ""</code>.
+		</p>
+		<ol>
+			<li>
+				<strong>Dự đoán trước.</strong> Bạn sẽ gõ chữ <code>xin chao</code> rồi bấm Send. Điền trước giá trị hai biến vào
+				ba tình huống: (a) breakpoint ở dòng 69, (b) breakpoint ở dòng 70, (c) sau khi cả khối đã chạy xong.
+			</li>
+			<li>
+				Đặt breakpoint ở <strong>dòng 70</strong> bằng cách bấm vào số dòng ở lề trái editor — một chấm đỏ xuất hiện. Chạy
+				app bằng <strong>nút hình con bọ</strong>, không phải nút Run. Gõ <code>xin chao</code>, bấm Send, rồi đọc giá trị
+				hai biến trong panel Debug. So với dự đoán (b).
+			</li>
+			<li>
+				Bấm <em>Step Over</em> một lần, đọc lại hai biến. So với dự đoán (c). Bấm <em>Resume</em> cho app chạy tiếp và xem
+				màn hình.
+			</li>
+			<li>
+				Chuyển breakpoint lên <strong>dòng 69</strong>, làm lại y hệt. So với dự đoán (a). Ba lần đọc này khác nhau ở đâu,
+				và vì sao?
+			</li>
+			<li>
+				<strong>Phần khó, và là phần đáng làm nhất:</strong> cố ý <em>đảo thứ tự</em> hai dòng 69 và 70, rồi chạy lại với
+				breakpoint ở dòng thứ hai. Trước khi chạy, hãy dự đoán trước hai biến sẽ mang giá trị gì. Sau đó chạy và đối chiếu.
+				Cuối cùng: sửa lại đúng thứ tự.
+			</li>
+			<li>
+				<strong>Thử nốt cái bẫy này:</strong> giữ nguyên chấm đỏ nhưng chạy app bằng <strong>nút Run</strong> thường. Bấm
+				Send. Hiện tượng là gì, và nó nói gì về quan hệ giữa breakpoint và chế độ debug?
+			</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p><strong>Bước 1–4 — ba lần đọc, ba kết quả khác nhau:</strong></p>
+			<ul>
+				<li>
+					<strong>Breakpoint ở dòng 69:</strong> <code>chatInputText</code> = "xin chao", <code>chatOutputText</code> =
+					"Messages will display here". Cả hai dòng đều chưa chạy.
+				</li>
+				<li>
+					<strong>Breakpoint ở dòng 70:</strong> cả hai biến đều = "xin chao". Dòng 69 đã chạy, dòng 70 thì chưa.
+				</li>
+				<li>
+					<strong>Sau khi chạy xong cả khối:</strong> <code>chatInputText</code> = "" (rỗng),
+					<code>chatOutputText</code> = "xin chao".
+				</li>
+			</ul>
+			<p>
+				Nguyên tắc giải thích cả ba: breakpoint dừng app <strong>trước khi</strong> chạy dòng được đánh dấu. Vì vậy dòng 70
+				là chỗ duy nhất cho bạn thấy khoảnh khắc hai biến cùng mang một giá trị — một trạng thái trung gian tồn tại thật
+				nhưng quá ngắn để thấy bằng mắt. Nếu dự đoán của bạn lệch ở đúng chỗ này thì bạn vừa sửa được một hiểu lầm rất
+				đắt, vì nó làm mọi kết quả debug về sau bị đọc lệch đi một dòng.
+			</p>
+			<p>
+				<strong>Bước 5 — khi đã đảo hai dòng:</strong> code thành <code>chatInputText = ""</code> rồi
+				<code>chatOutputText = chatInputText</code>. Dừng ở dòng thứ hai, bạn thấy <code>chatInputText</code> đã
+				<em>rỗng</em> trong khi <code>chatOutputText</code> vẫn là chuỗi mặc định. Step Over một lần:
+				<code>chatOutputText</code> nhận vào chuỗi rỗng — và đó là toàn bộ nguyên nhân của việc phần hiển thị luôn trống.
+				Bạn vừa <em>nhìn thấy</em> nguyên nhân thay vì tin một lời cảnh báo. Đáng chú ý về mức độ của lỗi này: app không
+				crash, không có lỗi biên dịch, Logcat không báo một dòng lỗi nào — chỉ sai kết quả. Đó là loại lỗi lúc chạy khó chịu nhất, và nó
+				giải thích vì sao debug đáng học sớm.
+			</p>
+			<p>
+				<strong>Bước 6 — chạy bằng nút Run thường:</strong> app hoạt động bình thường và <em>không bao giờ dừng</em>, dù
+				chấm đỏ vẫn nằm đó. Breakpoint chỉ có tác dụng khi app chạy ở chế độ debug, vì chỉ chế độ đó mới gắn bộ máy theo
+				dõi vào app. Đây là chỗ người mới hay tưởng breakpoint bị hỏng, và nó cũng cho thấy vì sao chạy debug chậm hơn chạy
+				thường một chút: bạn đang trả giá cho khả năng dừng lại được.
+			</p>
+			<p>
+				<strong>Rút ra:</strong> giá trị của bài này không nằm ở ba con số bạn đọc được, mà ở việc bạn chuyển từ "code chắc
+				chạy thế này" sang "tôi nhìn thấy nó chạy thế này". Với những lỗi mà trình biên dịch không giúp được gì, đó là khác
+				biệt giữa mò trong bóng tối và làm việc có phương pháp.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	// IMP-001: chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>

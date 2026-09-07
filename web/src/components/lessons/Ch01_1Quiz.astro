@@ -12,14 +12,17 @@
 //   - không project nào khai uses-feature (tìm cả 11 project: 0 kết quả)
 //   - đối chiếu tham chiếu chéo: Content Provider ở Chương 1.2 mục 4.3, Content Resolver ở mục 5.1,
 //     Manifest ở Chương 1.3 mục 6, external storage / bộ nhớ chung ở Chương 11 mục 6–7
-// Quiz chấm bằng vanilla JS phía client; file này không có bài sắp thứ tự nên script chỉ chấm phần MCQ.
+// 2026-09: chuyển sang harness chung web/src/scripts/quiz.ts — initQuiz sở hữu chấm bài, nhãn "Câu x/N",
+//   điểm #quiz-score và nút "Làm lại". Đồng thời mở rộng mỗi câu từ 3 lên 4 lựa chọn: thêm 1 lựa chọn sai-lạc
+//   thật bám nội dung bài cho mỗi câu, explain phản biện đủ. Không đổi câu hỏi, không đổi ý đáp án đúng.
 ---
 
 <section class="quiz" id="quiz">
 	<h2>Quiz nhanh</h2>
 	<p class="intro">
-		9 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau khi chấm — kể cả ở câu bạn
-		làm đúng, nên đọc hết: nhiều chi tiết đáng nhớ nằm trong phần nói vì sao hai đáp án còn lại sai.
+		9 câu, mỗi câu có 4 lựa chọn (a–d) — chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra
+		sau khi chấm — kể cả ở câu bạn làm đúng, nên đọc hết: nhiều chi tiết đáng nhớ nằm trong phần nói vì sao ba đáp án
+		còn lại sai.
 	</p>
 
 	<form id="quiz-form">
@@ -38,14 +41,19 @@
 				<input type="radio" name="q1" value="c" /> Vì framework viết bằng hai ngôn ngữ, nên mỗi API phải có hai bản —
 				một bản Java và một bản Kotlin
 			</label>
+			<label>
+				<input type="radio" name="q1" value="d" /> Vì framework chứa sẵn nhiều app hoàn chỉnh — bản đồ, nghe nhạc,
+				nhắn tin — để lập trình viên lấy ra dùng lại cho app của mình
+			</label>
 			<p class="explain" hidden>
 				Kích thước của Android là <strong>hệ quả bắt buộc của phạm vi công việc</strong>, không phải lỗi thiết kế: người
 				ta chờ app làm được mọi thứ, nên bộ code nền phải đỡ được mọi thứ. Đáp án b nghe hợp lý với bất kỳ hệ thống lâu
 				năm nào, nhưng nó đảo ngược nguyên nhân — framework lớn vì <em>có nhiều việc phải đỡ</em>, và còn lớn thêm vì
 				chứa nhiều phần <em>"developer quality of life"</em> đang được dùng rất nhiều. Đáp án c hấp dẫn vì framework
-				Android <em>thật sự</em> là hỗn hợp Java và Kotlin (mục 2 của chương này), nhưng hỗn hợp không có nghĩa là mọi
-				thứ bị nhân đôi. Điều cần nhớ: ngay cả người làm Android nhiều năm cũng có lúc thấy ngợp — đó là kích thước
-				bình thường của nền tảng này, không phải dấu hiệu bạn kém.
+					Android <em>thật sự</em> là hỗn hợp Java và Kotlin (mục 2 của chương này), nhưng hỗn hợp không có nghĩa là mọi
+					thứ bị nhân đôi. Đáp án d sai vì framework không chứa app làm sẵn: nó chỉ cung cấp các mảnh để dựng app (API),
+					còn app cụ thể là do lập trình viên tự ghép những mảnh đó với nhau. Điều cần nhớ: ngay cả người làm Android
+					nhiều năm cũng có lúc thấy ngợp — đó là kích thước bình thường của nền tảng này, không phải dấu hiệu bạn kém.
 			</p>
 		</fieldset>
 
@@ -63,13 +71,19 @@
 				<input type="radio" name="q2" value="c" /> "Học tới đâu cần tới đó" — khả thi vì bạn không cần biết hết framework
 				mới viết được app đúng cách và dễ bảo trì
 			</label>
+			<label>
+				<input type="radio" name="q2" value="d" /> Chỉ cần thuộc hai ba class trung tâm, phần còn lại của framework tự
+				hiểu theo khi code nhiều — miễn đừng nhìn tài liệu nữa
+			</label>
 			<p class="explain" hidden>
 				Điểm mấu chốt không phải câu khẩu hiệu, mà là <strong>điều kiện làm cho nó đúng</strong>: Android được thiết kế
 				sao cho bạn viết được app tốt mà <em>không</em> phải biết hết. Nếu điều đó không đúng thì "học tới đâu cần tới đó"
 				sẽ là lời khuyên tệ. Đáp án a là cái bẫy phổ biến nhất với người mới — nó nghe có trách nhiệm, nhưng với một
 				framework mà người làm nhiều năm vẫn thấy ngợp thì "đọc hết rồi mới làm" nghĩa là không bao giờ tới lúc làm. Đáp
 				án b sai ở chỗ khác: vấn đề không phải học <em>bao nhiêu</em> class, mà là học <em>lúc nào</em> — bạn học một API
-				khi có việc cần tới nó, vì lúc đó bạn có ngữ cảnh để hiểu nó giải quyết vấn đề gì.
+				khi có việc cần tới nó, vì lúc đó bạn có ngữ cảnh để hiểu nó giải quyết vấn đề gì. Đáp án d thì bỏ luôn việc học:
+				framework không "tự hiểu theo" trong đầu bạn, và khoá học luôn đính kèm tài liệu tham khảo cho từng phần — vấn đề
+				vẫn là học API <em>đúng lúc</em> có việc cần tới nó, chứ không phải nhịn nhìn tài liệu.
 			</p>
 		</fieldset>
 
@@ -87,12 +101,18 @@
 				<input type="radio" name="q3" value="c" /> Không có đánh đổi nào đáng kể — đó là lý do chúng dần thay thế cách viết
 				native
 			</label>
+			<label>
+				<input type="radio" name="q3" value="d" /> Lợi thế là một app viết được cả trên máy tính lẫn trình duyệt web;
+				đánh đổi là phải trả phí bản quyền theo năm cho framework
+			</label>
 			<p class="explain" hidden>
 				Đáp án a đảo ngược đúng cả hai nửa: thứ chạy qua tầng trung gian thì khó nhanh <em>hơn</em> thứ chạy trực tiếp, và
 				"viết hai lần cho hai nền tảng" chính là vấn đề mà framework đa nền tảng <em>giải quyết</em>, không phải cái giá của
 				nó. Đáp án c sai vì có đánh đổi thật, rất cụ thể: hiệu năng, và <strong>độ sẵn có của API</strong> — khi Android ra
-				tính năng mới, framework bên ngoài phải chờ được cập nhật mới dùng được, còn code native dùng được ngay. Nhớ cặp
-				lợi–hại này, vì hai trong năm lý do chọn Kotlin ở câu sau được viết ra để trả lời đúng nó.
+				tính năng mới, framework bên ngoài phải chờ được cập nhật mới dùng được, còn code native dùng được ngay. Đáp án d
+				mô tả hai thứ framework này không làm: chúng nhắm vào điện thoại di động chứ không phải máy tính/web, và cả hai đều
+				miễn phí — cái giá thật nằm ở hiệu năng và API. Nhớ cặp lợi–hại này, vì hai trong năm lý do chọn Kotlin ở câu sau
+				được viết ra để trả lời đúng nó.
 			</p>
 		</fieldset>
 
@@ -112,12 +132,18 @@
 				<input type="radio" name="q4" value="c" /> Hỗ trợ native → Google bắt buộc dùng Kotlin từ 2019 → Java bị ngừng hỗ
 				trợ trên Android
 			</label>
+			<label>
+				<input type="radio" name="q4" value="d" /> Hỗ trợ native → không cần cài thêm công cụ nào ngoài Android Studio →
+				app nhẹ hơn và ít chiếm dung lượng máy hơn
+			</label>
 			<p class="explain" hidden>
 				Đây là một <strong>chuỗi</strong>, không phải một ưu điểm rời: được nền tảng hỗ trợ trực tiếp thì bớt lớp tương
 				thích ở giữa, bớt lớp ở giữa thì API mới dùng được ngay và code chạy nhanh hơn. Đáp án c sai ở một chữ rất quan
 				trọng: Google <em>khuyến nghị</em> Kotlin từ 2019, chứ không <em>bắt buộc</em> — Java vẫn là ngôn ngữ native được hỗ
 				trợ, và bản thân framework Android vẫn là hỗn hợp cả hai. Nhầm "khuyến nghị" thành "bắt buộc" sẽ làm bạn bối rối khi
-				gặp code Java trong tài liệu hoặc trong chính framework.
+				gặp code Java trong tài liệu hoặc trong chính framework. Đáp án d thì nhầm hỗ trợ ngôn ngữ với công cụ và dung lượng:
+				nền tảng hỗ trợ Kotlin nghĩa là viết Kotlin không cần tầng tương thích, chứ không phải app sinh ra tự nhẹ đi —
+				kích thước app do app bạn chứa những gì quyết định.
 			</p>
 		</fieldset>
 
@@ -138,28 +164,42 @@
 				<input type="radio" name="q5" value="c" /> Nó tước đi lợi thế riêng của Flutter/React Native — "làm hai nền tảng
 				cùng lúc" giờ không còn là độc quyền của họ
 			</label>
+			<label>
+				<input type="radio" name="q5" value="d" /> Nó khuyên bạn học cả hai cách — viết app native bằng Kotlin và giữ song song một bản Flutter để so sánh
+			</label>
 			<p class="explain" hidden>
 				Năm lý do đó không phải danh sách ngẫu nhiên mà là lập luận có bố cục: lý do 4 trả lời trade-off
 				<em>hiệu năng và API</em> của framework bên ngoài, lý do 5 trả lời <em>lợi thế đa nền tảng</em> của họ. Nhận ra bố
 				cục này thì bạn nhớ được cả năm ý, thay vì học vẹt. Đáp án b là suy diễn quá xa: khoá học chỉ làm app Android — nói
-				multiplatform "đã đủ mạnh" là nói về khả năng của Kotlin, không phải kế hoạch của khoá học.
+				multiplatform "đã đủ mạnh" là nói về khả năng của Kotlin, không phải kế hoạch của khoá học. Đáp án d cũng sai lệch
+				về vai trò: lý do 5 không phải lời khuyên "làm cả hai" — nó chỉ trả lời điểm yếu "đa nền tảng" của Kotlin so với
+				hybrid, để bạn biết Kotlin không thua ở nước đó.
 			</p>
 		</fieldset>
 
 		<fieldset data-answer="c">
 			<legend>6. Security sandbox của Android chặn theo <strong>mấy chiều</strong>?</legend>
-			<label><input type="radio" name="q6" value="a" /> Một chiều — chỉ chặn app khác nhìn vào app của bạn</label>
-			<label><input type="radio" name="q6" value="b" /> Một chiều — chỉ chặn app của bạn nhìn ra ngoài</label>
+			<label>
+				<input type="radio" name="q6" value="a" /> Một chiều — sandbox chỉ chặn app khác nhìn vào app của bạn, còn phía app của bạn muốn làm gì thì làm tự do
+			</label>
+			<label>
+				<input type="radio" name="q6" value="b" /> Một chiều — sandbox chỉ chặn app của bạn nhìn ra ngoài, còn ai muốn xem dữ liệu trong app thì đều xem được
+			</label>
 			<label>
 				<input type="radio" name="q6" value="c" /> Hai chiều — app khác không nhìn vào được, và app của bạn cũng không tự
 				tiện ra ngoài được
+			</label>
+			<label>
+				<input type="radio" name="q6" value="d" /> Ba chiều — ngoài vào, trong ra, và thêm chiều giữa các app với nhau qua
+				một "vùng chung" mà mọi app đều đọc ghi tự do
 			</label>
 			<p class="explain" hidden>
 				Cả <strong>hai chiều</strong>. Từ ngoài nhìn vào: không app nào khác biết chuyện gì diễn ra trong app của bạn. Từ
 				trong nhìn ra: app của bạn không truy cập được app khác, file cụ thể hay thông tin thiết bị — trừ khi được cho phép.
 				Người mới thường chỉ nhớ một chiều, và chiều bị quên thường là chiều thứ hai — đúng chiều gây ra phần lớn rắc rối
-				thực tế khi viết app (xin quyền, đọc file, gọi sang app khác). Câu tiếp theo hỏi về điểm tinh tế hơn: ai là người
-				quyết định mỗi chiều.
+				thực tế khi viết app (xin quyền, đọc file, gọi sang app khác). Đáp án d là mô hình sai có hậu quả: không có "vùng
+				chung" nào để app đọc ghi tự do — bộ nhớ dùng chung cũng nằm ngoài sandbox và vẫn phải được hệ thống cho phép.
+				Câu tiếp theo hỏi về điểm tinh tế hơn: ai là người quyết định mỗi chiều.
 			</p>
 		</fieldset>
 
@@ -175,13 +215,18 @@
 			<label>
 				<input type="radio" name="q7" value="c" /> Người dùng quyết định cả hai chiều qua màn hình Settings của điện thoại
 			</label>
+			<label>
+				<input type="radio" name="q7" value="d" /> Chiều "ngoài nhìn vào" do hệ thống quyết định, còn chiều "trong nhìn
+				ra" do chính app của bạn quyết định — ngược với cách làm đúng
+			</label>
 			<p class="explain" hidden>
 				Hai chiều có <strong>hai chủ thể khác nhau</strong>, và đây là chi tiết dễ bỏ qua nhất của mục 3. Dữ liệu bên trong
 				app là của app: <em>app tự quyết định</em> có mở ra cho ai không — đó là lý do <strong>Content Provider</strong>
 				(Chương 1.2, mục 4.3) tồn tại: một loại component sinh ra để app chủ động chia sẻ dữ liệu của mình ra ngoài. Còn
 				việc app được chạm tới cái gì của hệ thống thì <em>hệ thống quyết định</em> — nên mới có chuyện xin quyền. Đáp án c
 				lẫn hai thứ: người dùng bấm đồng ý trong hộp thoại quyền, nhưng người <em>ra luật</em> là hệ thống, và luật đó áp
-				cho chiều thứ hai.
+				cho chiều thứ hai. Đáp án d là bản đảo ngược của cách làm đúng — dễ nhầm vì nhớ được "hai chiều, hai chủ thể" nhưng
+				gán ngược: app chỉ có quyền mở cửa dữ liệu <em>của mình</em>, chứ không có quyền tự đi ra ngoài hệ thống.
 			</p>
 		</fieldset>
 
@@ -198,13 +243,18 @@
 				cần Intent để giao tiếp qua hệ thống
 			</label>
 			<label><input type="radio" name="q8" value="c" /> Không có lý do gì — thứ tự hai phần này đổi chỗ cũng được</label>
+			<label>
+				<input type="radio" name="q8" value="d" /> Vì sandbox là chủ đề của riêng Chương 1.1 — học xong là xong, còn
+				component ở Chương 1.2 không cần dùng tới nó
+			</label>
 			<p class="explain" hidden>
 				Sandbox <strong>giải thích lý do tồn tại</strong> của hai chương nhỏ kế tiếp. Vì app bị cô lập, hệ thống phải biết
 				trước app có thành phần gì → sinh ra <strong>Manifest</strong> (Chương 1.3, mục 6). Vì app không tự cầm tay gọi app
 				khác được, mọi giao tiếp phải đi qua hệ thống → sinh ra <strong>Intent</strong> (Chương 1.2, mục 5). Học theo thứ tự
 				này thì Manifest và Intent không còn là hai quy ước rườm rà phải nhớ, mà là hệ quả bắt buộc của một nguyên tắc bảo
 				mật. Đáp án a lẫn "khó" với "làm nền": sandbox thực ra là một trong những khái niệm dễ nhất của chương này — nó được
-				đặt sớm vì các thứ sau <em>dựa vào</em> nó, không vì nó khó.
+				đặt sớm vì các thứ sau <em>dựa vào</em> nó, không vì nó khó. Đáp án d sai theo hướng khác: sandbox không phải "học
+				xong là xong" — nó là nền cho mọi chương sau, từ permission (Chương 1.3) tới Intent (Chương 1.2, mục 5).
 			</p>
 		</fieldset>
 
@@ -218,20 +268,29 @@
 				phải lấy từ Chương 2
 			</label>
 			<label>
-				<input type="radio" name="q9" value="b" /> Có — một project <code>starter</code> và một <code>final</code> đầy đủ
+				<input type="radio" name="q9" value="b" /> Có — gồm cả một project starter để làm theo và một project final đã hoàn thiện đầy đủ
 			</label>
-			<label><input type="radio" name="q9" value="c" /> Có, nhưng chỉ project <code>challenge</code></label>
+			<label>
+				<input type="radio" name="q9" value="c" /> Có, nhưng chỉ có duy nhất project challenge trong số bốn thư mục dự án của chương
+			</label>
+			<label>
+				<input type="radio" name="q9" value="d" /> Có — một project <code>final</code> hoàn chỉnh, nhưng chỉ tải được sau
+				khi đăng nhập trang chủ của khoá học
+			</label>
 			<p class="explain" hidden>
 				Chương 1 là chương lý thuyết — nó vẽ bản đồ chứ không xây app nào, nên <strong>không</strong> có project. Bốn đường
 				dẫn <code>assets/</code>, <code>projects/starter/</code>, <code>projects/final/</code>,
 				<code>projects/challenge/</code> chỉ chứa file <code>.keep</code> rỗng 0 byte — loại file chỉ tồn tại để git giữ lại
 				một thư mục trống. Vì vậy mọi code thật xuất hiện trong Chương 1 đều <em>mượn</em> từ project của chương khác (chủ
 				yếu là app <strong>Kodeco Chat</strong> của Chương 2, và manifest của Chương 8 ở mục 3 chương này), và luôn ghi rõ
-				nguồn. Biết điều này giúp bạn khỏi đi tìm một project không tồn tại rồi tưởng mình tải thiếu.
+				nguồn. Biết điều này giúp bạn khỏi đi tìm một project không tồn tại rồi tưởng mình tải thiếu. Đáp án d là một biến
+				thể của cùng kiểu nhầm đó: project nào có thì nằm ngay trong <code>aaf-materials/</code> đã tải về, không có bước
+				đăng nhập hay tải thêm nào cả — Chương 1 là <em>không có</em>, chứ không phải <em>khó lấy</em>.
 			</p>
 		</fieldset>
 
 		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
 		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
 	</form>
 
@@ -347,33 +406,10 @@
 </section>
 
 <script>
-	const form = document.getElementById("quiz-form");
-	const scoreEl = document.getElementById("quiz-score");
+	// Chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
 
-	form?.addEventListener("submit", (e) => {
-		e.preventDefault();
-		const fieldsets = form.querySelectorAll("fieldset");
-		let correct = 0;
-
-		fieldsets.forEach((fs) => {
-			const answer = fs.getAttribute("data-answer");
-			const name = fs.querySelector("input")?.getAttribute("name");
-			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
-			const explain = fs.querySelector(".explain");
-			explain?.removeAttribute("hidden");
-
-			fs.classList.remove("correct", "incorrect");
-			if (picked && picked.value === answer) {
-				correct++;
-				fs.classList.add("correct");
-			} else {
-				fs.classList.add("incorrect");
-			}
-		});
-
-		if (scoreEl) {
-			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
-			scoreEl.removeAttribute("hidden");
-		}
-	});
+	initQuiz();
 </script>

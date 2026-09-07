@@ -1,0 +1,534 @@
+---
+// Quiz + bài tập cho Chương 2.2b — Giải mã project mẫu (đọc toàn bộ project vừa sinh ra).
+// Bài A7 (slug ch02-doc-project-mau). Tách từ quiz gộp Ch02_2Quiz.astro khi split bài monolith (2026-09):
+// các câu về THIẾT BỊ (máy ảo/máy thật) ở lại Ch02_2Quiz.astro (bài A6 — 2.2a), tám câu về CHÍN FILE
+// của project chuyển sang đây và thêm lựa chọn thứ 4 (a–d).
+// Nguồn gốc các câu port: câu 1 (file nào là entry point) · câu 2 (đoạn MainActivity.kt lỗi biên dịch, giữ nguyên
+//   const brokenMainActivityCode và cách render bằng pre.quiz-code) · câu 3 (setContent làm gì) ·
+//   câu 4 (@Composable vs @Preview) · câu 5 (ba file ui/theme/ chia việc) · câu 6 (cặp MAIN + LAUNCHER) ·
+//   câu 7 (app_name nối tới đâu) · câu 8 (hai file build.gradle.kts chia việc).
+// Ba câu viết mới: câu 9 (trace @style/Theme.KodecoChat → themes.xml, đừng nhầm Theme.kt) ·
+//   câu 10 (gradle wrapper để làm gì) · câu 11 (Manifest không có uses-permission nào — đọc được điều gì).
+// Ba bài tập port nguyên văn: Bài tập 1 (sắp thứ tự, có grader #check-order riêng chạy cạnh harness) ·
+//   Bài tập 2 (đọc AndroidManifest.xml) · Bài tập 3 (lần theo chuỗi tham chiếu tới một mã màu thật).
+// Harness IMP-001: chấm MCQ + "Câu x/N" + retry do web/src/scripts/quiz.ts phụ trách; script inline chỉ còn grader thứ tự.
+// Phân bố đáp án (11 câu): a×3 · b×3 · c×3 · d×2.
+
+const brokenMainActivityCode = `class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    KodecoChatTheme {
+      Greeting("Android")
+    }
+  }
+}`;
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		11 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau khi chấm — kể cả ở câu bạn
+		làm đúng, nên đọc hết: mỗi câu đều có phần nói vì sao các đáp án còn lại nghe rất hợp lý mà vẫn sai, và đó là chỗ dễ
+		nhớ nhất.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. File nào là điểm khởi đầu (entry point) của một app Android Compose vừa được sinh ra?</legend>
+			<label><input type="radio" name="q1" value="a" /> <code>build.gradle.kts</code></label>
+			<label><input type="radio" name="q1" value="b" /> <code>MainActivity.kt</code></label>
+			<label><input type="radio" name="q1" value="c" /> <code>AndroidManifest.xml</code></label>
+			<label><input type="radio" name="q1" value="d" /> <code>res/values/themes.xml</code> — vì Android đọc nó trước cả MainActivity để biết app trông thế nào</label>
+			<p class="explain" hidden>
+				<code>MainActivity.kt</code> chứa Activity chạy đầu tiên khi mở app: nó kế thừa <code>ComponentActivity</code>, có
+				<code>onCreate()</code> và <code>setContent &#123; &#125;</code> — nơi giao diện Compose được gắn vào app. Đáp án c
+				là cái bẫy hay nhất ở đây, vì Manifest thật sự được Android đọc <em>trước</em> mọi dòng Kotlin: nhưng nó chỉ
+				<em>khai báo</em> rằng có một Activity tên <code>.MainActivity</code> (dòng 16) và Activity đó là điểm vào —
+				bản thân nó không chứa dòng code nào để chạy. Đáp án a lệch hẳn tầng: <code>build.gradle.kts</code> là hướng dẫn
+				<em>cách dựng</em> app, nó không có mặt trong app đã cài. Đáp án d sai vai: themes.xml chỉ chọn "cái áo" lúc app
+				vừa mở, nó không chạy code và không phải điểm vào.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>2. Đoạn <code>MainActivity.kt</code> dưới đây không biên dịch được. Nó thiếu gì?</legend>
+			<pre class="quiz-code"><code>{brokenMainActivityCode}</code></pre>
+			<label><input type="radio" name="q2" value="a" /> Thiếu <code>setContent &#123; &#125;</code> bao quanh phần giao diện Compose</label>
+			<label><input type="radio" name="q2" value="b" /> Thiếu <code>import androidx.compose.material3.Text</code>, vì <code>Greeting</code> gọi <code>Text</code> bên trong nó</label>
+			<label><input type="radio" name="q2" value="c" /> Thiếu dấu <code>;</code> ở cuối dòng <code>Greeting("Android")</code>, vì Kotlin bắt buộc dấu chấm phẩy cuối mỗi câu lệnh</label>
+			<label><input type="radio" name="q2" value="d" /> Thiếu annotation <code>@Composable</code> phía trên hàm <code>Greeting</code>, không có nó thì Android Studio không nhận ra hàm vẽ UI</label>
+			<p class="explain" hidden>
+				Thiếu <code>setContent &#123; &#125;</code>. <code>KodecoChatTheme &#123; ... &#125;</code> là một lời gọi
+				composable, và composable chỉ được gọi bên trong một ngữ cảnh composable — như trong
+				<code>setContent &#123; &#125;</code>, hoặc bên trong một hàm <code>@Composable</code> khác. Gọi thẳng trong
+				<code>onCreate()</code>, một hàm Kotlin bình thường, là lỗi biên dịch. Đáp án b sai vì đoạn này không dùng
+				<code>Text</code> ở đâu cả — <code>Text</code> nằm trong hàm <code>Greeting</code>, ở chỗ khác của file. Đáp án c
+				sai vì Kotlin không bắt buộc dấu <code>;</code> cuối dòng. Đáp án d sai vì <code>Greeting</code> ở phần khác của
+				file đã có <code>@Composable</code> sẵn — cái gãy nằm ở chỗ <em>gọi</em> nó, không phải chỗ <em>định nghĩa</em>.
+				Nhớ mô hình: <code>setContent</code> là cánh cửa từ thế giới Android cũ (Activity, hàm thường) sang thế giới
+				Compose — bước qua cửa rồi mới gọi được composable.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>3. <code>setContent &#123; ... &#125;</code> trong <code>onCreate()</code> làm việc gì?</legend>
+			<label><input type="radio" name="q3" value="a" /> Nạp file XML layout của màn hình rồi tìm từng view bên trong nó</label>
+			<label><input type="radio" name="q3" value="b" /> Gắn khối giao diện Compose viết bên trong nó làm nội dung của Activity này</label>
+			<label><input type="radio" name="q3" value="c" /> Khai báo với Gradle rằng project này dùng Compose, để các thư viện composable được nạp lúc build</label>
+			<label><input type="radio" name="q3" value="d" /> Lưu lại nội dung màn hình để app hồi phục được sau khi bị hệ thống đóng — giống việc <code>savedInstanceState</code> làm</label>
+			<p class="explain" hidden>
+				Mọi thứ bạn viết trong cặp ngoặc của <code>setContent</code> chính là giao diện của Activity. Chỉ một hàm này thay
+				thế toàn bộ cách làm UI kiểu cũ — nên đáp án a mô tả đúng <em>cái mà <code>setContent</code> thay thế</em>, không
+				phải chính nó: trong project này không có file XML layout nào cả. Đáp án c nhầm tầng cấu hình: việc khai Compose
+				nằm ở <code>app/build.gradle.kts</code>, không phải trong code Kotlin của Activity. Đáp án d nhầm với tham số
+				<code>savedInstanceState</code> ở ngay dòng trên — đó là chỗ Android trả lại trạng thái đã lưu của lần trước, một
+				chuyện khác hẳn. Trong project mẫu, bên trong <code>setContent</code> có ba lớp lồng nhau theo thứ tự:
+				<code>KodecoChatTheme</code> (dòng 19) bọc <code>Surface</code> (dòng 21) bọc <code>Greeting("Fuad")</code>
+				(dòng 25).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>4. <code>@Composable</code> và <code>@Preview</code> khác nhau ở đâu?</legend>
+			<label><input type="radio" name="q4" value="a" /> <code>@Composable</code> cần một thiết bị để chạy, còn <code>@Preview</code> cần app đang chạy trên thiết bị đó</label>
+			<label><input type="radio" name="q4" value="b" /> <code>@Composable</code> bắt buộc phải đi kèm <code>@Preview</code>, nếu không hàm sẽ không biên dịch được</label>
+			<label><input type="radio" name="q4" value="c" /> Không khác nhau về vai trò — <code>@Preview</code> chỉ là tên mới của <code>@Composable</code> ở các bản Compose gần đây</label>
+			<label><input type="radio" name="q4" value="d" /> <code>@Composable</code> đánh dấu "hàm này mô tả giao diện"; <code>@Preview</code> thêm vào để Android Studio vẽ thử hàm đó ngay trong IDE, không cần build và cài app</label>
+			<p class="explain" hidden>
+				Hai annotation ở hai tầng khác nhau, và <code>GreetingPreview</code> (dòng 40–46 của
+				<code>MainActivity.kt</code>) mang <em>cả hai</em> — đó là bằng chứng gọn nhất cho thấy chúng không thay nhau được:
+				<code>@Preview</code> chỉ dùng được trên một hàm <code>@Composable</code> không tham số. Đáp án a đảo ngược sự thật
+				quan trọng nhất: <code>@Preview</code> <strong>không</strong> cần thiết bị nào, và đó chính là giá trị của nó — mỗi
+				lần build rồi cài lại app tốn hàng chục giây, còn preview vẽ lại gần như tức thì. Đáp án b sai chiều ràng buộc:
+				<code>@Preview</code> đi kèm <code>@Composable</code>, chứ không phải ngược lại — hàm <code>Greeting</code> không
+				có <code>@Preview</code> nào vẫn biên dịch tốt. Đáp án c sai vì đây là hai annotation khác tên, khác việc, cùng tồn
+				tại từ đầu. Một chi tiết đáng chú ý trong code thật: <code>GreetingPreview</code> cũng bọc nội dung trong
+				<code>KodecoChatTheme</code>. Không bọc thì preview hiện màu và font khác app thật, và bạn sẽ chỉnh giao diện theo
+				một hình ảnh sai.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>5. Ba file trong <code>ui/theme/</code> được chia việc thế nào?</legend>
+			<label><input type="radio" name="q5" value="a" /> <code>Color.kt</code> và <code>Type.kt</code> chỉ chứa dữ liệu thô (màu, kiểu chữ); <code>Theme.kt</code> gộp chúng lại và chứa logic chọn bảng màu lúc chạy</label>
+			<label><input type="radio" name="q5" value="b" /> Cả ba file đều là dữ liệu thô; phần logic chọn theme nằm trong <code>MainActivity.kt</code></label>
+			<label><input type="radio" name="q5" value="c" /> <code>Color.kt</code> cho light theme, <code>Type.kt</code> cho dark theme, <code>Theme.kt</code> cho chế độ dynamic color</label>
+			<label><input type="radio" name="q5" value="d" /> <code>Color.kt</code> chứa các mã màu ARGB, <code>Type.kt</code> chứa các đơn vị <code>sp</code>, còn <code>Theme.kt</code> chứa font tải về từ Google Fonts để cả app dùng chung</label>
+			<p class="explain" hidden>
+				<code>Color.kt</code> có đúng sáu <code>val</code> màu và không một dòng logic; <code>Type.kt</code> có đúng một
+				<code>Typography</code>. Toàn bộ phần quyết định nằm ở <code>Theme.kt</code>: khối <code>when</code> trong
+				<code>KodecoChatTheme</code> chọn theo thứ tự ưu tiên <strong>dynamic color (nếu máy từ API 31 trở lên) → dark →
+				light</strong>, rồi <code>MaterialTheme(colorScheme, typography, content)</code> phát màu và font xuống mọi
+				composable bên trong. Đáp án b sai chỗ đặt logic: <code>MainActivity</code> chỉ <em>gọi</em>
+				<code>KodecoChatTheme &#123; ... &#125;</code> mà không truyền tham số nào, tức nó không biết và không cần biết
+				theme nào sẽ được chọn. Đáp án c chia sai trục: sáu màu trong <code>Color.kt</code> phục vụ <em>cả hai</em> chế độ
+				— hậu tố <strong>80</strong> (nhạt) dùng cho dark theme, <strong>40</strong> (đậm) dùng cho light theme — và kiểu
+				chữ thì không phân biệt sáng tối. Đáp án d gán sai nội dung: <code>sp</code> là đơn vị nằm rải rác trong
+				<code>Type.kt</code>, còn project này chưa tải font nào — <code>FontFamily.Default</code> là font có sẵn. Hệ quả
+				thực dụng của cách chia đúng: muốn đổi diện mạo app thì sửa <code>Color.kt</code>/<code>Type.kt</code>, chỉ sửa
+				<code>Theme.kt</code> khi muốn đổi <em>logic</em> chọn theme.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>
+				6. Trong <code>AndroidManifest.xml</code>, thứ gì làm app <strong>xuất hiện trong danh sách app</strong> trên
+				thiết bị?
+			</legend>
+			<label><input type="radio" name="q6" value="a" /> <code>android:icon="@mipmap/ic_launcher"</code></label>
+			<label><input type="radio" name="q6" value="b" /> <code>android:exported="true"</code></label>
+			<label><input type="radio" name="q6" value="c" /> Cặp <code>action.MAIN</code> + <code>category.LAUNCHER</code> trong <code>&lt;intent-filter&gt;</code></label>
+			<label><input type="radio" name="q6" value="d" /> <code>android:label="@string/app_name"</code>, nhờ label mà launcher biết được app này tên gì để xếp chỗ</label>
+			<p class="explain" hidden>
+				<code>MAIN</code> nghĩa là "đây là điểm vào chính của app", <code>LAUNCHER</code> nghĩa là "hiện icon ở launcher".
+				Xoá cặp này thì app vẫn cài được nhưng <strong>bạn không tìm thấy nó đâu để mở</strong>. Đáp án a chỉ quyết định
+				<em>hình</em> của icon, không quyết định việc icon có xuất hiện hay không. Đáp án b là <strong>điều kiện cần nhưng
+				chưa đủ</strong>: <code>exported="true"</code> cho phép thành phần bên ngoài app — ở đây là chính launcher của hệ
+				thống — mở Activity này, nên thiếu nó thì cặp <code>MAIN</code>/<code>LAUNCHER</code> cũng vô dụng; nhưng một
+				Activity chỉ có <code>exported="true"</code> mà không có cặp intent-filter đó thì vẫn không hiện ở đâu. Đáp án d
+				sai vai: label quyết định <em>tên chữ</em> dưới icon, không phải việc app có mặt trong danh sách hay không. Từ API
+				31, Android buộc mọi thành phần có <code>&lt;intent-filter&gt;</code> phải khai <code>exported</code> tường minh —
+				đó là lý do hai thứ này luôn đi cạnh nhau trong file.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				7. Bạn muốn đổi tên app hiển thị dưới icon từ "Kodeco Chat" thành tên khác. Sửa ở đâu, và vì sao đúng chỗ đó?
+			</legend>
+			<label><input type="radio" name="q7" value="a" /> Sửa <code>android:label</code> trong <code>AndroidManifest.xml</code>, vì Manifest là nơi khai tên hiển thị của app</label>
+			<label><input type="radio" name="q7" value="b" /> Sửa <code>app_name</code> trong <code>res/values/strings.xml</code>, vì <code>@string/app_name</code> trong Manifest là một đường dẫn trỏ tới đó</label>
+			<label><input type="radio" name="q7" value="c" /> Sửa <code>rootProject.name</code> trong <code>settings.gradle.kts</code>, vì đó là tên project</label>
+			<label><input type="radio" name="q7" value="d" /> Chuột phải vào tên project trong Android Studio, chọn Refactor ‣ Rename — Android Studio sẽ đổi luôn cả tên hiển thị dưới icon</label>
+			<p class="explain" hidden>
+				Manifest viết <code>android:label="@string/app_name"</code>, và dấu <code>@string/</code> nghĩa là "lấy giá trị từ
+				file tài nguyên chuỗi" — nên chữ thật nằm ở <code>res/values/strings.xml</code>. Đáp án a là chỗ hầu hết người mới
+				sửa đầu tiên: nó <em>hoạt động</em> nếu bạn thay hẳn cả cụm <code>@string/app_name</code> bằng chữ viết cứng, nhưng
+				như vậy bạn vừa phá mất khả năng dịch app và phải sửa hai chỗ (Manifest khai <code>android:label</code> hai lần —
+				một cho <code>&lt;application&gt;</code> ở dòng 10 và một cho <code>&lt;activity&gt;</code> ở dòng 18). Sửa
+				<code>strings.xml</code> thì cả hai chỗ đổi theo. Đáp án c và d đều chạm vào một cái tên khác hẳn:
+				<code>rootProject.name = "Kodeco Chat"</code> — kể cả khi đổi qua Refactor — chỉ là tên project trong Android
+				Studio và Gradle, người dùng app không bao giờ thấy nó. Lợi ích thật của cơ chế <code>@string/</code>: muốn app hỗ
+				trợ tiếng Việt, bạn thêm thư mục <code>res/values-vi/</code> với một <code>strings.xml</code> khác và Android tự
+				chọn file đúng theo ngôn ngữ máy, không sửa một dòng code nào.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>8. Project có hai file <code>build.gradle.kts</code> — một ở gốc, một trong <code>app/</code>. Chúng chia việc thế nào?</legend>
+			<label><input type="radio" name="q8" value="a" /> File gốc khai <em>phiên bản</em> plugin dùng chung cho mọi module; file trong <code>app/</code> cấu hình riêng module đó — <code>compileSdk</code>, <code>minSdk</code>, <code>targetSdk</code>, <code>applicationId</code> và danh sách thư viện</label>
+			<label><input type="radio" name="q8" value="b" /> File gốc dùng cho bản release, file trong <code>app/</code> dùng cho bản debug</label>
+			<label><input type="radio" name="q8" value="c" /> File gốc là bản cũ còn sót lại từ thời Groovy, chỉ file trong <code>app/</code> còn tác dụng</label>
+			<label><input type="radio" name="q8" value="d" /> File gốc khai các thư viện app dùng, file trong <code>app/</code> khai phiên bản Android Studio cần cài trên máy</label>
+			<p class="explain" hidden>
+				File gốc chỉ dài 5 dòng và làm đúng một việc: khai <code>com.android.application</code> phiên bản
+				<strong>8.2.0</strong> (Android Gradle Plugin) và <code>org.jetbrains.kotlin.android</code> phiên bản
+				<strong>1.9.10</strong>, kèm <code>apply false</code> — nghĩa là "khai phiên bản ở đây thôi, module nào cần thì tự
+				bật". Nhờ vậy mọi module trong project dùng chung một phiên bản plugin. File trong <code>app/</code> mới là chỗ có
+				bốn con số định vị project: <code>compileSdk = 34</code> (bộ công cụ bạn viết bằng), <code>minSdk = 30</code> (sàn
+				thiết bị nhận app), <code>targetSdk = 34</code> (bản bạn hứa đã kiểm) và
+				<code>applicationId = "com.kodeco.chat"</code> (danh tính app khi cài lên máy). Đáp án b nhầm với khối
+				<code>buildTypes</code> — debug và release là hai <em>khối bên trong</em> cùng file <code>app/build.gradle.kts</code>,
+				không phải hai file. Đáp án c sai về cả kỹ thuật: cả hai file đều là Kotlin DSL (đuôi <code>.kts</code>), toàn bộ
+				project mẫu của khoá học không có file <code>build.gradle</code> kiểu Groovy nào; và xoá file gốc thì project không
+				build được vì không nơi nào khai phiên bản plugin. Đáp án d đảo ngược nội dung hai file: danh sách thư viện nằm
+				trong <code>app/</code>, còn phiên bản Android Studio thì không được khai ở bất kỳ file Gradle nào.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>
+				9. Trong Manifest có <code>android:theme="@style/Theme.KodecoChat"</code>. Dấu <code>@style/</code> đó lần về đúng
+				file nào trong project?
+			</legend>
+			<label><input type="radio" name="q9" value="a" /> <code>ui/theme/Theme.kt</code> — vì đúng tên <code>KodecoChatTheme</code> được định nghĩa ở đó</label>
+			<label><input type="radio" name="q9" value="b" /> <code>res/values/colors.xml</code> — vì theme trước hết là một bộ màu được khai bằng XML</label>
+			<label><input type="radio" name="q9" value="c" /> <code>ui/theme/Color.kt</code> — nơi lưu sáu màu gốc mà theme sẽ dùng</label>
+			<label><input type="radio" name="q9" value="d" /> <code>res/values/themes.xml</code> — theme XML mà hệ thống đọc ở khoảnh khắc app vừa mở, trước khi Compose kịp chạy</label>
+			<p class="explain" hidden>
+				Mọi dấu <code>@</code> trong XML là một đường dẫn tới tài nguyên, và <code>@style/</code> trỏ tới
+				<code>res/values/themes.xml</code> — nơi có đúng một dòng đáng kể:
+				<code>&lt;style name="Theme.KodecoChat" parent="android:Theme.Material.Light.NoActionBar" /&gt;</code>. Đáp án a là
+				cái bẫy của hai cái tên gần như trùng nhau: <code>KodecoChatTheme</code> viết bằng Kotlin ở
+				<code>ui/theme/Theme.kt</code> là <em>theme khác</em> — nó chạy sau, khi Compose đã bắt đầu. Theme XML phục vụ
+				giai đoạn khởi động, theme Kotlin phục vụ phần giao diện chính; cùng một cái tên "theme" nhưng hai file, hai ngôn
+				ngữ, hai giai đoạn của cùng một lần mở app. Đáp án b và c sai loại tài nguyên: màu XML nằm ở
+				<code>colors.xml</code>, màu Compose nằm ở <code>Color.kt</code>, nhưng không nơi nào trong hai file đó định nghĩa
+				<em>style</em> — thứ mà <code>@style/</code> cần.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>
+				10. Thư mục <code>gradle/wrapper/</code> làm gì, và vì sao không nên xoá nó dù trông có vẻ vô dụng?
+			</legend>
+			<label><input type="radio" name="q10" value="a" /> Nó tải các thư viện Compose theo BOM <code>2023.10.00</code> được khai trong <code>app/build.gradle.kts</code></label>
+			<label><input type="radio" name="q10" value="b" /> Nó ghim phiên bản Gradle cho project, tự tải về nếu máy chưa có</label>
+			<label><input type="radio" name="q10" value="c" /> Nó khai báo phiên bản AGP và Kotlin dùng chung cho mọi module của project</label>
+			<label><input type="radio" name="q10" value="d" /> Nó cấp bộ nhớ và bắt dùng UTF-8 cho tiến trình build qua <code>org.gradle.jvmargs</code></label>
+			<p class="explain" hidden>
+				Thư mục <code>gradle/wrapper/</code> cộng hai script <code>gradlew</code> ở gốc project ghim Gradle bản
+				<code>gradle-8.2-bin.zip</code>: build luôn dùng đúng phiên bản đó, tự tải về nếu máy chưa có. Nhờ vậy project build
+				ra kết quả giống nhau trên máy bạn, máy đồng nghiệp và máy chủ CI — không phụ thuộc việc mỗi người cài Gradle bản
+				nào. Đáp án a nhầm với BOM trong khối <code>dependencies</code> của <code>app/build.gradle.kts</code> — bảng phiên
+				bản cho thư viện Compose, không phải cho Gradle. Đáp án c là việc của file <code>build.gradle.kts</code> ở gốc
+				(AGP 8.2.0, Kotlin 1.9.10). Đáp án d là việc của <code>gradle.properties</code> — file thiết lập tiến trình build,
+				khác hẳn wrapper.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>
+				11. Tìm cả file <code>AndroidManifest.xml</code> không thấy một dòng <code>uses-permission</code> nào. Đọc được điều
+				gì từ đó?
+			</legend>
+			<label><input type="radio" name="q11" value="a" /> Quyền đã được cấp ngầm, vì đây là bản debug do Android Studio ký rồi cài lên thiết bị</label>
+			<label><input type="radio" name="q11" value="b" /> Quyền của app được khai trong <code>app/build.gradle.kts</code> thay vì Manifest, nên Manifest trông trống</label>
+			<label><input type="radio" name="q11" value="c" /> App còn thiếu cấu hình — mọi app đều phải khai ít nhất một quyền thì mới cài được lên máy</label>
+			<label><input type="radio" name="q11" value="d" /> App chưa làm gì cần quyền: nó chỉ hiện một dòng chữ; từ Chương 8, khi app gọi mạng, dòng <code>INTERNET</code> sẽ phải xuất hiện ở đây</label>
+			<p class="explain" hidden>
+				Quyền (permission) khai báo "app muốn ra ngoài vùng riêng của nó làm gì" — internet, camera, bộ nhớ. App này chỉ
+				hiện một dòng chữ: không ra internet, không chạm camera, không đọc bộ nhớ chung, nên không cần khai quyền nào — đó
+				là hợp lý, không phải thiếu sót. Đáp án a sai cơ chế: bản debug hay release không thay đổi chuyện quyền — không khai
+				thì không có, không có cơ chế "cấp ngầm" nào. Đáp án b sai chỗ: quyền <em>chỉ</em> được khai trong Manifest, file
+				Gradle không có chỗ nào cho <code>uses-permission</code>. Đáp án c sai quy tắc: vô số app không khai quyền nào vẫn
+				cài và chạy bình thường. Và khi Chương 8 thêm dòng <code>INTERNET</code>, đáng nhớ: thiếu nó thì app
+				<em>không crash</em> — nó chỉ lặng lẽ không tải được gì, một kiểu lỗi rất mất thời gian truy.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+	</form>
+
+	<h2>Bài tập</h2>
+	<p class="intro">
+		Bài tập 1 làm ngay trên trang. Bài tập 2 và 3 cần mở project mẫu
+		<code>02-getting-started-with-android-studio/projects/final/</code> — bằng Android Studio hoặc bất kỳ trình soạn thảo
+		nào, vì cả hai bài chỉ <em>đọc</em> file chứ không sửa gì. Tự trả lời trước rồi mới mở đáp án.
+	</p>
+
+	<div class="exercise">
+		<h3>Bài tập 1 — Sắp xếp: từ lúc bấm Run tới lúc app hiện trên thiết bị</h3>
+		<p>
+			Năm bước dưới đây bị xáo trộn. Chúng mô tả chuyện xảy ra từ lúc bạn bấm <em>Run App</em> tới lúc dòng chữ
+			<code>Hello Fuad!</code> hiện lên thiết bị — nối kiến thức bài 2.2a (thiết bị) với bài này (chín file của project).
+			Với mỗi bước, chọn số thứ tự đúng (1 đến 5) rồi bấm "Kiểm tra thứ tự":
+		</p>
+		<ul class="order-list" id="boot-order">
+			<li data-correct="3">
+				<select aria-label="Thứ tự cho bước: cài file app qua kênh adb vào thiết bị">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+				</select>
+				<span>Android Studio cài file app vào thiết bị đã chọn qua kênh <code>adb</code></span>
+			</li>
+			<li data-correct="5">
+				<select aria-label="Thứ tự cho bước: onCreate chạy và setContent dựng giao diện Compose">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+				</select>
+				<span>
+					Hệ thống gọi <code>onCreate()</code>, <code>setContent &#123; &#125;</code> dựng giao diện Compose và
+					<code>Greeting</code> vẽ dòng chữ
+				</span>
+			</li>
+			<li data-correct="1">
+				<select aria-label="Thứ tự cho bước: chọn thiết bị trong dropdown rồi bấm Run App">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+				</select>
+				<span>Bạn chọn thiết bị trong dropdown rồi bấm <em>Run App</em></span>
+			</li>
+			<li data-correct="4">
+				<select aria-label="Thứ tự cho bước: hệ thống đọc Manifest và khởi chạy MainActivity">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+				</select>
+				<span>
+					Hệ thống đọc <code>AndroidManifest.xml</code>, thấy <code>.MainActivity</code> mang
+					<code>action.MAIN</code> + <code>category.LAUNCHER</code>, và khởi chạy Activity đó
+				</span>
+			</li>
+			<li data-correct="2">
+				<select aria-label="Thứ tự cho bước: Gradle build code và tài nguyên thành một file app">
+					<option value="">-- số thứ tự --</option>
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+				</select>
+				<span>
+					Gradle đọc hai file <code>build.gradle.kts</code>, biên dịch code Kotlin cùng tài nguyên trong
+					<code>res/</code> thành một file app cài được
+				</span>
+			</li>
+		</ul>
+		<button type="button" id="check-order">Kiểm tra thứ tự</button>
+		<p id="order-result" role="status" aria-live="polite" hidden></p>
+		<details>
+			<summary>Xem đáp án và vì sao thứ tự này đáng nhớ</summary>
+			<p>
+				Thứ tự đúng: (1) bạn bấm Run · (2) Gradle build · (3) <code>adb</code> cài app vào thiết bị · (4) hệ thống đọc
+				Manifest và khởi chạy <code>MainActivity</code> · (5) <code>onCreate()</code> được gọi và
+				<code>setContent</code> dựng giao diện.
+			</p>
+			<p>
+				Chuỗi này đi qua đúng những thứ hai bài vừa đọc, và mỗi bước gắn với một nhóm file khác nhau: bước 2 là việc của
+				<strong>ba file Gradle</strong> (mục 7.4), bước 3 chỉ chạy được vì bạn đã có thiết bị và đã bật USB Debugging (bài
+				2.2a), bước 4 là việc của <strong><code>AndroidManifest.xml</code></strong> (mục 7.2) và bước 5 là việc của
+				<strong><code>MainActivity.kt</code></strong> (mục 7.1).
+			</p>
+			<p>
+				Hai chỗ dễ đảo: nhiều người xếp "đọc Manifest" lên trước "cài app", vì Manifest nghe như thứ được đọc lúc build.
+				Nó được đọc <em>cả hai lần</em> — Gradle có dùng nó khi đóng gói — nhưng lần đọc quyết định việc
+				<em>mở màn hình nào</em> thì diễn ra trên thiết bị, sau khi app đã cài. Chỗ thứ hai: bạn chỉ viết code cho bước 5.
+				Bốn bước đầu là việc của công cụ và hệ thống, và bạn điều khiển chúng bằng <em>khai báo</em> — chọn thiết bị, khai
+				trong Gradle, khai trong Manifest — chứ không bằng lời gọi hàm.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 2 — Đọc <code>AndroidManifest.xml</code> của project mẫu</h3>
+		<p>
+			Mở <code>app/src/main/AndroidManifest.xml</code> (28 dòng) và trả lời 4 câu bằng cách <em>tìm trong file</em>, không
+			đoán:
+		</p>
+		<ol>
+			<li>
+				Thuộc tính <code>android:label</code> xuất hiện <strong>mấy lần</strong>, ở những thẻ nào, và cả hai lần đều trỏ
+				tới cùng một chỗ không?
+			</li>
+			<li>
+				<code>android:theme="@style/Theme.KodecoChat"</code> trỏ tới file nào trong <code>res/</code>? Theme đó kế thừa từ
+				theme cha nào, và phần <code>NoActionBar</code> trong tên theme cha có tác dụng gì?
+			</li>
+			<li>
+				Tên Activity được viết là <code>.MainActivity</code> với một dấu chấm ở đầu. Dấu chấm đó thay cho cái gì, và giá
+				trị thay thế nó được khai ở file nào?
+			</li>
+			<li>
+				File này khai <strong>mấy quyền</strong> (<code>uses-permission</code>)? Con số đó nói gì về app hiện tại, và
+				chương nào của khoá học sẽ là chương đầu tiên phải thêm một quyền vào đây?
+			</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>1. Hai lần</strong> — dòng 10 cho thẻ <code>&lt;application&gt;</code> và dòng 18 cho thẻ
+				<code>&lt;activity&gt;</code>, và cả hai đều là <code>"@string/app_name"</code>, tức cùng trỏ về một chỗ:
+				<code>res/values/strings.xml</code>. Vì sao khai hai lần? <code>&lt;application&gt;</code> quyết định tên app nói
+				chung (dưới icon, trong danh sách app đã cài), còn <code>&lt;activity&gt;</code> quyết định nhãn của riêng màn hình
+				đó (chỗ dễ thấy nhất là danh sách app đang chạy — recent apps). Ở đây chúng trùng nhau vì app chỉ có một màn hình.
+			</p>
+			<p>
+				<strong>2.</strong> Trỏ tới <code>res/values/themes.xml</code>, nơi có đúng một dòng đáng kể:
+				<code>&lt;style name="Theme.KodecoChat" parent="android:Theme.Material.Light.NoActionBar" /&gt;</code>. Theme cha là
+				<code>android:Theme.Material.Light.NoActionBar</code>, và phần <code>NoActionBar</code> bảo hệ thống
+				<em>đừng</em> vẽ thanh tiêu đề kiểu cũ ở đầu màn hình — vì trong Compose bạn sẽ tự dựng thanh trên bằng composable.
+				Thiếu <code>NoActionBar</code> thì app có hai thanh tiêu đề xếp lên nhau. Chú ý thêm: đây là theme
+				<strong>XML</strong>, dùng cho khoảnh khắc app vừa mở trước khi Compose kịp chạy — khác với
+				<code>KodecoChatTheme</code> viết bằng Kotlin trong <code>ui/theme/Theme.kt</code>. Cùng một cái tên "theme" nhưng
+				hai file, hai ngôn ngữ, hai giai đoạn của cùng một lần mở app. Manifest cũng khai
+				<code>android:theme</code> hai lần, dòng 13 và dòng 19.
+			</p>
+			<p>
+				<strong>3.</strong> Dấu chấm đầu là viết tắt cho package gốc của code, tức <code>.MainActivity</code> nghĩa là
+				<code>com.kodeco.chat.MainActivity</code>. Giá trị đó được khai ở <code>app/build.gradle.kts</code>, dòng 7:
+				<code>namespace = "com.kodeco.chat"</code>. Đây là một trong những chỗ hiếm hoi mà file Gradle và Manifest phụ thuộc
+				trực tiếp vào nhau. Nhân đây một lỗi kinh điển: viết xong một Activity mới mà quên khai nó vào Manifest thì app
+				crash lúc mở màn hình đó, với thông báo <em>"Unable to find explicit activity class"</em> — Activity không khai ở
+				đây thì với Android nó không tồn tại.
+			</p>
+			<p>
+				<strong>4. Không một quyền nào</strong> — tìm cả file không có dòng <code>uses-permission</code>. Điều đó hợp lý vì
+				app hiện tại chỉ hiện một dòng chữ: nó không ra internet, không chạm camera, không đọc bộ nhớ chung. Nói cách khác
+				app này sống hoàn toàn bên trong vùng riêng của mình. Chương đầu tiên phải thêm quyền vào đây là
+				<strong>Chương 8</strong>, khi app bắt đầu gọi mạng: lúc đó dòng
+				<code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code> phải xuất hiện. Đáng nhớ vì thiếu
+				dòng đó app <em>không crash</em>, nó chỉ lặng lẽ không tải được gì — một kiểu lỗi rất mất thời gian truy.
+			</p>
+		</details>
+	</div>
+
+	<div class="exercise" style="margin-top: 1rem;">
+		<h3>Bài tập 3 — Lần theo chuỗi tham chiếu: từ <code>setContent</code> tới một mã màu thật</h3>
+		<p>
+			Bài này rèn đúng một kỹ năng bạn dùng mãi về sau: <em>lần theo một cái tên trong code cho tới khi gặp giá trị thật</em>.
+			Xuất phát từ <code>MainActivity.kt</code> dòng 18 (<code>setContent</code>), hãy trả lời bằng cách mở file và nhảy
+			theo từng lời gọi:
+		</p>
+		<ol>
+			<li>
+				Ngay trong <code>setContent</code>, composable đầu tiên được gọi là <code>KodecoChatTheme</code>. Hàm đó được định
+				nghĩa ở file nào? (Gợi ý: xem dòng <code>import</code> trong <code>MainActivity.kt</code>.)
+			</li>
+			<li>
+				Trong hàm đó, khối <code>when</code> chọn giữa mấy khả năng, theo thứ tự ưu tiên nào? Khả năng nào được chọn khi
+				bạn chạy app trên một máy Android 11 (API 30) đang ở chế độ sáng?
+			</li>
+			<li>
+				Với kết quả của câu 2, màu <code>primary</code> của theme cuối cùng là <code>val</code> nào, khai ở file nào, và
+				<strong>mã màu thật</strong> của nó là gì?
+			</li>
+			<li>
+				<code>Surface</code> trong <code>MainActivity</code> dùng <code>MaterialTheme.colorScheme.background</code>, không
+				dùng <code>primary</code>. Mà <code>Color.kt</code> không khai màu nào tên <code>background</code>. Vậy màu nền của
+				app lấy từ đâu?
+			</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>1.</strong> Dòng 13 của <code>MainActivity.kt</code> là
+				<code>import com.kodeco.chat.ui.theme.KodecoChatTheme</code>, nên hàm nằm ở
+				<code>app/src/main/java/com/kodeco/chat/ui/theme/Theme.kt</code> — cụ thể là <code>fun KodecoChatTheme</code> ở dòng
+				41. Dòng <code>import</code> chính là bản đồ: nó cho bạn đường dẫn thư mục, chỉ cần đổi dấu chấm thành dấu gạch
+				chéo.
+			</p>
+			<p>
+				<strong>2. Ba khả năng</strong>, theo thứ tự ưu tiên: (a) <em>dynamic color</em> — nếu tham số
+				<code>dynamicColor</code> bật (mặc định <code>true</code>) <strong>và</strong>
+				<code>Build.VERSION.SDK_INT &gt;= Build.VERSION_CODES.S</code>, tức máy từ API 31 (Android 12) trở lên; (b)
+				<code>DarkColorScheme</code> nếu đang ở chế độ tối; (c) <code>LightColorScheme</code> cho phần còn lại. Trên máy
+				API 30 ở chế độ sáng: nhánh (a) trượt vì 30 nhỏ hơn 31, nhánh (b) trượt vì không phải chế độ tối → kết quả là
+				<code>LightColorScheme</code>. Đây cũng là lý do <code>minSdk = 30</code> đáng để ý: đúng ở mức thiết bị thấp nhất
+				mà app nhận, tính năng Material You <em>không</em> hoạt động.
+			</p>
+			<p>
+				<strong>3.</strong> <code>LightColorScheme</code> được lắp ở <code>Theme.kt</code> dòng 24 với
+				<code>primary = Purple40</code>. Nhảy tiếp: <code>Purple40</code> khai ở
+				<code>ui/theme/Color.kt</code> dòng 9 — <code>val Purple40 = Color(0xFF6650a4)</code>. Đó là mã màu ARGB viết ở hệ
+				16: <code>FF</code> là độ đục (hoàn toàn không trong suốt), <code>66 50 a4</code> là ba thành phần đỏ-lục-lam, cho
+				ra một tông tím. Vậy chuỗi đầy đủ gồm ba chặng:
+				<code>MainActivity.kt</code> → <code>Theme.kt</code> (<code>LightColorScheme</code>) → <code>Color.kt</code>
+				(<code>0xFF6650a4</code>). Muốn nhìn nó trong chế độ tối thì lần theo nhánh còn lại và bạn tới
+				<code>Purple80 = Color(0xFFD0BCFF)</code> ở dòng 5 — nhạt hơn, đúng nguyên tắc nền tối thì điểm nhấn phải sáng.
+			</p>
+			<p>
+				<strong>4.</strong> Nó do <strong>Material 3 tự điền</strong>. <code>lightColorScheme()</code> chỉ nhận vài màu bạn
+				khai (ở đây là <code>primary</code>, <code>secondary</code>, <code>tertiary</code>) rồi điền phần còn lại của bảng
+				màu bằng giá trị mặc định hợp lý — nên <code>background</code> vẫn có giá trị dù không ai khai. Bằng chứng nằm ngay
+				trong file: khối comment <em>"Other default colors to override"</em> ở <code>Theme.kt</code> dòng 29–37 liệt kê đúng
+				những màu bạn <em>có thể</em> ghi đè, và <code>background = Color(0xFFFFFBFE)</code> là dòng đầu tiên trong đó. Đây
+				là chỗ chuỗi tham chiếu <em>ra khỏi</em> project của bạn và đi vào thư viện — nhận ra lúc nào chuỗi đi ra ngoài cũng
+				là một phần của kỹ năng này. Điểm rút ra lớn nhất của bài: không chỗ nào trong app viết cứng một mã màu. Mỗi thành
+				phần <em>hỏi theme</em>, nên đổi một dòng trong <code>Color.kt</code> là cả app đổi màu theo.
+			</p>
+		</details>
+	</div>
+</section>
+
+<script>
+	// IMP-001: chấm MCQ + "Câu x/N" + retry do harness chung phụ trách.
+	// Script này chỉ giữ grader riêng của Bài tập 1 (sắp thứ tự) — nó không đụng tới #quiz-form.
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+
+	const checkOrderBtn = document.getElementById("check-order");
+	const orderResultEl = document.getElementById("order-result");
+
+	checkOrderBtn?.addEventListener("click", () => {
+		const items = document.querySelectorAll("#boot-order li");
+		let correctCount = 0;
+
+		items.forEach((li) => {
+			const correctValue = li.getAttribute("data-correct");
+			const select = li.querySelector("select");
+			const picked = select?.value;
+
+			li.classList.remove("correct", "incorrect");
+			if (picked && picked === correctValue) {
+				correctCount++;
+				li.classList.add("correct");
+			} else {
+				li.classList.add("incorrect");
+			}
+		});
+
+		if (orderResultEl) {
+			orderResultEl.textContent = `Kết quả: ${correctCount}/${items.length} bước đúng vị trí.`;
+			orderResultEl.removeAttribute("hidden");
+		}
+	});
+</script>

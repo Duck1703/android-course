@@ -1,0 +1,223 @@
+---
+// Quiz nhanh cho bài Nền tảng F1 — Kotlin vừa đủ để đọc code Compose, Phần 1.
+// Câu hỏi bám nội dung KotlinVariablesNullCollectionsLambda.astro (val/var, kiểu + suy luận,
+// hàm/Unit/expression body/tham số mặc định + đặt tên, null safety ?./?:/!!, List + map/filter/
+// joinToString, lambda + it + trailing lambda, function type).
+// 12 câu, mỗi câu 4 lựa chọn (a–d), tỷ lệ đáp án 3/3/3/3 (b a d c c a d b b d a c).
+// Quiz mới cho bài Nền tảng F1; chấm bài do harness chung web/src/scripts/quiz.ts (IMP-001)
+// phụ trách qua initQuiz().
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		12 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn
+		làm đúng, nên đọc hết.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. Trong Kotlin, bạn viết <code>val a = 1</code> rồi sau đó viết <code>a = 2</code>. Chuyện gì xảy ra?</legend>
+			<label><input type="radio" name="q1" value="a" /> Chạy được — <code>a</code> nhận giá trị 2 từ dòng đó trở đi</label>
+			<label><input type="radio" name="q1" value="b" /> Không compile được — <code>val</code> cấm gán lại, nên <code>a = 2</code> viết lần thứ hai là lỗi ngay lúc biên dịch, chưa chạy đã bị chặn</label>
+			<label><input type="radio" name="q1" value="c" /> Báo cảnh báo — Kotlin cho phép gán lại <code>val</code> đúng một lần, lần thứ hai mới thành lỗi</label>
+			<label><input type="radio" name="q1" value="d" /> Compile được, nhưng khi app chạy tới dòng đó thì <code>a</code> giữ nguyên giá trị 1 và phép gán bị bỏ qua im lặng, không báo lỗi</label>
+			<p class="explain" hidden>
+				<code>val</code> = "gán một lần, rồi chỉ đọc" (read-only). Phép gán thứ hai <code>a = 2</code> bị trình biên
+				dịch chặn ngay — bạn không cần đợi app chạy mới phát hiện. Đáp án a mô tả đúng hành vi của
+				<code>var</code>, không phải <code>val</code>. Đáp án c sai vì <code>val</code> không cho gán lại
+				<em>bao giờ</em>, không phải "một lần nữa rồi thôi". Đáp án d sai vì đây là lỗi biên dịch — app chứa dòng đó
+				hễ build là không qua được, không có chuyện "im lặng bỏ qua".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>2. <code>val scores = listOf(1, 2)</code>. Bạn nhận được một tham chiếu khác tới cùng danh sách đó và thêm một phần tử qua tham chiếu kia. Khẳng định nào đúng?</legend>
+			<label><input type="radio" name="q2" value="a" /> <code>val</code> chỉ cấm gán lại tên — nó không hứa "nội dung bên trong không bao giờ đổi"</label>
+			<label><input type="radio" name="q2" value="b" /> Không thể thêm phần tử bằng bất kỳ cách nào — <code>val</code> khoá luôn cả nội dung của object mà nó trỏ tới</label>
+			<label><input type="radio" name="q2" value="c" /> Thêm được, nhưng Kotlin tự đổi <code>scores</code> thành <code>var</code> cho khớp với thực tế</label>
+			<label><input type="radio" name="q2" value="d" /> Thêm được, nhưng chỉ trong cùng hàm khai báo — ra khỏi hàm thì <code>scores</code> trở thành bất biến và mọi thay đổi từ bên ngoài bị từ chối</label>
+			<p class="explain" hidden>
+				Đây là phân biệt quan trọng nhất của bài: <strong>gán lại</strong> (đổi chỗ mà tên trỏ tới) khác với
+				<strong>thay đổi nội dung</strong> (object được trỏ tới tự đổi). <code>val</code> chỉ cấm việc thứ nhất.
+				Đáp án b nhầm <code>val</code> với "hằng số" kiểu <code>const</code> của ngôn ngữ khác. Đáp án c sai vì
+				Kotlin không bao giờ tự đổi khai báo của bạn. Đáp án d sai vì phạm vi bất biến không gắn với hàm —
+				<code>val</code> ở tầm module vẫn là <code>val</code>, và nội dung object vẫn đổi được qua tham chiếu khác
+				nếu nó thuộc loại thay đổi được.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>3. Trong ba tình huống dưới đây, tình huống nào <em>bắt buộc</em> phải viết kiểu tường minh cho biến?</legend>
+			<label><input type="radio" name="q3" value="a" /> <code>val age = 26</code> — bạn muốn chắc chắn Kotlin đoán đúng đó là một số nguyên, không phải số thập phân</label>
+			<label><input type="radio" name="q3" value="b" /> <code>val greeting = "Xin chào $name"</code> — chuỗi có string template nên cần khai rõ kiểu <code>String</code> thì template mới chạy được</label>
+			<label><input type="radio" name="q3" value="c" /> <code>val isLogged = true</code> — giá trị đúng/sai phải khai tường minh <code>Boolean</code> thì trình biên dịch mới chấp nhận</label>
+			<label><input type="radio" name="q3" value="d" /> Biến chưa có giá trị ngay lúc khai báo — Kotlin không có gì để suy ra kiểu</label>
+			<p class="explain" hidden>
+				Suy luận kiểu (type inference) hoạt động lúc biên dịch: <code>26</code> → <code>Int</code>,
+				<code>true</code> → <code>Boolean</code>, chuỗi trong nháy kép (kể cả có <code>$name</code>) →
+				<code>String</code> — nên ba đáp án đầu đều không cần viết kiểu; đáp án a thậm chí là ví dụ kinh điển của
+				"để Kotlin tự suy". Chỉ khi biến <em>chưa có giá trị ngay</em> (khai báo trước, gán sau) thì Kotlin không có
+				gì để suy và bạn bắt buộc phải viết kiểu tường minh — phải nói trước kiểu thì Kotlin mới biết chỗ nhớ này
+				chứa gì. Hai lý do còn lại để viết kiểu — muốn khác kiểu suy luận (số nguyên nhưng muốn
+				<code>Long</code>/<code>Double</code>) và làm tài liệu — là <em>lựa chọn</em>, không phải bắt buộc.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>4. Hàm <code>fun double(x: Int) = x * 2</code> viết theo dạng nào, và nó tương đương với gì?</legend>
+			<label><input type="radio" name="q4" value="a" /> Block body — tương đương <code>fun double(x: Int) &#123; x * 2 &#125;</code>, một khối lệnh không có <code>return</code></label>
+			<label><input type="radio" name="q4" value="b" /> Block body — tương đương một hàm trả về <code>Unit</code>, vì khai báo không viết kiểu trả về</label>
+			<label><input type="radio" name="q4" value="c" /> Expression body — tương đương <code>fun double(x: Int): Int &#123; return x * 2 &#125;</code>, kiểu trả về được suy từ biểu thức</label>
+			<label><input type="radio" name="q4" value="d" /> Expression body — tương đương một lambda được gán vào biến tên <code>double</code>: gọi được như gọi hàm, nhưng thật ra không phải là khai báo hàm</label>
+			<p class="explain" hidden>
+				Thân hàm là <em>một biểu thức</em> gán thẳng qua <code>=</code> — đó là <strong>expression body</strong>. Nó
+				hoàn toàn tương đương với dạng block body <code>fun double(x: Int): Int &#123; return x * 2 &#125;</code>,
+				và kiểu trả về <code>Int</code> được suy ra từ biểu thức <code>x * 2</code> — vì vậy bỏ kiểu tường minh vẫn
+				an toàn tuyệt đối. Đáp án a, b sai vì đây không phải block body và hàm có kết quả thật, không phải
+				<code>Unit</code>. Đáp án d sai vì <code>fun double(...)</code> là khai báo hàm chính thức, không phải lambda
+				cất vào biến — hai thứ tương tự nhau ở mức "gọi được", nhưng hình dạng khai báo khác nhau.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>5. Kiểu trả về <code>Unit</code> nghĩa là gì?</legend>
+			<label><input type="radio" name="q5" value="a" /> Hàm chưa viết xong — <code>Unit</code> là dấu hiệu của code chờ được cài đặt sau</label>
+			<label><input type="radio" name="q5" value="b" /> Hàm trả về một giá trị rỗng kiểu chuỗi — tương đương với việc trả về chuỗi rỗng <code>""</code>, chỉ khác nhau ở tên gọi</label>
+			<label><input type="radio" name="q5" value="c" /> Hàm làm việc xong là xong, không có kết quả đáng kể để nhận lại — và Kotlin cho phép bỏ luôn <code>: Unit</code></label>
+			<label><input type="radio" name="q5" value="d" /> Hàm trả về đúng một giá trị duy nhất mang tên <code>Unit</code>, và giá trị đó bắt buộc luôn là số nguyên 1 ở mọi lần gọi hàm</label>
+			<p class="explain" hidden>
+				<code>Unit</code> = "hàm này không đưa ra kết quả đáng kể nào cho người gọi" — gọi là xong việc. Chú ý
+				chính xác: <code>Unit</code> không đơn thuần là "void" của Java/C, nó là một <em>kiểu thật</em> có đúng một
+				giá trị (cũng tên là <code>Unit</code>), nên mọi hàm Kotlin đều trả về <em>thứ gì đó</em>. Kotlin cho phép
+				bỏ luôn <code>: Unit</code> khi khai báo. Đáp án a là hoài nghi vô căn cứ — <code>Unit</code> là khai báo
+				hoàn chỉnh. Đáp án b nhầm với chuỗi rỗng <code>""</code> — một <code>String</code> thật, không phải
+				<code>Unit</code>. Đáp án d đoán sai hoàn toàn từ cái tên: "Unit" ở đây là "đơn vị/duy nhất nhưng không đáng
+				kể", không phải số 1.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>6. Với hàm <code>fun send(msg: String, retry: Int = 3)</code>, lời gọi nào dưới đây <em>không</em> compile được?</legend>
+			<label><input type="radio" name="q6" value="a" /> <code>send(retry = 1)</code> — truyền tham số có giá trị mặc định mà bỏ qua tham số bắt buộc <code>msg</code>, nên lời gọi thiếu dữ liệu đầu vào</label>
+			<label><input type="radio" name="q6" value="b" /> <code>send("hi")</code> — dùng giá trị mặc định của <code>retry</code></label>
+			<label><input type="radio" name="q6" value="c" /> <code>send("hi", 1)</code> — truyền đủ cả hai tham số theo đúng thứ tự khai báo</label>
+			<label><input type="radio" name="q6" value="d" /> <code>send(msg = "hi")</code> — gọi bằng tên tham số và bỏ qua <code>retry</code> vì nó có mặc định</label>
+			<p class="explain" hidden>
+				Giá trị mặc định chỉ giúp tham số <em>có</em> mặc định được bỏ qua khi gọi — nó không cứu được tham số bắt
+				buộc. <code>send(retry = 1)</code> thiếu <code>msg</code> nên không compile được. Ba lời gọi còn lại đều
+				hợp lệ: bỏ qua <code>retry</code> (đáp án b, d) hay truyền đủ theo thứ tự (đáp án c). Quy ước đáng nhớ đi
+				cùng: hoặc toàn vị trí, hoặc toàn tên — và khi một tham số đầu tiên đã gọi bằng tên, các tham số sau cũng
+				phải gọi bằng tên.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>7. Khai báo <code>var nickname: String? = null</code>. Câu nào mô tả đúng <code>nickname</code>?</legend>
+			<label><input type="radio" name="q7" value="a" /> Biến đang chứa một chuỗi rỗng — độ dài 0, nên <code>nickname.length</code> trả về 0 mà không hề lỗi</label>
+			<label><input type="radio" name="q7" value="b" /> Biến chứa chữ "null" dưới dạng văn bản — một <code>String</code> gồm đúng bốn ký tự n, u, l, l</label>
+			<label><input type="radio" name="q7" value="c" /> Biến có kiểu <code>String</code> nhưng trình biên dịch tạm chấp nhận null vì biến khai bằng từ khoá <code>var</code> chứ không phải <code>val</code></label>
+			<label><input type="radio" name="q7" value="d" /> Biến kiểu <code>String?</code> — chứa một chuỗi hoặc null, và null không phải chuỗi rỗng</label>
+			<p class="explain" hidden>
+				Dấu <code>?</code> bám đuôi kiểu là cách khai báo "có thể không có giá trị". <code>null</code> là một giá trị
+				đặc biệt nghĩa là <em>không có giá trị nào</em> — <strong>không phải chuỗi</strong>, không có độ dài, không
+				gọi được gì từ nó. Đáp án a nhầm null với chuỗi rỗng <code>""</code>: đó là một <code>String</code> thật có
+				độ dài 0 — hai thứ hoàn toàn khác nhau. Đáp án b nhầm null với chuỗi văn bản "null". Đáp án c sai về cơ chế:
+				<code>String</code> thường là lời hứa "chắc chắn có chuỗi, không bao giờ null" — gán null vào đó là lỗi
+				biên dịch, không liên quan gì tới <code>var</code>; chính dấu <code>?</code> mới mở cửa cho null.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>8. Với <code>var nickname: String? = null</code>, biểu thức <code>nickname?.length</code> cho ra điều gì?</legend>
+			<label><input type="radio" name="q8" value="a" /> Số 0 — vì nickname không có nội dung nên độ dài được tính là 0</label>
+			<label><input type="radio" name="q8" value="b" /> Giá trị null với kiểu kết quả là <code>Int?</code> — safe call không gọi <code>.length</code> khi bên trái là null, và chương trình không crash</label>
+			<label><input type="radio" name="q8" value="c" /> Lỗi biên dịch — biến nullable phải "mở khoá" bằng <code>!!</code> thì mới được gọi thuộc tính</label>
+			<label><input type="radio" name="q8" value="d" /> Một số <code>Int</code> chắc chắn — String nào cũng có độ dài nên kết quả luôn là số, không bao giờ là null</label>
+			<p class="explain" hidden>
+				Đọc <code>?.</code> là: "nếu bên trái có giá trị thật → gọi <code>.length</code> như thường; nếu là
+				<code>null</code> → toàn bộ biểu thức cho ra <code>null</code>, không gọi gì cả, không crash". Chú ý kiểu
+				kết quả: <code>String?.length</code> qua safe call là <code>Int?</code> — hoặc một số, hoặc null. Đáp án a
+				nhầm null với 0. Đáp án c nói ngược: <code>nickname.length</code> thẳng mới bị cấm, còn <code>nickname?.length</code>
+				chính là cách hợp lệ để đọc; <code>!!</code> không phải điều kiện tiên quyết. Đáp án d sai vì tính được-null
+				"lan truyền" qua safe call — kết quả không còn là <code>Int</code> chắc chắn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>9. Với <code>val displayName = nickname ?: "Chưa có tên"</code> (nickname là <code>String?</code>), kiểu của <code>displayName</code> là gì và vì sao?</legend>
+			<label><input type="radio" name="q9" value="a" /> <code>String?</code> — vì nickname có thể null nên tính được-null lan qua phép toán Elvis</label>
+			<label><input type="radio" name="q9" value="b" /> <code>String</code> chắc chắn — cả hai nhánh của Elvis đều cho ra một chuỗi thật: bên trái nếu có giá trị, bên phải nếu null</label>
+			<label><input type="radio" name="q9" value="c" /> <code>Unit</code> — Elvis chỉ chạy khối lệnh thay thế rồi vứt kết quả đi, không trả về gì cả</label>
+			<label><input type="radio" name="q9" value="d" /> <code>Any?</code> — kiểu chung rộng nhất của hai vế, và kết quả vẫn có thể là null trong trường hợp cả hai vế cùng mang giá trị null</label>
+			<p class="explain" hidden>
+				Đọc <code>?:</code> là: "nếu bên trái có giá trị → dùng nó; nếu null → dùng bên phải." Ở đây cả hai nhánh
+				đều cho ra một chuỗi thật nên <code>displayName</code> là <code>String</code> — chắc chắn không null. Elvis
+				chính là chỗ tính được-null bị "chốt" lại. Đáp án a quên rằng vế phải <code>"Chưa có tên"</code> là chuỗi
+				không null. Đáp án c nhầm Elvis (một <em>biểu thức</em> cho ra giá trị) với khối lệnh. Đáp án d sai vì
+				Kotlin suy kiểu cụ thể nhất hợp lệ, không nâng lên <code>Any?</code>, và hai vế đều là chuỗi thật nên
+				không còn null nào.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>10. Vì sao bài học khuyên không dùng <code>!!</code> để "im" trình biên dịch khi gặp lỗi null?</legend>
+			<label><input type="radio" name="q10" value="a" /> Vì <code>!!</code> làm app chậm hẳn — Kotlin phải kiểm tra null hai lần tại mỗi chỗ dùng nó</label>
+			<label><input type="radio" name="q10" value="b" /> Vì <code>!!</code> bị cấm hoàn toàn trong code Android chính thức — build sẽ thất bại ngay khi trình biên dịch nhìn thấy ký hiệu này</label>
+			<label><input type="radio" name="q10" value="c" /> Vì <code>!!</code> xoá sạch tính được-null — sau dòng đó, biến trở thành kiểu thường vĩnh viễn ở mọi chỗ khác trong toàn bộ chương trình</label>
+			<label><input type="radio" name="q10" value="d" /> Vì nó chuyển lỗi lúc biên dịch thành lỗi lúc chạy — app crash trên máy người dùng vào lúc không ai kiểm soát</label>
+			<p class="explain" hidden>
+				<code>!!</code> nói với trình biên dịch: "tôi bảo đảm đây không phải null — cứ coi như có, và nếu tôi sai thì
+				cho app crash." Nó không xoá được vấn đề null, chỉ <em>dời</em> lỗi từ lúc biên dịch (bạn thấy ngay) sang
+				lúc chạy (trên máy người dùng thật). Đa số trường hợp <code>?.</code> hoặc <code>?:</code> diễn đạt đúng ý
+				hơn và an toàn hơn. Đáp án a bịa về hiệu năng, đáp án b sai vì <code>!!</code> hoàn toàn compile được — vấn
+				đề là rủi ro chứ không phải lệnh cấm, đáp án c sai vì <code>!!</code> không đổi kiểu của biến ở những chỗ
+				khác; bạn có thể gặp <code>!!</code> trong code người khác — đủ để nhận ra, nhưng hãy coi mỗi lần gặp như
+				một nơi đáng nghi ngờ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>11. Với <code>val nums = listOf(1, 2, 3, 4)</code>, kết quả của <code>nums.filter &#123; it &gt; 2 &#125;</code> và của <code>nums.map &#123; it * 10 &#125;</code> là gì?</legend>
+			<label><input type="radio" name="q11" value="a" /> <code>[3, 4]</code> và <code>[10, 20, 30, 40]</code> — hai danh sách mới; <code>nums</code> gốc không đổi</label>
+			<label><input type="radio" name="q11" value="b" /> <code>[10, 20, 30, 40]</code> và <code>[3, 4]</code> — filter nhân đôi các phần tử đạt điều kiện, còn map loại bỏ phần tử nhỏ hơn 2</label>
+			<label><input type="radio" name="q11" value="c" /> Cả hai cho <code>[10, 20, 30, 40]</code> — filter cũng biến đổi từng phần tử, chỉ khác map ở chỗ giữ nguyên số lượng</label>
+			<label><input type="radio" name="q11" value="d" /> Cả hai cho <code>[3, 4]</code> — và danh sách <code>nums</code> gốc bị thay thế bởi kết quả ngay sau mỗi lần gọi, nên phải sao lưu trước khi gọi</label>
+			<p class="explain" hidden>
+				<code>filter</code> giữ lại phần tử đạt điều kiện (khối trả <code>true</code>) → <code>[3, 4]</code>, số phần
+				tử có thể ít hơn nhưng không bao giờ nhiều hơn; <code>map</code> biến <em>mỗi</em> phần tử thành một giá trị
+				khác → <code>[10, 20, 30, 40]</code>, độ dài bằng List gốc. Cả hai đều trả về danh sách <em>mới</em> —
+				<code>nums</code> không đổi. Đáp án b hoán đổi vai hai hàm một cách vô lý. Đáp án c nhầm vì
+				<code>filter</code> không biến đổi gì — nó chỉ chọn giữ hay bỏ. Đáp án d sai kép: <code>map</code> không lọc
+				gì cả, và không hàm nào "thay thế" List gốc — tư duy đúng là "tạo bản mới thay vì sửa bản cũ".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>12. Về <code>it</code> và trailing lambda trong code Compose: câu nào đúng?</legend>
+			<label><input type="radio" name="q12" value="a" /> <code>it</code> là biến toàn cục của Android — mọi lambda trong cùng file dùng chung một <code>it</code></label>
+			<label><input type="radio" name="q12" value="b" /> Trailing lambda chỉ là cách viết trang trí — khối ngoài ngoặc chạy sau khối trong ngoặc, nên kết quả khác nhau</label>
+			<label><input type="radio" name="q12" value="c" /> <code>it</code> là tên mặc định Kotlin gán cho tham số <em>duy nhất</em> của lambda; lambda hai tham số buộc đặt tên; trailing lambda mời tham số cuối ra ngoài ngoặc tròn</label>
+			<label><input type="radio" name="q12" value="d" /> <code>it</code> bắt buộc dùng cho mọi lambda một tham số — đặt tên riêng cho tham số là lỗi biên dịch</label>
+			<p class="explain" hidden>
+				<code>it</code> chỉ là <strong>tên mặc định Kotlin gán cho tham số duy nhất của lambda</strong> khi bạn không
+				đặt tên — không phải biến toàn cục, không phải từ khoá của Android (loại đáp án a). Lambda hai tham số
+				<em>bắt buộc</em> đặt tên (<code>&#123; a, b -&gt; ... &#125;</code>), không dùng được <code>it</code>. Trailing
+				lambda là rút gọn khi tham số cuối cùng của hàm là lambda: <code>show(&#123; a -&gt; a * 2 &#125;)</code> và
+				<code>show &#123; a -&gt; a * 2 &#125;</code> ý nghĩa y hệt — không có chuyện "chạy sau" hay khác kết quả
+				(loại đáp án b). Đáp án d nói ngược quy tắc: <code>it</code> là lựa chọn mặc định, còn đặt tên riêng luôn
+				hợp lệ — và nên dùng khi lambda lồng nhau hoặc khi đọc không rõ <code>it</code> là gì. Quy tắc tra ngược khi
+				đọc code lạ: thấy <code>&#123;</code> đứng ngay sau tên hàm hoặc sau <code>)</code> → đó là trailing lambda.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+	</form>
+</section>
+<script>
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>

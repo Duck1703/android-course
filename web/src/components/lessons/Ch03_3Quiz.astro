@@ -41,7 +41,6 @@
 //   07-advanced-architecture/final/.../chat/MainActivity.kt: import DittoSyncPermissions dòng 54 ·
 //     checkPermissions() gọi ở dòng 80 · thân hàm 84–89; manifest Chương 7 có 0 uses-permission
 //   grep 'startActivity' trên mọi file .kt của aaf-materials → 0 kết quả
-// Đáp án rải đều: a 4 câu (2, 5, 8, 11) · b 3 câu (3, 6, 9) · c 3 câu (1, 4, 7) · d 1 câu (10).
 // Bài tập 2 là bài sắp thứ tự nên script gồm 2 phần: chấm MCQ + handler check-order (#launch-order).
 // Lượt kiểm định độc lập (2026-08-31) đã sửa trong file này:
 //   · số dòng license: file final dòng 1 là khai báo XML, license là dòng 2–33 (không phải 1–33);
@@ -59,14 +58,28 @@
 // Ghi nhận (không sửa): 8/11 câu có đáp án đúng là lựa chọn NGẮN NHẤT — đúng theo kỹ thuật "distractor dài,
 //   đáp án ngắn" của chuẩn quiz, nhưng vẫn là một tín hiệu đoán được, và cao hơn hẳn Ch03_2Quiz.astro (7/15).
 //   Nếu về sau rà lại chất lượng quiz cả khoá thì đây là file nên nới dài vài đáp án đúng trước tiên.
+// 2026-09 — chuyển sang harness chung web/src/scripts/quiz.ts + chuẩn hoá 4 lựa chọn: mỗi câu 3 lựa chọn
+//   có thêm MỘT distractor thứ tư là hiểu lầm thật của người mới (câu 10 đã có 4 lựa chọn sẵn):
+//   câu 1 (tưởng mipmap là bản sao dự phòng tăng tốc) · câu 2 (tưởng res/ là tàn dư có thể xoá) ·
+//   câu 3 (tưởng manifest giữ versionCode/versionName — đúng theo tài liệu cũ) ·
+//   câu 4 (tưởng thư mục ảo là một loại link của IDE) · câu 5 (quy kết chuyện thiếu package cho Compose) ·
+//   câu 6 (tưởng icon vẫn hiện nhưng bấm không chạy) · câu 7 (tưởng true là mặc định nên dòng thừa) ·
+//   câu 8 (nhầm Intent với cơ chế clipboard) · câu 9 (lẫn với thẻ <uses-feature> cùng họ "uses-") ·
+//   câu 11 (tương tự câu 9 cũ của quiz gộp: gọi thẳng JobScheduler tầng dưới).
+//   Explain mỗi câu được mở rộng phản biện luôn lựa chọn mới; các lựa chọn mới viết dài hơn đáp án để
+//   giảm tín hiệu "đáp án đúng là lựa chọn ngắn nhất" (trước đây 8/11).
+//   Cross-ref: tham chiếu "Chương 4.2, mục 9" ở câu 3 đổi thành "bài Gradle cho người mới (Chương 4)" —
+//   Chương 4 nay là MỘT bài; các tham chiếu "Chương 3.2, mục N" giữ nguyên (nội dung 3.2 tách thành
+//   hai bài 3.2a/3.2b nhưng vẫn giữ danh xưng Chương 3.2).
+// Đáp án rải đều: a 4 câu (2, 5, 8, 11) · b 3 câu (3, 6, 9) · c 3 câu (1, 4, 7) · d 1 câu (10).
 ---
 
 <section class="quiz" id="quiz">
 	<h2>Quiz nhanh</h2>
 	<p class="intro">
-		11 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra sau khi chấm — kể cả ở câu bạn
-		làm đúng, nên đọc hết: chỗ nói <em>vì sao các lựa chọn còn lại sai</em> mới là phần dạy thêm, và gần như mọi đáp án
-		sai ở đây đều là một niềm tin thật mà người mới mang theo khi đọc manifest lần đầu.
+		11 câu, mỗi câu có 4 lựa chọn (a–d) — chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích chỉ hiện ra
+		sau khi chấm — kể cả ở câu bạn làm đúng, nên đọc hết: chỗ nói <em>vì sao các lựa chọn còn lại sai</em> mới là phần
+		dạy thêm, và gần như mọi đáp án sai ở đây đều là một niềm tin thật mà người mới mang theo khi đọc manifest lần đầu.
 	</p>
 	<form id="quiz-form">
 		<fieldset data-answer="c">
@@ -83,12 +96,16 @@
 				dành cho bản cũ, máy mới đọc thư mục dành cho bản mới, nên thiếu một thư mục là mất icon trên nhóm máy đó
 			</label>
 			<label>
-				<input type="radio" name="q1" value="c" /> Vì mỗi thư mục giữ một phiên bản icon cho một mật độ điểm ảnh; bạn
-				viết một tên, Android chọn hộ file
+				<input type="radio" name="q1" value="c" /> Vì mỗi thư mục giữ một phiên bản icon cho một mật độ điểm ảnh; bạn viết
+				một tên duy nhất, Android tự chọn hộ
+			</label>
+			<label>
+				<input type="radio" name="q1" value="d" /> Vì sáu thư mục là sáu bản sao dự phòng để tăng tốc độ tải icon lúc
+				mở app: Android đọc cả sáu cùng lúc rồi lấy bản nét nhất hiển thị
 			</label>
 			<p class="explain" hidden>
 				Đây là nguyên tắc <strong>"một tên, nhiều phiên bản"</strong> của hệ thống resource, và nó y hệt cơ chế đa ngôn
-				ngữ của <code>strings.xml</code> ở Chương 3.2, mục 9 — chỉ đổi tiêu chí chọn từ ngôn ngữ sang mật độ màn hình.
+				ngữ của <code>strings.xml</code> ở Chương 3.2a, mục 9 — chỉ đổi tiêu chí chọn từ ngôn ngữ sang mật độ màn hình.
 				Mở project ra kiểm được từng file: năm thư mục <code>mipmap-hdpi</code>, <code>mipmap-mdpi</code>,
 				<code>mipmap-xhdpi</code>, <code>mipmap-xxhdpi</code>, <code>mipmap-xxxhdpi</code> mỗi thư mục giữ đúng hai file
 				ảnh <code>.webp</code> cùng tên, còn <code>mipmap-anydpi</code> giữ hai file <code>.xml</code> dùng được ở mọi mật độ.
@@ -96,7 +113,9 @@
 				app không có "trạng thái", và tên thư mục nói về <em>thiết bị</em> chứ không nói về hành vi người dùng. Đáp án b
 				lẫn hai loại hậu tố khác nhau — Android <em>có</em> hậu tố theo phiên bản (dạng <code>-v24</code>) nhưng
 				<code>hdpi</code> / <code>xxhdpi</code> không phải loại đó; và thiếu một thư mục mật độ thì icon vẫn hiện, Android
-				lấy bản gần nhất rồi phóng to hoặc thu nhỏ, chỉ hơi kém nét.
+				lấy bản gần nhất rồi phóng to hoặc thu nhỏ, chỉ hơi kém nét. Đáp án d sai từ cơ chế: Android chỉ đọc <em>đúng
+				một</em> file ứng với mật độ của máy đang chạy, năm thư mục còn lại không được đóng gói theo nghĩa "đọc cùng lúc"
+				nào — nhiều bản sao song song chỉ làm nặng file cài, không làm nhanh gì cả.
 			</p>
 		</fieldset>
 		<fieldset data-answer="a">
@@ -105,8 +124,8 @@
 				<code>res/layout/</code>. Điều đó nói lên gì?
 			</legend>
 			<label>
-				<input type="radio" name="q2" value="a" /> Giao diện được khai bằng code Kotlin, nên không còn file XML nào để đặt
-				vào <code>res/layout/</code>
+				<input type="radio" name="q2" value="a" /> Giao diện được khai bằng code Kotlin (Compose), nên project không cần
+				file XML loại layout nào — <code>res/layout/</code> là thứ thuộc về app XML thời trước
 			</label>
 			<label>
 				<input type="radio" name="q2" value="b" /> Các file layout đã được gom vào <code>res/values/</code> cùng với
@@ -116,6 +135,10 @@
 				<input type="radio" name="q2" value="c" /> Project mẫu bị thiếu file, nên trước khi build được bạn phải tự tạo lại
 				thư mục <code>layout</code> cùng một file layout cho màn hình chính
 			</label>
+			<label>
+				<input type="radio" name="q2" value="d" /> App Compose không dùng resource của Android nữa, nên <code>res/</code>
+				hiện tại chỉ là tàn dư do template sinh ra — xoá cả thư mục đi app vẫn build và chạy bình thường
+			</label>
 			<p class="explain" hidden>
 				Đây là <em>dấu vết vật lý</em> của việc project làm giao diện 100% bằng Compose — kiểm được ngay: chín thư mục đó
 				là <code>drawable</code>, sáu thư mục <code>mipmap-*</code>, <code>values</code>, <code>xml</code>, và tìm một thư
@@ -124,7 +147,11 @@
 				<code>res/values/</code> chỉ chứa loại XML "khai giá trị" (chuỗi, màu, style), và Android phân biệt các loại
 				resource <em>bằng tên thư mục</em> — gộp chúng lại là làm hỏng cơ chế đó. Đáp án c đảo ngược nhân quả: project build
 				và chạy được bình thường; app Compose <em>được phép</em> có <code>res/layout/</code> nhưng không <em>cần</em>, nên
-				thiếu nó không phải lỗi.
+				thiếu nó không phải lỗi. Đáp án d khái quát quá xa: app này vẫn dùng resource mỗi ngày — icon là
+				<code>@mipmap/ic_launcher</code>, tên app là <code>@string/app_name</code>, theme cửa sổ là
+				<code>@style/Theme.KodecoChat</code>, chữ hiện lên màn hình đọc từ <code>strings.xml</code>; xoá <code>res/</code>
+				thì manifest mất tham chiếu và build đổ ngay. Chỉ riêng loại resource <em>layout</em> là không cần, chứ không phải
+				toàn bộ <code>res/</code>.
 			</p>
 		</fieldset>
 		<fieldset data-answer="b">
@@ -141,15 +168,21 @@
 				<input type="radio" name="q3" value="c" /> Chứa mọi câu chữ hiển thị trong app, để dịch sang ngôn ngữ khác mà không
 				phải sửa dòng Kotlin nào
 			</label>
+			<label>
+				<input type="radio" name="q3" value="d" /> Khai số phiên bản của app như <code>versionCode</code> và
+				<code>versionName</code>, để hệ điều hành biết bản cài mới hơn bản nào khi cập nhật
+			</label>
 			<p class="explain" hidden>
 				Mô hình tư duy đáng giữ: manifest là <strong>tờ khai hải quan</strong> của app. Code là hàng hoá; manifest là bản
 				khai "trong này có gì, tôi cần quyền gì, cửa nào mở được vào" — và hệ điều hành đọc tờ khai <em>trước khi</em> chạy
 				một dòng code nào của bạn. Đó là lý do tồn tại một lớp lỗi rất khó chịu: code Kotlin đúng tuyệt đối, biên dịch sạch,
 				mà app vẫn không mở được (câu 6) hoặc không có quyền (câu 9). Đáp án a là việc của file
-				<code>build.gradle.kts</code> — chủ đề của Chương 4.2, mục 9. Đáp án c là <code>strings.xml</code> ở Chương 3.2, mục 9. Thú
+				<code>build.gradle.kts</code> — chủ đề của bài Gradle cho người mới (Chương 4). Đáp án c là <code>strings.xml</code> ở Chương 3.2a, mục 9. Thú
 				vị là chọn c cũng để lộ đúng một hiểu lầm ngược: manifest gần như <em>không chứa</em> giá trị thật nào, nó chỉ chứa
 				đường dẫn tới resource — tên app trong đó là <code>@string/app_name</code>, chính là một dòng bên trong
-				<code>strings.xml</code>.
+				<code>strings.xml</code>. Đáp án d là niềm tin có nguồn gốc thật: nhiều năm trước, <code>versionCode</code> và
+				<code>versionName</code> đúng là nằm trong manifest; hôm nay chúng khai trong <code>app/build.gradle.kts</code>
+				(defaultConfig) — một ví dụ nữa của chuyện tài liệu cũ dạy vị trí đã đổi.
 			</p>
 		</fieldset>
 		<fieldset data-answer="c">
@@ -166,8 +199,12 @@
 				lần rồi mở lại File Explorer là bạn sẽ thấy nó xuất hiện
 			</label>
 			<label>
-				<input type="radio" name="q4" value="c" /> Vì chế độ xem <em>Android</em> gom nhóm file theo ý nghĩa và sinh ra
-				những thư mục ảo không có trên ổ đĩa
+				<input type="radio" name="q4" value="c" /> Vì chế độ xem <em>Android</em> gom nhóm file theo ý nghĩa của chúng và
+				sinh ra những thư mục ảo — có trong cây project, không có trên ổ đĩa
+			</label>
+			<label>
+				<input type="radio" name="q4" value="d" /> Vì "manifests" là một liên kết (link) do Android Studio tạo ra trỏ tới
+				file thật nằm ở chỗ khác, và File Explorer không theo dõi được loại link mà IDE tự quản
 			</label>
 			<p class="explain" hidden>
 				Android Studio có hai chế độ xem cây project. Chế độ <em>Android</em> (mặc định) nhóm file theo <em>ý nghĩa</em>,
@@ -178,8 +215,10 @@
 				của hệ điều hành và không liên quan: đường dẫn thật <em>không hề ẩn</em>, chỉ là nó khác chỗ bạn thấy trong sidebar.
 				Thư mục sinh ra lúc build (b) cũng có thật — <code>app/build/</code> chứa đầy file do build tạo ra, gồm cả một
 				manifest đã trộn — nhưng "manifests" trong sidebar thì không bao giờ xuất hiện trên ổ đĩa, dù bạn build bao nhiêu
-				lần. Chi tiết này đáng nhớ vì nó là chỗ người mới mất thời gian nhiều nhất: copy đường dẫn từ sidebar dán vào lệnh
-				terminal và nhận về "no such file".
+				lần. Đáp án d cũng sai về bản chất: không có "link do IDE quản" nào — thư mục ảo chỉ tồn tại trong hình vẽ cây
+				project của IDE, nó không phải đối tượng trên hệ thống file (không phải shortcut, không phải symlink), nên không
+				thứ nào ở ngoài IDE "theo dõi" được nó. Chi tiết này đáng nhớ vì nó là chỗ người mới mất thời gian nhiều nhất:
+				copy đường dẫn từ sidebar dán vào lệnh terminal và nhận về "no such file".
 			</p>
 		</fieldset>
 		<fieldset data-answer="a">
@@ -188,8 +227,8 @@
 				<code>package="com.kodeco.chat"</code>, nhưng manifest của project này không có thuộc tính đó. Vì sao?
 			</legend>
 			<label>
-				<input type="radio" name="q5" value="a" /> Vì từ AGP 7.3 thông tin đó chuyển sang <code>namespace</code> trong
-				<code>build.gradle.kts</code>
+				<input type="radio" name="q5" value="a" /> Vì từ AGP 7.3 thông tin đó đã chuyển thành thuộc tính
+				<code>namespace</code> khai trong file build cấp module (<code>app/build.gradle.kts</code>) thay vì trong manifest
 			</label>
 			<label>
 				<input type="radio" name="q5" value="b" /> Vì thuộc tính đó chỉ cần khai khi app có từ hai Activity trở lên, để hệ
@@ -198,6 +237,10 @@
 			<label>
 				<input type="radio" name="q5" value="c" /> Vì đây là project mẫu dùng để học nên đã được rút gọn bớt cấu hình; app
 				thật muốn phát hành lên Play Store thì vẫn phải khai đủ thuộc tính <code>package</code> này
+			</label>
+			<label>
+				<input type="radio" name="q5" value="d" /> Vì project này dùng Compose: giao diện viết bằng Kotlin không cần
+				package khai trong manifest, chỉ app viết giao diện bằng XML layout mới cần thuộc tính đó
 			</label>
 			<p class="explain" hidden>
 				Không phải chuyện riêng của một file: tìm chuỗi <code>package="</code> trong <strong>toàn bộ 19 file</strong>
@@ -211,7 +254,10 @@
 				Play Store. Đáp án b bịa một luật theo số lượng Activity: thuộc tính này chưa bao giờ phụ thuộc vào chuyện đó. Đáp án
 				c là cách nghĩ dễ gặp nhất khi mở code mẫu ra thấy thiếu thứ mình vừa đọc, và nó ngược hẳn sự thật — project mẫu ở
 				đây <em>mới hơn</em> phần chữ trong tài liệu, còn thêm <code>package</code> vào theo tài liệu cũ thì AGP bản mới báo
-				lỗi build thẳng. Đây là chỗ nhắc bạn: khi tài liệu và code thật lệch nhau, mở code ra kiểm.
+				lỗi build thẳng. Đáp án d quy kết nhầm đối tượng: chuyện này thuộc về phiên bản công cụ build (AGP), không liên quan
+				gì tới cách vẽ giao diện — app XML thời AGP mới cũng khai <code>namespace</code> trong file build như vậy, còn app
+				Compose thời AGP 7.3 trở về trước vẫn khai <code>package</code> trong manifest. Đây là chỗ nhắc bạn: khi tài liệu và
+				code thật lệch nhau, mở code ra kiểm.
 			</p>
 		</fieldset>
 		<fieldset data-answer="b">
@@ -224,20 +270,26 @@
 				giá trị <code>MAIN</code> còn đó đã đủ nói cho hệ thống biết đây là màn hình khởi động
 			</label>
 			<label>
-				<input type="radio" name="q6" value="b" /> App vẫn build và cài được, nhưng không còn icon trong danh sách app để
-				bấm mở <code>MainActivity</code>
+				<input type="radio" name="q6" value="b" /> App vẫn build và cài được như thường, nhưng app không còn icon nào trong
+				danh sách app của máy để bấm mở <code>MainActivity</code>
 			</label>
 			<label>
 				<input type="radio" name="q6" value="c" /> App không build được, vì Android bắt buộc mọi
 				<code>&lt;intent-filter&gt;</code> phải có ít nhất một thẻ <code>&lt;category&gt;</code> đi kèm thẻ
 				<code>&lt;action&gt;</code>
 			</label>
+			<label>
+				<input type="radio" name="q6" value="d" /> Icon vẫn hiện trong danh sách app, nhưng bấm vào thì không có gì xảy
+				ra: hệ thống không tìm được "việc" nào để thực hiện với icon đó
+			</label>
 			<p class="explain" hidden>
 				Hai thẻ con trả lời hai câu hỏi khác nhau, và cần <em>cả hai</em>: <code>&lt;action&gt;</code> nói "Activity này xử
 				lý việc gì" (<code>MAIN</code> — đây là điểm bắt đầu của app), <code>&lt;category&gt;</code> nói "nó nên xuất hiện ở
 				đâu" (<code>LAUNCHER</code> — hiện icon trong danh sách app). Xoá category thì câu trả lời thứ hai mất, nên hệ thống
 				không có lý do nào để đặt icon của app lên màn hình chính — bạn không còn cách nào mở nó bằng tay. Đó là lý do đáp
-				án a sai: <code>MAIN</code> một mình chưa đủ. Đáng phân biệt với một trường hợp gần đó: xoá <em>cả</em> thẻ
+				án a sai: <code>MAIN</code> một mình chưa đủ. Đáp án d lẫn hai vai: chuyện icon <em>có hiện không</em> và chuyện
+				icon <em>bấm chạy được không</em> là một — icon trong danh sách app chính là kết quả của <code>LAUNCHER</code>, mất
+				category là mất luôn icon chứ không có icon "mồ côi" đứng đó. Đáng phân biệt với một trường hợp gần đó: xoá <em>cả</em> thẻ
 				<code>&lt;intent-filter&gt;</code> thì Android Studio báo lỗi ngay khi bạn bấm Run, vì nó không tìm được Activity nào
 				để mở — mức độ nghiêm trọng khác, và bạn biết ngay chứ không phải đi tìm. Đáp án c bịa một luật cú pháp không tồn
 				tại: XML vẫn hợp lệ và build vẫn xanh, đây đúng là kiểu lỗi ở tờ khai mà trình biên dịch không giúp được gì.
@@ -257,7 +309,11 @@
 			</label>
 			<label>
 				<input type="radio" name="q7" value="c" /> Vì cái mở <code>MainActivity</code> là launcher của hệ thống — một app
-				khác, không phải app của bạn
+				khác, nằm ngoài hoàn toàn so với code của bạn
+			</label>
+			<label>
+				<input type="radio" name="q7" value="d" /> Vì <code>"true"</code> là giá trị mặc định của thẻ
+				<code>&lt;activity&gt;</code> từ Android 12, nên dòng này chỉ viết ra cho rõ ràng — xoá đi app vẫn hành xử như cũ
 			</label>
 			<p class="explain" hidden>
 				<code>exported</code> trả lời đúng một câu hỏi: <em>thành phần bên ngoài app có được phép khởi động cái này
@@ -266,11 +322,13 @@
 				mình. Từ Android 12 (API 31), mọi thành phần có <code>&lt;intent-filter&gt;</code> buộc phải khai
 				<code>exported</code> tường minh, không khai thì không build được — một thay đổi bảo mật có lý, vì trước đó mặc định
 				là "có filter thì tự động được export" nên rất nhiều app vô tình mở cửa cho app khác gọi vào màn hình nội bộ mà lập
-				trình viên không biết. Đáp án a lẫn <code>exported</code> với chuyện đóng gói: thuộc tính này không hề quyết định code
-				nào vào bản build, nó chỉ quyết định <em>ai được gọi</em>. Đáp án b nghe hợp lý nhưng đảo ngược ý nghĩa của thuộc
-				tính: <code>exported="false"</code> là giá trị hoàn toàn bình thường và <em>rất nên dùng</em> cho những màn hình chỉ
-				app bạn mở, số lượng Activity không liên quan gì; nhớ sai kiểu này dẫn tới việc để "true" cho mọi màn hình, đúng là
-				vấn đề bảo mật mà Android 12 muốn chặn.
+				trình viên không biết. Đáp án d đúng thời điểm Android 12 nhưng đi ngược chiều của thay đổi đó: chính vì mặc định cũ
+				(tự động export) gây rủi ro bảo mật, Android 12 đã <em>bỏ</em> hành vi mặc định — giờ thiếu dòng khai báo là build
+				báo lỗi thẳng, dòng này là bắt buộc chứ không phải dòng trang trí. Đáp án a lẫn <code>exported</code> với chuyện đóng
+				gói: thuộc tính này không hề quyết định code nào vào bản build, nó chỉ quyết định <em>ai được gọi</em>. Đáp án b nghe
+				hợp lý nhưng đảo ngược ý nghĩa của thuộc tính: <code>exported="false"</code> là giá trị hoàn toàn bình thường và
+				<em>rất nên dùng</em> cho những màn hình chỉ app bạn mở, số lượng Activity không liên quan gì; nhớ sai kiểu này dẫn
+				tới việc để "true" cho mọi màn hình, đúng là vấn đề bảo mật mà Android 12 muốn chặn.
 			</p>
 		</fieldset>
 		<fieldset data-answer="a">
@@ -279,7 +337,7 @@
 			</legend>
 			<label>
 				<input type="radio" name="q8" value="a" /> Bạn tạo một <code>Intent</code> mô tả việc cần làm rồi giao cho hệ điều
-				hành; hệ thống tìm app đã khai rằng nó nhận việc đó
+				hành; hệ thống tự tìm app nào đã khai nhận việc đó, không cần biết tên app
 			</label>
 			<label>
 				<input type="radio" name="q8" value="b" /> Bạn thêm app đó vào danh sách phụ thuộc của project, <code>import</code>
@@ -289,6 +347,10 @@
 				<input type="radio" name="q8" value="c" /> Bạn ghi ảnh vào một vùng nhớ dùng chung mà mọi app trên máy đều đọc được,
 				rồi app kia tự quét vùng đó và phát hiện ảnh mới
 			</label>
+			<label>
+				<input type="radio" name="q8" value="d" /> Bạn sao chép ảnh vào clipboard của hệ điều hành; khi người dùng mở khung
+				soạn tin, app nhắn tin tự dò clipboard và dính dấu hỏi dán ảnh vào
+			</label>
 			<p class="explain" hidden>
 				Đây là điểm cốt lõi của Intent, và diễn đạt gọn nhất là: <strong>Intent là lời nhắn, không phải cuộc gọi.</strong>
 				Bạn không gọi hàm của app khác. Bạn tạo một object mô tả ý định ("tôi muốn chia sẻ một ảnh"), giao cho hệ điều hành,
@@ -297,8 +359,11 @@
 				chỉ ra: nếu phải import class của app kia thì bạn sẽ cần biết trước <em>từng app</em> người dùng có thể cài, mà app
 				đó có thể còn chưa ra đời khi bạn viết code. Chính vì đi qua trung gian là hệ điều hành, bạn không cần biết gì về code
 				bên nhận. Đáp án c bịa ra một "vùng nhớ chung ai cũng đọc được" — đúng là điều Android cố tình <em>không</em> làm, vì
-				mỗi app bị cách ly khỏi app khác; nếu có vùng như vậy thì mọi ảnh riêng tư của bạn đều công khai. Cũng chính cơ chế
-				này giải thích chuyện mở app: launcher không biết class <code>MainActivity</code> của bạn, nó chỉ phát ra "mở app có
+				mỗi app bị cách ly khỏi app khác; nếu có vùng như vậy thì mọi ảnh riêng tư của bạn đều công khai. Đáp án d nhầm
+				clipboard với chia sẻ: clipboard là cơ chế copy-paste do <em>người dùng</em> điều khiển từng bước, còn chia sẻ ảnh là
+				một luồng do app của bạn chủ động mở ra; ngoài ra Android còn kềm chế việc đọc lén clipboard — từ Android 12, hệ
+				thống hiện thông báo "app đã dán từ clipboard" mỗi lần app kia đọc. Cũng chính cơ chế Intent giải thích chuyện mở
+				app: launcher không biết class <code>MainActivity</code> của bạn, nó chỉ phát ra "mở app có
 				action MAIN + category LAUNCHER" và để hệ thống ghép với bộ lọc ở câu 6.
 			</p>
 		</fieldset>
@@ -307,6 +372,7 @@
 			<label><input type="radio" name="q9" value="a" /> <code>&lt;permission&gt;</code></label>
 			<label><input type="radio" name="q9" value="b" /> <code>&lt;uses-permission&gt;</code></label>
 			<label><input type="radio" name="q9" value="c" /> <code>&lt;request-permission&gt;</code></label>
+			<label><input type="radio" name="q9" value="d" /> <code>&lt;uses-feature&gt;</code></label>
 			<p class="explain" hidden>
 				Mẹo nhớ: đọc tên thẻ như một câu tiếng Anh — <em>uses</em> permission là "app này <em>dùng</em> quyền". Cái bẫy ở đây
 				là thẻ <code>&lt;permission&gt;</code> có thật và làm việc gần như ngược lại: nó <em>định nghĩa ra</em> một quyền mới
@@ -316,7 +382,9 @@
 				vẫn cài và mở được; chỉ tới lúc gọi mạng thật mới nổ ngoại lệ, và thông báo lỗi lúc đó nói về mạng chứ không nói về
 				manifest, nên bạn sẽ đi tìm lỗi ở tầng networking — sai chỗ hoàn toàn. Còn <code>&lt;request-permission&gt;</code>
 				đơn giản là không tồn tại; nó nghe hợp lý vì trùng với chữ "request" trong hàm xin quyền lúc chạy ở câu 10, nhưng cái
-				đó là code Kotlin, không phải thẻ XML. Ví dụ thật trong bộ project mẫu: manifest của Chương 8 có đúng một dòng
+				đó là code Kotlin, không phải thẻ XML. Đáp án d là thẻ có thật và dễ nhầm vì cùng họ <code>uses-</code>:
+				<code>&lt;uses-feature&gt;</code> chỉ <em>mô tả</em> phần cứng mà app cần (camera, GPS, cảm biến) — nó nói lên chứ
+				không xin cấp, khai xong app vẫn chưa có quyền dùng phần cứng đó. Ví dụ thật trong bộ project mẫu: manifest của Chương 8 có đúng một dòng
 				<code>&lt;uses-permission android:name="android.permission.INTERNET" /&gt;</code> ở dòng 5, tức trước cả thẻ
 				<code>&lt;application&gt;</code>.
 			</p>
@@ -339,8 +407,8 @@
 				thống thấy vậy sẽ tự hiện hộp thoại hỏi người dùng
 			</label>
 			<label>
-				<input type="radio" name="q10" value="d" /> Chưa đủ — còn phải hiện hộp thoại xin phép lúc app đang chạy, và người
-				dùng có thể từ chối
+				<input type="radio" name="q10" value="d" /> Chưa đủ — hộp thoại xin phép chỉ hiện lúc app đang chạy, người dùng có
+				thể từ chối, và code của bạn phải xử lý được cả trường hợp đó
 			</label>
 			<p class="explain" hidden>
 				Công thức đáng nhớ: <strong>khai manifest là điều kiện cần, hộp thoại lúc chạy là điều kiện đủ.</strong> Manifest chỉ
@@ -363,7 +431,8 @@
 				11. Muốn app chat tải tin nhắn mới khi người dùng không mở app. Hôm nay nên làm bằng gì?
 			</legend>
 			<label>
-				<input type="radio" name="q11" value="a" /> WorkManager — khai công việc kèm điều kiện, hệ thống tự chọn lúc chạy
+				<input type="radio" name="q11" value="a" /> WorkManager — khai công việc cần làm kèm điều kiện (có Wi-Fi, đang sạc,
+				máy rảnh), hệ thống tự chọn thời điểm chạy
 			</label>
 			<label>
 				<input type="radio" name="q11" value="b" /> Một background service chạy liên tục, vì đây đúng là việc người dùng
@@ -372,6 +441,10 @@
 			<label>
 				<input type="radio" name="q11" value="c" /> Một foreground service kèm notification không tắt được, vì đó là cách duy
 				nhất Android còn cho phép một app làm việc lúc không được mở
+			</label>
+			<label>
+				<input type="radio" name="q11" value="d" /> Gọi thẳng <code>JobScheduler</code> — API nền tảng từ Android 5 mà
+				WorkManager chỉ là lớp bọc, gọi tầng dưới sẽ nhẹ hơn vì không phải thêm thư viện nào vào project
 			</label>
 			<p class="explain" hidden>
 				Từ Android 8 (2017), <strong>background service bị hạn chế rất nặng</strong>: hệ thống dừng service nền của app không
@@ -382,13 +455,17 @@
 				quy tắc "foreground service buộc phải hiện notification": quy tắc đó có thật và có lý — pin cùng dữ liệu di động là
 				tài nguyên của người dùng, nên app tiêu thụ chúng lâu thì phải để người dùng thấy và tắt được — nhưng foreground
 				service dành cho việc <em>đang diễn ra và người dùng biết</em> (phát nhạc, ghi lộ trình chạy bộ), không dành cho một
-				lần đồng bộ ngắn; và nó không phải cách duy nhất. Lưu ý cho việc tự đối chiếu: khái niệm Service vẫn cần biết để đọc
+				lần đồng bộ ngắn; và nó không phải cách duy nhất. Đáp án d dừng ở nửa sự thật: WorkManager đúng là bọc bên dưới
+				<code>JobScheduler</code> trên máy mới, nhưng giá trị của nó là phần bọc — đồng nhất hành vi trên mọi phiên bản Android
+				(máy cũ dùng bộ cơ chế khác), tự thử lại, ràng buộc điều kiện và sống qua khởi động lại máy. Gọi thẳng tầng dưới là
+				bỏ mất hết những thứ đó để đổi lấy... một dòng dependency bớt đi. Lưu ý cho việc tự đối chiếu: khái niệm Service vẫn cần biết để đọc
 				code cũ, nhưng tìm thẻ <code>&lt;service&gt;</code> trong cả 19 manifest của bộ project mẫu cho <strong>0</strong>
 				kết quả — app Kodeco Chat không bao giờ được thêm khả năng nhận tin ở nền, dù ví dụ minh hoạ nói về đúng nó.
 			</p>
 		</fieldset>
 
 		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
 		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
 	</form>
 	<h2>Bài tập</h2>
@@ -441,7 +518,7 @@
 				<code>@xml/data_extraction_rules</code>, <code>@xml/backup_rules</code>, <code>@mipmap/ic_launcher</code>,
 				<code>@mipmap/ic_launcher_round</code>, <code>@string/app_name</code>, <code>@style/Theme.KodecoChat</code>. Dấu
 				hiệu chính là ký tự <code>@</code> cùng dạng <code>@loại/tên</code>: đó là cú pháp gọi resource trong XML, tương ứng
-				với <code>R.loại.tên</code> mà bạn đã dùng trong Kotlin ở Chương 3.2, mục 10. Cùng một hệ thống, hai cách viết tên
+				với <code>R.loại.tên</code> mà bạn đã dùng trong Kotlin ở Chương 3.2a, mục 10. Cùng một hệ thống, hai cách viết tên
 				tuỳ bạn đang đứng ở đâu.
 			</p>
 			<p>
@@ -602,8 +679,8 @@
 				thành <code>ManHinhChinh</code> mà sửa <code>android:name</code> cho khớp thì app vẫn mở bình thường.
 			</p>
 			<p>
-				Từ đó suy ra chỗ hỏng nếu một bước bị phá, và mỗi chỗ hỏng có một triệu chứng riêng — biết trước thì đỡ mất thời
-				gian: sai ở bước 2 (thiếu <code>&lt;category LAUNCHER&gt;</code>) thì app cài được mà không có icon để bấm, chuỗi
+				Từ đó suy ra chỗ hỏng nếu một bước bị phá, và mỗi chỗ hỏng có một triệu chứng riêng — biết trước thì đỡ mất thời gian:
+				sai ở bước 2 (thiếu <code>&lt;category LAUNCHER&gt;</code>) thì app cài được mà không có icon để bấm, chuỗi
 				này không bao giờ bắt đầu; sai ở bước 3 (<code>android:name</code> trỏ tới một class không tồn tại) thì app đổ ngay
 				khi mở kèm <code>ClassNotFoundException</code>; bỏ dòng <code>super.onCreate()</code> ở bước 4 thì app cũng đổ ngay,
 				vì hệ thống chưa kịp thiết lập những thứ nội bộ mà cửa sổ cần. Ba lỗi rất khác nhau, và chúng ở ba tầng khác nhau
@@ -723,36 +800,15 @@
 	</div>
 </section>
 <script>
-	const form = document.getElementById("quiz-form");
-	const scoreEl = document.getElementById("quiz-score");
+	// Chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách (2026-09).
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
 
-	form?.addEventListener("submit", (e) => {
-		e.preventDefault();
-		const fieldsets = form.querySelectorAll("fieldset");
-		let correct = 0;
+	initQuiz();
 
-		fieldsets.forEach((fs) => {
-			const answer = fs.getAttribute("data-answer");
-			const name = fs.querySelector("input")?.getAttribute("name");
-			const picked = form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
-			const explain = fs.querySelector(".explain");
-			explain?.removeAttribute("hidden");
-
-			fs.classList.remove("correct", "incorrect");
-			if (picked && picked.value === answer) {
-				correct++;
-				fs.classList.add("correct");
-			} else {
-				fs.classList.add("incorrect");
-			}
-		});
-
-		if (scoreEl) {
-			scoreEl.textContent = `Kết quả: ${correct}/${fieldsets.length} câu đúng.`;
-			scoreEl.removeAttribute("hidden");
-		}
-	});
-
+	// Bài sắp thứ tự nằm ngoài #quiz-form và harness không chấm phần này — giữ code chấm riêng
+	// trong cùng <script>, chạy sau initQuiz(), hành vi giữ nguyên như trước.
 	const checkOrderBtn = document.getElementById("check-order");
 	const orderResultEl = document.getElementById("order-result");
 
@@ -762,7 +818,7 @@
 
 		items.forEach((li) => {
 			const correctValue = li.getAttribute("data-correct");
-			const select = li.querySelector("select");
+			const select = li.querySelector<HTMLSelectElement>("select");
 			const picked = select?.value;
 
 			li.classList.remove("correct", "incorrect");
