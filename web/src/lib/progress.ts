@@ -41,16 +41,21 @@
 //    22 URL hiện tại = 14 giữ nguyên + 8 chết. KHÔNG dùng số "15/22" cũ.
 //
 // G. SCHEMA_VERSION là phiên bản CẤU TRÚC SLUG của tiến độ — không phải version
-//    app, nội dung, hay registry. Hiện tại 6 = batch migration thứ hai (Stage 1:
-//    ch02-2 fan-out-keep-source + ch03-2 dead-source split). Mỗi batch có entry
-//    mới tăng đúng 1 lần TRONG CÙNG commit đó (atomic) — không gán cứng sẵn dãy
-//    version tương lai.
+//    app, nội dung, hay registry. Hiện tại 7 = 6 (Stage 1: ch02-2 fan-out +
+//    ch03-2 split) + 1 vì sửa entry ch01 monolith (typo dead slug → slug live,
+//    map content đổi nên mọi máy phải re-run: correct-criterion §12.4 đơn điệu
+//    theo thứ tự thực thi — không gán cứng sẵn dãy version tương lai).
 // ────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "hoc-android-tv:progress";
 const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
 
 // Phiên bản cấu trúc chương hiện tại. Tăng lên 1 mỗi lần tách/gộp chương.
-const SCHEMA_VERSION = 6;
+// 7 = sửa lỗi typo entry ch01 monolith: con thứ 4 khai "ch01-4-gradle-ban-do"
+// (slug không tồn tại — thừa kế từ bản demo trước IMP-020) trong khi slug live
+// là "ch01-4-gradle-va-ban-do". Người học era-v4 đã học Ch01 monolith nhận lại
+// A4 sau khi migrate lại chạy (bump version buộc re-run — không bump thì máy
+// nào đã migrate ở v5/v6 giữ nguyên dead slug vĩnh viễn).
+const SCHEMA_VERSION = 7;
 
 // Khi một chương lớn được tách thành nhiều chương nhỏ, slug cũ trong localStorage
 // của người học không còn ứng với trang nào — tiến độ của họ sẽ "bốc hơi".
@@ -69,7 +74,7 @@ const SPLIT_MAP: Record<string, string[]> = {
     "ch01-1-android-va-kotlin",
     "ch01-2-app-component",
     "ch01-3-manifest-resources",
-    "ch01-4-gradle-ban-do",
+    "ch01-4-gradle-va-ban-do",
   ],
   "ch02-getting-started-with-android-studio": [
     "ch02-1-cai-dat-va-tao-project",
@@ -96,6 +101,14 @@ const SPLIT_MAP: Record<string, string[]> = {
   // old → [old, A7] (union semantics — xem chú thích keep-source ở trên):
   // done cũ chứa ch02-2 → sau migrate chứa ch02-2 (A6) VÀ ch02-doc-project-mau
   // (A7). KHÔNG redirect cho ch02-2 — URL không chết.
+  // IMP-033 (v7) — sửa typo entry ch01 monolith (tồn tại từ bản demo trước
+  // IMP-020, lọt qua pilot vì test matrix viết từ map thay vì registry):
+  // con thứ 4 khai "ch01-4-gradle-ban-do" — slug KHÔNG tồn tại; slug live là
+  // "ch01-4-gradle-va-ban-do". Máy nào đã migrate ở v5/v6 thì dead slug nằm
+  // nguyên trong done (migrate chỉ map key có trong SPLIT_MAP) — bump version
+  // buộc re-run; nhưng dead slug cũng không phải key của entry nào, nên cần
+  // một entry dọn dẹp tường minh để đón đúng những máy đó.
+  "ch01-4-gradle-ban-do": ["ch01-4-gradle-va-ban-do"],
   "ch02-2-may-ao-may-that-doc-project": [
     "ch02-2-may-ao-may-that-doc-project",
     "ch02-doc-project-mau",
