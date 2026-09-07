@@ -32,7 +32,7 @@
 		</fieldset>
 
 		<fieldset data-answer="a">
-			<legend>2. <code>val scores = listOf(1, 2)</code>. Bạn nhận được một tham chiếu khác tới cùng danh sách đó và thêm một phần tử qua tham chiếu kia. Khẳng định nào đúng?</legend>
+			<legend>2. <code>val scores = mutableListOf(1, 2)</code>. Bạn nhận được một tham chiếu khác tới cùng danh sách đó và thêm một phần tử qua tham chiếu kia. Khẳng định nào đúng?</legend>
 			<label><input type="radio" name="q2" value="a" /> <code>val</code> chỉ cấm gán lại tên — nó không hứa "nội dung bên trong không bao giờ đổi"</label>
 			<label><input type="radio" name="q2" value="b" /> Không thể thêm phần tử bằng bất kỳ cách nào — <code>val</code> khoá luôn cả nội dung của object mà nó trỏ tới</label>
 			<label><input type="radio" name="q2" value="c" /> Thêm được, nhưng Kotlin tự đổi <code>scores</code> thành <code>var</code> cho khớp với thực tế</label>
@@ -40,10 +40,12 @@
 			<p class="explain" hidden>
 				Đây là phân biệt quan trọng nhất của bài: <strong>gán lại</strong> (đổi chỗ mà tên trỏ tới) khác với
 				<strong>thay đổi nội dung</strong> (object được trỏ tới tự đổi). <code>val</code> chỉ cấm việc thứ nhất.
-				Đáp án b nhầm <code>val</code> với "hằng số" kiểu <code>const</code> của ngôn ngữ khác. Đáp án c sai vì
-				Kotlin không bao giờ tự đổi khai báo của bạn. Đáp án d sai vì phạm vi bất biến không gắn với hàm —
-				<code>val</code> ở tầm module vẫn là <code>val</code>, và nội dung object vẫn đổi được qua tham chiếu khác
-				nếu nó thuộc loại thay đổi được.
+				Ví dụ dùng <code>mutableListOf</code> — bản List có phương thức <code>add</code>/<code>remove</code> mà bài đã
+				giới thiệu — nên việc thêm phần tử <em>qua tham chiếu kia là thật</em>, còn <code>scores</code> vẫn trỏ đúng
+				danh sách đó và chưa bao giờ được gán lại. Đáp án b nhầm <code>val</code> với "hằng số" kiểu
+				<code>const</code> của ngôn ngữ khác. Đáp án c sai vì Kotlin không bao giờ tự đổi khai báo của bạn.
+				Đáp án d sai vì phạm vi bất biến không gắn với hàm — <code>val</code> ở tầm module vẫn là <code>val</code>,
+				và nội dung object vẫn đổi được qua tham chiếu khác nếu nó thuộc loại thay đổi được.
 			</p>
 		</fieldset>
 

@@ -393,7 +393,13 @@ const buttonTextCode = `Text(text = stringResource(id = R.string.send_button))`;
 		state cũng đổi theo: truyền chuỗi đó vào làm key của <code>remember</code> (bài kế tiếp) — đổi lại chữ người dùng
 		đang gõ dở sẽ bị xoá về mặc định. Nói cách khác đây là một đánh đổi phải chọn có ý thức, không phải hai gu viết
 		code. Nguyên tắc mặc định: ưu tiên <code>stringResource()</code>, chỉ dùng <code>context.getString()</code> khi
-		thật sự bị chặn.
+		thật sự bị chặn. (Chính xác hơn: <code>remember</code> cất giá trị theo lần tính đầu tiên <em>của composable
+		chứa nó</em> — khi Android huỷ và dựng lại Activity, state được khởi tạo mới và <code>remember</code> tính lại
+		từ đầu, nên hai chuỗi này cũng sẽ nhận ngôn ngữ mới <em>nếu</em> việc tính lại dùng
+		<code>context.getString()</code> sau khi locale đã đổi. Điều thật sự giữ chúng ở ngôn ngữ cũ là trình tự: cấu
+		hình mới chỉ áp dụng cho lần tính sau, còn chuỗi đã được đọc — hoặc đã được lưu vào state tồn lâu hơn
+		<code>remember</code>, ví dụ qua ViewModel — thì không tự đổi. Điểm cần mang đi: chuỗi trong state không "sống
+		theo" locale như <code>stringResource</code>.)
 	</p>
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<ul>
