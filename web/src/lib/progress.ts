@@ -55,7 +55,11 @@ const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
 // là "ch01-4-gradle-va-ban-do". Người học era-v4 đã học Ch01 monolith nhận lại
 // A4 sau khi migrate lại chạy (bump version buộc re-run — không bump thì máy
 // nào đã migrate ở v5/v6 giữ nguyên dead slug vĩnh viễn).
-const SCHEMA_VERSION = 7;
+// 8 = Stage 2 (IMP-033/044): Ch05 monolith tách thành C1–C4 + C5 mới. Old slug
+// "ch05-jetpack-compose" chết → entry replace old → [C1, C2, C3, C4] (SPLIT_MAP
+// #3 của registry §7). C5 (ch05-tiep-can-moi-nguoi-dung) là bài HỌC MỚI — KHÔNG
+// nằm trong mapping, không tự done (no-fabricate §D).
+const SCHEMA_VERSION = 8;
 
 // Khi một chương lớn được tách thành nhiều chương nhỏ, slug cũ trong localStorage
 // của người học không còn ứng với trang nào — tiến độ của họ sẽ "bốc hơi".
@@ -121,6 +125,17 @@ const SPLIT_MAP: Record<string, string[]> = {
   "ch03-2-string-resource-va-debug": [
     "ch03-string-resource-va-lop-r",
     "ch03-doc-loi-bien-dich-va-debug",
+  ],
+  // IMP-033 (v8) — Stage 2: Ch05 monolith dead-source split (registry §7 entry 3).
+  // Old slug CHẾT (route retired) → replace: C1 (composable & layout) + C2 (modifier
+  // & danh sách) + C3 (Material 3 & theming) + C4 (preview & vòng đời). C5 là bài
+  // NEW (IMP-044) — cố ý KHÔNG nằm trong mảng này: no-fabricate §D, C5 không nhận
+  // credit thừa kế từ Ch05 monolith. Redirect 1 đích old → C1 (astro.config.mjs).
+  "ch05-jetpack-compose": [
+    "ch05-composable-va-layout",
+    "ch05-modifier-va-danh-sach",
+    "ch05-material-3-va-theming",
+    "ch05-preview-va-vong-doi",
   ],
 };
 

@@ -33,8 +33,16 @@ import Ch03_4ThemeVaDoiChieu from "../components/lessons/Ch03_4ThemeVaDoiChieu.a
 import Ch03_4Quiz from "../components/lessons/Ch03_4Quiz.astro";
 import Ch04GradleBasics from "../components/lessons/Ch04GradleBasics.astro";
 import Ch04Quiz from "../components/lessons/Ch04Quiz.astro";
-import Ch05JetpackCompose from "../components/lessons/Ch05JetpackCompose.astro";
-import Ch05Quiz from "../components/lessons/Ch05Quiz.astro";
+import Ch05ComposableVaLayout from "../components/lessons/Ch05ComposableVaLayout.astro";
+import Ch05ComposableVaLayoutQuiz from "../components/lessons/Ch05ComposableVaLayoutQuiz.astro";
+import Ch05ModifierVaDanhSach from "../components/lessons/Ch05ModifierVaDanhSach.astro";
+import Ch05ModifierVaDanhSachQuiz from "../components/lessons/Ch05ModifierVaDanhSachQuiz.astro";
+import Ch05Material3VaTheming from "../components/lessons/Ch05Material3VaTheming.astro";
+import Ch05Material3VaThemingQuiz from "../components/lessons/Ch05Material3VaThemingQuiz.astro";
+import Ch05PreviewVaVongDoi from "../components/lessons/Ch05PreviewVaVongDoi.astro";
+import Ch05PreviewVaVongDoiQuiz from "../components/lessons/Ch05PreviewVaVongDoiQuiz.astro";
+import Ch05TiepCanMoiNguoiDung from "../components/lessons/Ch05TiepCanMoiNguoiDung.astro";
+import Ch05TiepCanMoiNguoiDungQuiz from "../components/lessons/Ch05TiepCanMoiNguoiDungQuiz.astro";
 import Ch06AdvancedJetpackCompose from "../components/lessons/Ch06AdvancedJetpackCompose.astro";
 import Ch06Quiz from "../components/lessons/Ch06Quiz.astro";
 import Ch07AdvancedArchitecture from "../components/lessons/Ch07AdvancedArchitecture.astro";
@@ -103,7 +111,14 @@ export const LESSONS: Partial<Record<string, LessonEntry>> = {
   },
   "ch03-4-theme-va-doi-chieu": { Lesson: Ch03_4ThemeVaDoiChieu, Quiz: Ch03_4Quiz },
   "ch04-gradle-basics-a-look-behind-the-curtain": { Lesson: Ch04GradleBasics, Quiz: Ch04Quiz },
-  "ch05-jetpack-compose": { Lesson: Ch05JetpackCompose, Quiz: Ch05Quiz },
+  // Chương 5 đã tách thành 5 chương nhỏ — mỗi chương nhỏ có quiz riêng ngay sau nội dung.
+  // Old ch05-jetpack-compose chết trong batch này → redirect 1 đích sang C1
+  // (astro.config.mjs) + SPLIT_MAP replace (progress.ts). C5 là bài hoàn toàn mới.
+  "ch05-composable-va-layout": { Lesson: Ch05ComposableVaLayout, Quiz: Ch05ComposableVaLayoutQuiz },
+  "ch05-modifier-va-danh-sach": { Lesson: Ch05ModifierVaDanhSach, Quiz: Ch05ModifierVaDanhSachQuiz },
+  "ch05-material-3-va-theming": { Lesson: Ch05Material3VaTheming, Quiz: Ch05Material3VaThemingQuiz },
+  "ch05-preview-va-vong-doi": { Lesson: Ch05PreviewVaVongDoi, Quiz: Ch05PreviewVaVongDoiQuiz },
+  "ch05-tiep-can-moi-nguoi-dung": { Lesson: Ch05TiepCanMoiNguoiDung, Quiz: Ch05TiepCanMoiNguoiDungQuiz },
   "ch06-advanced-jetpack-compose": { Lesson: Ch06AdvancedJetpackCompose, Quiz: Ch06Quiz },
   "ch07-advanced-architecture": { Lesson: Ch07AdvancedArchitecture, Quiz: Ch07Quiz },
   "ch08-networking": { Lesson: Ch08Networking, Quiz: Ch08Quiz },

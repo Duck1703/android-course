@@ -131,6 +131,14 @@ const FILE_KEY_PIN: Record<string, string> = {
   // A10/A11: file Ch03StringResourceVaLopR/Ch03DocLoiBienDichVaDebug — key = 03_2
   "ch03-string-resource-va-lop-r": "03_2",
   "ch03-doc-loi-bien-dich-va-debug": "03_2",
+  // Stage 2 (IMP-033/044): file Ch05* mới KHÔNG theo quy ước ChNN_số (tên theo
+  // registry §9 kebab→Pascal, không mang số đơn vị) — ghim key = "05_N" theo
+  // subNumber registry để glob "Ch(\d{2})_(\d+)" không khớp nhầm file ngủ đông.
+  "ch05-composable-va-layout": "05_1",
+  "ch05-modifier-va-danh-sach": "05_2",
+  "ch05-material-3-va-theming": "05_3",
+  "ch05-preview-va-vong-doi": "05_4",
+  "ch05-tiep-can-moi-nguoi-dung": "05_5",
 };
 // Bảng ngược cho vòng quét file: "Ch02DocProjectMau" → "02_2" v.v. (tên file
 // không đuôi, cả lesson lẫn quiz).
@@ -192,9 +200,12 @@ const byKey = new Map<string, Bucket>();
 for (const [path] of Object.entries(RAW)) {
   const file = path.slice(path.lastIndexOf("/") + 1);
   const m = /^Ch(\d{2})(?:_(\d+))?(.*)\.astro$/.exec(file);
-  const key = m
+  // Stage 2: file không mang số đơn vị (Ch05ComposableVaLayout…) được ghim key
+  // qua pinByFile theo TÊN FILE thay vì theo số — khớp cách vòng filesByKey làm.
+  const noNumber = m ? pinByFile.get(file.replace(/\.astro$/, "")) : undefined;
+  const key = noNumber ?? (m
     ? m[2] ? `${m[1]}_${m[2]}` : m[1]!
-    : foundationKey(file.replace(/\.astro$/, "").replace(/Quiz$/, ""));
+    : foundationKey(file.replace(/\.astro$/, "").replace(/Quiz$/, "")));
   // (b) loc membership: key phai ung voi it nhat 1 chapter DANG KY
   if (!ALL_CHAPTERS.some((c) => legacyFileKey(c) === key)) continue;
   const bucket = byKey.get(key) ?? {};
@@ -313,21 +324,33 @@ function resolveLiveFileNames(): { lesson: Record<string, string>; quiz: Record<
       }
       continue;
     }
-    // Key đơn: đúng 1 lesson + ≤1 quiz (hành vi cũ, slug↔file 1-1 tường minh).
+    // Key đơn: slug↔file 1-1 tường minh. Stage 2: khi key có NHIỀU ứng viên
+    // (file live mới + file ngủ đông trùng tiền tố Ch05_N — tồn tại trên đĩa
+    // nhưng không thuộc registry), chọn ứng viên có tên khớp CHÍNH XÁC tên file
+    // quy ước của slug (kebab→Pascal, cả lesson lẫn quiz); fail-loud nếu không
+    // khớp được ứng viên nào — draft ngủ đông không bao giờ được "thắng" bằng
+    // alphabet hay thứ tự glob.
     if (registeredLessonSlugs.length > 1) {
       errors.push(`${key}: nhiều slug (${registeredLessonSlugs.join(", ")}) chia sẻ key nhưng thiếu bảng ghim SHARED_FILE_PIN`);
       continue;
     }
     const slug = registeredLessonSlugs[0]!;
+    const pascalOf = (s: string) =>
+      s.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+    const exactLesson = `${pascalOf(slug)}.astro`;
+    const exactQuiz = `${pascalOf(slug)}Quiz.astro`;
     if (lessonFiles.length === 0) {
       errors.push(`${slug}: khong tim thay file Lesson cho key "${key}"`);
-    } else if (lessonFiles.length > 1) {
-      errors.push(`${slug}: nhieu ung vien Lesson cho key "${key}" (${lessonFiles.join(", ")}) — can resolve ro rang`);
-    } else {
+    } else if (lessonFiles.length === 1) {
       lesson[slug] = lessonFiles[0]!;
+    } else if (lessonFiles.includes(exactLesson)) {
+      lesson[slug] = exactLesson;
+    } else {
+      errors.push(`${slug}: nhieu ung vien Lesson cho key "${key}" (${lessonFiles.join(", ")}) va khong file nao khop ten chuan "${exactLesson}"`);
     }
     if (quizFiles.length > 1) {
-      errors.push(`${slug}: nhieu ung vien Quiz cho key "${key}" (${quizFiles.join(", ")})`);
+      if (quizFiles.includes(exactQuiz)) quiz[slug] = exactQuiz;
+      else errors.push(`${slug}: nhieu ung vien Quiz cho key "${key}" (${quizFiles.join(", ")}) va khong file nao khop "${exactQuiz}"`);
     } else if (quizFiles.length === 1) {
       quiz[slug] = quizFiles[0]!;
     }

@@ -27,6 +27,10 @@ const COURSE_REDIRECTS = {
   // A10 (kế nhiệm logic đầu tiên — registry §6 row 1). A11 (3.2b) đến được qua
   // sidebar/bài tiếp theo. ch02-2 KHÔNG redirect — URL sống tiếp với tư cách A6.
   "chapters/ch03-2-string-resource-va-debug": "/chapters/ch03-string-resource-va-lop-r/",
+  // IMP-033 (Stage 2): old Ch05 monolith chết tại batch này → redirect 1 đích sang
+  // C1 (registry §6 row 2: redirectTarget = ch05-composable-va-layout). C2–C4 đến
+  // được qua sidebar/TOC; C5 là bài mới, không redirect.
+  "chapters/ch05-jetpack-compose": "/chapters/ch05-composable-va-layout/",
 };
 
 export default defineConfig({
