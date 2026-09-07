@@ -1,0 +1,148 @@
+---
+// Quiz cho chương 5.3 — Material 3 & theming trong Compose.
+// Stage 2 (Giai đoạn 2 — Jetpack Compose) — quiz tách từ monolith Ch05Quiz.astro (IMP-033/044).
+// Chuẩn quiz §10/§13: 4 đáp án / 1 đúng, giải thích 100% (đúng + vì sao distractor sai),
+// vị trí & độ dài đáp án đúng phân tán, câu bám đúng mục tiêu bài. Chấm bằng harness chung IMP-001.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. Vì sao <code>Button</code> có màu, bo góc, cỡ chữ dù bạn không truyền giá trị nào?</legend>
+			<label><input type="radio" name="q1" value="a" /> Vì Android Studio tự thêm tham số màu mặc định vào lời gọi hàm lúc tạo project</label>
+			<label><input type="radio" name="q1" value="b" /> Vì các component Material 3 đọc giá trị từ <code>MaterialTheme</code> — hệ thống thiết kế Material của Google cung cấp sẵn bộ quy định về màu, kiểu chữ, hình dáng</label>
+			<label><input type="radio" name="q1" value="c" /> Vì Compose sinh màu ngẫu nhiên theo từng thiết bị để mọi app trông khác nhau</label>
+			<label><input type="radio" name="q1" value="d" /> Vì theme XML của hệ điều hành áp trực tiếp màu lên từng component Compose</label>
+			<p class="explain" hidden>
+				Material Design là một <em>hệ thống thiết kế</em> — bộ quy định sẵn về màu, kiểu chữ, hình dáng, cùng tập component đã cài theo bộ quy định đó. <code>Button</code>, <code>Text</code>, <code>Surface</code>, <code>CenterAlignedTopAppBar</code> bạn dùng đều đến từ <code>androidx.compose.material3</code> và "tra bảng" <code>MaterialTheme</code> để lấy giá trị. Theme XML là hệ khác — nó lo khung cửa sổ, không lo màu của component Compose.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. <code>MaterialTheme</code> là một composable đặc biệt. Đặc biệt ở chỗ nào?</legend>
+			<label><input type="radio" name="q2" value="a" /> Nó chạy trong một thread riêng để tính màu nhanh hơn</label>
+			<label><input type="radio" name="q2" value="b" /> Nó vẽ nền cho mọi màn hình, nên luôn phải đặt ngoài cùng</label>
+			<label><input type="radio" name="q2" value="c" /> Nó <strong>không vẽ gì cả</strong> — việc của nó là cấp ba nhóm giá trị (colorScheme, typography, shapes) cho toàn bộ cây composable bên trong</label>
+			<label><input type="radio" name="q2" value="d" /> Nó thay thế <code>setContent</code> khi app có nhiều màn hình</label>
+
+			<p class="explain" hidden>
+				<code>MaterialTheme</code> chỉ <em>cấp</em> giá trị: colorScheme (bộ màu theo vai trò), typography (bộ kiểu chữ theo vai trò), shapes (bộ hình dáng). Con bên trong <em>đọc</em> qua <code>MaterialTheme.colorScheme.*</code> v.v. — cấp một lần ở lớp bọc ngoài, đọc bao nhiêu lần cũng được ở bất kỳ độ sâu nào, không cần truyền qua tham số.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>3. Chữ "vai trò" (role) trong bộ màu Material 3 nghĩa là gì, và mua được gì?</legend>
+			<label><input type="radio" name="q3" value="a" /> Mỗi màu có một tên riêng theo màu sắc (xanh, vàng, tím) để dễ tra cứu</label>
+			<label><input type="radio" name="q3" value="b" /> Mỗi vai trò là một quyền truy cập — chỉ component được phép mới dùng được màu đó</label>
+			<label><input type="radio" name="q3" value="c" /> Màu gọi tên theo <em>chỗ dùng</em> (<code>primary</code>, <code>surface</code>, <code>onSurface</code>...): cùng một dòng code <code>MaterialTheme.colorScheme.primary</code> đúng ở cả chế độ sáng và tối, vì bộ màu mới là chỗ đổi</label>
+			<label><input type="radio" name="q3" value="d" /> Vai trò là tên icon đi kèm màu; đổi vai trò là đổi icon</label>
+
+			<p class="explain" hidden>
+				<code>primary</code> là "màu cho hành động chính", <code>surface</code> là "màu mặt phẳng nền", <code>onSurface</code> là "màu nội dung đặt trên nền đó" — các cặp <code>X</code>/<code>onX</code> được thiết kế để tương phản đủ đọc ở cả hai chế độ. Nếu code viết <code>Color.Blue</code> thì ở chế độ tối có thể không còn đọc được, và không có cách sửa ngoài đi tìm từng dòng.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>4. Project đổi sang chế độ tối bằng cách nào — phải sửa gì trong từng composable?</legend>
+			<label><input type="radio" name="q4" value="a" /> Thêm tham số <code>isDark</code> vào từng composable và chọn màu theo <code>if</code></label>
+			<label><input type="radio" name="q4" value="b" /> Bản thân từng composable tự hỏi hệ điều hành mỗi lần vẽ</label>
+			<label><input type="radio" name="q4" value="c" /> Sao chép toàn bộ giao diện thành hai bản: bản sáng và bản tối</label>
+			<label><input type="radio" name="q4" value="d" /> Không composable nào đổi cả — <code>isSystemInDarkTheme()</code> ở tầng theme chọn giữa <code>darkColorScheme(...)</code> và <code>lightColorScheme(...)</code>, chỉ bộ màu đổi</label>
+
+			<p class="explain" hidden>
+				Hàm theme của project nhận <code>isDarkTheme: Boolean = isSystemInDarkTheme()</code> (giá trị mặc định là một lời gọi hàm đọc thiết lập máy), khối <code>when</code> chọn một trong bốn khả năng (tối/sáng × động/tĩnh). Composable chỉ nói vai trò và không bao giờ cần biết chế độ hiện tại. Đáp án c sai: dynamic color (Material You) là chuyện lấy màu từ hình nền của người dùng trên Android 12+, không phải chế độ tối.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>5. Trong <code>ChatItemBubble</code>, màu bong bóng chọn bằng <code>MaterialTheme.colorScheme.primary</code> hay <code>surfaceVariant</code> tuỳ người gửi. Vì sao đây là cách viết đúng?</legend>
+			<label><input type="radio" name="q5" value="a" /> Vì <code>primary</code> và <code>surfaceVariant</code> là hai tên của cùng một màu, viết nào cũng ra một kết quả</label>
+			<label><input type="radio" name="q5" value="b" /> Vì cùng một dòng code giữ nguyên ý nghĩa khi bộ màu đổi (sáng/tối/dynamic), và không ai phải truyền màu xuống qua tham số</label>
+			<label><input type="radio" name="q5" value="c" /> Vì <code>MaterialTheme.colorScheme</code> là biến toàn cục, đọc nhanh hơn truyền tham số</label>
+			<label><input type="radio" name="q5" value="d" /> Vì Compose bắt buộc mọi màu phải lấy từ <code>MaterialTheme</code>, gán cứng sẽ không biên dịch được</label>
+
+			<p class="explain" hidden>
+				Đây chính là "cấp một lần ở ngoài, đọc bao nhiêu lần cũng được ở trong": bong bóng nằm sâu năm tầng vẫn đọc được màu bằng một dòng, và đổi theme một chỗ thì bong bóng đổi theo không cần sửa dòng nào. Gán cứng <code>Color(0xFF...)</code> <em>vẫn compile được</em> — chỉ là màu đó không đổi theo theme/chế độ tối, đúng cạm bẫy (g) của bài.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>6. Bạn sửa màu <code>primary</code> trong <code>ui/theme/Color.kt</code> của project mẫu, build lại — app <strong>không đổi gì</strong>. Bạn kiểm tra gì, theo thứ tự nào?</legend>
+			<label><input type="radio" name="q6" value="a" /> Xoá app, cài lại; nếu vẫn không được thì build lại bằng Clean Project</label>
+			<label><input type="radio" name="q6" value="b" /> Đi ngược đường đi của theme: các màu trong <code>ui/theme/Color.kt</code> chỉ được dùng bởi <code>ui/theme/Theme.kt</code>; tìm hàm theme ở đó (<code>KodecoChatTheme</code>) trong toàn project — ra đúng một kết quả, chính dòng khai báo ⇒ không ai gọi ⇒ bạn sửa đúng cú pháp nhưng sai file</label>
+			<label><input type="radio" name="q6" value="c" /> Đổi luôn cả hai thư mục <code>theme/</code> và <code>ui/theme/</code> cho chắc</label>
+			<label><input type="radio" name="q6" value="d" /> Báo lỗi thư viện Compose — theme chắc chắn phải được áp dụng tự động</label>
+			<p class="explain" hidden>
+				Kỹ thuật truy dấu: đếm số lần tên xuất hiện trong project. <code>KodecochatTheme</code> (thường "c") có 1 khai báo + 3 lời gọi ⇒ đang chạy, màu thật nằm ở <code>theme/Color.kt</code>. <code>KodecoChatTheme</code> (hoa "C") chỉ có đúng 1 kết quả là dòng khai báo ⇒ code chết — cả thư mục <code>ui/theme/</code> là bộ theme Android Studio tự sinh mà project không xoá. Bài học: khi sửa mà không thấy đổi, đừng sửa mạnh tay hơn — kiểm tra xem thứ mình sửa có nằm trên đường đi của app không.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>7. Project mẫu có <strong>hai</strong> hệ theme song song: XML (<code>res/values/themes.xml</code>) và Compose (<code>theme/Themes.kt</code>). Phát biểu nào đúng?</legend>
+			<label><input type="radio" name="q7" value="a" /> Chúng là hai lớp khác nhau: XML lo khung cửa sổ (nền, thanh trạng thái, NoActionBar) <em>trước khi</em> code Kotlin chạy; Compose lo màu và kiểu chữ của mọi component Material bên trong</label>
+			<label><input type="radio" name="q7" value="b" /> Theme XML là bản cũ đã bị bỏ; chỉ còn theme Compose có hiệu lực trong toàn app</label>
+			<label><input type="radio" name="q7" value="c" /> Hai hệ là một — theme XML được biên dịch thành <code>KodecochatTheme</code> lúc build</label>
+			<label><input type="radio" name="q7" value="d" /> Theme XML chỉ cần khi xuất bản lên Google Play; lúc phát triển có thể bỏ</label>
+
+			<p class="explain" hidden>
+				Cách nhớ: <strong>theme XML là "khung cửa sổ"; theme Compose là "bảng màu và bộ chữ cho nội dung vẽ bên trong khung"</strong>. Hệ XML áp dụng qua <code>android:theme</code> trong manifest, quyết định hình dáng cửa sổ từ mili-giây đầu tiên (khi code Kotlin chưa kịp chạy); hệ Compose áp dụng do chính code của bạn bọc <code>KodecochatTheme &#123; ... &#125;</code>. Một app hoàn chỉnh cần cả hai, không thay thế được nhau.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>8. <code>parent="android:Theme.Material.Light.NoActionBar"</code> trong <code>themes.xml</code> — lựa chọn <code>NoActionBar</code> có chủ ý gì?</legend>
+			<label><input type="radio" name="q8" value="a" /> NoActionBar giúp app mở nhanh hơn vì không phải load thanh tiêu đề của hệ thống</label>
+			<label><input type="radio" name="q8" value="b" /> App Compose tự vẽ thanh tiêu đề bằng app bar của riêng nó (CenterAlignedTopAppBar); để hai thanh chồng nhau thì giao diện trông rất lạ</label>
+			<label><input type="radio" name="q8" value="c" /> NoActionBar là yêu cầu của Material 3 — nếu dùng app bar thì không được khai theme</label>
+			<label><input type="radio" name="q8" value="d" /> NoActionBar ẩn thanh trạng thái (status bar) để màn hình tràn viền</label>
+
+			<p class="explain" hidden>
+				Dòng style duy nhất của file có ba thông tin: <code>name</code> là tên để manifest tham chiếu; <code>parent</code> là kế thừa theme có sẵn của hệ điều hành (<code>Light</code> = nền sáng); <code>NoActionBar</code> = không có thanh tiêu đề của hệ thống, vì app Compose cần thanh nào thì tự vẽ bằng app bar của Compose (đúng cái bạn làm ở chương 5.1). Không có thẻ <code>&lt;item&gt;</code> nào bên trong ⇒ style không ghi đè gì cả.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>9. Tìm <code>provider</code>, <code>MontserratFont</code>, <code>KarlaFont</code> trong project — mỗi cái ra đúng một kết quả là dòng khai báo. Kết luận gì?</legend>
+			<label><input type="radio" name="q9" value="a" /> Ba khai báo thuộc API font tải về là <strong>code chết</strong>: project thật sự dùng font <em>đóng gói sẵn</em> (R.font.*, 6 file .ttf), không phụ thuộc mạng lúc mở app</label>
+			<label><input type="radio" name="q9" value="b" /> Kết quả tìm kiếm quá ít nên chưa thể kết luận — cần chạy app để biết</label>
+			<label><input type="radio" name="q9" value="c" /> Project dùng font hệ thống; ba khai báo là dư nhưng vô hại vì được tối ưu hoá lúc build</label>
+			<label><input type="radio" name="q9" value="d" /> Ba khai báo đó là API đang chạy; app tải font Montserrat/Karla từ Google Fonts lúc mở app</label>
+
+			<p class="explain" hidden>
+				Áp cùng kỹ thuật truy dấu: ra đúng một kết quả là dòng khai báo ⇒ không ai gọi. Ý tưởng của API font tải về là app tải font lúc chạy qua Google Play Services; nhưng hai <code>FontFamily</code> phía dưới lại dựng từ <code>R.font.*</code> — font đóng gói sẵn. <strong>Nên theo cái nào:</strong> app nhỏ/học tập → font đóng gói (chắc chắn hiện đúng ngay lần mở đầu, không có khoảng chữ nhảy font); font tải về hợp khi cần nhiều họ font/giảm dung lượng, và phải xử lý được trường hợp tải chưa xong.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>10. Project không truyền <code>shapes</code> cho <code>MaterialTheme</code>, và tìm cả project không có chỗ nào đọc <code>MaterialTheme.shapes</code>. Nghĩa là gì?</legend>
+			<label><input type="radio" name="q10" value="a" /> Project build sai một phần — shapes bắt buộc phải truyền đủ ba nhóm giá trị</label>
+			<label><input type="radio" name="q10" value="b" /> Mọi component dùng bộ hình dáng mặc định của Material 3; chỗ nào cần hình riêng thì viết trực tiếp (như <code>RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp)</code> của bong bóng chat)</label>
+			<label><input type="radio" name="q10" value="c" /> Shapes bị Material 3 loại bỏ; mọi hình dáng phải viết trực tiếp</label>
+			<label><input type="radio" name="q10" value="d" /> Đây là lỗi của project mẫu — cần tạo file "Shape.kt" để sửa</label>
+			<p class="explain" hidden>
+				Biết ranh giới này để bạn không đi tìm một file "Shape.kt" không tồn tại. Ba nhóm giá trị của <code>MaterialTheme</code>: project này dùng đủ colorScheme và typography, còn shapes để mặc định. Bong bóng chat bo góc lệch (một góc 4dp, ba góc 20dp) là hình dáng <em>viết trực tiếp</em>, không lấy từ theme — một lựa chọn hợp lý cho app nhỏ.
+			</p>
+		</fieldset>
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	// IMP-001: chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>

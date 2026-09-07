@@ -1,0 +1,837 @@
+---
+// Chương 5.2 — Modifier & danh sách
+// Stage 2 (Giai đoạn 2 — Jetpack Compose), chương 5.2 của khoá (IMP-033).
+// Nội dung PORT nguyên khối từ monolith Ch05JetpackCompose.astro — ranh giới C2 START/END
+// (đã verify ranh giới + provenance số dòng tại monolith, 2026-09-07).
+// Đổi khi port: nhãn "Đơn vị N" → "chương 5.2"; cross-ref giữa các phần thành cross-ref chương;
+// #cam-bay/#nguon tách theo đúng kế hoạch ghi trong monolith. Voice độc lập — attribution chỉ ở #nguon.
+
+const outlinedTextFieldSignatureCode = `// 1
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OutlinedTextField(
+  // 2
+  value: String,
+  onValueChange: (String) -> Unit,
+  modifier: Modifier = Modifier,
+  enabled: Boolean = true,
+  readOnly: Boolean = false,
+  textStyle: TextStyle = LocalTextStyle.current,
+  // 3
+  label: @Composable (() -> Unit)? = null,
+  // 4
+  placeholder: @Composable (() -> Unit)? = null,
+  leadingIcon: @Composable (() -> Unit)? = null,
+  trailingIcon: @Composable (() -> Unit)? = null,
+  // ... còn nhiều tham số nữa: prefix, suffix, supportingText, isError,
+  // visualTransformation, keyboardOptions, keyboardActions, singleLine,
+  // maxLines, minLines, interactionSource, shape, colors
+) {...`;
+
+const textFieldFixedCode = `OutlinedTextField(
+  value = chatInputText,                                                  // bắt đầu bằng ""
+  placeholder = { Text(text = stringResource(id = R.string.chat_entry_default)) },
+  onValueChange = {
+    chatInputText = it
+  },
+)`;
+
+const paddingOrderCode = `// A — padding trước, background sau
+Text(
+  text = "A",
+  modifier = Modifier
+    .padding(16.dp)
+    .background(Color.Yellow)
+)
+
+// B — background trước, padding sau
+Text(
+  text = "B",
+  modifier = Modifier
+    .background(Color.Yellow)
+    .padding(16.dp)
+)`;
+
+const avatarChainCode = `Image(
+  modifier = Modifier
+    .clickable(onClick = { onAuthorClick(msg.message.userId) })
+    .padding(horizontal = 16.dp)
+    .size(42.dp)
+    .border(1.5.dp, borderColor, CircleShape)
+    .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
+    .clip(CircleShape)
+    .align(Alignment.Top),
+  painter = painterResource(id = authorImageId),
+  contentScale = ContentScale.Crop,
+  contentDescription = null
+)`;
+
+const simpleUserInputCode = `@Composable
+fun SimpleUserInput() {
+  val context = LocalContext.current
+  var chatInputText by remember { mutableStateOf("") }
+  var chatOutputText by remember { mutableStateOf(context.getString(R.string.chat_display_default)) }
+  Text(text = chatOutputText)
+
+  Row {
+    OutlinedTextField(
+      value = chatInputText,
+      placeholder = { Text(text = stringResource(id = R.string.chat_entry_default)) },
+      onValueChange = {
+        chatInputText = it
+      },
+    )
+
+    Button(onClick = {
+      chatOutputText = chatInputText
+      chatInputText = ""
+    }) {
+      Text(text = stringResource(id = R.string.send_button))
+    }
+  }
+}`;
+
+const boxDebugCode = `Box(
+  modifier = Modifier
+    .fillMaxSize()
+    .background(color = Color.DarkGray)
+) {...`;
+
+const weightFixCode = `Surface {
+  Box(modifier = Modifier.fillMaxSize()) {
+    Column(
+      Modifier
+        .fillMaxSize()
+    ) {
+      Messages(
+        modifier = Modifier.weight(1f),
+      )
+      SimpleUserInput()
+    }
+    // Channel name bar floats above the messages
+    ChannelNameBar(channelName = "Android Apprentice")
+  }
+}`;
+
+const messagesStubCode = `@Composable
+fun Messages(modifier: Modifier = Modifier) {
+  Box(modifier = modifier) {
+    // TODO - Implement (mục 9 làm phần này)
+  }
+}`;
+
+const lazyColumnFirstCode = `@Composable
+fun Messages(
+  messages: List<String>,
+  modifier: Modifier = Modifier
+) {
+  Box(modifier = modifier) {
+    LazyColumn(
+      // Add content padding so that the content can be scrolled (y-axis)
+      // below the status bar + app bar
+      contentPadding =
+      WindowInsets.statusBars.add(WindowInsets(top = 90.dp)).asPaddingValues(),
+      modifier = Modifier
+        .fillMaxSize()
+    ) {
+      item {
+        Text(text = "First message")
+      }
+      item {
+        Text(text = "Second message")
+      }
+      item {
+        Text(text = "Third message")
+      }
+    }
+  }
+}`;
+
+const messagesFinalCode = `@Composable
+fun Messages(
+  messages: List<MessageUiModel>,
+//  scrollState: LazyListState,
+  modifier: Modifier = Modifier
+) {
+  Box(modifier = modifier) {
+    LazyColumn(
+      contentPadding =
+      WindowInsets.statusBars.add(WindowInsets(top = 90.dp)).asPaddingValues(),
+      modifier = Modifier
+        .fillMaxSize()
+    ) {
+      itemsIndexed(
+        items = messages,
+        key = { _, message -> message.id }
+      ) { index, content ->
+        val prevAuthor = messages.getOrNull(index - 1)?.message?.userId
+        val nextAuthor = messages.getOrNull(index + 1)?.message?.userId
+        val userId = messages.getOrNull(index)?.message?.userId
+        val isFirstMessageByAuthor = prevAuthor != content.message.userId
+        val isLastMessageByAuthor = nextAuthor != content.message.userId
+        MessageUi(
+          onAuthorClick = { },
+          msg = content,
+          authorId = "me",
+          userId = userId ?: "",
+          isFirstMessageByAuthor = isFirstMessageByAuthor,
+          isLastMessageByAuthor = isLastMessageByAuthor,
+        )
+      }
+    }
+  }
+}`;
+
+const messageUiCode = `@Composable
+fun MessageUi(
+  onAuthorClick: (String) -> Unit,
+  msg: MessageUiModel,
+  authorId: String,
+  userId: String,
+  isFirstMessageByAuthor: Boolean,
+  isLastMessageByAuthor: Boolean,
+) {
+  val isUserMe = userId == "me" // hard coded for now, next chapter will be = authorId == userId
+  val borderColor = if (isUserMe) {
+    MaterialTheme.colorScheme.primary
+  } else {
+    MaterialTheme.colorScheme.tertiary
+  }
+
+  val authorImageId: Int =
+    if (isUserMe) R.drawable.profile_photo_android_developer else R.drawable.someone_else
+  val spaceBetweenAuthors = if (isLastMessageByAuthor) Modifier.padding(top = 8.dp) else Modifier
+  Row(modifier = spaceBetweenAuthors) {
+    if (isLastMessageByAuthor) {
+      // Avatar
+      Image( /* chuỗi Modifier đã đọc ở mục 6 */ )
+    } else {
+      // Space under avatar
+      Spacer(modifier = Modifier.width(74.dp))
+    }
+    AuthorAndTextMessage(
+      msg = msg,
+      isUserMe = isUserMe,
+      isFirstMessageByAuthor = isFirstMessageByAuthor,
+      isLastMessageByAuthor = isLastMessageByAuthor,
+      authorClicked = onAuthorClick,
+      modifier = Modifier
+        .padding(end = 16.dp)
+        .weight(1f)
+    )
+  }
+}`;
+
+const uiStateShortCode = `class ConversationUiState(
+  val channelName: String,
+  initialMessages: List<MessageUiModel>,
+) {
+  private val _messages: MutableList<MessageUiModel> = initialMessages.toMutableStateList()
+
+  val messages: List<MessageUiModel> = _messages
+
+  fun addMessage(msg: String, photoUri: Uri?) {
+    // TODO : implement in Chapter 6 😀
+  }
+}`;
+import { Code } from "astro:components";
+
+const PROJ = "aaf-materials/05-jetpack-compose/projects/final";
+const FINAL = `${PROJ}/app/src/main`;
+const KT = `${FINAL}/java/com/kodeco/chat`;
+---
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Học xong chương này bạn sẽ</strong>
+		<ul>
+			<li>Tự đọc chữ ký của một composable để tìm ra tham số mình đang cần, thay vì đi tra Google.</li>
+			<li>Nói được <code>Modifier</code> mô tả những gì, và vì sao nó là một tham số chứ không phải một câu lệnh.</li>
+			<li>Dự đoán được kết quả khác nhau khi <strong>đổi thứ tự</strong> hai modifier trong cùng một chuỗi.</li>
+			<li>Dùng đúng chỗ sáu modifier hay gặp nhất: <code>fillMaxSize</code>/<code>fillMaxWidth</code>,
+				<code>padding</code>, <code>size</code>, <code>background</code>, <code>weight</code>, <code>clickable</code>.</li>
+			<li>Sửa được một bug layout thật bằng <code>weight</code>, và giải thích được cơ chế đo đạc phía sau.</li>
+			<li>Nói được vì sao danh sách dài dùng <code>LazyColumn</code> chứ không phải <code>Column</code>, và vì sao mỗi
+				item cần một <code>key</code> ổn định.</li>
+		</ul>
+	</div>
+	<div class="callout">
+		<strong>Vì sao cần bài này</strong>
+		<p>
+			Ở chương 5.1 bạn dựng được bộ khung, nhưng mọi thứ còn dính vào nhau và tràn ra ngoài màn hình. bài này cho bạn
+			hai công cụ để giao diện thật sự dùng được: <code>Modifier</code> để điều khiển từng thành phần chiếm bao nhiêu
+			chỗ và trông thế nào, và <code>LazyColumn</code> để hiển thị một danh sách có thể dài vô hạn mà app không chậm đi.
+			Riêng chuyện <em>thứ tự</em> modifier là nguồn nhầm lẫn phổ biến nhất của người mới học Compose.
+		</p>
+		<p>
+			<strong>Cần biết trước:</strong> chương 5.1 (composable, layout, tham số/callback, slot) · Nền tảng Kotlin F1
+			(lambda, <code>it</code>, kiểu hàm, <code>List</code>, <code>?.</code>/<code>?:</code>) · Nền tảng Kotlin F2
+			(<code>data class</code>, generics ở mức nhận diện).
+		</p>
+	</div>
+
+	<h2 id="o-nhap-ux">4. Ô nhập chat có một lỗi UX — đọc chữ ký để tìm tham số đúng</h2>
+	<p>
+		Chạy app của chương 5.1 và thử gõ vào ô nhập. Bạn gặp ngay một chỗ khó chịu: ô nhập <strong>đã có sẵn chữ mặc
+		định</strong> ("Type your text here"), nên muốn gõ thì phải tự xoá chữ đó đi trước. Thêm nữa, nhãn "Enter Chat Text"
+		lại nằm lẫn vào đường viền của ô thay vì ở chỗ đáng lẽ của nó.
+	</p>
+	<p>
+		Bước xoá thủ công đó không phải chuyện nhỏ. Nó chen một việc vô nghĩa vào giữa ý định của người dùng và hành động của
+		họ — loại rào cản mà càng nhiều thì app càng có cảm giác nặng nề, dù không có lỗi kỹ thuật nào.
+	</p>
+	<p>
+		Nguyên nhân nằm ở hai dòng trong đoạn code khởi đầu: chữ mặc định được nhét làm <strong>giá trị thật</strong> của ô
+		(<code>value = chatInputText</code>, mà <code>chatInputText</code> khởi tạo bằng chuỗi lấy từ resource), và nhãn được
+		truyền qua tham số <code>label</code>. Cách tìm ra chỗ sửa không phải tra Google, mà là <strong>đọc chính thứ mình
+		đang dùng</strong>: Control-click vào <code>OutlinedTextField</code>.
+	</p>
+	<Code code={outlinedTextFieldSignatureCode} lang="kotlin" theme="github-dark" />
+	<p>Bốn chỗ đáng đọc trong chữ ký này:</p>
+	<ol>
+		<li>
+			<code>@OptIn(ExperimentalMaterial3Api::class)</code> — lời "đồng ý tham gia" đã gặp ở chương 5.1. Xuất hiện rất nhiều
+			trong Compose vì thư viện tuy đã trưởng thành nhưng vẫn đang phát triển.
+		</li>
+		<li>
+			<code>value</code> và <code>onValueChange</code> — đúng cặp "dữ liệu vào / sự kiện ra" ở chương 5.1.
+			<code>value: String</code> là chữ đang hiện trong ô; <code>onValueChange: (String) -&gt; Unit</code> được gọi mỗi
+			lần người dùng gõ, kèm <em>toàn bộ chuỗi mới</em>. Ô nhập không tự nhớ chữ — nó chỉ hiện thứ bạn đưa vào và báo
+			ra thứ người dùng vừa gõ.
+		</li>
+		<li>
+			<code>label: @Composable (() -&gt; Unit)?</code> — một <strong>slot</strong>, đúng khái niệm ở chương 5.1, và có thể
+			null. Vai trò của <code>label</code> là <em>tên của ô</em>: nó luôn hiện, và trượt lên đường viền khi ô được chọn.
+		</li>
+		<li>
+			<code>placeholder: @Composable (() -&gt; Unit)?</code> — và đây là câu trả lời. Đúng tài liệu ngay trong source:
+			nó là chữ hiện <em>khi ô đang được chọn và nội dung còn trống</em>, rồi tự biến mất khi người dùng bắt đầu gõ.
+			Đó chính xác là hành vi cần cho chữ gợi ý.
+		</li>
+	</ol>
+	<h3>Trước / sau</h3>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">Trước</div>
+			<ul>
+				<li><code>chatInputText</code> khởi tạo bằng chữ mặc định lấy từ resource</li>
+				<li>Chữ gợi ý là <strong>giá trị thật</strong> của ô</li>
+				<li>Người dùng phải tự xoá trước khi gõ</li>
+				<li>Có <code>label</code>, nên nhãn tranh chỗ với chữ mặc định và hiện sai vị trí</li>
+			</ul>
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">Sau</div>
+			<ul>
+				<li><code>chatInputText</code> khởi tạo bằng <strong>chuỗi rỗng</strong> <code>""</code></li>
+				<li>Chữ gợi ý chuyển sang slot <code>placeholder</code></li>
+				<li>Bắt đầu gõ là chữ gợi ý tự mất</li>
+				<li>Bỏ <code>label</code> vì giờ đã dư</li>
+			</ul>
+		</div>
+	</div>
+	<Code code={textFieldFixedCode} lang="kotlin" theme="github-dark" />
+	<div class="callout mental">
+		<strong>Phân biệt cho khỏi lẫn lần nữa</strong>
+		<p>
+			<code>label</code> là <em>tên của ô</em> — như chữ "Họ và tên" in bên cạnh một dòng kẻ trên tờ đơn: nó
+			<strong>ở lại</strong> để bạn luôn biết ô này để làm gì. <code>placeholder</code> là <em>chữ mờ viết sẵn bên trong
+			ô</em> — như dòng chữ nhạt "Nguyễn Văn A" làm mẫu: nó <strong>biến mất</strong> ngay khi bạn viết chữ của mình.
+			Dùng cả hai cùng lúc thì chúng tranh nhau chỗ, đúng như bug bạn vừa sửa.
+		</p>
+	</div>
+	<p class="hint">
+		<strong>Kỹ năng đáng mang đi cả nghề, không chỉ cho bài này:</strong> khi một component không làm đúng ý bạn, mở chữ
+		ký của nó ra đọc trước khi tìm ở đâu khác. Mỗi composable của Compose đều có khối comment tài liệu ngay phía trên
+		định nghĩa, liệt kê từng tham số. Tài liệu đó luôn khớp <em>đúng phiên bản bạn đang dùng</em> — điều mà một bài viết
+		trên mạng không bảo đảm được. chương 5.3 và chương 5.4 mỗi bài lại dùng đúng kỹ năng này một lần nữa.
+	</p>
+	<h2 id="modifier">5. <code>Modifier</code> — mô tả kích thước, vị trí, trang trí, tương tác</h2>
+	<p>
+		Ở chương 5.1, mọi composable đều tự chọn kích thước theo nội dung của nó, và nằm đúng chỗ mà layout cha đặt. Muốn nói
+		"cái này rộng hết màn hình", "cái này cách lề 16dp", "cái này bấm được" thì bạn cần <code>Modifier</code>.
+	</p>
+	<p>
+		Định nghĩa gọn và nên nhớ nguyên: <strong><code>Modifier</code> cho một thành phần giao diện biết nó được
+		<em>dàn trang</em>, <em>hiển thị</em> hay <em>hành xử</em> thế nào trong layout cha của nó.</strong> Cụ thể nó mô tả
+		bốn nhóm việc:
+	</p>
+	<table class="api">
+		<thead><tr><th>Nhóm</th><th>Ví dụ</th><th>Nghĩa</th></tr></thead>
+		<tbody>
+			<tr><td>Kích thước</td><td><code>size</code>, <code>fillMaxWidth</code>, <code>fillMaxSize</code>, <code>height</code>, <code>weight</code></td><td>Chiếm bao nhiêu chỗ.</td></tr>
+			<tr><td>Vị trí &amp; khoảng cách</td><td><code>padding</code>, <code>align</code>, <code>offset</code></td><td>Cách lề bao nhiêu, đặt ở đâu trong cha.</td></tr>
+			<tr><td>Trang trí</td><td><code>background</code>, <code>border</code>, <code>clip</code></td><td>Nền, viền, cắt hình.</td></tr>
+			<tr><td>Hành vi</td><td><code>clickable</code>, <code>scrollable</code></td><td>Phản ứng với thao tác của người dùng.</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Điểm quan trọng nhất về bản chất: <strong><code>Modifier</code> là một <em>giá trị</em>, không phải một câu
+		lệnh.</strong> Bạn không "gọi <code>padding</code> lên một thành phần"; bạn tạo ra một mô tả rồi
+		<em>truyền</em> mô tả đó vào composable qua tham số <code>modifier</code>. Vì là giá trị, nó gán được vào biến, đưa
+		vào <code>if</code>, và truyền quanh như mọi giá trị khác. Đoạn code thật ngay dưới đây làm đúng như vậy.
+	</p>
+	<p class="notice">
+		<strong>Đừng gọi <code>Modifier</code> là "CSS của Compose".</strong> So sánh đó gợi ra hai ý sai. Thứ nhất, CSS là
+		một tệp quy tắc áp từ ngoài vào theo bộ chọn; <code>Modifier</code> là một tham số bạn truyền tay cho <em>đúng
+		một</em> composable. Thứ hai, CSS phần lớn không quan tâm thứ tự khai báo trong một khối; <code>Modifier</code> thì
+		thứ tự quyết định kết quả — nội dung mục 6. Cứ giữ mô hình Compose thuần: một mô tả, truyền vào, áp lần lượt.
+	</p>
+	<h3><code>modifier</code> là tham số quy ước — và thường được truyền tiếp xuống</h3>
+	<p>
+		Đọc lại chữ ký ở chương 5.1: cả <code>KodecochatAppBar</code>, <code>OutlinedTextField</code> và
+		<code>Messages</code> đều có <code>modifier: Modifier = Modifier</code> làm tham số. Đây là quy ước rất phổ biến của
+		Compose, và nó có ba phần đáng để ý:
+	</p>
+	<ul>
+		<li>Tên tham số là <code>modifier</code>, và nó là tham số <strong>đầu tiên trong nhóm tuỳ chọn</strong>.</li>
+		<li>Giá trị mặc định là <code>Modifier</code> — chính là "mô tả rỗng, không thêm gì". Nhờ vậy người gọi không bắt buộc
+			truyền.</li>
+		<li>Bên trong, composable thường <strong>truyền tiếp</strong> modifier đó xuống thành phần ngoài cùng của nó. Nghĩa là
+			đôi khi bạn thêm tham số cho một composable <em>không phải</em> để dùng ngay tại đó, mà để người gọi bên ngoài có
+			quyền quyết định nó chiếm bao nhiêu chỗ.</li>
+	</ul>
+	<p class="hint">
+		Vì sao lại để bên ngoài quyết định? Vì <em>một composable không biết nó sẽ được đặt ở đâu</em>. Cùng một
+		<code>Messages</code> có thể chiếm cả màn hình ở app điện thoại, hoặc chiếm nửa bên phải ở app máy tính bảng. Ai đặt
+		nó vào chỗ nào thì người đó biết nó cần bao nhiêu chỗ — nên quyền quyết định thuộc về người gọi.
+	</p>
+	<p class="notice">
+		<strong>Nhưng đừng dùng lại mẫu này cho <em>dữ liệu</em>.</strong> Truyền <code>Modifier</code> xuống là bình thường.
+		Xâu chuỗi <em>dữ liệu</em> qua năm tầng tham số chỉ để tầng cuối dùng được thì sẽ thành vấn đề: mỗi tầng ở giữa phải
+		khai một tham số nó không quan tâm. Giai đoạn State &amp; kiến trúc giải quyết đúng chuyện này.
+	</p>
+
+	<h2 id="thu-tu-modifier">6. Thứ tự nối <code>Modifier</code> quyết định kết quả</h2>
+	<p>
+		Modifier được nối chuỗi bằng dấu chấm. Quy tắc duy nhất cần nhớ:
+		<strong>mỗi modifier áp lên kết quả của modifier ngay trước nó</strong>, theo đúng thứ tự bạn viết. Không có bước sắp
+		xếp lại nào, và Compose không "tối ưu" thứ tự giúp bạn.
+	</p>
+	<p>Ví dụ nhỏ nhất cho thấy khác biệt — hai đoạn dưới đây chỉ đổi chỗ hai modifier:</p>
+	<Code code={paddingOrderCode} lang="kotlin" theme="github-dark" />
+	<div class="callout mental">
+		<strong>Đọc chuỗi modifier như một dây chuyền đóng gói</strong>
+		<p>
+			Hình dung chữ "A" đi trên một dây chuyền, mỗi modifier là một máy trên dây chuyền đó.
+		</p>
+		<p>
+			<strong>Trường hợp A</strong> (<code>padding</code> rồi <code>background</code>): máy thứ nhất bọc quanh chữ một
+			viền trống 16dp — bây giờ "kiện hàng" gồm cả chữ và viền trống. Máy thứ hai tô vàng
+			<em>toàn bộ kiện hàng đó</em>. Kết quả: <strong>ô vàng lớn, chữ nằm giữa, vàng lan ra cả phần trống.</strong>
+		</p>
+		<p>
+			<strong>Trường hợp B</strong> (<code>background</code> rồi <code>padding</code>): máy thứ nhất tô vàng đúng vùng
+			chữ. Máy thứ hai thêm 16dp trống ra <em>bên ngoài</em> vùng đã tô. Kết quả: <strong>ô vàng chỉ vừa khít chữ, quanh
+			nó là khoảng trống không màu.</strong>
+		</p>
+	</div>
+	<p>
+		Cùng logic đó áp cho mọi cặp. Hai cặp bạn sẽ gặp nhiều nhất:
+	</p>
+	<ul>
+		<li>
+			<code>padding</code> trước <code>size</code> nghĩa là "kích thước tính <em>sau khi</em> đã trừ phần đệm"; đảo lại
+			nghĩa là "kích thước này, <em>rồi mới</em> thêm đệm ra ngoài". Cùng con số nhưng ra hai vùng khác nhau.
+		</li>
+		<li>
+			<code>clickable</code> trước <code>padding</code> thì <strong>phần đệm cũng bấm được</strong> (vùng bấm được đăng ký
+			trước khi vùng nở ra); đảo lại thì chỉ phần lõi bấm được. Đây không phải chi tiết vụn: vùng bấm quá nhỏ là lỗi trải
+			nghiệm thật, đặc biệt với icon.
+		</li>
+	</ul>
+	<h3>Chuỗi bảy bước trong app thật</h3>
+	<p>
+		Đây là chuỗi modifier của ảnh đại diện trong một dòng tin nhắn — ví dụ dài nhất trong app, và mỗi bước đều có lý do:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/conversation/Conversation.kt</code> (dòng 207–219, trong <code>MessageUi</code>)</p>
+	<Code code={avatarChainCode} lang="kotlin" theme="github-dark" />
+	<ol class="chain">
+		<li><code>.clickable(...)</code> — đăng ký vùng bấm <strong>trước</strong> khi thêm đệm, nên cả phần đệm cũng bấm được.</li>
+		<li><code>.padding(horizontal = 16.dp)</code> — chèn 16dp trống ở hai bên.</li>
+		<li><code>.size(42.dp)</code> — ép phần còn lại thành hình vuông 42dp.</li>
+		<li><code>.border(1.5.dp, borderColor, CircleShape)</code> — viền trong, màu đổi theo người gửi.</li>
+		<li><code>.border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)</code> — viền ngoài lấy màu nền, tạo khe hở giữa hai viền.</li>
+		<li><code>.clip(CircleShape)</code> — cắt ảnh thành hình tròn.</li>
+		<li><code>.align(Alignment.Top)</code> — căn lên đỉnh của <code>Row</code> cha.</li>
+	</ol>
+	<p>
+		Hai <code>border</code> liên tiếp là ví dụ đẹp nhất của quy tắc thứ tự: viền thứ hai vẽ <em>bên ngoài</em> viền thứ
+		nhất, nên bạn được một vòng tròn có hai đường viền cách nhau — hiệu ứng mà một modifier không làm được.
+	</p>
+	<p class="hint">
+		<code>dp</code> trong <code>42.dp</code> là "density-independent pixel" — đơn vị đo <em>độc lập với mật độ điểm ảnh</em>
+		của màn hình. 42dp trông cùng cỡ trên máy màn hình thường và máy màn hình sắc nét, dù số điểm ảnh thật khác nhau.
+		Về cú pháp Kotlin, <code>.dp</code> là một thuộc tính mở rộng của số — cùng loại cơ chế với extension function bạn đã
+		gặp ở <code>setContent</code>.
+	</p>
+	<h2 id="modifier-thiet-yeu">7. Bộ modifier thật sự cần cho màn hình chat</h2>
+	<p>
+		Danh sách modifier của Compose rất dài, và học thuộc nó là cách tệ nhất để bắt đầu. Sáu cái dưới đây là đủ để dựng
+		toàn bộ màn hình chat của chương này; những cái khác học khi gặp việc cần tới.
+	</p>
+	<table class="api">
+		<thead><tr><th>Modifier</th><th>Làm gì</th><th>Chỗ dùng trong app</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><code>fillMaxSize()</code><br /><code>fillMaxWidth()</code></td>
+				<td>Chiếm hết chỗ mà cha cho phép — cả hai chiều, hoặc chỉ chiều ngang.</td>
+				<td><code>Box</code> và <code>Column</code> ngoài cùng phải căng hết màn hình, nếu không chúng chỉ vừa bằng nội
+					dung và mọi tính toán chỗ trống phía sau đều vô nghĩa.</td>
+			</tr>
+			<tr>
+				<td><code>padding(...)</code></td>
+				<td>Chèn khoảng trống quanh thành phần. Có bản một số cho cả bốn phía, bản
+					<code>horizontal</code>/<code>vertical</code>, và bản chỉ định từng phía (<code>end = 16.dp</code>).</td>
+				<td>Cách lề cho avatar, cho chữ trong bong bóng, cho icon trên app bar.</td>
+			</tr>
+			<tr>
+				<td><code>size(...)</code><br /><code>width(...)</code> / <code>height(...)</code></td>
+				<td>Ép một kích thước cố định thay vì để nội dung tự quyết.</td>
+				<td>Avatar vuông 42dp; vùng chạm của logo 64dp; khoảng trống thay avatar rộng 74dp.</td>
+			</tr>
+			<tr>
+				<td><code>background(...)</code></td>
+				<td>Tô nền. Rất hữu ích cả khi <em>gỡ lỗi</em>: tô tạm một màu là thấy ngay thành phần đang chiếm vùng nào.</td>
+				<td>Dùng làm mẹo gỡ lỗi ở mục 8.</td>
+			</tr>
+			<tr>
+				<td><code>weight(...)</code></td>
+				<td>Chỉ dùng được <em>bên trong</em> <code>Column</code> hoặc <code>Row</code>: chia phần chỗ còn lại theo tỉ lệ.</td>
+				<td>Chìa khoá sửa bug ở mục 8, và cũng dùng lại trong mỗi dòng tin nhắn.</td>
+			</tr>
+			<tr>
+				<td><code>clickable(...)</code></td>
+				<td>Biến một thành phần bất kỳ thành thứ bấm được, không cần phải là <code>Button</code>.</td>
+				<td>Bấm vào avatar, bấm vào icon thông tin trên app bar.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		<strong><code>Modifier</code> là giá trị — nên gán được vào biến.</strong> Trong mỗi dòng tin nhắn có đúng một dòng
+		code làm điều này: <code>val spaceBetweenAuthors = if (isLastMessageByAuthor) Modifier.padding(top = 8.dp) else
+		Modifier</code>. Nghĩa là "nếu đây là tin cuối của một người thì thêm 8dp phía trên, không thì không thêm gì" —
+		<code>Modifier</code> trơ (không có gì) là một giá trị hợp lệ, đúng như giá trị mặc định của tham số
+		<code>modifier</code> ở mục 5. Đây là cách viết layout có điều kiện mà không cần lặp lại cả khối code hai lần.
+	</p>
+
+	<h2 id="bug-weight">8. Bug thật: app bar đè lên ô nhập — <code>fillMaxSize</code> và <code>weight</code></h2>
+	<p>
+		Trước tiên hãy để bug xuất hiện. Chuyển đoạn nhập liệu ở chương 5.1 vào composable riêng
+		<code>SimpleUserInput()</code>, lần này bọc trong <code>Row</code> để ô chữ và nút nằm ngang cạnh nhau:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/conversation/Conversation.kt</code> (dòng 121–144)</p>
+	<Code code={simpleUserInputCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Build và chạy: <strong>app bar phía trên đè lên ô chữ và nút</strong>. Ba bước sửa dưới đây, và điều đáng học nằm ở
+		chỗ mỗi bước sửa được <em>cái gì</em>:
+	</p>
+	<ol>
+		<li>
+			<strong>Thêm <code>Modifier.fillMaxSize()</code> cho <code>Box</code>.</strong> Chạy lại, thay đổi gần như không
+			thấy được. Đây là lúc dùng mẹo gỡ lỗi ở mục 7 — tô màu tạm cho <code>Box</code>:
+			<Code code={boxDebugCode} lang="kotlin" theme="github-dark" />
+			Giờ thì rõ: trước đó <code>Box</code> chỉ vừa bằng nội dung của nó, bây giờ nó căng hết màn hình. Nhưng phần nhập
+			liệu <strong>vẫn bị che</strong> — vì <code>Box</code> to ra không đồng nghĩa với việc các con bên trong được chia
+			lại chỗ.
+		</li>
+		<li>
+			<strong>Cho <code>Column</code> <code>fillMaxSize()</code> và cho <code>Messages</code> nhận
+			<code>Modifier.weight(1f)</code>:</strong>
+			<Code code={weightFixCode} lang="kotlin" theme="github-dark" />
+		</li>
+		<li>
+			<strong>Cập nhật <code>Messages()</code></strong> để nó nhận và <em>dùng</em> modifier được truyền vào — đúng quy
+			ước ở mục 5. Phần nội dung để trống, mục 9 mới làm:
+			<Code code={messagesStubCode} lang="kotlin" theme="github-dark" />
+		</li>
+	</ol>
+	<p>Build và chạy — layout đã đúng: danh sách chiếm phần giữa, ô nhập nằm yên ở đáy, app bar nổi ở đỉnh.</p>
+	<h3><code>weight</code> hoạt động thế nào</h3>
+	<p>
+		Đây là đoạn nên đọc chậm, vì nó giải thích luôn cả cơ chế đo đạc của Compose. Khi dàn trang các con của một
+		<code>Column</code>, Compose <strong>đo từng con</strong> rồi phân bổ chỗ, và nó làm theo hai lượt:
+	</p>
+	<ol class="chain">
+		<li>Đo trước các con <strong>không có <code>weight</code></strong>. Mỗi con này được lấy đúng phần vừa đủ theo nội dung
+			và các modifier của nó. Ở đây: <code>SimpleUserInput</code> cao vừa bằng một hàng ô chữ + nút.</li>
+		<li>Lấy phần chiều cao <strong>còn lại</strong> của <code>Column</code>.</li>
+		<li>Chia phần còn lại đó cho các con <em>có</em> <code>weight</code>, theo tỉ lệ giữa các số weight.</li>
+	</ol>
+	<p>
+		Trong app này chỉ <code>Messages</code> có weight, nên nó <strong>nhận toàn bộ chỗ còn lại</strong> —
+		và <code>SimpleUserInput</code> giữ được chỗ ở đáy thay vì bị đẩy ra ngoài màn hình.
+	</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: chia phần bánh còn lại</strong>
+		<p>
+			Người <em>không</em> nhận weight được cắt đúng miếng vừa đủ theo nhu cầu của mình, trước tiên. Ai có weight thì
+			chia nhau <strong>phần còn dư</strong> theo tỉ lệ. Vì vậy <code>weight(1f)</code> cho một con duy nhất nghĩa là
+			"lấy hết những gì còn dư".
+		</p>
+		<p>
+			Đây là mẫu bố cục dùng cực nhiều: <strong>thanh trên và thanh dưới giữ nguyên kích thước, phần giữa nở ra lấp hết
+			chỗ trống.</strong> Hai con có <code>weight(1f)</code> và <code>weight(2f)</code> thì chia phần dư theo tỉ lệ 1:2.
+		</p>
+	</div>
+	<p class="hint">
+		<code>weight</code> chỉ tồn tại <em>bên trong</em> <code>Column</code> và <code>Row</code> — đó là lý do Compose không
+		cho bạn viết <code>Modifier.weight(1f)</code> ở chỗ khác (bạn sẽ thấy lỗi biên dịch, không phải lỗi lúc chạy). Trong
+		<code>Column</code> nó chia <em>chiều cao</em>; trong <code>Row</code> nó chia <em>chiều ngang</em>. Mỗi dòng tin nhắn
+		dùng bản <code>Row</code>: phần nội dung nhận <code>weight(1f)</code> để lấy hết chiều ngang còn lại sau khi avatar đã
+		lấy phần của nó.
+	</p>
+	<p class="src">Nguồn: <code>{KT}/conversation/Conversation.kt</code> (dòng 185–235)</p>
+	<Code code={messageUiCode} lang="kotlin" theme="github-dark" />
+	<p>Ba chi tiết layout đáng học trong đoạn này:</p>
+	<ul>
+		<li>
+			<code>spaceBetweenAuthors</code> — <code>Modifier</code> chọn theo điều kiện rồi gán vào biến, đúng mẫu ở mục 7.
+		</li>
+		<li>
+			Nhánh <code>else</code> dùng <code>Spacer(modifier = Modifier.width(74.dp))</code> thay vì hiện lại avatar. Con số
+			74 không phải ngẫu nhiên: avatar rộng 42dp cộng 16dp đệm mỗi bên là <strong>42 + 16 × 2 = 74</strong>. Chừa đúng
+			chỗ trống bằng avatar để các bong bóng của cùng một người vẫn thẳng hàng.
+		</li>
+		<li>
+			<code>Modifier.padding(end = 16.dp).weight(1f)</code> — lại là quy tắc thứ tự ở mục 6: trừ đệm trước, rồi phần nội
+			dung mới lấy hết chỗ ngang còn lại.
+		</li>
+	</ul>
+	<p class="notice">
+		<strong>Đối chiếu code thật:</strong> <code>isUserMe</code> trong đoạn trên đang <strong>gán cứng</strong> bằng
+		<code>userId == "me"</code>, kèm sẵn comment của chính project mẫu: "hard coded for now, next chapter will be =
+		authorId == userId". Tham số <code>authorId</code> vì thế được nhận vào nhưng chưa dùng. Đây là việc dở dang có chủ
+		đích — nó cần biết "người dùng đang đăng nhập là ai", thứ chỉ có sau khi app có tầng state thật.
+	</p>
+	<h2 id="danh-sach">9. Danh sách dài: <code>LazyColumn</code>, <code>items</code> và <code>key</code> ổn định</h2>
+	<p>
+		Ba tin nhắn thì <code>Column</code> dùng được. Nhưng một cuộc trò chuyện thật có hàng trăm, hàng nghìn tin nhắn, và
+		danh sách còn dài thêm trong lúc app đang chạy. Chuyện gì xảy ra khi số thành phần vượt quá màn hình?
+	</p>
+	<p>
+		Với <code>Column</code>: <strong>Compose vẫn dựng hết</strong>. Cả nghìn dòng tin nhắn đều được tạo, kể cả 990 dòng
+		đang nằm ngoài vùng nhìn thấy. Bạn trả tiền cho toàn bộ danh sách để xem được mười dòng.
+	</p>
+	<p>
+		Giải pháp là một container vừa <em>cuộn được</em> vừa <em>dựng nội dung một cách trì hoãn</em>. Compose có hai cái
+		cho việc này: <strong><code>LazyColumn</code></strong> (dọc) và <strong><code>LazyRow</code></strong> (ngang).
+	</p>
+	<div class="callout mental">
+		<strong>Vì sao chữ "Lazy" quan trọng đến vậy</strong>
+		<p>
+			"Lazy" (trì hoãn) nghĩa là <em>chỉ làm việc khi thật sự cần</em>. <code>LazyColumn</code> chỉ dựng những item đang
+			hiển thị, cộng một ít dự phòng ở hai đầu; bạn cuộn tới đâu, nó dựng tới đó và thu hồi phần đã cuộn qua.
+		</p>
+		<p>
+			Hình dung một cuốn sổ tay và một cửa sổ nhỏ trượt trên đó: bạn chỉ cần chữ nằm trong khung cửa sổ được viết ra.
+			Danh sách một nghìn item hay một triệu item thì lượng việc mỗi khung hình gần như bằng nhau — đó là lý do
+			<code>LazyColumn</code> không chậm đi khi danh sách dài ra.
+		</p>
+	</div>
+	<p class="hint">
+		Nếu bạn từng nghe tới <code>RecyclerView</code> ở cách dựng giao diện cũ, <code>LazyColumn</code> đảm nhiệm đúng vai
+		đó — nhưng chỉ mất vài dòng thay vì cần một adapter và một view holder. Còn <code>Column</code> vẫn hoàn toàn đúng chỗ
+		cho <em>số ít</em> thành phần đã biết trước (một form năm dòng, một thẻ thông tin); đừng đổi mọi
+		<code>Column</code> thành <code>LazyColumn</code>.
+	</p>
+	<h3>Bản đầu tiên: ba tin nhắn viết cứng</h3>
+	<p>Dựng cơ chế trước, có dữ liệu thật sau:</p>
+	<Code code={lazyColumnFirstCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Bên trong ngoặc nhọn của <code>LazyColumn</code> bạn không viết composable trực tiếp, mà gọi <code>item { }</code> —
+		mỗi lời gọi khai một item của danh sách. Lý do: <code>LazyColumn</code> cần <em>biết trước có bao nhiêu item</em> để
+		tính vùng cuộn, mà không phải dựng hết chúng ra.
+	</p>
+	<p class="hint">
+		<strong>Phân biệt hai thứ dễ lẫn.</strong> <code>Modifier.padding()</code> đệm <em>bên ngoài</em> vùng cuộn — vùng đó
+		không cuộn qua được. <code>contentPadding</code> của <code>LazyColumn</code> đệm <em>bên trong</em> vùng cuộn: item
+		đầu bắt đầu thấp xuống, nhưng khi cuộn lên thì nội dung vẫn chạy qua vùng đó. Nhờ vậy tin nhắn trượt
+		<em>dưới</em> app bar thay vì bị cắt cụt. Còn <code>WindowInsets.statusBars</code> là chiều cao thật của thanh trạng
+		thái trên từng thiết bị (mỗi máy mỗi khác), cộng thêm 90dp cho app bar.
+	</p>
+	<h3>Bản hoàn chỉnh: dữ liệu thật, <code>itemsIndexed</code> và <code>key</code></h3>
+	<p>
+		Danh sách thật đến từ một object giữ trạng thái của cuộc trò chuyện. bài này chỉ cần một điều từ nó:
+		<code>messages</code> là một <code>List</code> chỉ-đọc mà giao diện đọc vào.
+	</p>
+	<p class="src">Nguồn: <code>{KT}/conversation/ConversationUiState.kt</code> (dòng 46–57)</p>
+	<Code code={uiStateShortCode} lang="kotlin" theme="github-dark" />
+	<p class="notice">
+		<strong>Hai chỗ ở đây thuộc giai đoạn sau, đọc ở mức nhận biết là đủ.</strong> <code>toMutableStateList()</code> biến
+		một <code>List</code> thường thành danh sách mà <em>Compose theo dõi được</em> — thêm hoặc xoá phần tử thì giao diện
+		tự vẽ lại. <em>Cơ chế</em> theo dõi đó là nội dung giai đoạn State &amp; kiến trúc. Và <code>addMessage()</code> đang
+		<strong>để trống</strong>, kèm comment sẵn có của project mẫu: <code>// TODO : implement in Chapter 6 😀</code> — nên
+		gõ tin nhắn xong chưa thấy nó hiện lên. Cả hai đều là chủ đích: chương này làm phần nhìn.
+	</p>
+	<p>
+		Bây giờ <code>Messages</code> nhận <code>List&lt;MessageUiModel&gt;</code> thay vì <code>List&lt;String&gt;</code>:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/conversation/Conversation.kt</code> (dòng 146–183)</p>
+	<Code code={messagesFinalCode} lang="kotlin" theme="github-dark" />
+	<p>Bốn điểm cần hiểu:</p>
+	<ul>
+		<li>
+			<strong><code>itemsIndexed</code> thay cho <code>item { }</code> viết tay.</strong> Nó nhận cả danh sách rồi tự lặp,
+			và cho bạn cả <code>index</code> lẫn phần tử. Có cả bản <code>items(danhSach) &#123; phanTu -&gt; ... &#125;</code>
+			khi bạn không cần chỉ số. Cần tách rõ hai tầng ở đây: <code>itemsIndexed</code> là <strong>API của
+			Compose</strong>, còn <code>&#123; index, content -&gt; ... &#125;</code> là <strong>lambda của Kotlin</strong> —
+			đúng cú pháp lambda hai tham số đã học ở Nền tảng Kotlin.
+		</li>
+		<li>
+			<strong><code>key = &#123; _, message -&gt; message.id &#125;</code></strong> — mỗi item có một mã nhận dạng
+			<em>ổn định</em>. Phần dưới nói kỹ vì sao đây là dòng quan trọng nhất trong cả đoạn.
+		</li>
+		<li>
+			<strong>Logic gộp nhóm tin nhắn.</strong> Bốn biến <code>prevAuthor</code>, <code>nextAuthor</code>,
+			<code>isFirstMessageByAuthor</code>, <code>isLastMessageByAuthor</code> trả lời một câu hỏi: tin nhắn này có cùng
+			người gửi với tin trên/dưới nó không? Nhờ đó avatar và tên người gửi <em>chỉ hiện một lần</em> cho một chuỗi tin
+			liên tiếp của cùng một người — đúng như app chat thật. <code>getOrNull()</code> để item đầu và item cuối không gây
+			lỗi vượt biên; <code>?.</code> và <code>?:</code> là null safety đã học ở Nền tảng Kotlin.
+		</li>
+		<li>
+			<strong><code>List&lt;MessageUiModel&gt;</code></strong> — không phải <code>List&lt;Message&gt;</code>.
+			<code>Message</code> chỉ có <code>userId</code> dạng chuỗi, nhưng giao diện cần <em>tên đầy đủ</em> của người gửi.
+			<code>MessageUiModel</code> ghép sẵn <code>Message</code> với <code>User</code> tương ứng. Đây là một quyết định
+			kiến trúc đáng nhớ: <strong>model dữ liệu và model cho giao diện là hai thứ khác nhau</strong> — nhồi
+			<code>fullName</code> vào thẳng <code>Message</code> thì mỗi lần đổi cách hiển thị lại phải sửa model dữ liệu. Cách
+			ghép được cài đặt thế nào thuộc giai đoạn Kiến trúc app.
+		</li>
+	</ul>
+	<h3>Vì sao <code>key</code> phải ổn định</h3>
+	<p>
+		Không có <code>key</code>, <code>LazyColumn</code> nhận dạng item <strong>theo vị trí</strong>: "item thứ 0", "item thứ
+		1". Điều đó ổn khi danh sách không đổi. Nhưng danh sách chat thì đổi liên tục — và đây là chỗ vị trí trở thành sai.
+	</p>
+	<div class="callout mental">
+		<strong>Chèn một tin nhắn vào đầu danh sách</strong>
+		<p>
+			Giả sử đang có 3 tin: <em>A</em>, <em>B</em>, <em>C</em>. Một tin mới <em>X</em> được chèn lên đầu.
+		</p>
+		<p>
+			<strong>Không có <code>key</code>:</strong> Compose chỉ biết "vị trí 0 trước là A, giờ là X; vị trí 1 trước là B,
+			giờ là A…". Theo cách nhìn đó thì <em>mọi</em> item đều đã thay đổi nội dung, nên mọi item đều phải vẽ lại — và
+			mọi thứ Compose đang ghi nhớ riêng cho từng item (ví dụ một dòng chữ đang được chọn, một ảnh đã tải xong) bị gán
+			sang item khác.
+		</p>
+		<p>
+			<strong>Có <code>key = message.id</code>:</strong> Compose biết A vẫn là A, chỉ chuyển từ vị trí 0 sang vị trí 1.
+			Nó <em>di chuyển</em> item thay vì dựng lại, và giữ đúng mọi thứ đang gắn với item đó.
+		</p>
+	</div>
+	<p>
+		Chữ "ổn định" trong "key ổn định" có nghĩa rất cụ thể: <strong>cùng một tin nhắn phải luôn cho ra cùng một
+		key</strong>, kể cả sau khi danh sách bị chèn, xoá, sắp xếp lại. Vì vậy <code>message.id</code> là key tốt, còn
+		<code>index</code> là key <em>vô nghĩa</em> — nó chỉ là vị trí đội tên khác. Dùng nội dung tin nhắn làm key cũng
+		nguy hiểm: hai người gửi cùng chữ "ok" là hai key trùng nhau, và Compose không cho phép key trùng.
+	</p>
+	<p class="notice">
+		<strong>Đối chiếu code thật:</strong> ở dòng 149, <code>Messages</code> có một tham số
+		<strong>bị comment sẵn</strong> — <code>// scrollState: LazyListState,</code>. Nó là dấu vết cho việc cuộn danh sách
+		bằng code (ví dụ tự nhảy xuống tin mới nhất). Chương này chưa dùng, và <code>LazyColumn</code> ở đây cũng không nhận
+		tham số <code>state</code> nào.
+	</p>
+
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Một icon 24dp có chuỗi <code>Modifier.padding(12.dp).clickable &#123; ... &#125;.size(24.dp)</code> và người dùng
+			phàn nàn là "khó bấm". Bạn đổi thứ tự thế nào, và vì sao?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				Đưa <code>clickable</code> lên <strong>trước</strong> <code>padding</code>:
+				<code>Modifier.clickable &#123; ... &#125;.padding(12.dp).size(24.dp)</code>. Lý do: mỗi modifier áp lên kết quả
+				của modifier trước nó (mục 6). Ở chuỗi ban đầu, <code>padding</code> đã chèn 12dp <em>trước khi</em> vùng bấm
+				được đăng ký, nên phần đệm đó không nhận thao tác bấm — vùng bấm chỉ còn đúng 24dp. Sau khi đổi, vùng bấm bao
+				trọn cả phần đệm, thành khoảng 48dp mỗi chiều: dễ bấm hơn nhiều mà hình icon không to lên (vì sao 48dp là con số đáng
+				nhớ — chương 5.5 trả lời). Đúng thứ tự này là thứ tự mà app bar của project dùng cho logo Kodeco.
+			</p>
+		</details>
+	</div>
+
+	<div class="callout journey">
+		<strong>Tóm tắt</strong>
+		<ol>
+			<li>Khi một component không làm đúng ý, mở chữ ký của nó ra đọc trước. Tài liệu nằm ngay trên định nghĩa và luôn
+				khớp phiên bản bạn đang dùng.</li>
+			<li><code>label</code> là tên của ô và ở lại; <code>placeholder</code> là chữ gợi ý bên trong ô và biến mất khi có
+				chữ. Đừng nhét chữ gợi ý vào <code>value</code>.</li>
+			<li><code>Modifier</code> mô tả kích thước, vị trí, trang trí, hành vi. Nó là một <em>giá trị</em> được truyền vào
+				tham số <code>modifier</code>, không phải câu lệnh — nên gán biến và chọn theo điều kiện được.</li>
+			<li><strong>Thứ tự nối quyết định kết quả:</strong> mỗi modifier áp lên kết quả của modifier trước nó. Nhớ hai cặp
+				kinh điển: <code>padding</code>↔<code>background</code> và <code>clickable</code>↔<code>padding</code>.</li>
+			<li>Quy ước: <code>modifier: Modifier = Modifier</code> là tham số của composable, thường được truyền tiếp xuống —
+				vì người gọi mới biết composable đó sẽ chiếm bao nhiêu chỗ.</li>
+			<li><code>weight</code> chia <strong>phần chỗ còn lại</strong> sau khi các con không có weight đã được đo. Mẫu "thanh
+				trên + thanh dưới cố định, phần giữa nở ra" là <code>weight(1f)</code> cho phần giữa.</li>
+			<li><code>Column</code> dựng hết mọi con; <code>LazyColumn</code> chỉ dựng phần đang hiển thị — dùng cho danh sách
+				dài hoặc thay đổi được.</li>
+			<li>Mỗi item cần <code>key</code> <strong>ổn định</strong> (một mã nhận dạng thật, không phải <code>index</code>) để
+				Compose biết item nào là item nào khi danh sách thay đổi.</li>
+		</ol>
+	</div>
+
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Ba chỗ dưới đây là những chỗ người mới hay mất thời gian nhất ở phần Modifier &amp; danh sách.
+	</p>
+
+	<p class="notice">
+		<strong>(c) Dùng <code>label</code> và <code>placeholder</code> cùng lúc.</strong> Cả hai đều muốn hiện chữ trong vùng
+		ô nhập, nên chúng tranh chỗ và bạn thấy nhãn nằm lẫn vào đường viền — đúng bug ở mục 4. Nhớ theo hành vi:
+		<code>label</code> là tên của ô và <strong>ở lại</strong>; <code>placeholder</code> là gợi ý bên trong ô và
+		<strong>biến mất</strong> khi có chữ. Còn cái sai nặng hơn là nhét chữ gợi ý vào <code>value</code>: khi đó nó là nội
+		dung thật, và người dùng phải xoá tay.
+	</p>
+	<p class="notice">
+		<strong>(d) Đặt <code>clickable</code> sau <code>padding</code> làm vùng bấm co lại.</strong> Vì mỗi modifier áp lên
+		kết quả của modifier trước nó, <code>padding</code> đứng trước nghĩa là phần đệm đã được thêm <em>trước khi</em> vùng
+		bấm được đăng ký — nên phần đệm không nhận thao tác bấm. Với một icon 24dp, khác biệt là giữa vùng bấm 24dp (khó bấm)
+		và khoảng 48dp (dễ bấm — vì sao 48dp là con số đáng nhớ, xem chương 5.5). Đây là lỗi trải nghiệm thật, không phải
+		chi tiết vụn, và nó không hiện ra trong bản xem trước.
+	</p>
+	<p class="notice">
+		<strong>(e) Dùng <code>index</code> làm <code>key</code>, hoặc dùng key trùng nhau.</strong> <code>index</code> chỉ là
+		vị trí đội tên khác — nó đổi ngay khi danh sách bị chèn hoặc xoá, nên nó không phải nhận dạng của item. Dùng nội dung
+		tin nhắn làm key cũng không được: hai người gửi cùng chữ "ok" là hai key trùng, và <code>LazyColumn</code> không cho
+		phép key trùng. Hãy dùng một mã nhận dạng thật (<code>message.id</code>). Cùng chỗ này còn một chỗ dễ lẫn:
+		<code>contentPadding</code> đệm <em>bên trong</em> vùng cuộn (nội dung trượt qua được), còn
+		<code>Modifier.padding</code> đệm <em>bên ngoài</em> (nội dung bị cắt ở đó).
+	</p>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>content/book/ch05-jetpack-compose.md</code> (941 dòng) — dòng 174–267
+			(<em>Improving the UI &amp; UX</em>: đọc chữ ký <code>OutlinedTextField</code>, <code>label</code> vs
+			<code>placeholder</code>) · dòng 442–539 (<em>Modifiers</em>: thứ tự nối chuỗi, <code>fillMaxSize</code>,
+			<code>weight</code>) · dòng 540–588 (<em>Lists</em>: lazy loading, <code>LazyColumn</code>) · dòng 589–877
+			(<em>Building the Message UI</em> — phần danh sách và layout).
+		</li>
+		<li>
+			<strong>Code thật — chương 5.2:</strong> <code>{KT}/conversation/Conversation.kt</code>
+			(<code>SimpleUserInput</code> 121–144 · <code>Messages</code> 146–183, trong đó tham số
+			<code>// scrollState: LazyListState,</code> bị comment ở dòng 149, <code>LazyColumn</code> dòng 153,
+			<code>contentPadding</code> 156–157, <code>itemsIndexed</code> dòng 161, <code>key</code> dòng 163 ·
+			<code>MessageUi</code> 185–235 với chuỗi <code>Modifier</code> của avatar ở dòng 207–219 ·
+			<code>AuthorAndTextMessage</code> 237–263) · <code>{KT}/conversation/ConversationUiState.kt</code> (68 dòng;
+			<code>class</code> dòng 46, <code>toMutableStateList()</code> dòng 50, <code>messages</code> dòng 52,
+			<code>addMessage</code> dòng 54, <code>@Immutable data class Message</code> 59–68) ·
+			<code>{KT}/data/model/MessageUiModel.kt</code> (mô hình ghép <code>Message</code> + <code>User</code>) ·
+			<code>{KT}/data/model/DateExtensions.kt</code> (<code>isoToTimeAgo()</code>). Kiểm chứng: tìm
+			<code>items(</code> trong project → 0 kết quả (project chỉ dùng <code>itemsIndexed</code>); tìm
+			<code>key =</code> → đúng 1 kết quả (dòng 163).
+		</li>
+		<li>
+			<strong>Phần bổ sung ngoài giáo trình</strong> (do khoá học tự dựng để giải thích cho người mới):
+			bảng bốn nhóm việc của <code>Modifier</code> và lời cảnh báo không gọi nó là "CSS của Compose" ·
+			ví dụ <code>padding</code>↔<code>background</code> kèm mô hình "dây chuyền đóng gói" ·
+			bảng sáu modifier thiết yếu và phép tính 42 + 16 × 2 = 74 của <code>Spacer</code> ·
+			mô hình "cửa sổ trượt trên cuốn sổ" cho <code>LazyColumn</code> và ví dụ chèn item vào đầu danh sách để giải thích
+			<code>key</code>.
+		</li>
+	</ul>
+
+</section>

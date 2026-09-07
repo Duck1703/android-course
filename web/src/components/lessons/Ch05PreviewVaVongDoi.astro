@@ -1,0 +1,571 @@
+---
+// Chương 5.4 — Preview & vòng đời composable
+// Stage 2 (Giai đoạn 2 — Jetpack Compose), chương 5.4 của khoá (IMP-033).
+// Nội dung PORT nguyên khối từ monolith Ch05JetpackCompose.astro — ranh giới C4 START/END
+// (đã verify ranh giới + provenance số dòng tại monolith, 2026-09-07).
+// Đổi khi port: nhãn "Đơn vị N" → "chương 5.4"; cross-ref giữa các phần thành cross-ref chương;
+// #cam-bay/#nguon tách theo đúng kế hoạch ghi trong monolith. Voice độc lập — attribution chỉ ở #nguon.
+
+const previewCode = `@OptIn(ExperimentalMaterial3Api::class)
+@Preview
+@Composable
+fun KodecochatAppBarPreview() {
+  KodecochatTheme {
+    KodecochatAppBar(title = { Text("Preview!") })
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview
+@Composable
+fun KodecohatAppBarPreviewDark() {
+  KodecochatTheme(isDarkTheme = true) {
+    KodecochatAppBar(title = { Text("Preview!") })
+  }
+}`;
+
+const previewWrapperCode = `// Composable thật — nó cần dữ liệu mới vẽ được
+@Composable
+fun TheChao(ten: String) {
+  Text(text = "Xin chào $ten")
+}
+
+// Cách 1 — hàm bọc không cần tham số nào, tự cấp dữ liệu mẫu
+@Preview
+@Composable
+fun TheChaoPreview() {
+  KodecochatTheme {
+    TheChao(ten = "An")
+  }
+}`;
+
+const previewParamDefaultCode = `// Cách 2 — hàm xem trước CÓ tham số, nhưng tham số có giá trị mặc định
+@Preview
+@Composable
+fun TheChaoPreview(ten: String = "An") {
+  KodecochatTheme {
+    TheChao(ten = ten)
+  }
+}`;
+
+const userInputPreviewCode = `@Preview
+@Composable
+fun UserInputPreview() {
+  UserInput(onMessageSent = {})
+}`;
+
+const previewMessageCode = `@Preview
+@Composable
+fun MessageUiPreview() {
+  KodecochatTheme {
+    MessageUi(
+      onAuthorClick = { },
+      msg = exampleUiState.messages.first(),
+      authorId = "me",
+      userId = "me",
+      isFirstMessageByAuthor = true,
+      isLastMessageByAuthor = true,
+    )
+  }
+}`;
+
+const fakeDataCode = `private val meUser = User(id = "me", firstName = "Fuad", lastName = "Kamal")
+private val otherUser = User(id = "other", firstName = "Sally", lastName = "Walden")
+
+private val initialMessages = listOf(
+  MessageUiModel(message = sampleMessageTexts[0], user = otherUser, id = "0"),
+  MessageUiModel(message = sampleMessageTexts[1], user = meUser, id = "1"),
+  MessageUiModel(message = sampleMessageTexts[2], user = otherUser, id = "2")
+)
+
+val exampleUiState = ConversationUiState(
+  initialMessages = initialMessages,
+  channelName = "#Android Apprentice",
+)`;
+
+const sideEffectProblemCode = `// ✗ ĐỪNG viết như thế này
+@Composable
+fun ManHinhChat() {
+  ghiLog("Màn hình chat mở")   // chạy mỗi lần thân hàm được gọi lại
+  Column {
+    ...
+  }
+}`;
+
+const launchedEffectCode = `// ✓ Việc phụ được giao cho Compose quản lý theo composition
+@Composable
+fun ManHinhChat() {
+  LaunchedEffect(Unit) {
+    ghiLog("Màn hình chat mở")
+  }
+  Column {
+    ...
+  }
+}`;
+
+const launchedEffectKeyCode = `@Composable
+fun ManHinhKenh(channelId: String) {
+  LaunchedEffect(channelId) {
+    taiTinNhanCuaKenh(channelId)
+  }
+  ...
+}`;
+import { Code } from "astro:components";
+
+const PROJ = "aaf-materials/05-jetpack-compose/projects/final";
+const FINAL = `${PROJ}/app/src/main`;
+const KT = `${FINAL}/java/com/kodeco/chat`;
+---
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Học xong chương này bạn sẽ</strong>
+		<ul>
+			<li>Tự viết được một <code>@Preview</code> cho composable của mình, kể cả khi nó cần tham số.</li>
+			<li>Nói được ba việc <code>@Preview</code> <strong>không</strong> chứng minh được — và vì thế lúc nào vẫn phải chạy
+				app thật.</li>
+			<li>Giải thích được vì sao bản xem trước thường cần dữ liệu mẫu được kiểm soát.</li>
+			<li>Mô tả được ba trạng thái của một composable: <em>vào</em> composition, <em>được vẽ lại</em>, <em>rời</em>
+				composition.</li>
+			<li>Chỉ ra được vì sao đặt một việc phụ (ghi log, tải dữ liệu) thẳng vào thân hàm composable là sai.</li>
+			<li>Đọc được một khối <code>LaunchedEffect(key)</code> và nói đúng nó chạy khi nào, không phóng đại.</li>
+		</ul>
+	</div>
+	<div class="callout">
+		<strong>Vì sao cần bài này</strong>
+		<p>
+			Ba bài trước dạy bạn <em>viết</em> giao diện. bài này dạy bạn <em>soi</em> giao diện — công cụ tiết kiệm thời
+			gian nhiều nhất trong Compose mà cũng dễ bị bỏ quên nhất. Và nó trả lời một câu hỏi mà cách nghĩ "hàm mô tả giao
+			diện" chắc chắn sẽ làm bạn thắc mắc: nếu thân hàm được gọi lại mỗi khi dữ liệu đổi, thì những việc <em>chỉ nên làm
+			một lần</em> đặt ở đâu?
+		</p>
+		<p>
+			<strong>Cần biết trước:</strong> chương 5.1 (composable, cây giao diện) · chương 5.3 (theme, vì sao cần bọc theme) ·
+			Chương 2.2 và 2.3 (đã gặp <code>@Preview</code> trong project trống, và đã phân biệt nó với Live Edit).
+		</p>
+	</div>
+
+	<h2 id="preview">15. <code>@Preview</code> — soi một composable mà không chạy app</h2>
+	<p>
+		Bạn đã gặp <code>@Preview</code> ở Chương 2: một nhãn đặt lên hàm composable để Android Studio vẽ thử hàm đó
+		<em>ngay trong khung soạn thảo</em>, không cần build và cài app. Điểm mà Chương 2 chưa nói tới, và là điểm quan trọng
+		nhất khi bạn đã có một app thật: <strong>bản xem trước không tự có — chính bạn viết code để sinh ra nó.</strong>
+	</p>
+	<p>
+		Mở file app bar của project rồi bấm biểu tượng <em>split view</em> (ngay dưới nút run). Bạn thấy app bar hiện lên
+		<strong>đồng thời ở cả chế độ sáng và chế độ tối</strong>. Hai bản xem trước đó đến từ đúng hai hàm này:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/components/KodecochatAppBar.kt</code> (dòng 81–97)</p>
+	<Code code={previewCode} lang="kotlin" theme="github-dark" />
+	<p>Ba điều đọc được:</p>
+	<ol>
+		<li>
+			Cách viết: một composable, thêm <code>@Preview</code> phía trên — <em>ngoài</em> <code>@Composable</code>. Quy ước đặt
+			tên là thêm chữ "Preview" ở cuối tên hàm; đây là quy ước cho người đọc, không phải yêu cầu của công cụ.
+		</li>
+		<li>
+			Hai hàm xem trước này <strong>tự cấp đủ dữ liệu</strong> cho composable mà chúng gọi
+			(<code>title = &#123; Text("Preview!") &#125;</code>). Lý do rất thực tế: <strong>Android Studio là phía gọi hàm
+			xem trước</strong>, nên nó phải có <em>giá trị</em> để vẽ. Phần ngay dưới nói rõ những cách cấp giá trị đó.
+		</li>
+		<li>
+			Hai bản xem trước khác nhau đúng một chỗ: hàm thứ hai gọi
+			<code>KodecochatTheme(isDarkTheme = true)</code> — chính tham số bạn đã đọc ở chương 5.3, mục 12. Muốn xem một
+			composable ở nhiều điều kiện khác nhau thì mỗi điều kiện là một <code>@Preview</code>.
+		</li>
+	</ol>
+	<h3>Bản xem trước cần giá trị — cấp cho nó bằng cách nào</h3>
+	<p>
+		Android Studio vẽ bản xem trước bằng cách <em>gọi</em> hàm có nhãn <code>@Preview</code>. Vì vậy điều kiện duy nhất
+		là: <strong>khi được gọi, hàm đó phải có đủ giá trị để chạy.</strong> Có nhiều cách đáp ứng điều đó; hai cách dưới
+		đây đủ cho toàn bộ khoá này.
+	</p>
+	<Code code={previewWrapperCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<strong>Cách 1 là mẫu nên dùng khi mới học:</strong> hàm xem trước là một lớp bọc <em>tự chứa</em> — nó không nhận
+		tham số nào, và tự truyền dữ liệu mẫu vào composable thật. Không có gì cần Android Studio phải đoán, nên nó luôn vẽ
+		được. Đây cũng chính là mẫu của hai hàm xem trước app bar ở trên, và của bản xem trước dòng tin nhắn ở mục 16.
+	</p>
+	<Code code={previewParamDefaultCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<strong>Cách 2 cũng chạy được:</strong> hàm xem trước <em>có</em> tham số, nhưng mỗi tham số có
+		<strong>giá trị mặc định</strong> — thứ bạn đã học ở Nền tảng Kotlin. Khi Android Studio gọi hàm mà không truyền gì,
+		giá trị mặc định được dùng. Cách này tiện khi bạn muốn sửa nhanh dữ liệu mẫu ngay tại chữ ký hàm.
+	</p>
+	<div class="callout mental">
+		<strong>Phát biểu đúng của quy tắc</strong>
+		<p>
+			Không phải "hàm <code>@Preview</code> <em>không được</em> có tham số". Compose không cấm điều đó. Quy tắc thật là:
+			<strong>Android Studio cần có giá trị cho mọi tham số để gọi được hàm</strong> — nên tham số nào cũng phải có
+			nguồn giá trị, dù là giá trị mặc định hay do một lớp bọc tự cấp.
+		</p>
+		<p>
+			Một hàm xem trước có tham số <em>bắt buộc</em> mà không có nguồn giá trị nào thì Android Studio không vẽ được — và
+			nó nói đúng điều đó trong khung xem trước. Đó là giới hạn của <em>tình huống ấy</em>, không phải luật chung của
+			<code>@Preview</code>.
+		</p>
+	</div>
+	<p class="hint">
+		<strong>Ghi nhận, chưa cần học:</strong> Compose còn có công cụ riêng để <em>bơm</em> dữ liệu mẫu vào tham số của hàm
+		xem trước — annotation <code>@PreviewParameter</code>, thường dùng khi bạn muốn xem cùng một composable với nhiều bộ
+		dữ liệu khác nhau (tin ngắn, tin rất dài, tên trống…). Ở đây chỉ cần nhận ra cái tên khi gặp trong code người khác;
+		cách viết bên trong nó không thuộc phạm vi khoá này. Với hai cách ở trên bạn làm được mọi việc của khoá.
+	</p>
+	<h3>Live preview: đổi một con số, thấy kết quả ngay</h3>
+	<p>
+		Làm thử để thấy giá trị thật của công cụ. Trong <code>KodecochatAppBar()</code>, đổi <code>.padding()</code> của icon
+		logo từ <strong>16.dp thành 3.dp</strong>. <em>Ngay khi bạn gõ xong</em>, logo trong khung xem trước to lên rõ rệt. Đổi
+		lại 16.dp thì nó co lại. Không build, không cài app, không chờ.
+	</p>
+	<p class="hint">
+		<strong>Vì sao giảm đệm lại làm logo <em>to ra</em>?</strong> Vì chuỗi modifier ở đây là
+		<code>.size(64.dp).clickable(...).padding(16.dp)</code>: tổng kích thước bị ép ở 64dp, còn <code>padding</code> ăn vào
+		phần bên trong. Đệm 16dp mỗi bên thì phần vẽ icon chỉ còn khoảng 32dp; đệm 3dp thì còn khoảng 58dp. Cùng một khung,
+		phần lõi khác nhau — đúng quy tắc thứ tự modifier ở chương 5.2, mục 6, lần này bạn <em>nhìn thấy</em> nó thay vì suy luận.
+		Chuỗi này còn là mẫu về <strong>vùng chạm</strong>: khung 64dp cho một logo nhỏ hơn — chương 5.5 nói kỹ con số 48dp.
+	</p>
+	<h3>Ba việc <code>@Preview</code> không chứng minh được</h3>
+	<p>
+		Đây là phần dễ bị bỏ qua nhất, và bỏ qua nó thì bạn sẽ có lúc tin vào một bản xem trước đẹp rồi phát hiện app thật
+		khác hẳn.
+	</p>
+	<table class="api">
+		<thead><tr><th>Preview KHÔNG chứng minh</th><th>Vì sao</th><th>Phải làm gì</th></tr></thead>
+		<tbody>
+			<tr>
+				<td>App <strong>chạy</strong> đúng</td>
+				<td>Preview chỉ vẽ <em>một</em> composable. Nó không khởi động Activity, không chạy <code>onCreate</code>, không có
+					dữ liệu thật, và những việc phụ theo composition (mục 18) không xảy ra như khi chạy thật.</td>
+				<td>Chạy app trên máy ảo hoặc máy thật.</td>
+			</tr>
+			<tr>
+				<td>Giao diện <strong>đúng trên mọi thiết bị</strong></td>
+				<td>Bản xem trước dùng một cấu hình cố định. Cỡ chữ hệ thống của người dùng, chiều rộng màn hình thật, thanh
+					trạng thái cao bao nhiêu — đều có thể khác.</td>
+				<td>Thêm nhiều <code>@Preview</code> với cấu hình khác nhau, <em>và</em> vẫn chạy thật. Cỡ chữ hệ thống có một
+						cách kiểm tra hẳn hoi — chương 5.5.</td>
+			</tr>
+			<tr>
+				<td>Composable <strong>lấy đúng dữ liệu</strong></td>
+				<td>Dữ liệu trong preview là dữ liệu bạn tự gõ vào. Nó luôn "đẹp": không rỗng, không quá dài, không lỗi.</td>
+				<td>Thử cả trường hợp danh sách rỗng, chữ rất dài, ảnh thiếu.</td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: bản vẽ mặt tiền, không phải căn nhà</strong>
+		<p>
+			<code>@Preview</code> giống bản vẽ phối cảnh một mặt tiền: nó cho bạn thấy tỉ lệ, màu sắc, chỗ nào lệch — và cho
+			thấy <em>rất nhanh</em>, sửa một nét là thấy ngay. Nhưng nó không nói cho bạn biết cửa có mở được không, nước có
+			chảy không, móng có chắc không.
+		</p>
+		<p>
+			Dùng preview cho vòng lặp "sửa — nhìn — sửa" của phần <em>hình</em>; dùng app chạy thật cho phần <em>hoạt động</em>.
+			Hai việc khác nhau, không thay thế nhau.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Đối chiếu code thật — một bản xem trước không bọc theme.</strong> Cả project chỉ có <strong>ba</strong>
+		<code>@Preview</code>. Hai bản của app bar (ở trên) đều bọc trong <code>KodecochatTheme</code>. Bản thứ ba thì không:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/conversation/UserInput.kt</code> (dòng 120–124)</p>
+	<Code code={userInputPreviewCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Hệ quả trực tiếp từ chương 5.3: không có theme bọc ngoài thì mọi <code>MaterialTheme.colorScheme.*</code> bên trong
+		<code>UserInput</code> rơi về <strong>bộ màu mặc định của Material 3</strong> — không phải bộ màu Blue/Grey của project.
+		Nên bản xem trước này trông <em>khác</em> app thật, dù code hoàn toàn hợp lệ và không có lỗi nào.
+	</p>
+	<div class="callout diff">
+		<strong>Quy tắc rút ra — nên theo cái nào</strong>
+		<p>
+			<strong>Bọc mọi <code>@Preview</code> trong theme của app.</strong> Đó là cách duy nhất để bản xem trước nói đúng về
+			app thật. Chi phí đúng một dòng, và bạn có thêm phần thưởng: đổi <code>isDarkTheme = true</code> là xem được chế độ
+			tối mà không phải đổi thiết lập máy.
+		</p>
+	</div>
+	<h2 id="preview-du-lieu">16. Dữ liệu mẫu cho bản xem trước</h2>
+	<p>
+		<code>KodecochatAppBar</code> dễ xem trước vì nó chỉ cần một chuỗi. Nhưng thử xem trước một dòng tin nhắn: nó cần một
+		<code>MessageUiModel</code>, mà thứ đó cần một <code>Message</code> và một <code>User</code>. Bạn không thể lấy dữ liệu
+		thật — trong bản xem trước không có mạng, không có cơ sở dữ liệu, không có gì.
+	</p>
+	<p>
+		Đó là lý do project có sẵn một file dữ liệu giả. Nó cũng chính là nguồn dữ liệu mà app đang hiển thị ở chương này:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/data/FakeData.kt</code> (dòng 63–75)</p>
+	<Code code={fakeDataCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Bộ dữ liệu này được chọn rất có ý, và đọc ra được ý đó là một kỹ năng riêng. Ba tin nhắn với
+		<code>userId</code> lần lượt là <code>"other"</code>, <code>"me"</code>, <code>"other"</code> — vừa đủ để bạn thấy
+		<strong>cả hai màu bong bóng</strong> và thấy <strong>logic gộp nhóm ở chương 5.2 hoạt động</strong>. Tin nhắn đầu chứa
+		một đường link, để kiểm tra phần chữ bấm được. Có emoji, để kiểm tra chữ Unicode hiện đúng. Và tin thứ ba
+		<strong>không đặt thời gian</strong> nên nó lấy giá trị mặc định "bây giờ", luôn hiện là vừa gửi.
+	</p>
+	<div class="callout mental">
+		<strong>Vì sao dữ liệu mẫu nên được <em>kiểm soát</em>, không phải "vài dòng cho có"</strong>
+		<p>
+			Dữ liệu mẫu tốt là dữ liệu <em>bày ra được mọi nhánh hiển thị</em> của giao diện. Nếu cả ba tin nhắn đều của cùng một
+			người, bạn không bao giờ thấy màu bong bóng thứ hai — và một lỗi ở nhánh đó sẽ trốn được qua mọi lần bạn xem trước.
+		</p>
+		<p>
+			Khi tự viết dữ liệu mẫu, hãy đi qua danh sách nhánh: người gửi khác nhau, tin ngắn và tin rất dài, danh sách rỗng,
+			trường có thể trống thì để trống thật. Đây là bài tập rẻ nhất và hiệu quả nhất để tìm lỗi giao diện.
+		</p>
+	</div>
+	<p>Với dữ liệu đó, viết một bản xem trước cho một dòng tin nhắn chỉ còn là chuyện điền tham số:</p>
+	<Code code={previewMessageCode} lang="kotlin" theme="github-dark" />
+	<p class="notice">
+		<strong>Project mẫu không có bản xem trước nào cho dòng tin nhắn.</strong> Đoạn trên là bản do khoá học viết thêm, dùng
+		đúng dữ liệu mẫu có sẵn của project. Nếu bạn tự thêm nó vào project khi học, bạn sẽ sửa được bong bóng chat mà không
+		phải build lại app mỗi lần — và đó là bài tập đáng làm nhất của bài này.
+	</p>
+	<p class="hint">
+		Chỗ này <strong>không</strong> phải lúc bàn về dependency injection hay bộ dữ liệu giả cho việc kiểm thử. Dữ liệu mẫu ở
+		đây chỉ là mấy giá trị viết cứng trong một file, để bản xem trước có gì mà vẽ. Cách tổ chức dữ liệu giả cho app thật
+		thuộc các giai đoạn Kiến trúc và Kiểm thử.
+	</p>
+
+	<h2 id="vong-composition">17. Vào composition, được vẽ lại, rời composition</h2>
+	<p>
+		Đến đây bạn cần một mô hình tối thiểu về "khi nào thì thân hàm composable chạy". Chỉ tối thiểu — vừa đủ để mục 18 có
+		nghĩa.
+	</p>
+	<p>
+		Từ chương 5.1: giao diện Compose là một <em>cây</em> các lời gọi composable. Compose gọi cây đó là
+		<strong>composition</strong>. Một composable có ba việc có thể xảy ra với nó:
+	</p>
+	<table class="api">
+		<thead><tr><th>Việc xảy ra</th><th>Nghĩa là gì</th><th>Ví dụ trong app chat</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><strong>Vào</strong> composition</td>
+				<td>Composable lần đầu xuất hiện trong cây — thân hàm được gọi lần đầu.</td>
+				<td>App mở lên, <code>ConversationContent</code> vào composition.</td>
+			</tr>
+			<tr>
+				<td><strong>Được vẽ lại</strong></td>
+				<td>Composable đã ở trong cây, và dữ liệu nó đọc vừa đổi, nên thân hàm được gọi <em>lại</em> để cho ra mô tả mới.</td>
+				<td>Bạn gõ một chữ vào ô nhập; phần hiển thị chữ đó được gọi lại.</td>
+			</tr>
+			<tr>
+				<td><strong>Rời</strong> composition</td>
+				<td>Composable không còn trong cây nữa — không còn ai gọi nó.</td>
+				<td>Cuộn một tin nhắn ra khỏi màn hình; <code>LazyColumn</code> bỏ item đó ra khỏi cây (chương 5.2, mục 9).</td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="callout diff">
+		<strong>Cẩn thận với chữ "vòng đời" ở đây</strong>
+		<p>
+			Ba việc trên <strong>không phải</strong> vòng đời kiểu Activity mà bạn đã học ở Chương 1 và Chương 3. Composable
+			<em>không có</em> các hàm callback như <code>onCreate</code>, <code>onStart</code>, <code>onDestroy</code>. Không có
+			chỗ nào để bạn "override" cả.
+		</p>
+		<p>
+			Cách nói đúng: composable <em>vào</em> composition, có thể <em>được vẽ lại</em>, rồi <em>rời</em> composition. Đó là
+			ba tình huống, không phải ba hàm. Nắm đúng chỗ này giúp bạn tránh một câu hỏi sai ngay từ đầu — "làm sao override
+			onCreate của một composable" — vốn không có câu trả lời.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Ranh giới của bài này.</strong> Việc <em>được vẽ lại</em> có tên riêng là <strong>recomposition</strong>, và
+		nó có cả một hệ quy tắc: Compose quyết định vẽ lại những phần nào, dựa vào cái gì, bỏ qua được phần nào. Toàn bộ hệ
+		quy tắc đó là nội dung giai đoạn State &amp; kiến trúc. Ở đây bạn chỉ cần một sự thật:
+		<strong>thân hàm composable có thể được gọi lại nhiều lần, và bạn không kiểm soát được số lần đó.</strong> Chính sự
+		thật này làm mục 18 trở nên cần thiết.
+	</p>
+
+	<h2 id="launched-effect">18. Việc phụ không thuộc thân hàm: <code>LaunchedEffect</code> lần chạm đầu</h2>
+	<p>
+		Giả sử bạn muốn ghi một dòng log khi màn hình chat mở ra. Cách viết trực giác nhất là đặt nó vào đầu thân hàm:
+	</p>
+	<Code code={sideEffectProblemCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đoạn này compile được, và lần đầu chạy nó cũng cho ra đúng kết quả bạn muốn. Nhưng nó <strong>sai</strong>, vì thân
+		hàm composable không phải một hàm "chạy một lần khi mở màn hình". Theo mục 17, thân hàm được gọi lại mỗi khi
+		composable được vẽ lại — và bạn không kiểm soát số lần đó. Ghi log mỗi lần vẽ lại thì log đầy rác; nếu thay
+		<code>ghiLog()</code> bằng một lời gọi mạng thì bạn vừa tạo ra một app tự gọi mạng liên tục.
+	</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: thân hàm là câu trả lời, không phải hành động</strong>
+		<p>
+			Thân hàm composable trả lời câu hỏi <em>"giao diện nên trông thế nào với dữ liệu hiện tại?"</em>. Compose có thể hỏi
+			lại câu đó bao nhiêu lần cũng được, và câu trả lời phải luôn giống nhau với cùng dữ liệu vào.
+		</p>
+		<p>
+			Một việc <em>có tác dụng ra bên ngoài</em> — ghi log, gọi mạng, lưu file, hiện thông báo — thì không phải câu trả
+			lời, nó là <strong>hành động</strong>. Đặt hành động vào chỗ dành cho câu trả lời thì hành động đó bị lặp lại theo số
+			lần được hỏi. Compose gọi loại việc này là <em>side effect</em> (việc phụ), và có chỗ riêng để đặt chúng.
+		</p>
+	</div>
+	<p>Chỗ riêng đó, cho trường hợp phổ biến nhất, là <code>LaunchedEffect</code>:</p>
+	<Code code={launchedEffectCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>LaunchedEffect</code> nhận một hoặc nhiều <strong>key</strong> (ở đây là <code>Unit</code>) và một khối việc. Điều
+		cần nói chính xác về thời điểm chạy, không phóng đại:
+	</p>
+	<ul>
+		<li>Khối việc được khởi động khi <code>LaunchedEffect</code> đó <strong>vào composition</strong>.</li>
+		<li>Với <strong>cùng một key</strong>, nó <em>không</em> bị khởi động lại bởi những lần vẽ lại thông thường.</li>
+		<li>Nếu <code>LaunchedEffect</code> đó <strong>rời composition rồi sau đó vào lại</strong>, khối việc
+			<em>có thể chạy lại</em>.</li>
+		<li>Nếu <strong>key đổi</strong>, việc đang chạy bị huỷ và một lượt việc mới bắt đầu với key mới.</li>
+	</ul>
+	<div class="callout diff">
+		<strong>Một câu rất phổ biến nhưng không chính xác</strong>
+		<p>
+			Bạn sẽ đọc thấy ở nhiều nơi: <em>"<code>LaunchedEffect(Unit)</code> luôn chạy đúng một lần, mãi mãi"</em>. Câu đó
+			<strong>không đúng</strong>. <code>Unit</code> chỉ có nghĩa "key này không bao giờ đổi", nên khối việc không bị khởi
+			động lại <em>khi composable vẫn còn trong composition</em>. Nhưng nếu composable rời composition (ví dụ item bị cuộn
+			ra khỏi <code>LazyColumn</code>, hoặc màn hình bị thay) rồi sau đó vào lại, khối việc có thể chạy thêm lượt nữa.
+		</p>
+		<p>
+			<strong>Nên nhớ thế nào:</strong> "chạy khi vào composition, không chạy lại vì vẽ lại, chạy lại nếu vào lại, khởi động
+			lại nếu key đổi". Dài hơn một chữ "một lần", nhưng đúng — và cái đúng này sẽ cứu bạn khỏi một lớp lỗi rất khó tìm.
+		</p>
+	</div>
+	<p>Key đổi thì việc khởi động lại — đây là lúc điều đó đúng ý bạn:</p>
+	<Code code={launchedEffectKeyCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Người dùng chuyển từ kênh <code>"android"</code> sang kênh <code>"kotlin"</code>: <code>channelId</code> đổi, nên việc
+		tải tin nhắn của kênh cũ bị huỷ và việc tải kênh mới bắt đầu. Nếu bạn dùng <code>Unit</code> làm key ở đây thì màn hình
+		sẽ mãi hiện tin nhắn của kênh đầu tiên. <strong>Key trả lời câu hỏi "việc này phụ thuộc vào cái gì".</strong>
+	</p>
+	<div class="callout note">
+		<strong>Khối trong ngoặc nhọn đó là gì? — ranh giới rõ ràng</strong>
+		<p>
+			Khối việc của <code>LaunchedEffect</code> là <strong>công việc do Compose quản lý theo composition</strong>: Compose
+			bắt đầu nó khi vào, và huỷ nó khi rời hoặc khi key đổi. Ở bài này, hiểu đúng bấy nhiêu là đủ.
+		</p>
+		<p>
+			Về mặt kỹ thuật, khối đó là một <em>coroutine</em>, và chữ "huỷ" ở trên có một cơ chế đầy đủ phía sau.
+			<strong>Coroutine, <code>suspend</code>, scope và dispatcher được học riêng ở giai đoạn State &amp; kiến trúc</strong> —
+			và <code>LaunchedEffect</code> sẽ được dùng ở mức đầy đủ sau đó, khi bạn đã có coroutine trong tay. Ở đây tuyệt đối
+			chưa cần biết những từ đó nghĩa là gì.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Đối chiếu code thật:</strong> project mẫu của chương này <strong>không có <code>LaunchedEffect</code> nào</strong>
+		— tìm cả project ra 0 kết quả. Hai ví dụ ở trên là ví dụ do khoá học dựng để giải thích khái niệm, không phải code của
+		project. Trong project có hai họ hàng của nó, chỉ cần nhận diện: <code>DisposableEffect</code> (trong phần xử lý nút
+		Back — dùng khi việc phụ cần <em>dọn dẹp</em> lúc rời composition) và <code>SideEffect</code> (trong phần ô nhập liệu).
+		Cả hai đều thuộc cùng một họ "chỗ đặt việc phụ", và đều học đầy đủ ở giai đoạn sau.
+	</p>
+	<p class="notice">
+		<strong>Một dấu vết nữa của việc dở dang có chủ đích:</strong> trong <code>ConversationContent</code> có hai giá trị được
+		tạo ra rồi <strong>không ai dùng</strong> — <code>rememberLazyListState()</code> và
+		<code>rememberCoroutineScope()</code>. Chúng là phần chuẩn bị cho tính năng "tự cuộn xuống tin mới nhất", cùng bộ với
+		tham số <code>// scrollState: LazyListState,</code> bị comment ở chương 5.2, mục 9. Áp kỹ thuật truy dấu ở chương 5.3, mục
+		14 là thấy ngay: giá trị được khai nhưng không xuất hiện ở dòng nào khác.
+	</p>
+
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Một composable hiển thị chi tiết một tin nhắn cần ghi log "đã xem tin nhắn X" khi tin nhắn đó được mở. Người viết
+			đặt lời gọi <code>ghiLog(messageId)</code> ngay đầu thân hàm. Hỏi: sai ở đâu, và sửa thế nào cho đúng cả khi người
+			dùng chuyển sang xem tin nhắn khác?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>Sai ở đâu:</strong> thân hàm composable là chỗ trả lời "giao diện nên trông thế nào", không phải chỗ đặt
+				hành động. Nó được gọi lại mỗi lần composable được vẽ lại, nên một lần mở tin nhắn có thể sinh ra nhiều dòng log.
+			</p>
+			<p>
+				<strong>Sửa:</strong> đưa lời gọi vào <code>LaunchedEffect</code>, và chọn key là <code>messageId</code> — không
+				phải <code>Unit</code>:
+			</p>
+			<pre><code>LaunchedEffect(messageId) &#123;
+  ghiLog(messageId)
+&#125;</code></pre>
+			<p>
+				Với key <code>Unit</code>, chuyển sang tin nhắn khác mà composable vẫn ở trong composition thì log không được ghi
+				lại — sai. Với key <code>messageId</code>, mỗi lần id đổi là một lượt việc mới. Câu hỏi cần tự đặt mỗi lần viết
+				<code>LaunchedEffect</code>: <em>việc này phụ thuộc vào cái gì?</em> — câu trả lời chính là key.
+			</p>
+		</details>
+	</div>
+
+	<div class="callout journey">
+		<strong>Tóm tắt</strong>
+		<ol>
+			<li><code>@Preview</code> vẽ một composable ngay trong IDE, và <strong>bạn phải tự viết hàm sinh ra bản xem
+				trước</strong>. Android Studio là phía gọi hàm đó, nên mọi tham số của nó phải có nguồn giá trị — cách đơn giản
+				nhất là một lớp bọc không tham số, tự cấp dữ liệu mẫu.</li>
+			<li>Mỗi cấu hình muốn xem là một <code>@Preview</code> riêng. <strong>Luôn bọc trong theme của app</strong>, nếu không
+				bản xem trước hiện màu mặc định của Material 3 chứ không phải màu app.</li>
+			<li>Preview không chứng minh app <em>chạy</em> đúng, không chứng minh giao diện đúng trên mọi thiết bị, và không
+				chứng minh dữ liệu thật hiển thị được. Vòng lặp "sửa — nhìn" thì dùng preview; kiểm tra hoạt động thì chạy app.</li>
+			<li>Dữ liệu mẫu tốt là dữ liệu bày ra được <em>mọi nhánh hiển thị</em>: người gửi khác nhau, chữ dài, danh sách rỗng,
+				trường trống.</li>
+			<li>Ba việc có thể xảy ra với một composable: <strong>vào</strong> composition, <strong>được vẽ lại</strong>,
+				<strong>rời</strong> composition. Đây là ba tình huống, <em>không</em> phải ba hàm callback kiểu Activity.</li>
+			<li>Thân hàm composable là <em>câu trả lời</em>, không phải <em>hành động</em>. Việc có tác dụng ra bên ngoài đặt vào
+				thân hàm sẽ bị lặp theo số lần vẽ lại.</li>
+			<li><code>LaunchedEffect(key)</code>: chạy khi vào composition · không chạy lại vì vẽ lại · có thể chạy lại nếu rời
+				rồi vào lại · khởi động lại nếu key đổi. Key trả lời "việc này phụ thuộc vào cái gì".</li>
+		</ol>
+	</div>
+
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Ba chỗ dưới đây là những chỗ người mới hay mất thời gian nhất ở phần Preview &amp; vòng đời composable.
+	</p>
+
+	<p class="notice">
+		<strong>(i) Bản xem trước không bọc theme, rồi tưởng code sai.</strong> Không có theme bọc ngoài thì mọi
+		<code>MaterialTheme.colorScheme.*</code> rơi về bộ màu mặc định của Material 3, nên bản xem trước trông khác app thật.
+		Trong project mẫu có đúng một bản như vậy (<code>UserInputPreview</code>). Luôn bọc <code>@Preview</code> trong theme
+		của app.
+	</p>
+	<p class="notice">
+		<strong>(j) Đặt việc phụ thẳng vào thân hàm composable.</strong> Ghi log, gọi mạng, lưu file đặt ở đầu thân hàm thì
+		chúng bị lặp lại theo số lần composable được vẽ lại — số lần mà bạn không kiểm soát được. Thân hàm là chỗ trả lời
+		"giao diện nên trông thế nào", không phải chỗ đặt hành động. Việc phụ đi vào <code>LaunchedEffect</code> (mục 18).
+	</p>
+	<p class="notice">
+		<strong>(k) Câu "<code>LaunchedEffect(Unit)</code> luôn chạy đúng một lần, mãi mãi" là cách nói sai.</strong>
+		<code>Unit</code> chỉ có nghĩa "key không bao giờ đổi", nên khối việc không bị khởi động lại vì những lần vẽ lại thông
+		thường. Nhưng nếu composable rời composition rồi vào lại, khối việc có thể chạy thêm lượt nữa. Cách nhớ đúng: chạy khi
+		vào composition · không chạy lại vì vẽ lại · có thể chạy lại nếu vào lại · khởi động lại nếu key đổi. Và nếu việc phụ
+		phụ thuộc vào một giá trị, hãy đưa giá trị đó làm key thay vì <code>Unit</code>.
+	</p>
+	<!-- Trang gộp bắt buộc chỉ có ĐÚNG MỘT tiêu đề id="nguon".                   -->
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>content/book/ch05-jetpack-compose.md</code> (941 dòng) — dòng 412–441
+			(<em>Previews</em>) · dòng 928–938 (<em>Key Points</em> — đã đối chiếu với phần tóm tắt).
+		</li>
+		<li>
+			<strong>Code thật — chương 5.4:</strong> <code>{KT}/components/KodecochatAppBar.kt</code> (<code>@Preview</code> dòng 82
+			và 91; <code>KodecochatAppBarPreview</code> dòng 84; <code>KodecohatAppBarPreviewDark</code> dòng 93 — tên trong code
+			thiếu một chữ <code>c</code>) · <code>{KT}/conversation/UserInput.kt</code> (<code>@Preview</code> dòng 120,
+			<code>UserInputPreview</code> dòng 122 — <strong>không</strong> bọc theme; <code>SideEffect</code> dòng 226 và 252) ·
+			<code>{KT}/conversation/BackHandler.kt</code> (<code>DisposableEffect</code> dòng 70 trong
+			<code>BackPressHandler</code> dòng 54) · <code>{KT}/data/FakeData.kt</code> (75 dòng;
+			<code>sampleMessageTexts</code> 43–61, <code>meUser</code> 63, <code>otherUser</code> 64,
+			<code>initialMessages</code> 66–70, <code>exampleUiState</code> 72–75) ·
+			<code>{KT}/conversation/Conversation.kt</code> (<code>rememberLazyListState()</code> dòng 98 và
+			<code>rememberCoroutineScope()</code> dòng 99 — cả hai được khai rồi không dùng).
+		</li>
+		<li>
+			<strong>Kiểm chứng bằng cách tìm chuỗi trong project</strong> (thư mục
+			<code>{PROJ}/app/src/</code>): <code>LaunchedEffect</code> → <strong>0 kết quả</strong> (vì vậy hai ví dụ ở mục 18
+			là ví dụ do khoá học dựng, không phải code project).
+		</li>
+		<li>
+			<strong>Phần bổ sung ngoài giáo trình</strong> (do khoá học tự dựng để giải thích cho người mới):
+			bảng "ba việc <code>@Preview</code> không chứng minh được" và mô hình "bản vẽ mặt tiền, không phải căn nhà" ·
+			hai cách cấp giá trị cho hàm xem trước (lớp bọc tự chứa tham số có giá trị mặc định) kèm cách phát biểu đúng của
+			quy tắc, ví dụ <code>TheChao</code>/<code>TheChaoPreview</code> do khoá học dựng ·
+			cách đọc ý của bộ dữ liệu mẫu và bản <code>@Preview</code> cho một dòng tin nhắn ·
+			bảng ba tình huống vào / vẽ lại / rời composition kèm cảnh báo thuật ngữ "vòng đời" ·
+			mô hình "thân hàm là câu trả lời, không phải hành động" và cách phát biểu chính xác về thời điểm chạy của
+			<code>LaunchedEffect</code>.
+		</li>
+	</ul>
+
+</section>

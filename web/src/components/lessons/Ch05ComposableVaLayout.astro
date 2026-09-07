@@ -1,0 +1,651 @@
+---
+// Chương 5.1 — Composable & layout đầu tiên
+// Stage 2 (Giai đoạn 2 — Jetpack Compose), chương 5.1 của khoá (IMP-033).
+// Nội dung PORT nguyên khối từ monolith Ch05JetpackCompose.astro — ranh giới C1 START/END
+// (đã verify ranh giới + provenance số dòng tại monolith, 2026-09-07).
+// Đổi khi port: nhãn "Đơn vị N" → "chương 5.1"; cross-ref giữa các phần thành cross-ref chương;
+// #cam-bay/#nguon tách theo đúng kế hoạch ghi trong monolith. Voice độc lập — attribution chỉ ở #nguon.
+
+const minimalComposableCode = `@Composable
+fun ChaoBanDoc() {
+  Text(text = "Xin chào")
+}`;
+
+const minimalColumnCode = `@Composable
+fun ManHinhChao() {
+  Column {
+    Text(text = "Xin chào")
+    Text(text = "Đây là dòng thứ hai")
+  }
+}`;
+
+const starterMainActivityCode = `class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {
+      Column {
+        val context = LocalContext.current
+        var chatInputText by remember { mutableStateOf(context.getString(R.string.chat_entry_default)) }
+        var chatOutputText by remember { mutableStateOf(context.getString(R.string.chat_display_default)) }
+        Text(text = chatOutputText)
+
+        OutlinedTextField(
+          value = chatInputText,
+          onValueChange = {
+            chatInputText = it
+          },
+          label = { Text(text = stringResource(id = R.string.chat_entry_label)) }
+        )
+
+        Button(onClick = {
+          chatOutputText = chatInputText
+          chatInputText = ""
+        }) {
+          Text(text = stringResource(id = R.string.send_button))
+        }
+      }
+    }
+  }
+}`;
+
+const setContentDefCode = `public fun ComponentActivity.setContent(
+  parent: CompositionContext? = null,
+  content: @Composable () -> Unit
+) {...}`;
+
+const mainActivitySimpleCode = `class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {
+      ConversationContent()
+    }
+  }
+}`;
+
+const layoutSkeletonCode = `Surface {
+  Box {
+    Column {
+      Messages()
+      SimpleUserInput()
+    }
+    // Channel name bar floats above the messages
+    ChannelNameBar(channelName = "Android Apprentice")
+  }
+}`;
+
+const todoStubsCode = `@Composable
+fun Messages() {
+  TODO("Not yet implemented")
+}
+
+@Composable
+fun SimpleUserInput() {
+  TODO("Not yet implemented")
+}
+
+@Composable
+fun ChannelNameBar(channelName: String) {
+
+}`;
+
+const paramCallbackCode = `@Composable
+fun MessageInput(
+  text: String,          // dữ liệu ĐI VÀO qua tham số
+  onSend: () -> Unit     // sự kiện ĐI RA qua callback
+) {
+  Row {
+    Text(text = text)
+    Button(onClick = onSend) {
+      Text(text = "Gửi")
+    }
+  }
+}`;
+
+const channelNameBarCode = `@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChannelNameBar(channelName: String) {
+  KodecochatAppBar(
+    title = {
+      Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Channel name
+        Text(
+          text = channelName,
+        )
+      }
+    },
+    actions = {
+      // Info icon
+      Icon(
+        imageVector = Icons.Outlined.Info,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+          .clickable(onClick = { })
+          .padding(horizontal = 12.dp, vertical = 16.dp)
+          .height(24.dp),
+        contentDescription = stringResource(id = R.string.info)
+      )
+    }
+  )
+}`;
+
+const appBarCode = `@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun KodecochatAppBar(
+  modifier: Modifier = Modifier,
+  scrollBehavior: TopAppBarScrollBehavior? = null,
+  onNavIconPressed: () -> Unit = { },
+  // 1
+  title: @Composable () -> Unit,
+  // 2
+  actions: @Composable RowScope.() -> Unit = {}
+) {
+  // 3
+  CenterAlignedTopAppBar(
+    modifier = modifier,
+    actions = actions,
+    title = title,
+    scrollBehavior = scrollBehavior,
+    // 4
+    navigationIcon = {
+      KodecoChatIcon(
+        contentDescription = stringResource(id = R.string.navigation_drawer_open),
+        modifier = Modifier
+            .size(64.dp)
+            .clickable(onClick = onNavIconPressed)
+            .padding(16.dp)
+      )
+    }
+  )
+}`;
+import { Code } from "astro:components";
+
+const PROJ = "aaf-materials/05-jetpack-compose/projects/final";
+const FINAL = `${PROJ}/app/src/main`;
+const STARTER = "aaf-materials/05-jetpack-compose/projects/starter/app/src/main";
+const KT = `${FINAL}/java/com/kodeco/chat`;
+const KT_STARTER = `${STARTER}/java/com/kodeco/chat`;
+---
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Học xong chương này bạn sẽ</strong>
+		<ul>
+			<li>Nói được Compose khác cách dựng giao diện cũ ở điểm nào, bằng ngôn ngữ "mô tả" thay vì "ra lệnh".</li>
+			<li>Giải thích được <code>@Composable</code> làm gì và vì sao một composable chỉ gọi được từ composable khác.</li>
+			<li>Chỉ ra được <code>setContent</code> là cánh cửa đầu tiên mở ra thế giới Compose, và tự tìm được bằng chứng
+				trong code thư viện.</li>
+			<li>Đọc và viết được một màn hình đơn giản bằng <code>Column</code>, <code>Row</code>, <code>Box</code>,
+				<code>Surface</code>.</li>
+			<li>Tự cắt một giao diện lớn thành nhiều composable nhỏ, và nói được lợi ích cụ thể của việc cắt.</li>
+			<li>Nhận ra hai đường đi của thông tin: dữ liệu <em>vào</em> qua tham số, sự kiện <em>ra</em> qua callback — kể
+				cả khi tham số đó lại là một composable.</li>
+		</ul>
+	</div>
+	<div class="callout">
+		<strong>Vì sao cần bài này</strong>
+		<p>
+			Mọi giao diện Compose bạn viết từ giờ tới hết khoá đều là các hàm gọi lẫn nhau. Nếu không nắm được "hàm mô tả
+			giao diện" và cách chúng lồng vào nhau, mọi thứ sau đó — <code>Modifier</code>, danh sách, theme, state — sẽ chỉ
+			là cú pháp học thuộc. Đây cũng là bài đầu tiên bạn dùng lại trực tiếp phần Nền tảng Kotlin: hàm, tham số,
+			lambda đuôi, kiểu hàm.
+		</p>
+		<p>
+			<strong>Cần biết trước:</strong> Nền tảng Kotlin F1 (hàm, tham số, lambda, lambda đuôi, <code>it</code>, kiểu
+			hàm <code>(T) -&gt; R</code>) · Chương 3.1 (Activity, <code>onCreate</code>, <code>setContent</code> ở mức nhận
+			biết) · Chương 2.2 (đã thấy <code>@Composable</code> và <code>@Preview</code> trong project trống).
+		</p>
+	</div>
+
+	<h2 id="tu-duy-compose">1. Compose nghĩ khác cách cũ ở đâu</h2>
+	<p>
+		Trước Compose, giao diện Android được khai báo trong <strong>file XML</strong>: bạn tả sẵn cây giao diện trong một
+		file riêng, rồi trong code Kotlin đi <em>tìm</em> từng thành phần ra để gán dữ liệu và gắn xử lý sự kiện. Cách nghĩ
+		đó có một hình dạng rất rõ: <em>tìm một view, rồi ra lệnh cho nó thay đổi</em>.
+	</p>
+	<Code code={`// Cách cũ (chỉ để so sánh — bạn sẽ không viết kiểu này trong khoá)\nval textView = findViewById<TextView>(R.id.chat_output)\ntextView.text = "Xin chào"`} lang="kotlin" theme="github-dark" />
+	<p>
+		Vấn đề của cách này không nằm ở một dòng nào cả, mà ở việc <strong>giao diện trên màn hình và dữ liệu trong code là
+		hai bản sao</strong>. Bạn phải tự tay giữ cho hai bản đó khớp nhau. Mỗi lần thêm một trạng thái mới ("đang tải",
+		"lỗi mạng", "danh sách trống"), bạn lại phải nhớ đủ mọi lệnh cần gọi để chuyển từ hình dạng cũ sang hình dạng mới —
+		và chỗ hay quên là những lệnh phải <em>hoàn tác</em> thay đổi trước đó.
+	</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: đơn đặt hàng, không phải bản chỉ dẫn sửa nhà</strong>
+		<p>
+			Cách cũ giống việc bạn đưa cho thợ một danh sách <em>việc cần sửa</em>: "sơn lại tường này, tháo cái kệ kia, treo
+			thêm khung ảnh". Muốn biết nhà đang trông thế nào, bạn phải cộng dồn toàn bộ các lần sửa trước đó.
+		</p>
+		<p>
+			Compose thì giống việc bạn đưa một <em>bản mô tả căn nhà đúng như bạn muốn nó trông ngay lúc này</em>. Dữ liệu
+			đổi thì bạn đưa bản mô tả mới, và Compose tự lo phần "vậy phải sửa những gì". Tên gọi của lối nghĩ này là
+			<strong>declarative</strong> (khai báo) — ngược với <strong>imperative</strong> (ra lệnh từng bước).
+		</p>
+	</div>
+	<p>
+		Trong Compose, một mảnh giao diện là <strong>một hàm</strong>. Hàm nhận dữ liệu vào và mô tả giao diện tương ứng với
+		dữ liệu đó. Không có object giao diện nào để bạn giữ tham chiếu và ra lệnh. Cả chương này bạn sẽ chỉ viết hàm.
+	</p>
+	<p class="hint">
+		<strong>Một chỗ dễ hiểu sai về cái tên.</strong> "Compose" là tên chung của một họ thư viện viết bằng Kotlin, không
+		riêng cho Android. Phần phụ trách dựng giao diện gọi đúng tên là <strong>Compose UI</strong> — và khi tài liệu nói
+		"học Compose" trong ngữ cảnh làm app Android thì gần như luôn là đang nói Compose UI. Khoá này cũng vậy.
+	</p>
+	<p class="notice">
+		<strong>Giai đoạn này chỉ làm tầng giao diện.</strong> Một app thật còn có chỗ giữ trạng thái, chỗ lấy dữ liệu, chỗ
+		điều hướng giữa các màn hình. Những tầng đó có giai đoạn riêng ở phía sau. Biết trước điều này giúp bạn không thắc
+		mắc "sao dữ liệu ở đây lại là dữ liệu giả?" khi đọc tới chương 5.2, mục 9.
+	</p>
+	<h2 id="composable">2. <code>@Composable</code> — hàm mô tả một mảnh giao diện</h2>
+	<p>
+		Đây là composable nhỏ nhất có thể viết:
+	</p>
+	<Code code={minimalComposableCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Hãy tách rõ hai tầng, vì trộn hai tầng này lại là nguồn nhầm lẫn số một của người mới:
+	</p>
+	<table class="api">
+		<thead><tr><th>Mảnh</th><th>Thuộc về</th><th>Vai trò</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><code>fun</code>, tên hàm, tham số, thân hàm</td>
+				<td><strong>Kotlin</strong></td>
+				<td>Cú pháp hàm bình thường, đúng như đã học ở Nền tảng Kotlin. Không có gì đặc biệt.</td>
+			</tr>
+			<tr>
+				<td><code>@Composable</code></td>
+				<td><strong>Compose</strong></td>
+				<td>Một <em>annotation</em> — nhãn dán lên hàm. Nó nói: hàm này tham gia vào việc dựng giao diện Compose.</td>
+			</tr>
+			<tr>
+				<td><code>Text(...)</code></td>
+				<td><strong>Compose</strong></td>
+				<td>Một composable có sẵn của thư viện. Bạn gọi nó y như gọi một hàm thường.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Chỉ cần hai thứ — một hàm Kotlin và nhãn <code>@Composable</code> — là bạn đã tạo ra một thành phần giao diện. Nói
+		theo thuật ngữ Compose: bạn vừa viết một <em>composable</em>.
+	</p>
+
+	<h3>Composable gọi composable — và cây giao diện xuất hiện từ đó</h3>
+	<p>
+		Bên trong một composable, bạn gọi composable khác. Muốn hai dòng chữ xếp dọc, gọi <code>Column</code> rồi đặt hai
+		<code>Text</code> vào trong:
+	</p>
+	<Code code={minimalColumnCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Cặp ngoặc nhọn sau <code>Column</code> <strong>không phải cú pháp riêng của Compose</strong>. Đó chính là
+		<em>lambda đuôi</em> bạn đã học ở Nền tảng Kotlin: khi tham số cuối cùng của một hàm là một lambda, Kotlin cho phép
+		đưa lambda đó ra ngoài dấu ngoặc tròn. Viết đầy đủ thì nó là <code>Column(content = &#123; ... &#125;)</code>.
+	</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: lồng hàm = lồng giao diện</strong>
+		<p>
+			Cấu trúc lồng nhau trong code <em>chính là</em> cấu trúc lồng nhau trên màn hình. <code>Text</code> nằm trong
+			ngoặc nhọn của <code>Column</code> nghĩa là ô chữ đó nằm bên trong vùng của cột. Không có bước "gắn con vào cha"
+			nào riêng — thứ tự và độ sâu bạn viết code là thứ tự và độ sâu của giao diện.
+		</p>
+	</div>
+	<p class="hint">
+		<strong>Vì sao tên composable viết hoa chữ đầu?</strong> Hàm Kotlin thường viết <em>camelCase</em>
+		(<code>chaoBanDoc</code>), nhưng composable viết <em>PascalCase</em> (<code>ChaoBanDoc</code>) — giống quy ước đặt
+		tên class. Lý do: khi đọc code, một composable đóng vai "một thành phần giao diện" hơn là "một phép tính", nên nó
+		mượn quy ước đặt tên của class. Đây là quy ước cộng đồng, không phải yêu cầu của trình biên dịch — nhưng mọi thư
+		viện đều theo, và <code>Column</code> nhìn như một class chính là vì vậy.
+	</p>
+
+	<h3>Cánh cửa đầu tiên: <code>setContent</code></h3>
+	<p>
+		Nếu composable chỉ gọi được từ composable khác, thì cái đầu tiên gọi từ đâu? Câu trả lời nằm trong file
+		<code>MainActivity.kt</code> của project khởi đầu. Đây là toàn bộ file (đã bỏ phần comment giấy phép):
+	</p>
+	<p class="src">Nguồn: <code>{KT_STARTER}/MainActivity.kt</code> (dòng 51–79)</p>
+	<Code code={starterMainActivityCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Bên trong <code>setContent &#123; &#125;</code> rõ ràng có <code>Column</code>, <code>Text</code>,
+		<code>OutlinedTextField</code>, <code>Button</code> — tất cả đều là composable. Nhưng cả file
+		<strong>không có một chữ <code>@Composable</code> nào</strong>. Vậy nhãn đó ở đâu?
+	</p>
+	<p>
+		Đặt con trỏ lên <code>setContent</code> rồi Control-click (Command-click trên macOS). Android Studio nhảy vào định
+		nghĩa gốc trong thư viện:
+	</p>
+	<Code code={setContentDefCode} lang="kotlin" theme="github-dark" />
+	<p>Hai điều đọc được, và cả hai đều đáng nhớ:</p>
+	<ol>
+		<li>
+			<code>setContent</code> là một <strong>extension function của <code>ComponentActivity</code></strong> — để ý dấu
+			chấm trong <code>ComponentActivity.setContent(...)</code>. Extension function là cách Kotlin <em>thêm hàm mới cho
+			một class có sẵn mà không sửa source của class đó</em>. Vì <code>MainActivity</code> kế thừa
+			<code>ComponentActivity</code>, nó có sẵn <code>setContent</code> để gọi dù bạn không viết hàm này.
+		</li>
+		<li>
+			Tham số <code>content</code> có kiểu <code>@Composable () -&gt; Unit</code> — <strong>nhãn
+			<code>@Composable</code> nằm ngay trên kiểu của tham số</strong>. Đó là lý do bạn không cần viết lại
+			<code>@Composable</code> khi đặt <code>Column</code> vào trong <code>setContent &#123; &#125;</code>: khối lambda
+			bạn truyền vào đã <em>là</em> một khối composable theo đúng chữ ký hàm.
+		</li>
+	</ol>
+	<p>
+		Gọi <code>setContent()</code> nghĩa là: đặt composable bạn truyền vào làm <strong>gốc của cây giao diện</strong>. Từ
+		gốc đó, mọi composable khác của app được gọi lồng vào bên trong.
+	</p>
+	<div class="callout mental">
+		<strong>Ba quy tắc của composable — và chúng giải thích cho nhau</strong>
+		<ul>
+			<li>Composable <strong>chỉ gọi được từ một composable khác</strong>. Bạn không thể gọi <code>Text(...)</code> từ
+				một hàm Kotlin thường.</li>
+			<li>Composable <strong>nhận tham số</strong> như hàm thường, và dùng tham số để mô tả giao diện.</li>
+			<li>Composable <strong>không trả về object giao diện</strong>. Nó trả <code>Unit</code> — nó <em>mô tả</em>, không
+				<em>sản xuất</em> thứ để bạn giữ và sửa.</li>
+		</ul>
+		<p>
+			Vì quy tắc 1, phải có một điểm khởi đầu mở ra được "vùng" đầu tiên — và điểm đó chính là
+			<code>setContent &#123; &#125;</code>, nhờ tham số <code>content: @Composable () -&gt; Unit</code>. Ba quy tắc và
+			phát hiện vừa rồi là <em>cùng một câu chuyện</em>.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Hai dòng <code>by remember &#123; mutableStateOf(...) &#125;</code> trong file trên chưa phải việc của giai
+		đoạn này.</strong> Ở Nền tảng Kotlin bạn đã học cách <em>gọi tên</em> từng mảnh của dòng đó: <code>var</code> và
+		<code>by</code> là Kotlin, <code>remember</code> và <code>mutableStateOf</code> là API của Compose. Ở đây chỉ cần
+		biết vai trò: chúng giữ chữ người dùng đang gõ. <em>Cơ chế</em> — vì sao giao diện tự vẽ lại khi giá trị đổi — là
+		nội dung giai đoạn State &amp; kiến trúc. bài này và ba bài sau đều không dựa vào cơ chế đó.
+	</p>
+	<h2 id="bo-khung">3. <code>Column</code>, <code>Row</code>, <code>Box</code>, <code>Surface</code> — dựng bộ khung màn hình</h2>
+	<p>
+		Bốn composable dưới đây khác hẳn <code>Text</code> hay <code>Button</code>: chúng <strong>không tự vẽ nội dung
+		gì</strong>, việc của chúng là <em>sắp xếp</em> các composable con. Compose gọi nhóm này là <strong>layout</strong>.
+		Và giống composable lồng composable, layout cũng lồng được vào nhau — đó là cách bạn dựng mọi màn hình phức tạp.
+	</p>
+	<table class="api">
+		<thead><tr><th>Layout</th><th>Xếp con thế nào</th><th>Nhớ bằng một hình</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><code>Column</code></td>
+				<td>Theo chiều <strong>dọc</strong>, con khai trước ở trên.</td>
+				<td>Một chồng đĩa.</td>
+			</tr>
+			<tr>
+				<td><code>Row</code></td>
+				<td>Theo chiều <strong>ngang</strong>, con khai trước ở bên trái.</td>
+				<td>Một hàng ghế.</td>
+			</tr>
+			<tr>
+				<td><code>Box</code></td>
+				<td>Các con <strong>chồng đè lên nhau</strong>, con khai <em>sau</em> vẽ đè lên con khai trước; mỗi con định vị
+					tương đối với các cạnh của <code>Box</code>.</td>
+				<td>Một tấm bìa xếp ảnh lên nhau.</td>
+			</tr>
+			<tr>
+				<td><code>Surface</code></td>
+				<td><strong>Đúng một con</strong> tại một thời điểm. Bù lại nó lo phần nền: màu, hình dáng, bo góc, đổ bóng cho
+					con đó.</td>
+				<td>Một tấm nền có màu, đặt gì lên cũng chỉ một thứ.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Ràng buộc "đúng một con" của <code>Surface</code> là chỗ dễ vấp nhất trong bốn cái. Cách xử lý chuẩn — và cũng là
+		cách app Kodeco Chat làm — là cho <code>Surface</code> đúng một con là <code>Box</code> hoặc <code>Column</code>,
+		rồi mọi thứ khác nằm bên trong con đó. Hãy để ý điều này ngay trong đoạn code tiếp theo.
+	</p>
+	<p class="hint">
+		<code>Surface</code> là khái niệm trung tâm của Material Design — bộ nguyên tắc thiết kế của Google mà app Android
+		mặc định đi theo. Nó có nghĩa gần đúng là "một mặt phẳng vật liệu": mọi thứ trong Material Design đều được vẽ trên
+		một mặt phẳng nào đó, và mặt phẳng ấy có màu, độ cao, hình dáng. chương 5.3 nói kỹ về Material.
+	</p>
+
+	<h3>Bộ khung của màn hình chat</h3>
+	<p>
+		Thay toàn bộ thân hàm giao diện bằng bộ khung này — đây đúng là cấu trúc của app hoàn chỉnh:
+	</p>
+	<Code code={layoutSkeletonCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc từ ngoài vào trong, và mỗi lớp có một lý do rõ ràng:
+	</p>
+	<ol class="chain">
+		<li><code>Surface</code> ngoài cùng — cấp nền Material cho cả màn hình. Đúng một con.</li>
+		<li><code>Box</code> — chọn <code>Box</code> chứ không phải <code>Column</code> vì cần <strong>chồng lớp</strong>.</li>
+		<li>Trong <code>Box</code> có <strong>hai</strong> con: một <code>Column</code> (danh sách tin nhắn ở trên, ô nhập ở
+			dưới) và <code>ChannelNameBar</code>.</li>
+		<li><code>ChannelNameBar</code> khai <em>sau</em> nên nó <strong>nổi đè lên</strong> phần trên của danh sách tin nhắn,
+			thay vì chiếm riêng một hàng — đúng như comment trong code: thanh tên kênh "floats above the messages".</li>
+	</ol>
+	<p>
+		Nếu đổi <code>Box</code> thành <code>Column</code>, thanh tên kênh sẽ đẩy danh sách tin nhắn xuống và chiếm hẳn một
+		hàng. Đó là toàn bộ khác biệt giữa hai layout — không phải chuyện thẩm mỹ, mà là chuyện bạn muốn hai thành phần
+		<em>cạnh nhau</em> hay <em>đè nhau</em>.
+	</p>
+	<p>
+		Bây giờ code <strong>chưa compile được</strong>: <code>Messages</code>, <code>SimpleUserInput</code>,
+		<code>ChannelNameBar</code> chưa tồn tại. Bấm vào tên đang bị gạch đỏ, Android Studio gợi ý <em>"Create @Composable
+		function…"</em> và sinh ra ba hàm rỗng:
+	</p>
+	<Code code={todoStubsCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>TODO()</code> là một hàm có sẵn của Kotlin: nó <strong>ném lỗi khi chạy tới</strong>. Nghĩa là app vẫn build
+		được nhưng sẽ dừng ngay khi hàm đó được gọi — một cách buộc bạn không quên cài đặt nốt. Đây là chỗ đầu tiên trong
+		chương có cạm bẫy đáng ghi lại; xem cạm bẫy (a) ở mục <a href="#cam-bay">Cạm bẫy</a>.
+	</p>
+
+	<h3>Chia một giao diện lớn thành nhiều composable nhỏ</h3>
+	<p>
+		Bộ khung trên gọi ba composable mà bạn sẽ tự viết. Không có gì buộc bạn phải chia như vậy — hoàn toàn có thể nhồi
+		toàn bộ giao diện vào một hàm duy nhất, và app sẽ chạy y hệt. Nhưng đây là bốn lợi ích cụ thể của việc chia, và
+		chúng không phải quy ước cho đẹp:
+	</p>
+	<ul>
+		<li><strong>Đọc được.</strong> Một hàm dài 200 dòng ngoặc lồng ngoặc thì không ai đọc nổi, kể cả bạn sau hai tuần.
+			Tên hàm <code>ChannelNameBar</code> nói ngay nó là cái gì.</li>
+		<li><strong>Sửa được từng chỗ.</strong> Muốn đổi bong bóng chat thì mở đúng hàm vẽ bong bóng, không phải đọc lại cả
+			màn hình để tìm.</li>
+		<li><strong>Dùng lại được ở chỗ hợp lý.</strong> Một dòng tin nhắn được vẽ ba lần cho ba tin nhắn — viết một lần, gọi
+			ba lần.</li>
+		<li><strong>Soi được riêng.</strong> Ở chương 5.4 bạn sẽ thấy: composable nhỏ thì xem trước được riêng nó, không cần mở
+			cả app.</li>
+	</ul>
+	<p>
+		Sau khi chia, <code>MainActivity</code> gọn lại đúng một dòng gọi hàm — và điều này quan trọng hơn vẻ ngoài của nó:
+		<code>MainActivity</code> trở lại đúng vai của nó là điểm vào, không còn là nơi chứa giao diện.
+	</p>
+	<Code code={mainActivitySimpleCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Mức chia nhỏ mà project mẫu đi tới có thể làm bạn ngạc nhiên. Chỉ riêng ô nhập liệu hoàn chỉnh của app được cắt
+		thành bảy composable trong cùng một file, mỗi cái một việc, không cái nào dài quá một màn hình:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/conversation/UserInput.kt</code> — <code>UserInput</code> ở dòng 126</p>
+	<table class="api">
+		<thead><tr><th>Composable</th><th>Việc của nó</th></tr></thead>
+		<tbody>
+			<tr><td><code>UserInput</code></td><td>Cửa ngoài: ghép ô chữ + hàng nút + panel bật lên.</td></tr>
+			<tr><td><code>UserInputText</code></td><td>Ô gõ chữ thật sự.</td></tr>
+			<tr><td><code>UserInputSelector</code></td><td>Hàng nút dưới ô chữ: emoji, ảnh, ghi âm…</td></tr>
+			<tr><td><code>InputSelectorButton</code></td><td>Một nút trong hàng đó, biết mình đang được chọn hay không.</td></tr>
+			<tr><td><code>EmojiSelector</code> / <code>EmojiTable</code></td><td>Bảng emoji bật lên khi bấm nút emoji.</td></tr>
+			<tr><td><code>PictureSelector</code> / <code>NotAvailablePopup</code></td><td>Chỗ dành cho chức năng chưa làm — bấm vào hiện thông báo "chưa có".</td></tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		<strong>Chia đến đâu thì dừng?</strong> Quy tắc thực dụng: cắt khi một mảnh giao diện <em>có tên gọi riêng</em> trong
+		đầu bạn ("thanh tên kênh", "bong bóng chat", "avatar"). Đừng cắt chỉ để hàm ngắn hơn — một hàm mười dòng làm đúng
+		một việc thì để nguyên. Ở giai đoạn này chưa cần nghĩ tới "kiến trúc"; chỉ cần giao diện dễ đọc.
+	</p>
+	<h3>Dữ liệu đi vào qua tham số, sự kiện đi ra qua callback</h3>
+	<p>
+		Khi đã cắt giao diện thành nhiều hàm, câu hỏi tiếp theo tự đến: các hàm đó nói chuyện với nhau thế nào? Compose chỉ
+		dùng cú pháp Kotlin bạn đã biết, và có đúng hai hướng:
+	</p>
+	<Code code={paramCallbackCode} lang="kotlin" theme="github-dark" />
+	<ul>
+		<li><strong>Vào:</strong> <code>text: String</code> — một tham số thường. Composable cha đưa dữ liệu xuống.</li>
+		<li><strong>Ra:</strong> <code>onSend: () -&gt; Unit</code> — một <em>kiểu hàm</em>, đúng thứ đã học ở Nền tảng Kotlin.
+			Composable con không tự quyết định "gửi tin nhắn nghĩa là gì"; nó chỉ <em>gọi</em> hàm mà cha đưa xuống, khi
+			người dùng bấm nút.</li>
+	</ul>
+	<p>
+		Bạn đã gặp đúng mẫu này ở mục 2 mà có thể chưa để ý: <code>Button(onClick = &#123; ... &#125;)</code>. Tham số
+		<code>onClick</code> của <code>Button</code> có kiểu <code>() -&gt; Unit</code>, và khối ngoặc nhọn bạn viết chính là
+		lambda được truyền vào đó. Nút không biết gì về app của bạn — nó chỉ biết "khi được bấm thì gọi cái hàm này".
+	</p>
+	<p class="notice">
+		<strong>Đây chưa phải toàn bộ câu chuyện về dữ liệu.</strong> Cách chia "dữ liệu vào qua tham số, sự kiện ra qua
+		callback" là bước đầu của một mẫu lớn hơn tên là <em>state hoisting</em> và <em>luồng dữ liệu một chiều</em>. Mẫu đầy
+		đủ, cùng câu hỏi "vậy ai giữ dữ liệu", thuộc giai đoạn State &amp; kiến trúc. Ở đây chỉ cần đọc được hai hướng của
+		mũi tên.
+	</p>
+
+	<h3>Khi tham số lại là một composable: slot</h3>
+	<p>
+		Có một biến thể của "dữ liệu vào qua tham số" đặc trưng cho Compose, và nhận ra nó một lần là bạn đọc được chữ ký
+		của gần như mọi component Material. Đây là thanh tên kênh của app:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/conversation/Conversation.kt</code> (dòng 354–378)</p>
+	<Code code={channelNameBarCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Chú ý giá trị truyền cho <code>title</code>: nó <strong>không phải một String</strong> mà là <em>cả một
+		composable</em> — một <code>Column</code> căn giữa, bên trong có <code>Text</code>. Tương tự, <code>actions</code>
+		nhận một composable chứa <code>Icon</code>. Mở định nghĩa của <code>KodecochatAppBar</code> là thấy vì sao làm được
+		vậy:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/components/KodecochatAppBar.kt</code> (dòng 55–79)</p>
+	<Code code={appBarCode} lang="kotlin" theme="github-dark" />
+	<ol>
+		<li>
+			<code>title: @Composable () -&gt; Unit</code> — <strong>đúng cái kiểu bạn đã thấy ở
+			<code>setContent</code></strong>. "Một chỗ trống, bạn nhét giao diện gì vào cũng được."
+		</li>
+		<li>
+			<code>actions: @Composable RowScope.() -&gt; Unit</code> — cũng là một chỗ trống, thêm chữ
+			<code>RowScope</code> để nói "nội dung bạn nhét vào sẽ được xếp thành một hàng". Nhờ vậy nhiều icon tự nằm ngang
+			cạnh nhau mà bạn không phải tự bọc <code>Row</code>.
+		</li>
+		<li>
+			<code>KodecochatAppBar</code> thực chất chỉ là <strong>một lớp bọc quanh <code>CenterAlignedTopAppBar</code></strong>
+			có sẵn của Material — nó nhận các chỗ trống của mình rồi chuyển tiếp xuống. Đây là mẫu bạn sẽ viết rất nhiều:
+			bọc một component chuẩn để cố định vài lựa chọn cho riêng app mình.
+		</li>
+		<li>
+			<code>navigationIcon</code> — chỗ trống thứ ba, ở đây nhận logo Kodeco. Tham số <code>onNavIconPressed</code> là
+			callback cho việc mở menu bên; app này chưa có màn hình thứ hai nên nó mặc định là lambda rỗng. Việc điều hướng
+			giữa các màn hình có giai đoạn riêng.
+		</li>
+	</ol>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: khay đựng có ô trống</strong>
+		<p>
+			Một component kiểu này giống cái khay có sẵn mấy ô: ô bên trái, ô giữa, ô bên phải. Khay lo phần bố cục, căn lề,
+			màu nền — còn <em>đặt gì vào ô</em> là việc của bạn. Vì mỗi ô có kiểu <code>@Composable () -&gt; Unit</code>, bạn
+			nhét chữ, icon, hay cả một <code>Column</code> vào cũng được. Thuật ngữ cho các ô này là <strong>slot</strong>.
+		</p>
+		<p>
+			Bạn đã gặp slot ba lần trong bài này: <code>content</code> của <code>setContent</code>,
+			<code>content</code> của <code>Column</code>, và <code>title</code>/<code>actions</code>/<code>navigationIcon</code>
+			của app bar. Ở chương 5.2 sẽ gặp thêm <code>placeholder</code> và <code>label</code> của ô nhập chữ.
+		</p>
+	</div>
+	<p class="hint">
+		<code>@OptIn(ExperimentalMaterial3Api::class)</code> ở đầu hai đoạn code trên là lời "đồng ý tham gia": một số API
+		của Material 3 còn được đánh dấu thử nghiệm, và Compose buộc bạn ghi rõ là mình biết điều đó. Nếu Android Studio gạch
+		đỏ tên hàm, đưa chuột lên và chọn <em>"Opt in…"</em> là nó tự thêm dòng này. Khi API hết thử nghiệm, IDE sẽ nhắc bạn
+		xoá dòng đó đi.
+	</p>
+	<p class="hint">
+		<strong>Vector asset:</strong> logo Kodeco trong app là một file XML mô tả hình bằng đường và cung thay vì bằng lưới
+		điểm ảnh, nên Android vẽ lại nó lúc chạy và phóng to bao nhiêu cũng không bị rỗ. Đúng thứ cần cho logo và icon phải
+		hiện trên nhiều mật độ màn hình.
+	</p>
+
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Bạn viết một hàm Kotlin thường (không có <code>@Composable</code>) và gọi <code>Text("xin chào")</code> bên trong.
+			Trình biên dịch báo lỗi. Vì sao? Và câu trả lời này liên quan thế nào tới <code>setContent</code>?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				Vì <code>Text</code> là composable, và composable chỉ gọi được từ trong một composable khác — Compose cần biết
+				lời gọi này thuộc về cây giao diện nào. Hàm thường không nằm trong cây nào cả.
+				<code>setContent</code> chính là chỗ mở ra cây đầu tiên: tham số <code>content</code> của nó có kiểu
+				<code>@Composable () -&gt; Unit</code>, nên khối bạn truyền vào đã là vùng composable hợp lệ. Cách sửa: thêm
+				<code>@Composable</code> cho hàm của bạn, rồi gọi hàm đó từ bên trong <code>setContent</code> hoặc từ một
+				composable khác.
+			</p>
+		</details>
+	</div>
+
+	<div class="callout journey">
+		<strong>Tóm tắt</strong>
+		<ol>
+			<li>Compose <em>mô tả</em> giao diện ứng với dữ liệu hiện tại, thay vì <em>ra lệnh</em> sửa từng view. Bạn không giữ
+				tham chiếu tới thành phần giao diện nào.</li>
+			<li>Một composable = một hàm Kotlin + nhãn <code>@Composable</code>. Nó trả <code>Unit</code>, không trả object
+				giao diện, và chỉ gọi được từ composable khác.</li>
+			<li><code>setContent</code> là cánh cửa đầu tiên: tham số <code>content: @Composable () -&gt; Unit</code> mở ra
+				vùng composable gốc.</li>
+			<li>Cấu trúc lồng nhau trong code chính là cấu trúc lồng nhau trên màn hình. Cặp ngoặc nhọn là lambda đuôi của
+				Kotlin, không phải cú pháp riêng.</li>
+			<li><code>Column</code> dọc · <code>Row</code> ngang · <code>Box</code> chồng lớp (con khai sau đè lên con khai
+				trước) · <code>Surface</code> cấp nền Material cho <strong>đúng một</strong> con.</li>
+			<li>Cắt giao diện lớn thành composable nhỏ để đọc được, sửa được từng chỗ, dùng lại được, và soi được riêng.</li>
+			<li>Dữ liệu vào qua tham số, sự kiện ra qua callback kiểu <code>() -&gt; Unit</code>. Khi tham số có kiểu
+				<code>@Composable () -&gt; Unit</code> thì đó là một <strong>slot</strong> — chỗ trống để bạn nhét giao diện.</li>
+		</ol>
+	</div>
+
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Hai chỗ dưới đây là những chỗ người mới hay mất thời gian nhất ở phần composable &amp; layout. Chỗ nào bạn chưa học tới thì bỏ qua, quay lại sau.
+	</p>
+
+	<p class="notice">
+		<strong>(a) <code>TODO()</code> làm app build được nhưng dừng ngay khi chạy tới.</strong> Khi Android Studio sinh hàm
+		rỗng cho bạn, nó đặt <code>TODO("Not yet implemented")</code> vào thân hàm. Đó là một hàm thật của Kotlin và nó
+		<em>ném lỗi</em> khi được gọi — nên trình biên dịch không báo gì, app cài được, rồi tắt ngay lúc mở. Nếu bạn muốn chạy
+		thử phần đã làm xong trước khi cài đặt nốt phần còn lại, đổi <code>TODO(...)</code> thành comment thường
+		<code>// TODO - Implement</code>: app vẫn chạy, và Android Studio vẫn đánh dấu chỗ đó ở lề phải để bạn không quên.
+		(Một chi tiết nhỏ dễ làm bạn nghi mình đọc sai: trong ba hàm được sinh ra thì <code>ChannelNameBar</code>
+		<strong>không</strong> có <code>TODO()</code>, vì bạn đã truyền tham số <code>channelName</code> khi gọi nó nên
+		Android Studio suy ra được chữ ký và coi như hàm đã có phần khởi đầu.)
+	</p>
+	<p class="notice">
+		<strong>(b) <code>Surface</code> chỉ nhận đúng một con.</strong> Đặt hai composable trực tiếp vào
+		<code>Surface</code> thì kết quả không như bạn nghĩ — và đây là loại lỗi <em>không</em> có thông báo rõ ràng, bạn chỉ
+		thấy giao diện sai. Cách chuẩn: cho <code>Surface</code> đúng một con là <code>Box</code> hoặc <code>Column</code>,
+		rồi mọi thứ khác nằm bên trong con đó. Ba layout còn lại (<code>Column</code>, <code>Row</code>, <code>Box</code>)
+		nhận bao nhiêu con cũng được.
+	</p>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>content/book/ch05-jetpack-compose.md</code> (941 dòng) — dòng 17–135
+			(<em>Compose Fundamentals</em>: composable function, <code>setContent</code>, ba quy tắc, bốn element đầu tiên) ·
+			dòng 136–173 (<em>Breaking Down Composables</em>) · dòng 268–304 (<em>Layout Groups</em>) · dòng 305–411
+			(<em>Dealing With Compile Issues</em>: <code>TODO()</code>, app bar, vector asset) · dòng 910–927
+			(<em>Updating the User Input Field</em> — phần chia composable).
+		</li>
+		<li>
+			<strong>Code thật — chương 5.1</strong> (đường dẫn gốc <code>{KT}</code> và <code>{KT_STARTER}</code>, đã đối chiếu
+			2026-09-05): <code>{KT_STARTER}/MainActivity.kt</code> (80 dòng; <code>class</code> dòng 51,
+			<code>setContent</code> dòng 54, <code>Column</code> dòng 55, hết thân dòng 79 — khối code ở mục 2 là toàn bộ phần
+			có nghĩa của file) · <code>{KT}/MainActivity.kt</code> (56 dòng; <code>class</code> 44–55) ·
+			<code>{KT}/conversation/Conversation.kt</code> (<code>ConversationContent</code> 94–119 với <code>Surface()</code>
+			dòng 103; <code>ChannelNameBar</code> 354–378) · <code>{KT}/components/KodecochatAppBar.kt</code>
+			(<code>KodecochatAppBar</code> 55–79) · <code>{KT}/components/KodecochatIcon.kt</code>
+			(<code>KodecoChatIcon</code> dòng 50 — lưu ý tên hàm viết <code>C</code> hoa trong khi tên file viết thường) ·
+			<code>{KT}/conversation/UserInput.kt</code> (<code>UserInput</code> dòng 126; bảy composable của file này là bảng ở
+			mục 3).
+		</li>
+		<li>
+			<strong>Phần bổ sung ngoài giáo trình</strong> (do khoá học tự dựng để giải thích cho người mới):
+			ví dụ so sánh <code>findViewById</code> + mô hình "đơn đặt hàng vs bản chỉ dẫn sửa nhà" ·
+			bảng tách ba tầng Kotlin / Compose / thư viện của một composable ·
+			bốn lợi ích cụ thể của việc chia composable nhỏ và quy tắc "cắt khi mảnh đó có tên gọi riêng" ·
+			ví dụ <code>MessageInput(text, onSend)</code> và mô hình "khay đựng có ô trống" cho slot.
+		</li>
+	</ul>
+
+</section>

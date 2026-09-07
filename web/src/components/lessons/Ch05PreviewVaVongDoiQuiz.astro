@@ -1,0 +1,174 @@
+---
+// Quiz cho chương 5.4 — Preview & vòng đời composable.
+// Stage 2 (Giai đoạn 2 — Jetpack Compose) — quiz tách từ monolith Ch05Quiz.astro (IMP-033/044).
+// Chuẩn quiz §10/§13: 4 đáp án / 1 đúng, giải thích 100% (đúng + vì sao distractor sai),
+// vị trí & độ dài đáp án đúng phân tán, câu bám đúng mục tiêu bài. Chấm bằng harness chung IMP-001.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">12 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. Hàm <code>@Preview</code> hoạt động thế nào, về bản chất?</legend>
+			<label><input type="radio" name="q1" value="a" /> Android Studio quét toàn bộ project và vẽ mọi composable có sẵn</label>
+			<label><input type="radio" name="q1" value="b" /> Android Studio <em>gọi</em> hàm có nhãn <code>@Preview</code> để vẽ — nên khi được gọi, hàm đó phải có đủ giá trị để chạy</label>
+			<label><input type="radio" name="q1" value="c" /> Preview biên dịch riêng composable thành một app nhỏ rồi cài vào máy ảo</label>
+			<label><input type="radio" name="q1" value="d" /> Preview chạy app thật ngầm và chụp màn hình gửi về IDE</label>
+			<p class="explain" hidden>
+				Điều quan trọng nhất khi đã có app thật: bản xem trước không tự có — chính bạn viết hàm để sinh ra nó. Vì Android Studio là phía gọi hàm, mọi tham số của hàm xem trước phải có <em>nguồn giá trị</em>: một lớp bọc tự chứa không tham số (Cách 1, mẫu nên dùng khi mới học) hoặc tham số có giá trị mặc định (Cách 2). Không phải "hàm @Preview không được có tham số" — Compose không cấm.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>2. Hai bản xem trước của app bar khác nhau đúng một chỗ: hàm thứ hai gọi <code>KodecochatTheme(isDarkTheme = true)</code>. Điều đó cho thấy quy tắc gì?</legend>
+			<label><input type="radio" name="q2" value="a" /> Một hàm <code>@Preview</code> chỉ được gọi một lần trong toàn project</label>
+			<label><input type="radio" name="q2" value="b" /> Muốn xem một composable ở nhiều điều kiện khác nhau thì mỗi điều kiện là một <code>@Preview</code> riêng</label>
+			<label><input type="radio" name="q2" value="c" /> <code>isDarkTheme</code> là tham số bắt buộc của mọi hàm xem trước</label>
+			<label><input type="radio" name="q2" value="d" /> Preview không thể hiện chế độ tối — phải đổi thiết lập máy</label>
+
+			<p class="explain" hidden>
+				<code>isDarkTheme</code> chính là tham số bạn đã đọc ở chương 5.3, mục 12 — giá trị mặc định, nên người gọi ép được. Hai hàm xem trước app bar tự cấp đủ dữ liệu (<code>title = &#123; Text("Preview!") &#125;</code>). Thêm: luôn bọc <code>@Preview</code> trong theme của app — đổi <code>isDarkTheme = true</code> là xem được chế độ tối không phải đổi thiết lập máy.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>3. Chuỗi modifier của logo app bar là <code>.size(64.dp).clickable(...).padding(16.dp)</code>. Đổi <code>padding</code> từ 16dp thành 3dp trong bản xem trước, logo <strong>to lên rõ rệt</strong>. Vì sao?</legend>
+			<label><input type="radio" name="q3" value="a" /> Vì <code>padding</code> làm lệch toạ độ, Android Studio tự phóng icon để bù</label>
+			<label><input type="radio" name="q3" value="b" /> Vì giảm padding thì icon vượt ra ngoài khung 64dp nên được vẽ to hơn</label>
+			<label><input type="radio" name="q3" value="c" /> Vì preview dùng mật độ màn hình khác với app thật</label>
+			<label><input type="radio" name="q3" value="d" /> Vì tổng kích thước bị ép ở 64dp, còn <code>padding</code> ăn vào phần bên trong: 16dp mỗi bên thì phần vẽ còn ~32dp, 3dp thì còn ~58dp</label>
+
+			<p class="explain" hidden>
+				Cùng một khung, phần lõi khác nhau — đúng quy tắc thứ tự modifier của chương 5.2, mục 6, lần này bạn <em>nhìn thấy</em> nó thay vì suy luận. Chuỗi này còn là mẫu về vùng chạm: khung 64dp cho một logo nhỏ hơn — chương 5.5 nói kỹ con số 48dp. Đây là giá trị thật của live preview: đổi một con số, thấy kết quả ngay, không build, không cài app.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>4. Bản <code>UserInputPreview</code> của project <strong>không bọc theme</strong>. Hệ quả gì?</legend>
+			<label><input type="radio" name="q4" value="a" /> App sẽ crash khi mở ô nhập vì thiếu theme</label>
+			<label><input type="radio" name="q4" value="b" /> Preview không hiển thị được — Android Studio báo lỗi đỏ</label>
+			<label><input type="radio" name="q4" value="c" /> Preview vẫn chạy và không có lỗi nào, nhưng mọi <code>MaterialTheme.colorScheme.*</code> bên trong rơi về <strong>bộ màu mặc định của Material 3</strong> — bản xem trước trông khác app thật</label>
+			<label><input type="radio" name="q4" value="d" /> Không có gì; theme là tuỳ chọn, preview luôn dùng màu của app</label>
+
+			<p class="explain" hidden>
+				Đây là hệ quả trực tiếp từ chương 5.3: không có theme bọc ngoài thì không có ai <em>cấp</em> bộ màu của project, nên component dùng màu mặc định. Code hoàn toàn hợp lệ — không có lỗi nào — chỉ là bản xem trước không nói đúng về app thật. Quy tắc: bọc mọi <code>@Preview</code> trong theme của app; chi phí đúng một dòng.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>5. Bảng "ba việc <code>@Preview</code> không chứng minh được" gồm những gì?</legend>
+			<label><input type="radio" name="q5" value="a" /> App <em>chạy</em> đúng, giao diện <em>đúng trên mọi thiết bị</em>, composable <em>lấy đúng dữ liệu</em> thật</label>
+			<label><input type="radio" name="q5" value="b" /> Biên dịch sai, thiếu dependency, lỗi Gradle</label>
+			<label><input type="radio" name="q5" value="c" /> Màu sai, font sai, kích thước sai so với máy thật</label>
+			<label><input type="radio" name="q5" value="d" /> Hiệu năng chậm, rò rỉ bộ nhớ, hao pin</label>
+
+			<p class="explain" hidden>
+				Preview chỉ vẽ <em>một</em> composable: không khởi động Activity, không chạy <code>onCreate</code>, không có dữ liệu thật. Nó dùng một cấu hình cố định — cỡ chữ hệ thống, chiều rộng màn hình, chiều cao thanh trạng thái của người dùng có thể khác (cỡ chữ có một cách kiểm tra hẳn hoi — chương 5.5). Và dữ liệu trong preview là do bạn gõ: luôn "đẹp". Vòng lặp "sửa — nhìn" dùng preview; kiểm tra hoạt động thì chạy app thật.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>6. Vì sao dữ liệu mẫu trong <code>FakeData.kt</code> được chọn "rất có ý": userId lần lượt "other", "me", "other"?</legend>
+			<label><input type="radio" name="q6" value="a" /> Vừa đủ để thấy <strong>cả hai màu bong bóng</strong> và thấy <strong>logic gộp nhóm</strong> hoạt động — dữ liệu mẫu tốt là dữ liệu bày ra được mọi nhánh hiển thị</label>
+			<label><input type="radio" name="q6" value="b" /> Vì dữ liệu phải xếp xen kẽ để app chạy nhanh hơn khi render</label>
+			<label><input type="radio" name="q6" value="c" /> Vì API của Google yêu cầu dữ liệu mẫu phải có ít nhất hai người dùng</label>
+			<label><input type="radio" name="q6" value="d" /> Ngẫu nhiên — thứ tự userId không ảnh hưởng gì đến giao diện</label>
+			<p class="explain" hidden>
+				Nếu cả ba tin nhắn đều của cùng một người, bạn không bao giờ thấy màu bong bóng thứ hai — một lỗi ở nhánh đó sẽ trốn qua mọi lần xem trước. Dữ liệu mẫu được kiểm soát là kỹ năng riêng: đi qua danh sách nhánh (người gửi khác nhau, tin ngắn/tin rất dài, danh sách rỗng, trường có thể trống thì để trống thật). Tin nhắn đầu chứa link (kiểm tra chữ bấm được), có emoji (kiểm tra Unicode), tin thứ ba không đặt thời gian (mặc định "bây giờ").
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>7. Một composable có ba tình huống có thể xảy ra với nó. Ba tình huống đó là gì?</legend>
+			<label><input type="radio" name="q7" value="a" /> onCreate, onStart, onDestroy — giống vòng đời của Activity</label>
+			<label><input type="radio" name="q7" value="b" /> Build, install, run — ba bước từ code tới app chạy</label>
+			<label><input type="radio" name="q7" value="c" /> Khởi tạo, gán giá trị, giải phóng bộ nhớ</label>
+			<label><input type="radio" name="q7" value="d" /> <strong>Vào</strong> composition (lần đầu xuất hiện trong cây), <strong>được vẽ lại</strong> (dữ liệu nó đọc đổi, thân hàm gọi lại), <strong>rời</strong> composition (không còn ai gọi nó)</label>
+
+			<p class="explain" hidden>
+				Giao diện Compose là một <em>cây</em> các lời gọi composable; Compose gọi cây đó là <strong>composition</strong>. Cẩn thận với chữ "vòng đời": ba việc trên <strong>không phải</strong> vòng đời kiểu Activity — composable <em>không có</em> callback <code>onCreate</code>/<code>onStart</code>/<code>onDestroy</code>, không có chỗ nào để "override". Đó là ba tình huống, không phải ba hàm.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>8. Việc <em>được vẽ lại</em> có tên riêng là recomposition. Ở chương này bạn cần nắm chính xác điều gì về nó?</legend>
+			<label><input type="radio" name="q8" value="a" /> Chỉ cần một sự thật: <strong>thân hàm composable có thể được gọi lại nhiều lần, và bạn không kiểm soát được số lần đó</strong> — cả hệ quy tắc của recomposition thuộc giai đoạn State &amp; kiến trúc</label>
+			<label><input type="radio" name="q8" value="b" /> Recomposition chỉ xảy ra khi app tắt và mở lại</label>
+			<label><input type="radio" name="q8" value="c" /> Bạn có thể đếm và kiểm soát chính xác số lần một hàm composable được gọi lại</label>
+			<label><input type="radio" name="q8" value="d" /> Compose vẽ lại toàn bộ màn hình mỗi khi một giá trị đổi</label>
+
+			<p class="explain" hidden>
+				Ở đây chỉ cần đủ để mục 18 có nghĩa: thân hàm là <em>câu trả lời</em> cho "giao diện nên trông thế nào", và Compose có thể hỏi lại câu đó bao nhiêu lần cũng được. Cơ chế Compose quyết định vẽ lại phần nào, dựa vào cái gì, bỏ qua được phần nào — dạy đầy đủ ở giai đoạn State &amp; kiến trúc.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>9. Đặt <code>ghiLog("Màn hình chat mở")</code> ngay đầu thân hàm composable: compile được, lần đầu chạy đúng ý. Vì sao vẫn <strong>sai</strong>?</legend>
+			<label><input type="radio" name="q9" value="a" /> Vì log phải ghi trong <code>onCreate</code> của Activity, ghi trong composable là vi phạm hệ điều hành</label>
+			<label><input type="radio" name="q9" value="b" /> Vì <code>ghiLog</code> chưa được khai báo trong file đó nên sẽ báo lỗi sau vài lần chạy</label>
+			<label><input type="radio" name="q9" value="c" /> Vì thân hàm được gọi lại mỗi khi composable được vẽ lại — số lần bạn không kiểm soát được; ghi log trở thành lặp vô kiểm soát (thay bằng gọi mạng thì app tự gọi mạng liên tục)</label>
+			<label><input type="radio" name="q9" value="d" /> Vì Compose cấm gọi hàm Kotlin thường bên trong composable</label>
+
+			<p class="explain" hidden>
+				Thân hàm composable là <em>câu trả lời</em>, không phải <em>hành động</em>: cùng dữ liệu vào phải cho cùng câu trả lời, và nó bị hỏi lại theo số lần vẽ lại. Một việc <em>có tác dụng ra bên ngoài</em> (ghi log, gọi mạng, lưu file) là <strong>side effect</strong> — có chỗ riêng để đặt. Chỗ đó cho trường hợp phổ biến nhất là <code>LaunchedEffect</code>.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>10. Câu "<code>LaunchedEffect(Unit)</code> luôn chạy đúng một lần, mãi mãi" — phát biểu đúng là gì?</legend>
+			<label><input type="radio" name="q10" value="a" /> Đúng như vậy — <code>Unit</code> bảo đảm khối việc chỉ chạy một lần trong suốt vòng đời app</label>
+			<label><input type="radio" name="q10" value="b" /> Sai — <code>LaunchedEffect(Unit)</code> chạy lại mỗi lần composable được vẽ lại</label>
+			<label><input type="radio" name="q10" value="c" /> Sai — <code>Unit</code> chỉ nghĩa "key không bao giờ đổi": không khởi động lại vì vẽ lại, nhưng nếu composable <em>rời composition rồi vào lại</em>, khối việc có thể chạy thêm lượt nữa</label>
+			<label><input type="radio" name="q10" value="d" /> Sai — <code>Unit</code> làm khối việc không bao giờ chạy, phải truyền một key thật</label>
+			<p class="explain" hidden>
+				Cách nhớ đúng: <strong>chạy khi vào composition · không chạy lại vì vẽ lại · có thể chạy lại nếu rời rồi vào lại · khởi động lại nếu key đổi</strong>. Dài hơn chữ "một lần", nhưng đúng — và cái đúng này cứu bạn khỏi một lớp lỗi rất khó tìm. Nếu việc phụ phụ thuộc vào một giá trị, hãy đưa giá trị đó làm key thay vì <code>Unit</code>: key trả lời câu hỏi "việc này phụ thuộc vào cái gì".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>11. <code>ManHinhKenh(channelId: String)</code> cần tải tin nhắn của kênh. Key nào của <code>LaunchedEffect</code> là đúng, và vì sao?</legend>
+			<label><input type="radio" name="q11" value="a" /> <code>channelId</code> — khi người dùng chuyển kênh, key đổi: việc tải kênh cũ bị huỷ và lượt việc mới bắt đầu; dùng <code>Unit</code> thì màn hình mãi hiện tin nhắn của kênh đầu tiên</label>
+			<label><input type="radio" name="q11" value="b" /> <code>Unit</code> — vì việc tải chỉ cần chạy một lần mỗi màn hình</label>
+			<label><input type="radio" name="q11" value="c" /> <code>"channelId"</code> — truyền tên tham số dưới dạng chuỗi để Compose theo dõi</label>
+			<label><input type="radio" name="q11" value="d" /> Không cần key — <code>LaunchedEffect</code> không nhận tham số nào</label>
+
+			<p class="explain" hidden>
+				Đây là lúc "key đổi thì khởi động lại" đúng ý bạn. Lưu ý provenance: project mẫu Ch05 <strong>không có</strong> <code>LaunchedEffect</code> nào (tìm ra 0 kết quả); hai ví dụ của bài là ví dụ do khoá học dựng. Trong project có hai họ hàng chỉ cần nhận diện: <code>DisposableEffect</code> (phần xử lý nút Back) và <code>SideEffect</code> (ô nhập liệu) — cùng họ "chỗ đặt việc phụ", học đầy đủ ở giai đoạn sau.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>12. Khối việc trong ngoặc nhọn của <code>LaunchedEffect</code> về mặt kỹ thuật là một <em>coroutine</em>. Ở giai đoạn này bạn cần biết bao nhiêu về nó?</legend>
+			<label><input type="radio" name="q12" value="a" /> Cần thuộc tên các dispatcher (Main, IO, Default) để chọn đúng lúc viết <code>LaunchedEffect</code></label>
+			<label><input type="radio" name="q12" value="b" /> Phải học ngay cơ chế huỷ coroutine, vì <code>LaunchedEffect</code> không dùng được nếu không hiểu</label>
+			<label><input type="radio" name="q12" value="c" /> Chỉ cần biết: đó là công việc do Compose quản lý theo composition — bắt đầu khi vào, huỷ khi rời hoặc khi key đổi. Coroutine, <code>suspend</code>, scope, dispatcher được học riêng ở giai đoạn State &amp; kiến trúc</label>
+			<label><input type="radio" name="q12" value="d" /> Không cần biết gì cả — coroutine là chủ đề ngoài khoá học này</label>
+
+			<p class="explain" hidden>
+				Ranh giới rõ ràng của chương này: hiểu đúng bấy nhiêu là đủ. Đừng tự học trước cấu trúc bên trong — nó có chỗ riêng (bài "Coroutines: 20 phút đủ để không sợ" ở giai đoạn State &amp; kiến trúc) và <code>LaunchedEffect</code> sẽ được dùng ở mức đầy đủ sau đó, khi bạn đã có coroutine trong tay. Một dấu vết nữa của việc dở dang có chủ đích trong project: <code>rememberLazyListState()</code> và <code>rememberCoroutineScope()</code> được khai mà không ai dùng (kỹ thuật truy dấu ở chương 5.3, mục 14 là thấy ngay).
+			</p>
+		
+		</fieldset>
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	// IMP-001: chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>

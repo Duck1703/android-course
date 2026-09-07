@@ -1,0 +1,182 @@
+---
+// Quiz + bài tập nhỏ cho chương 5.2 — Modifier & danh sách.
+// Stage 2 (Giai đoạn 2 — Jetpack Compose) — quiz tách từ monolith Ch05Quiz.astro (IMP-033/044).
+// Chuẩn quiz §10/§13: 4 đáp án / 1 đúng, giải thích 100% (đúng + vì sao distractor sai),
+// vị trí & độ dài đáp án đúng phân tán, câu bám đúng mục tiêu bài. Chấm bằng harness chung IMP-001.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">11 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. Ô nhập chat có sẵn chữ mặc định nằm trong <code>value</code>, và nhãn hiện lẫn vào viền. Bạn tìm tham số cần sửa bằng cách nào?</legend>
+			<label><input type="radio" name="q1" value="a" /> Tra Google với từ khoá "OutlinedTextField placeholder vs label"</label>
+			<label><input type="radio" name="q1" value="b" /> Control-click vào <code>OutlinedTextField</code> để đọc chữ ký của nó — tài liệu nằm ngay trên định nghĩa và khớp đúng phiên bản đang dùng</label>
+			<label><input type="radio" name="q1" value="c" /> Đổi tên tham số trong lời gọi thành <code>hint</code>, cách Android cũ hay dùng</label>
+			<label><input type="radio" name="q1" value="d" /> Đọc code project khác trên GitHub để xem người ta truyền tham số gì</label>
+			<p class="explain" hidden>
+				Kỹ năng đáng học nhất của mục này: khi một component không làm đúng ý, mở <strong>chữ ký</strong> của nó ra đọc trước (Control-click / Command-click). Khối comment tài liệu nằm ngay trên định nghĩa và luôn khớp đúng phiên bản bạn đang dùng — điều mà một bài viết trên mạng không bảo đảm. Đáp án a làm được nhưng chậm hơn và không bảo đảm đúng phiên bản; c là API của hệ thống View cũ, không tồn tại trong Compose.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>2. <code>label</code> và <code>placeholder</code> của <code>OutlinedTextField</code> khác nhau thế nào?</legend>
+			<label><input type="radio" name="q2" value="a" /> <code>label</code> là chữ gợi ý màu xám; <code>placeholder</code> là chữ in đậm bắt buộc điền</label>
+			<label><input type="radio" name="q2" value="b" /> <code>label</code> biến mất khi có chữ; <code>placeholder</code> ở lại làm tên của ô</label>
+			<label><input type="radio" name="q2" value="c" /> Cả hai là tên gọi khác nhau của cùng một thứ, dùng cái nào cũng được</label>
+			<label><input type="radio" name="q2" value="d" /> <code>label</code> là tên của ô và <strong>ở lại</strong> (trượt lên viền khi focus); <code>placeholder</code> là chữ gợi ý <strong>biến mất</strong> khi có chữ</label>
+
+			<p class="explain" hidden>
+				Mô hình đã dạy: <code>label</code> giống chữ "Họ và tên" in cạnh dòng kẻ trên tờ đơn — luôn hiện; <code>placeholder</code> giống chữ nhạt "Nguyễn Văn A" viết sẵn — biến mất ngay khi bạn gõ. Dùng cả hai cùng lúc thì chúng tranh chỗ (bug thật của project: nhãn lẫn vào viền). Còn nặng hơn là nhét chữ gợi ý vào <code>value</code> — nó thành nội dung thật, người dùng phải xoá tay.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>3. <code>Modifier</code> về bản chất là gì?</legend>
+			<label><input type="radio" name="q3" value="a" /> Một lệnh gọi hàm áp trực tiếp lên view — mỗi modifier là một method của view đó</label>
+			<label><input type="radio" name="q3" value="b" /> Một <em>giá trị</em> được truyền vào tham số <code>modifier</code>, mô tả kích thước, vị trí, trang trí, hành vi của composable</label>
+			<label><input type="radio" name="q3" value="c" /> Một file cấu hình mô tả style cho toàn app</label>
+			<label><input type="radio" name="q3" value="d" /> Một object giao diện ẩn nằm giữa composable cha và con</label>
+
+			<p class="explain" hidden>
+				<code>Modifier</code> là một <em>giá trị</em>, không phải câu lệnh — nên gán được vào biến, đưa vào <code>if</code>, truyền quanh như mọi giá trị khác (trong code thật: <code>val spaceBetweenAuthors = if (...) Modifier.padding(top = 8.dp) else Modifier</code>). Và đừng gọi nó là "CSS của Compose": CSS là tệp quy tắc áp từ ngoài theo bộ chọn, còn <code>Modifier</code> là tham số truyền tay cho đúng một composable, và thứ tự nối chuỗi quyết định kết quả.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>4. Cho hai chuỗi modifier chỉ khác thứ tự: <code>Modifier.padding(16.dp).background(Color.Yellow)</code> và <code>Modifier.background(Color.Yellow).padding(16.dp)</code>. Kết quả?</legend>
+			<label><input type="radio" name="q4" value="a" /> Giống hệt nhau — Compose tự sắp xếp lại cho tối ưu</label>
+			<label><input type="radio" name="q4" value="b" /> Giống nhau về hình dáng nhưng khác về hiệu năng</label>
+			<label><input type="radio" name="q4" value="c" /> Chuỗi thứ nhất ra ô vàng lớn, vàng lan cả phần đệm; chuỗi thứ hai ra ô vàng vừa khít chữ, quanh nó là khoảng trống không màu</label>
+			<label><input type="radio" name="q4" value="d" /> Chuỗi thứ nhất ra ô vàng vừa khít chữ; chuỗi thứ hai ra ô vàng lớn, vàng lan cả phần đệm</label>
+
+			<p class="explain" hidden>
+				Quy tắc duy nhất: <strong>mỗi modifier áp lên kết quả của modifier trước nó</strong>. Padding trước tạo ra "kiện hàng" gồm chữ + viền trống 16dp, background tô vàng <em>toàn bộ kiện hàng</em> → ô vàng lớn. Background trước chỉ tô đúng vùng chữ, padding sau thêm phần trống <em>ra ngoài</em> vùng đã tô → ô vàng vừa khít chữ. Compose không "tối ưu" lại thứ tự giúp bạn.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>5. Một icon 24dp có chuỗi <code>Modifier.padding(12.dp).clickable { ... }</code>. Vùng bấm của nó rộng bao nhiêu, và sửa thế nào?</legend>
+			<label><input type="radio" name="q5" value="a" /> Chỉ 12dp — <code>padding</code> ghi đè vùng bấm; phải bỏ <code>padding</code> đi</label>
+			<label><input type="radio" name="q5" value="b" /> 48dp — <code>padding</code> luôn tính vào vùng bấm; không cần sửa gì</label>
+			<label><input type="radio" name="q5" value="c" /> Vô hạn — <code>clickable</code> áp cho cả hàng chứa icon</label>
+			<label><input type="radio" name="q5" value="d" /> Chỉ khoảng 24dp — phần đệm nằm ngoài vùng bấm; đưa <code>clickable</code> lên trước <code>padding</code> để vùng bấm bao trọn cả phần đệm (~48dp)</label>
+
+			<p class="explain" hidden>
+				<code>padding</code> đứng trước đã chèn 12dp <em>trước khi</em> vùng bấm được đăng ký, nên phần đệm không nhận thao tác bấm. Đổi thứ tự thành <code>clickable</code> trước → vùng bấm bao trọn cả phần đệm: 24 + 12 × 2 = 48dp mỗi chiều, mà hình icon không to lên. Đây là cùng thứ tự mà app bar của project dùng cho logo Kodeco; và "vì sao 48dp là con số đáng nhớ" sẽ được trả lời ở chương 5.5.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>6. Quy ước tham số <code>modifier: Modifier = Modifier</code> trên một composable có ý nghĩa gì?</legend>
+			<label><input type="radio" name="q6" value="a" /> Bắt buộc người gọi phải truyền modifier, nếu không app không build</label>
+			<label><input type="radio" name="q6" value="b" /> Người gọi có thể truyền hoặc không; bên trong thường được truyền tiếp xuống thành phần ngoài cùng — vì ai đặt composable vào chỗ nào thì người đó mới biết nó cần bao nhiêu chỗ</label>
+			<label><input type="radio" name="q6" value="c" /> Chỉ dùng cho composable gốc <code>setContent</code>, các composable con không cần</label>
+			<label><input type="radio" name="q6" value="d" /> Để Compose tự tối ưu kích thước composable theo nội dung</label>
+			<p class="explain" hidden>
+				Ba phần của quy ước: tên <code>modifier</code> đầu trong nhóm tham số tuỳ chọn; giá trị mặc định <code>Modifier</code> = "mô tả rỗng"; bên trong thường <strong>truyền tiếp</strong> xuống. Lý do cho phép bên ngoài quyết định: một composable không biết nó sẽ được đặt ở đâu — cùng <code>Messages</code> có thể chiếm cả màn hình điện thoại hay nửa màn hình tablet. Nhưng đừng dùng lại mẫu này cho <em>dữ liệu</em>: xâu chuỗi dữ liệu qua nhiều tầng tham số là vấn đề mà giai đoạn State &amp; kiến trúc giải quyết.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>7. Bug thật: app bar đè lên ô nhập. Sau khi thêm <code>fillMaxSize()</code> cho <code>Box</code>, phần nhập liệu <strong>vẫn bị che</strong>. Vì sao?</legend>
+			<label><input type="radio" name="q7" value="a" /> Vì <code>fillMaxSize()</code> chỉ áp cho chiều rộng, không áp cho chiều cao</label>
+			<label><input type="radio" name="q7" value="b" /> Vì app bar vẽ sau nên luôn đè lên, không sửa được từ phía <code>Box</code></label>
+			<label><input type="radio" name="q7" value="c" /> Vì ô nhập có <code>padding</code> lớn hơn chiều cao còn lại của màn hình</label>
+			<label><input type="radio" name="q7" value="d" /> Vì <code>Box</code> to ra không đồng nghĩa với việc các con bên trong được chia lại chỗ — cần <code>Modifier.weight(1f)</code> cho phần giữa trong một <code>Column</code></label>
+
+			<p class="explain" hidden>
+				<code>fillMaxSize()</code> làm <code>Box</code> căng hết màn hình, nhưng việc <em>phân bổ chỗ</em> cho các con là chuyện khác. Mẹo gỡ lỗi đã dạy: tô tạm màu cho <code>Box</code> để thấy nó chiếm vùng nào. Cách sửa đúng: cho <code>Column</code> <code>fillMaxSize()</code>, rồi <code>Messages</code> nhận <code>Modifier.weight(1f)</code> — weight chia phần chỗ <em>còn lại</em> sau khi các con không có weight (ô nhập) đã được đo vừa đủ.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>8. <code>weight(1f)</code> cho <strong>một con duy nhất</strong> của một <code>Column</code> nghĩa là gì?</legend>
+			<label><input type="radio" name="q8" value="a" /> Con đó cao đúng 1dp — dùng để làm đường kẻ mảnh</label>
+			<label><input type="radio" name="q8" value="b" /> Sau khi các con không có weight được đo vừa đủ theo nội dung, con đó nhận <strong>toàn bộ phần còn lại</strong></label>
+			<label><input type="radio" name="q8" value="c" /> Con đó chiếm 1 phần trong tổng chiều cao của Column, mỗi con không weight cũng nhận 1 phần như nhau</label>
+			<label><input type="radio" name="q8" value="d" /> Con đó có độ ưu tiên vẽ cao nhất, nằm trên các con khác</label>
+
+			<p class="explain" hidden>
+				Hai lượt đo của Compose: đo trước các con <em>không</em> có weight (lấy đúng phần vừa đủ), rồi chia phần <em>còn dư</em> cho các con có weight theo tỉ lệ. Một con duy nhất với <code>weight(1f)</code> = "lấy hết phần còn dư" — đây là mẫu "thanh trên/thanh dưới cố định, phần giữa nở ra". Hai con 1f và 2f thì chia theo tỉ lệ 1:2. Weight chỉ tồn tại bên trong <code>Column</code>/<code>Row</code> — viết ở chỗ khác là lỗi biên dịch.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>9. Vì sao danh sách tin nhắn dài dùng <code>LazyColumn</code> thay vì <code>Column</code>?</legend>
+			<label><input type="radio" name="q9" value="a" /> <code>LazyColumn</code> tự động sắp xếp tin nhắn theo thời gian, còn <code>Column</code> giữ thứ tự khai báo</label>
+			<label><input type="radio" name="q9" value="b" /> <code>Column</code> dựng <strong>hết</strong> mọi con kể cả ngoài màn hình; <code>LazyColumn</code> chỉ dựng phần đang hiển thị cộng ít dự phòng, nên chi phí gần như không đổi khi danh sách dài ra</label>
+			<label><input type="radio" name="q9" value="c" /> <code>Column</code> đã bị Compose loại bỏ, chỉ còn <code>LazyColumn</code> là layout hợp lệ cho danh sách</label>
+			<label><input type="radio" name="q9" value="d" /> <code>LazyColumn</code> giảm dung lượng APK vì không cần load thêm thư viện</label>
+
+			<p class="explain" hidden>
+				Hình dung: cuốn sổ và cửa sổ trượt — chỉ chữ nằm trong khung cửa sổ được "viết ra". <code>Column</code> trả tiền cho toàn bộ nghìn item để xem mười dòng. Lưu ý chiều ngược: <code>Column</code> vẫn đúng chỗ cho <em>số ít</em> thành phần đã biết trước (form năm dòng, thẻ thông tin) — đừng đổi mọi <code>Column</code> thành <code>LazyColumn</code>.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>10. Trong <code>itemsIndexed(items = messages, key = { _, message -&gt; message.id })</code>, phần <code>{ _, message -&gt; ... }</code> là gì?</legend>
+			<label><input type="radio" name="q10" value="a" /> Một cú pháp riêng của <code>LazyColumn</code> để khai báo key</label>
+			<label><input type="radio" name="q10" value="b" /> Một vòng lặp <code>for</code> viết gọn của Kotlin, <code>_</code> là biến đếm</label>
+			<label><input type="radio" name="q10" value="c" /> Một lambda hai tham số của Kotlin — <code>_</code> bỏ qua <code>index</code> không dùng, <code>message</code> là phần tử; key trả về mã nhận dạng ổn định của item</label>
+			<label><input type="radio" name="q10" value="d" /> Một interface ẩn mà Compose tự sinh lúc biên dịch</label>
+			<p class="explain" hidden>
+				Tách rõ hai tầng: <code>itemsIndexed</code> là API của Compose, còn <code>{ index, content -&gt; ... }</code> là <strong>lambda hai tham số của Kotlin</strong> (đã học ở Nền tảng Kotlin); <code>_</code> nghĩa là "không dùng tham số này". Key phải <strong>ổn định</strong>: cùng một tin nhắn luôn cho cùng key kể cả sau khi chèn/xoá/sắp xếp — vì vậy <code>message.id</code> tốt, <code>index</code> vô nghĩa (nó chỉ là vị trí đội tên khác), và nội dung tin nhắn thì có thể trùng (hai người cùng gửi "ok" → key trùng, không cho phép).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>11. Danh sách 3 tin <em>A, B, C</em> đang hiện; chèn tin <em>X</em> lên đầu. Khác biệt giữa "có <code>key = message.id</code>" và "không có key" là gì?</legend>
+			<label><input type="radio" name="q11" value="a" /> Không key: Compose nhận dạng theo vị trí, thấy "vị trí 0 đã đổi từ A thành X" nên mọi item đều vẽ lại và các thứ gắn với item bị gán nhầm sang item khác. Có key: A vẫn là A, chỉ chuyển vị trí 0 → 1 — Compose <em>di chuyển</em> item và giữ mọi thứ đang gắn với nó</label>
+			<label><input type="radio" name="q11" value="b" /> Không có khác biệt — cả hai trường hợp mọi item đều được dựng lại từ đầu</label>
+			<label><input type="radio" name="q11" value="c" /> Có key: chỉ item mới nhất (X) được dựng, các item cũ bị bỏ nguyên vĩnh viễn kể cả khi nội dung đổi</label>
+			<label><input type="radio" name="q11" value="d" /> Không key: danh sách không cuộn được; có key: danh sách tự cuộn tới tin mới nhất</label>
+
+			<p class="explain" hidden>
+				Đúng mô hình "chèn tin vào đầu danh sách" đã dạy. Key ổn định cho Compose biết item nào là item nào khi danh sách đổi — giữ đúng thứ đang gắn với từng item (ví dụ một dòng chữ đang được chọn). Đáp án d sai: chuyện cuộn là việc của <code>LazyListState</code> (trong project mẫu, tham số này bị comment ở dòng 149 và <code>rememberLazyListState()</code> được khai mà chưa dùng — việc dở dang có chủ đích).
+			</p>
+		
+		</fieldset>
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+	<h2>Bài tập nhỏ</h2>
+	<div class="exercise">
+		<p>
+			Đọc chuỗi modifier của avatar trong <code>MessageUi</code>
+			(<code>conversation/Conversation.kt</code>, dòng 207–219): <code>.clickable(...)</code> ·
+			<code>.padding(horizontal = 16.dp)</code> · <code>.size(42.dp)</code> · hai <code>.border(...)</code> ·
+			<code>.clip(CircleShape)</code> · <code>.align(Alignment.Top)</code>. Tự giải thích từng bước: vì sao hai
+			<code>border</code> liên tiếp cho ra <strong>hai vòng viền cách nhau</strong>, và tại sao
+			<code>Spacer(Modifier.width(74.dp))</code> ở dòng 222 lại rộng đúng 74?
+		</p>
+		<details>
+			<summary>Gợi ý đối chiếu</summary>
+			<p>
+				Viền thứ nhất vẽ <em>trong</em> biên 42dp; viền thứ hai áp lên <strong>kết quả</strong> của bước trước nên vẽ
+				<em>bên ngoài</em> — ra hai vòng cách nhau, hiệu ứng mà một modifier không làm được. Con số 74: avatar 42dp +
+				16dp đệm mỗi bên = 42 + 16 × 2 = 74 — chừa đúng chỗ trống bằng avatar để các bong bóng của cùng một người vẫn
+				thẳng hàng.
+			</p>
+		</details>
+	</div>
+
+</section>
+<script>
+	// IMP-001: chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>

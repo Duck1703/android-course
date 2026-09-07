@@ -1,0 +1,797 @@
+---
+// Chương 5.3 — Material 3 & theming trong Compose
+// Stage 2 (Giai đoạn 2 — Jetpack Compose), chương 5.3 của khoá (IMP-033).
+// Nội dung PORT nguyên khối từ monolith Ch05JetpackCompose.astro — ranh giới C3 START/END
+// (đã verify ranh giới + provenance số dòng tại monolith, 2026-09-07).
+// Đổi khi port: nhãn "Đơn vị N" → "chương 5.3"; cross-ref giữa các phần thành cross-ref chương;
+// #cam-bay/#nguon tách theo đúng kế hoạch ghi trong monolith. Voice độc lập — attribution chỉ ở #nguon.
+
+const themesKtCode = `@Composable
+fun KodecochatTheme(
+  // 1
+  isDarkTheme: Boolean = isSystemInDarkTheme(),
+  // 2
+  isDynamicColor: Boolean = true,
+  content: @Composable () -> Unit
+) {
+  val dynamicColor = isDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+  // 3
+  val myColorScheme = when {
+    dynamicColor && isDarkTheme -> {
+      dynamicDarkColorScheme(LocalContext.current)
+    }
+    dynamicColor && !isDarkTheme -> {
+      dynamicLightColorScheme(LocalContext.current)
+    }
+    isDarkTheme -> KodecochatDarkColorScheme
+    else -> KodeochatLightColorScheme
+  }
+
+  // 4
+  MaterialTheme(
+    colorScheme = myColorScheme,
+    typography = KodecochatTypography,
+    content = content
+  )
+}`;
+
+const colorSchemeCode = `private val KodecochatDarkColorScheme = darkColorScheme(
+  primary = Blue80,
+  onPrimary = Blue20,
+  primaryContainer = Blue30,
+  ...
+)
+
+private val KodeochatLightColorScheme = lightColorScheme(
+  primary = Blue40,
+  onPrimary = Color.White,
+  primaryContainer = Blue90,
+  ...
+)`;
+
+const mainActivityFinalCode = `import com.kodeco.chat.conversation.ConversationContent
+import com.kodeco.chat.data.exampleUiState
+import com.kodeco.chat.theme.KodecochatTheme
+
+class MainActivity : ComponentActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {
+      KodecochatTheme {
+        ConversationContent(
+          uiState = exampleUiState
+        )
+      }
+    }
+  }
+}`;
+
+const bubbleCode = `@Composable
+fun ChatItemBubble(
+  message: Message,
+  isUserMe: Boolean,
+  authorClicked: (String) -> Unit
+) {
+  val ChatBubbleShape = RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp)
+  val pressedState = remember { mutableStateOf(false) }
+  val backgroundBubbleColor = if (isUserMe) {
+    MaterialTheme.colorScheme.primary
+  } else {
+    MaterialTheme.colorScheme.surfaceVariant
+  }
+
+  Column {
+    Surface(
+      color = backgroundBubbleColor,
+      shape = ChatBubbleShape
+    ) {
+      if (message.text.isNotEmpty()) {
+        ClickableMessage(
+          message = message,
+          isUserMe = isUserMe,
+          authorClicked = authorClicked
+        )
+      }
+    }
+  }
+}`;
+
+const typographyReadCode = `Text(
+  text = userFullName,
+  style = MaterialTheme.typography.titleMedium,
+  ...
+)
+Spacer(modifier = Modifier.width(8.dp))
+Text(
+  text = msg.message.createdOn.toString().isoToTimeAgo(),
+  style = MaterialTheme.typography.bodySmall,
+  modifier = Modifier.alignBy(LastBaseline),
+  color = MaterialTheme.colorScheme.onSurfaceVariant
+)`;
+
+const themeAvailabilityCode = `// Cấp giá trị: một lần, ở ngoài
+MaterialTheme(
+  colorScheme = myColorScheme,
+  typography = KodecochatTypography
+) {
+  AppContent()
+}
+
+// Đọc giá trị: bao nhiêu lần cũng được, ở bất kỳ đâu bên trong
+MaterialTheme.colorScheme.primary
+MaterialTheme.typography.titleMedium`;
+
+const bubbleTextCode = `ClickableText(
+  text = styledMessage,
+  style = MaterialTheme.typography.bodyLarge.copy(color = LocalContentColor.current),
+  modifier = Modifier.padding(16.dp),
+  onClick = { /* mở link hoặc gọi authorClicked */ }
+)`;
+
+const manifestThemeCode = `<application
+    ...
+    android:theme="@style/Theme.KodecoChat"
+    tools:targetApi="31">
+    <activity
+        android:name=".MainActivity"
+        android:exported="true"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.KodecoChat">`;
+
+const themesXmlCode = `<resources>
+    <style name="Theme.KodecoChat" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>`;
+
+const typographyCode = `val provider = GoogleFont.Provider(
+  providerAuthority = "com.google.android.gms.fonts",
+  providerPackage = "com.google.android.gms",
+  certificates = R.array.com_google_android_gms_fonts_certs
+)
+
+val MontserratFont = GoogleFont(name = "Montserrat")
+
+val KarlaFont = GoogleFont(name = "Karla")
+
+val MontserratFontFamily = FontFamily(
+  Font(resId = R.font.montserrat_regular),
+  Font(resId = R.font.montserrat_light, weight = FontWeight.Light),
+  Font(resId = R.font.montserrat_medium, weight = FontWeight.Medium),
+  Font(resId = R.font.montserrat_semibold, weight = FontWeight.SemiBold),
+)
+
+val KarlaFontFamily = FontFamily(
+  Font(resId = R.font.karla_regular),
+  Font(resId = R.font.karla_bold, weight = FontWeight.Bold),
+)`;
+
+const typographyUseCode = `val KodecochatTypography = Typography(
+  displayLarge = TextStyle(
+    fontFamily = MontserratFontFamily,
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 57.sp,
+    ...
+  ),
+  // ... 14 text style còn lại: displayMedium … labelSmall
+)`;
+import { Code } from "astro:components";
+
+const PROJ = "aaf-materials/05-jetpack-compose/projects/final";
+const FINAL = `${PROJ}/app/src/main`;
+const KT = `${FINAL}/java/com/kodeco/chat`;
+---
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Học xong chương này bạn sẽ</strong>
+		<ul>
+			<li>Nói được Material Design và Material 3 là gì, và vì sao <code>Button</code> có màu dù bạn không đặt màu nào.</li>
+			<li>Đọc được ba nhóm giá trị của <code>MaterialTheme</code>: <code>colorScheme</code>, <code>typography</code>,
+				<code>shapes</code> — và biết project này dùng nhóm nào.</li>
+			<li>Chỉ ra được đường đi của theme trong app thật: <code>setContent</code> → <code>KodecochatTheme</code> →
+				<code>MaterialTheme</code> → các composable con.</li>
+			<li>Phân biệt <strong>theme XML</strong> (của hệ điều hành) với <strong>theme Compose</strong>, và nói được vì sao
+				một project có cả hai.</li>
+			<li>Hiểu app đổi sang chế độ tối bằng cách nào, và <code>lightColorScheme</code>/<code>darkColorScheme</code> nằm ở
+				đâu trong chuỗi đó.</li>
+			<li>Tự kiểm tra được một hàm theme có <em>thật sự</em> tham gia vào giao diện đang chạy hay không.</li>
+		</ul>
+	</div>
+	<div class="callout">
+		<strong>Vì sao cần bài này</strong>
+		<p>
+			Ở hai bài trước, mỗi lần cần một màu bạn đã thấy code viết <code>MaterialTheme.colorScheme.primary</code> chứ
+			không viết <code>Color.Blue</code>. bài này giải thích cái tên đó lấy giá trị từ đâu — và vì sao chọn cách viết
+			đó lại cho phép đổi diện mạo cả app bằng <em>một</em> lớp bọc. Đây cũng là bài dạy bạn một kỹ năng đọc code
+			thật: phân biệt phần code đang chạy với phần code chỉ còn nằm đó.
+		</p>
+		<p>
+			<strong>Cần biết trước:</strong> chương 5.1 (composable, slot, cây giao diện) · chương 5.2 (<code>Modifier</code>) ·
+			Chương 3.3 (đọc <code>AndroidManifest.xml</code>) · Chương 3.4 (đã lần theo
+			<code>android:theme="@style/Theme.KodecoChat"</code> một lần).
+		</p>
+	</div>
+
+	<h2 id="material-3">10. Material 3 — component lấy diện mạo từ đâu</h2>
+	<p>
+		Trong hai chương trước (5.1 và 5.2) bạn viết <code>Button</code>, <code>Text</code>, <code>OutlinedTextField</code> mà không hề nói
+		màu gì, cỡ chữ bao nhiêu, bo góc mấy dp — mà chúng vẫn hiện ra có màu, có cỡ chữ, có bo góc. Chúng lấy những giá trị
+		đó từ đâu?
+	</p>
+	<p>
+		Từ <strong>Material Design</strong> — một <em>hệ thống thiết kế</em> (design system) của Google. Nói "hệ thống thiết
+		kế" nghe to, nhưng nghĩa rất cụ thể: đó là một bộ quy định sẵn về màu, kiểu chữ, hình dáng, khoảng cách, cùng một tập
+		component đã cài đặt theo bộ quy định đó. Nhờ vậy app Android của các nhà phát triển khác nhau vẫn có cảm giác quen
+		tay với người dùng.
+	</p>
+	<p>
+		<strong>Material 3</strong> là thế hệ hiện tại của bộ quy định đó, và là thế hệ mà project này dùng. Bạn nhận ra nó
+		qua tên thư viện: <code>androidx.compose.material3</code>. Cả <code>Button</code>, <code>Text</code>,
+		<code>Surface</code>, <code>CenterAlignedTopAppBar</code> bạn đã dùng đều đến từ đó.
+	</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: bảng vật liệu chung của một công trình</strong>
+		<p>
+			Hình dung một công trường có sẵn quy định: sơn tường dùng mã màu này, cửa dùng loại gỗ này, tay nắm dùng kiểu này.
+			Mỗi người thợ không phải tự chọn — họ tra bảng. Nhờ vậy các phòng do người khác nhau làm vẫn nhìn như một căn nhà.
+		</p>
+		<p>
+			<code>MaterialTheme</code> chính là <em>cái bảng</em> đó, và các component Material 3 là những người thợ đã biết
+			cách tra bảng. Bạn đổi giá trị trên bảng thì toàn bộ công trình đổi theo, mà không phải đi sửa từng phòng.
+		</p>
+	</div>
+	<p class="hint">
+		Điều này không có nghĩa bạn <em>bắt buộc</em> dùng giá trị từ bảng. Bạn vẫn viết được
+		<code>Modifier.background(Color(0xFF1546F6))</code>. Chỉ là làm vậy thì màu đó không đổi theo theme, không đổi theo chế
+		độ tối, và không đổi khi thiết kế đổi ý. Mục 11 nói kỹ về cái giá phải trả.
+	</p>
+
+	<h2 id="material-theme">11. <code>MaterialTheme</code>: colorScheme, typography, shapes</h2>
+	<p>
+		<code>MaterialTheme</code> là một composable — nhưng là loại composable đặc biệt: <strong>nó không vẽ gì cả</strong>.
+		Việc của nó là <em>cấp</em> ba nhóm giá trị cho toàn bộ cây composable nằm bên trong nó:
+	</p>
+	<table class="api">
+		<thead><tr><th>Nhóm</th><th>Chứa gì</th><th>Đọc ra sao</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><code>colorScheme</code></td>
+				<td>Bộ màu có <em>vai trò</em>: <code>primary</code>, <code>onPrimary</code>, <code>surface</code>,
+					<code>surfaceVariant</code>, <code>tertiary</code>, <code>onSurfaceVariant</code>…</td>
+				<td><code>MaterialTheme.colorScheme.primary</code></td>
+			</tr>
+			<tr>
+				<td><code>typography</code></td>
+				<td>Bộ kiểu chữ theo <em>vai trò</em>: <code>titleMedium</code>, <code>bodyLarge</code>, <code>bodySmall</code>,
+					<code>labelSmall</code>… mỗi cái gồm font, độ dày, cỡ chữ, khoảng dòng.</td>
+				<td><code>MaterialTheme.typography.titleMedium</code></td>
+			</tr>
+			<tr>
+				<td><code>shapes</code></td>
+				<td>Bộ hình dáng mặc định (mức bo góc nhỏ / vừa / lớn) cho các component.</td>
+				<td><code>MaterialTheme.shapes.medium</code></td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Chữ <strong>vai trò</strong> ở trên là ý quan trọng nhất của cả mục này. Bộ màu Material 3 không gọi tên theo màu sắc
+		("xanh", "vàng") mà theo <em>chỗ dùng</em>: <code>primary</code> là màu chủ đạo cho hành động chính,
+		<code>surface</code> là màu mặt phẳng nền, <code>onSurface</code> là màu nội dung <em>đặt trên</em> mặt phẳng đó. Cặp
+		<code>X</code> / <code>onX</code> luôn được thiết kế để tương phản đủ đọc.
+	</p>
+	<p class="hint">
+		Nhờ cách gọi tên theo vai trò, dòng <code>MaterialTheme.colorScheme.primary</code> giữ nguyên ý nghĩa dù bộ màu là
+		sáng, tối, hay do hệ thống sinh ra. Nếu code viết <code>Color.Blue</code> thì ở chế độ tối chữ xanh trên nền đen có
+		thể không còn đọc được — và không có cách nào sửa ngoài việc đi tìm từng dòng.
+	</p>
+	<h3>Composable con đọc giá trị theme như thế nào</h3>
+	<p>
+		Không ai truyền theme xuống qua tham số. Bong bóng chat nằm sâu năm tầng trong cây composable vẫn đọc được màu, chỉ
+		bằng một dòng:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/conversation/Conversation.kt</code> (dòng 292–320)</p>
+	<Code code={bubbleCode} lang="kotlin" theme="github-dark" />
+	<ul>
+		<li>
+			Màu nền đổi theo người gửi: <code>primary</code> cho mình, <code>surfaceVariant</code> cho người khác — cả hai lấy
+			từ <code>MaterialTheme.colorScheme</code>, không phải màu ghi cứng. Đó là lý do đổi theme một chỗ thì bong bóng đổi
+			theo mà không cần sửa dòng nào ở đây.
+		</li>
+		<li>
+			Đây là lần thứ hai <code>Surface</code> xuất hiện trong chương, và lần này thấy rõ vai trò của nó: nhận
+			<code>color</code> và <code>shape</code> rồi tự lo phần nền + bo góc cho <strong>đúng một</strong> con — chính là
+			ràng buộc "một con" ở chương 5.1, dùng đúng chỗ.
+		</li>
+		<li>
+			<code>RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp)</code> — ba góc bo 20dp, góc trên-trái chỉ 4dp. Mẹo tạo cảm
+			giác bong bóng "chỉa" về phía người gửi. Lưu ý đây là hình dáng <em>viết trực tiếp</em>, không lấy từ
+			<code>MaterialTheme.shapes</code>.
+		</li>
+	</ul>
+	<p>Kiểu chữ cũng đọc theo cách y hệt — đây là hàng "tên người gửi + mốc thời gian":</p>
+	<p class="src">Nguồn: <code>{KT}/conversation/Conversation.kt</code> (dòng 274–288, trong <code>AuthorNameTimestamp</code>)</p>
+	<Code code={typographyReadCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Tên người gửi dùng <code>titleMedium</code>, mốc thời gian dùng <code>bodySmall</code> và màu
+		<code>onSurfaceVariant</code> (màu nội dung phụ, nhạt hơn). Bạn không chọn "cỡ 16 đậm" và "cỡ 12 xám" — bạn chọn
+		<em>vai trò</em>, và theme quyết định con số.
+	</p>
+	<p class="hint">
+		<code>alignBy(LastBaseline)</code> ở dòng cuối căn hai <code>Text</code> theo <em>đường chân chữ</em> chứ không theo
+		cạnh hộp. Nhờ vậy chữ to (<code>titleMedium</code>) và chữ nhỏ (<code>bodySmall</code>) nhìn như nằm trên cùng một
+		dòng kẻ. Còn <code>isoToTimeAgo()</code> là một extension function tự viết trong project, đổi mốc thời gian dạng ISO
+		thành "5 phút trước" — cùng loại cơ chế với <code>setContent</code> ở chương 5.1.
+	</p>
+	<h3>Cấp một lần ở ngoài, đọc bao nhiêu lần cũng được ở trong</h3>
+	<p>
+		Không ai truyền theme xuống qua tham số. Bong bóng chat nằm sâu năm tầng trong cây composable vẫn đọc được màu chỉ
+		bằng một dòng — và đó là toàn bộ mô hình cần nắm ở bài này:
+		<strong><code>MaterialTheme</code> làm cho các giá trị theme hiện tại <em>có sẵn</em> cho mọi composable nằm trong
+		phần nội dung của nó.</strong>
+	</p>
+	<Code code={themeAvailabilityCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Hai việc, hai chỗ: <em>cấp</em> giá trị xảy ra đúng một lần ở lớp bọc ngoài; <em>đọc</em> giá trị xảy ra bất kỳ đâu bên
+		trong, không cần biết lớp bọc nằm cách mình mấy tầng. Đây là lý do đổi một chỗ mà cả app đổi theo, và cũng là lý do
+		thứ tự lồng nhau ở mục 12 có ý nghĩa thật.
+	</p>
+	<p class="hint">
+		<strong>Ghi nhận, chưa cần học:</strong> bên dưới, Compose dùng một cơ chế tên là <code>CompositionLocal</code> để đưa
+		nhiều loại giá trị theo ngữ cảnh xuống cây composable — theme chỉ là một trong số đó. Bạn sẽ gặp lại đúng cơ chế này
+		khi nối cấu hình và thiết lập ở tầng app, thuộc giai đoạn Dữ liệu cục bộ. Ở bài này không cần biết nó hoạt động
+		thế nào.
+	</p>
+	<p>
+		Một ví dụ nữa cho thấy việc đọc theme xảy ra sâu tới đâu: chữ <em>bên trong</em> bong bóng chat được vẽ bởi một
+		composable riêng nữa, và nó vẫn lấy kiểu chữ từ theme.
+	</p>
+	<p class="src">Nguồn: <code>{KT}/conversation/Conversation.kt</code> (dòng 322–352, đã lược phần xử lý bấm)</p>
+	<Code code={bubbleTextCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đây cũng là composable làm cho <em>một phần</em> của chữ bấm được: nhờ nó, bấm vào đường link trong tin nhắn đầu tiên
+		thì trình duyệt mở ra. Phần nhận ra link và tên người được nhắc trong chuỗi là việc của một hàm tiện ích riêng trong
+		project; ở bài này chỉ cần biết vai trò của nó.
+	</p>
+	<h2 id="theme-project">12. Theme thật của project: <code>setContent</code> → <code>KodecochatTheme</code> → <code>MaterialTheme</code></h2>
+	<p>
+		Đi tìm chỗ cấp theme thì chỉ mất một bước: nó ở ngay <code>MainActivity</code>, đúng cánh cửa đầu tiên bạn đã học ở
+		chương 5.1.
+	</p>
+	<p class="src">Nguồn: <code>{KT}/MainActivity.kt</code> (dòng 42, 44–55)</p>
+	<Code code={mainActivityFinalCode} lang="kotlin" theme="github-dark" />
+	<p>
+		So với file khởi đầu ở chương 5.1, khác biệt là một lớp bọc: <code>KodecochatTheme &#123; ... &#125;</code>. Đó là tất cả
+		những gì cần làm để đổi diện mạo toàn app — font và màu đều theo theme mới, không sửa một dòng nào trong các composable
+		đã viết.
+	</p>
+	<div class="callout mental">
+		<strong>Đường đi của theme, đọc từ ngoài vào trong</strong>
+		<ol class="chain">
+			<li><code>setContent &#123; &#125;</code> — mở ra cây composable gốc (chương 5.1, mục 2).</li>
+			<li><code>KodecochatTheme &#123; &#125;</code> — hàm theme <em>của project này</em>: nó chọn bộ màu và bộ chữ.</li>
+			<li><code>MaterialTheme(...)</code> — bên trong hàm trên; <em>cấp</em> ba nhóm giá trị cho cây bên dưới.</li>
+			<li><code>ConversationContent</code> → … → <code>ChatItemBubble</code> — <em>đọc</em> giá trị qua
+				<code>MaterialTheme.colorScheme.*</code> và <code>MaterialTheme.typography.*</code>.</li>
+		</ol>
+		<p>
+			Thứ tự lồng nhau ở đây có ý nghĩa thật: theme phải bọc <em>ngoài</em> phần đọc nó. Nếu bạn đặt một
+			<code>Surface</code> ra ngoài <code>KodecochatTheme</code> thì lúc <code>Surface</code> lấy màu, theme còn chưa được
+			cấp — nó sẽ lấy màu mặc định của thư viện Material 3 thay vì màu của project.
+		</p>
+	</div>
+	<h3>Bên trong hàm theme của project</h3>
+	<p class="src">Nguồn: <code>{KT}/theme/Themes.kt</code> (dòng 107–133, đã lược phần khai màu)</p>
+	<Code code={themesKtCode} lang="kotlin" theme="github-dark" />
+	<ol>
+		<li>
+			<code>isDarkTheme: Boolean = isSystemInDarkTheme()</code> — giá trị mặc định của tham số là <em>một lời gọi hàm</em>.
+			<code>isSystemInDarkTheme()</code> là hàm Compose đọc thiết lập của hệ điều hành, trả <code>true</code> khi máy đang
+			ở chế độ tối. Vì nó là <em>mặc định</em> chứ không phải giá trị cố định, người gọi vẫn ép được:
+			<code>KodecochatTheme(isDarkTheme = true)</code> — đúng cách mà bản xem trước ở chương 5.4 dùng.
+		</li>
+		<li>
+			<code>isDynamicColor: Boolean = true</code> — bật <em>Material You</em>: hệ điều hành lấy màu từ hình nền của người
+			dùng rồi sinh ra một bộ màu hài hoà, nên app trông "hợp" với máy của từng người. Chỉ có từ Android 12 trở lên, và
+			đó là ý nghĩa của điều kiện <code>Build.VERSION.SDK_INT &gt;= Build.VERSION_CODES.S</code> ở dòng sau
+			(<code>S</code> là tên mã của Android 12). Ở mức nhận biết là đủ.
+		</li>
+		<li>
+			Khối <code>when &#123; ... &#125;</code> chọn <strong>một</strong> bộ màu trong bốn khả năng: tối động, sáng động,
+			tối tĩnh, sáng tĩnh. Cấu trúc <code>when</code> là cú pháp Kotlin để chọn nhánh đầu tiên khớp điều kiện — đọc như
+			một chuỗi <code>if / else if / else</code> viết gọn, mỗi nhánh dạng
+			<code>điều kiện -&gt; giá trị</code>, nhánh <code>else</code> là mặc định. Vì cả khối trả về một giá trị, nó gán
+			trực tiếp vào <code>val myColorScheme</code> được.
+		</li>
+		<li>
+			<code>MaterialTheme(colorScheme = ..., typography = ..., content = content)</code> — điểm cuối của chuỗi. Chú ý
+			tham số <code>content = content</code>: hàm theme nhận một slot rồi <strong>chuyển tiếp nguyên vẹn</strong> xuống
+			<code>MaterialTheme</code>. Đúng mẫu slot ở chương 5.1, và đó là lý do mọi thứ bạn viết trong
+			<code>KodecochatTheme &#123; ... &#125;</code> nằm bên trong vùng có theme.
+		</li>
+	</ol>
+	<h3>Bộ màu sáng và bộ màu tối</h3>
+	<p class="src">Nguồn: <code>{KT}/theme/Themes.kt</code> (dòng 49–76 và 78–105, đã lược)</p>
+	<Code code={colorSchemeCode} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>darkColorScheme(...)</code> và <code>lightColorScheme(...)</code> là hai hàm của Material 3, mỗi hàm nhận các
+		<em>vai trò màu</em> ở mục 11 và trả về một bộ màu hoàn chỉnh (những vai trò bạn không truyền thì lấy giá trị mặc định
+		của Material 3). Giá trị truyền vào là các màu cụ thể khai riêng trong một file màu của project —
+		<code>Blue40</code>, <code>Blue80</code>, <code>Grey90</code>… tổng cộng 35 màu, đặt tên theo kiểu
+		"tông màu + độ sáng".
+	</p>
+	<div class="callout mental">
+		<strong>Vì sao tách hai lớp tên như vậy</strong>
+		<p>
+			<code>Blue40</code> là <em>một màu</em> — nó chỉ nói "xanh, độ sáng 40". <code>primary</code> là <em>một vai
+			trò</em> — nó nói "màu cho hành động chính". Bộ màu là chỗ nối hai lớp đó: ở chế độ sáng, vai trò
+			<code>primary</code> nhận <code>Blue40</code>; ở chế độ tối, cùng vai trò đó nhận <code>Blue80</code> (nhạt hơn, để
+			đọc được trên nền đen).
+		</p>
+		<p>
+			Nhờ vậy composable chỉ nói vai trò và không bao giờ phải biết chế độ hiện tại là gì. Đây chính là câu trả lời cho
+			câu hỏi "app đổi sang chế độ tối bằng cách nào": <strong>không composable nào đổi cả — chỉ bộ màu ở tầng theme đổi.</strong>
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Project này không truyền <code>shapes</code> cho <code>MaterialTheme</code>.</strong> Tìm cả project cũng không
+		có chỗ nào đọc <code>MaterialTheme.shapes</code>. Nghĩa là mọi component dùng bộ hình dáng <em>mặc định</em> của
+		Material 3, còn chỗ nào cần hình riêng thì viết trực tiếp — như <code>RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp)</code>
+		của bong bóng chat ở mục 11. Đó là lựa chọn hợp lý cho một app nhỏ, nhưng biết ranh giới này thì bạn không đi tìm một
+		file "Shape.kt" không tồn tại.
+	</p>
+
+	<h2 id="hai-he-theme">13. Hai hệ theme song song: XML và Compose</h2>
+	<p>
+		Đến đây có một chuyện dễ gây bối rối. App này còn một theme <em>nữa</em>, viết bằng XML, mà bạn đã lần theo dấu ở
+		Chương 3.4. Nó vẫn còn trong project và vẫn có hiệu lực:
+	</p>
+	<p class="src">Nguồn: <code>{FINAL}/AndroidManifest.xml</code> (dòng 39–53)</p>
+	<Code code={manifestThemeCode} lang="xml" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/res/values/themes.xml</code> (dòng 35–37 — toàn bộ phần có nghĩa của file)</p>
+	<Code code={themesXmlCode} lang="xml" theme="github-dark" />
+	<p>
+		Người mới rất dễ tưởng hai hệ này là một, hoặc tưởng cái sau là bản dịch của cái trước. Không phải: chúng là hai lớp
+		khác nhau, do hai bên khác nhau áp dụng, và quyết định hai nhóm việc khác nhau.
+	</p>
+	<table class="cmp">
+		<thead><tr><th></th><th>Theme XML (của nền tảng)</th><th>Theme Compose</th></tr></thead>
+		<tbody>
+			<tr>
+				<td>Khai ở đâu</td>
+				<td><code>res/values/themes.xml</code> — một dòng style duy nhất</td>
+				<td><code>theme/Themes.kt</code> — hàm <code>KodecochatTheme</code> (dòng 109)</td>
+			</tr>
+			<tr>
+				<td>Ai áp dụng</td>
+				<td>Hệ điều hành, qua <code>android:theme</code> trong manifest — <em>trước khi</em> code Kotlin của bạn chạy</td>
+				<td>Chính code của bạn, bằng cách bọc giao diện trong <code>KodecochatTheme &#123; ... &#125;</code></td>
+			</tr>
+			<tr>
+				<td>Quyết định gì</td>
+				<td>Nền cửa sổ, màu thanh trạng thái, có action bar hay không, hình dáng cửa sổ lúc app vừa mở</td>
+				<td>Màu và kiểu chữ của <em>mọi</em> component Material 3 trong Compose</td>
+			</tr>
+			<tr>
+				<td>Chế độ tối</td>
+				<td>Qua thư mục resource riêng (<code>values-night/</code>) — project này <strong>không có</strong></td>
+				<td>Qua <code>isSystemInDarkTheme()</code> trong hàm theme (mục 12)</td>
+			</tr>
+			<tr>
+				<td>Có từ bao giờ</td>
+				<td>Từ những bản Android đầu; dùng cho cả app XML lẫn app Compose</td>
+				<td>Chỉ có nghĩa trong Compose; là bản làm lại khái niệm theme cho thế giới hàm composable</td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="callout mental">
+		<strong>Cách nhớ gọn nhất</strong>
+		<p>
+			<strong>Theme XML là "khung cửa sổ"; theme Compose là "bảng màu và bộ chữ cho nội dung vẽ bên trong khung".</strong>
+			Hai thứ không thay thế được nhau, và một app hoàn chỉnh cần cả hai: khung để cửa sổ mở ra đúng hình dáng ngay từ
+			mili-giây đầu tiên (trước khi code Kotlin kịp chạy), bảng màu để nội dung bên trong nhất quán.
+		</p>
+	</div>
+	<p>
+		Đọc kỹ dòng style duy nhất trong <code>themes.xml</code> cũng ra được ba thông tin. <code>name="Theme.KodecoChat"</code>
+		là cái tên để manifest tham chiếu tới. <code>parent="android:Theme.Material.Light.NoActionBar"</code> nghĩa là kế thừa
+		một theme có sẵn của hệ điều hành — <code>Light</code> là nền sáng, còn <code>NoActionBar</code> là lựa chọn có chủ ý
+		cho app Compose: nếu cần thanh tiêu đề thì Compose tự vẽ bằng app bar của nó (đúng cái bạn làm ở chương 5.1), hai thanh
+		chồng nhau thì giao diện sẽ trông rất lạ. Và không có <strong>một thẻ <code>&lt;item&gt;</code> nào</strong> bên trong,
+		nghĩa là style này không ghi đè gì cả — nó chỉ là một cái tên riêng đặt cho theme của hệ thống.
+	</p>
+	<h2 id="truy-dau-theme">14. Truy dấu: hàm theme nào đang thật sự chạy?</h2>
+	<p>
+		Mở project mẫu ra và bạn sẽ thấy <strong>hai</strong> thư mục theme nằm cạnh nhau trong cùng package:
+	</p>
+	<table class="api">
+		<thead><tr><th>Thư mục</th><th>File</th><th>Hàm theme khai trong đó</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><code>theme/</code></td>
+				<td><code>Color.kt</code>, <code>Themes.kt</code>, <code>Typography.kt</code></td>
+				<td><code>KodecochatTheme</code> — chữ <code>c</code> trong "chat" viết <strong>thường</strong></td>
+			</tr>
+			<tr>
+				<td><code>ui/theme/</code></td>
+				<td><code>Color.kt</code>, <code>Theme.kt</code>, <code>Type.kt</code></td>
+				<td><code>KodecoChatTheme</code> — chữ <code>C</code> viết <strong>hoa</strong></td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Hai cái tên khác nhau đúng một chữ hoa. Cả hai đều là hàm theme hợp lệ, cả hai đều compile. Vậy hàm nào đang thật sự
+		cấp màu cho app đang chạy? Câu hỏi này <em>không đoán được</em> bằng cách đọc tên file — nhưng trả lời được trong ba
+		mươi giây.
+	</p>
+	<div class="callout mental">
+		<strong>Kỹ thuật: đếm số lần một cái tên xuất hiện trong project</strong>
+		<p>
+			Dùng <em>Find in Files</em> của Android Studio (Ctrl-Shift-F, hoặc Command-Shift-F trên macOS) tìm tên hàm trong
+			toàn bộ thư mục code. Rồi đọc kết quả theo quy tắc này:
+		</p>
+		<ul>
+			<li>Ra <strong>một</strong> kết quả, và kết quả đó chính là dòng khai báo hàm ⇒ <strong>không ai gọi nó</strong>. Đây
+				là <em>code chết</em>: có mặt trong project nhưng không bao giờ chạy.</li>
+			<li>Ra nhiều kết quả ⇒ đọc từng chỗ để biết ai gọi, gọi từ đâu.</li>
+		</ul>
+		<p>
+			Kỹ thuật này dùng được cho mọi thứ, không riêng theme: một hàm, một class, một hằng số, một file resource.
+		</p>
+	</div>
+	<p>Áp vào đúng hai cái tên trên, kết quả rất rõ:</p>
+	<table class="api">
+		<thead><tr><th>Tên</th><th>Số lần xuất hiện</th><th>Kết luận</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><code>KodecochatTheme</code></td>
+				<td>1 chỗ khai báo (<code>theme/Themes.kt</code> dòng 109) + <strong>3 lời gọi</strong>: <code>MainActivity.kt</code>
+					dòng 48, và hai bản xem trước ở <code>components/KodecochatAppBar.kt</code> dòng 85 và 94</td>
+				<td><strong>Đang chạy.</strong> Đây là theme thật của app.</td>
+			</tr>
+			<tr>
+				<td><code>KodecoChatTheme</code></td>
+				<td><strong>Đúng 1</strong> — chính dòng khai báo ở <code>ui/theme/Theme.kt</code> dòng 75</td>
+				<td><strong>Code chết.</strong> Không lời gọi nào.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Kiểm tra thêm một bước để chắc chắn: tìm tên package <code>com.kodeco.chat.ui.theme</code> trong project — ra đúng ba
+		kết quả, và cả ba đều là dòng <code>package</code> ở đầu ba file của chính thư mục đó. Không file nào ở nơi khác
+		<code>import</code> nó. Nghĩa là <strong>cả thư mục <code>ui/theme/</code> là code chết</strong>, không riêng hàm theme:
+		cả bộ màu tím <code>Purple80</code>/<code>Pink40</code>… và bộ chữ trong <code>Type.kt</code> cũng vậy.
+	</p>
+	<p>
+		Vì sao nó còn ở đó? Vì <code>ui/theme/</code> là bộ theme mà Android Studio <em>tự sinh ra</em> khi tạo project Compose
+		mới — bạn đã thấy nó từ Chương 2. Project của chương này dựng một hệ theme riêng trong <code>theme/</code> và không xoá
+		bộ cũ đi. Đây là chuyện xảy ra liên tục trong code thật, không phải chuyện lạ.
+	</p>
+	<div class="callout note">
+		<strong>Vì sao đây là kỹ năng, không phải chuyện bắt lỗi</strong>
+		<p>
+			Mục đích của việc truy dấu không phải để kết luận "project mẫu viết sai". Nó là để bạn trả lời được một câu hỏi mà
+			bạn sẽ gặp mỗi tuần trong nghề: <em>tôi vừa sửa file này, sao app không đổi gì?</em>
+		</p>
+		<p>
+			Rất thường xuyên câu trả lời là: bạn sửa đúng file, nhưng file đó không nằm trên đường đi của app. Trước khi sửa
+			một hàm, hãy kiểm tra xem có ai gọi nó không. Ba mươi giây tìm kiếm tiết kiệm được cả buổi gỡ lỗi sai chỗ.
+		</p>
+	</div>
+	<h3>Một dấu vết nữa trong cùng project: font tải về</h3>
+	<p>
+		Áp cùng kỹ thuật vào file kiểu chữ thì ra một trường hợp thú vị hơn, vì lần này code chết nằm <em>ngay bên trong</em>
+		một file đang chạy:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/theme/Typography.kt</code> (dòng 46–65)</p>
+	<Code code={typographyCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Ba khai báo đầu là <strong>API font tải về</strong> của Compose: <code>GoogleFont.Provider</code> nói "ai cung cấp
+		font" (ở đây là Google Play Services, nên font tải một lần được nhiều app dùng chung), còn
+		<code>GoogleFont(name = "Montserrat")</code> nói "lấy font tên gì trên Google Fonts". Ý tưởng là app tải font lúc chạy
+		thay vì nhét file font vào bản cài.
+	</p>
+	<p>
+		Nhưng hai <code>FontFamily</code> phía dưới lại dựng từ <code>R.font.*</code> — tức là các file
+		<code>.ttf</code> <strong>đóng gói sẵn</strong> trong project (có sáu file trong thư mục font). Tìm
+		<code>provider</code>, <code>MontserratFont</code>, <code>KarlaFont</code> trong project: mỗi cái ra đúng một kết quả,
+		chính dòng khai báo của nó.
+	</p>
+	<div class="callout diff">
+		<strong>Kết luận đọc được từ đây</strong>
+		<p>
+			Project mẫu <strong>không thật sự dùng font tải về</strong>. Nó khai sẵn phần chuẩn bị cho hướng đó (kể cả một
+			dependency riêng cho API font Google), rồi chọn đường an toàn hơn: font đóng gói sẵn, không phụ thuộc mạng lúc mở
+			app. Ba khai báo đầu file là code chết còn sót lại.
+		</p>
+		<p>
+			<strong>Nên theo cái nào?</strong> Với app học tập và app nhỏ: <strong>font đóng gói sẵn</strong> — chắc chắn hiện
+			đúng font ngay lần mở đầu, không có khoảng thời gian chữ nhảy font. Font tải về hợp khi bạn cần nhiều họ font hoặc
+			muốn giảm dung lượng bản cài, và khi đó phải xử lý được trường hợp tải chưa xong.
+		</p>
+	</div>
+	<p>
+		Bộ chữ hoàn chỉnh của project được ghép ở cuối file, và đây là chỗ hai họ font gặp bộ vai trò kiểu chữ ở mục 11:
+	</p>
+	<p class="src">Nguồn: <code>{KT}/theme/Typography.kt</code> (dòng 68–174, đã lược)</p>
+	<Code code={typographyUseCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Cả 15 vai trò kiểu chữ của Material 3 đều được khai lại: 12 vai trò dùng họ Montserrat, còn
+		<code>titleSmall</code>, <code>bodyLarge</code>, <code>bodySmall</code> dùng họ Karla. Đây chính là giá trị mà
+		<code>MaterialTheme.typography.titleMedium</code> ở mục 11 đọc ra — và cũng là lý do bọc thêm một lớp theme làm cả app
+		đổi font.
+	</p>
+
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Bạn sửa màu <code>primary</code> trong <code>ui/theme/Color.kt</code> của project mẫu, build lại, và app
+			<strong>không đổi gì</strong>. Bạn kiểm tra những gì, theo thứ tự nào?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				Đi ngược đường đi của theme ở mục 12. (1) Tìm xem file bạn vừa sửa được dùng ở đâu: các màu trong
+				<code>ui/theme/Color.kt</code> chỉ được dùng bởi <code>ui/theme/Theme.kt</code>. (2) Tìm hàm theme trong file đó —
+				<code>KodecoChatTheme</code> — trong toàn project: ra đúng một kết quả, chính dòng khai báo ⇒ không ai gọi nó.
+				(3) Kết luận: bạn sửa đúng cú pháp nhưng sai file. Hàm theme đang chạy là <code>KodecochatTheme</code> ở
+				<code>theme/Themes.kt</code>, và nó lấy màu từ <code>theme/Color.kt</code> — đó mới là file cần sửa.
+			</p>
+			<p>
+				Bài học chung: khi sửa mà không thấy đổi, đừng sửa mạnh tay hơn. Hãy kiểm tra xem thứ mình sửa có nằm trên đường
+				đi của app hay không.
+			</p>
+		</details>
+	</div>
+
+	<div class="callout journey">
+		<strong>Tóm tắt</strong>
+		<ol>
+			<li>Material Design là hệ thống thiết kế của Google; <strong>Material 3</strong> là thế hệ hiện tại, và là nguồn gốc
+				của <code>Button</code>/<code>Text</code>/<code>Surface</code> bạn đã dùng.</li>
+			<li><code>MaterialTheme</code> không vẽ gì — nó <em>cấp</em> ba nhóm giá trị: <code>colorScheme</code>,
+				<code>typography</code>, <code>shapes</code>.</li>
+			<li>Màu và kiểu chữ được gọi tên theo <strong>vai trò</strong> (<code>primary</code>, <code>onSurface</code>,
+				<code>titleMedium</code>), không theo màu sắc hay cỡ chữ. Nhờ vậy cùng một dòng code đúng ở cả chế độ sáng và tối.</li>
+			<li><code>MaterialTheme</code> <em>cấp</em> giá trị một lần ở lớp bọc ngoài; composable con <em>đọc</em> qua
+				<code>MaterialTheme.*</code> ở bất kỳ độ sâu nào, không cần truyền qua tham số.</li>
+			<li>Đường đi trong app thật: <code>setContent</code> → <code>KodecochatTheme</code> → <code>MaterialTheme</code> →
+				các composable. Theme phải bọc <em>ngoài</em> phần đọc nó.</li>
+			<li>Chế độ tối không cần composable nào thay đổi: <code>isSystemInDarkTheme()</code> chọn giữa
+				<code>darkColorScheme(...)</code> và <code>lightColorScheme(...)</code> ở tầng theme.</li>
+			<li>Một app Compose thường có <strong>hai hệ theme</strong>: XML lo khung cửa sổ trước khi code chạy, Compose lo màu
+				và chữ của nội dung. Không thay thế nhau.</li>
+			<li>Trước khi sửa một hàm, hãy đếm số lần tên nó xuất hiện trong project. Ra đúng một kết quả là dòng khai báo ⇒
+				code chết. Project này có <code>ui/theme/</code> và ba khai báo font tải về đều thuộc loại đó.</li>
+		</ol>
+	</div>
+
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Ba chỗ dưới đây là những chỗ người mới hay mất thời gian nhất ở phần Material 3 &amp; theming, kèm khối "tài liệu lỗi thời" về phần cấu hình build.
+	</p>
+
+	<div class="callout diff">
+		<strong>(f) Sửa đúng cú pháp nhưng sai file — theme không nằm trên đường đi của app</strong>
+		<p>
+			Project mẫu có <strong>hai</strong> hệ theme Compose nằm cạnh nhau: <code>theme/</code> với
+			<code>KodecochatTheme</code>, và <code>ui/theme/</code> với <code>KodecoChatTheme</code> — khác nhau đúng một chữ
+			hoa. Chỉ cái thứ nhất được gọi; cả thư mục <code>ui/theme/</code> là code chết (mục 14). Sửa màu trong
+			<code>ui/theme/Color.kt</code> thì app không đổi gì, và không có cảnh báo nào.
+		</p>
+		<p>
+			<strong>Nên theo cái nào:</strong> trước khi sửa một hàm, tìm tên nó trong toàn project. Ra đúng một kết quả là dòng
+			khai báo ⇒ không ai gọi ⇒ sửa vô ích. Lưu ý khi tìm: tên trong project mẫu có mấy chỗ viết thiếu chữ
+			(<code>KodeochatLightColorScheme</code>, <code>KodecohatAppBarPreviewDark</code>), nên hãy copy tên từ code thay vì
+			gõ lại theo trí nhớ.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>(g) Ghi cứng màu thay vì dùng vai trò màu.</strong> <code>Modifier.background(Color.Blue)</code> chạy đúng ở
+		chế độ sáng rồi vỡ ở chế độ tối: chữ tối trên nền tối, không đọc được. Và không có cách sửa nào ngoài việc đi tìm từng
+		dòng. Dùng <code>MaterialTheme.colorScheme.*</code> thì cùng một dòng code đúng ở cả hai chế độ, vì bộ màu mới là chỗ
+		đổi (mục 12).
+	</p>
+	<p class="notice">
+		<strong>(h) Đặt <code>Surface</code> ra <em>ngoài</em> hàm theme.</strong> Theme chỉ <em>cấp</em> giá trị cho cây
+		composable bên trong nó. Nếu <code>Surface</code> nằm ngoài, lúc nó lấy màu thì theme còn chưa được cấp, nên nó dùng
+		bộ màu mặc định của Material 3. Code vẫn compile, giao diện vẫn hiện — chỉ sai màu. Thứ tự đúng: theme bọc ngoài cùng,
+		rồi mới tới phần vẽ.
+	</p>
+	<div class="callout diff">
+		<strong>Tài liệu lỗi thời — phần cấu hình build đã đổi</strong>
+		<p>
+			Project mẫu ghim bộ phiên bản cuối 2023: <strong>Kotlin 1.9.10</strong>, <strong>AGP 8.2.0</strong>, Compose BOM
+			<strong>2023.10.01</strong>, <code>compileSdk 34</code>. Toàn bộ nội dung Compose trong chương này — composable,
+			layout, <code>Modifier</code>, <code>LazyColumn</code>, <code>MaterialTheme</code>, <code>@Preview</code>,
+			<code>LaunchedEffect</code> — <strong>vẫn đúng nguyên</strong>. Chỉ phần khai báo build đã đổi:
+		</p>
+		<table class="cmp">
+			<thead><tr><th></th><th>Project mẫu (Kotlin 1.9.x)</th><th>Từ Kotlin 2.0 trở lên — nên theo</th></tr></thead>
+			<tbody>
+				<tr>
+					<td>Khai compiler Compose</td>
+					<td><code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code></td>
+					<td>Bỏ khối đó; thêm plugin <code>org.jetbrains.kotlin.plugin.compose</code>. Compiler Compose đi cùng phiên
+						bản Kotlin, nên không còn phải khai số phiên bản riêng — vốn là nguồn lỗi "compiler Compose không khớp
+						Kotlin" rất phổ biến trước đây.</td>
+				</tr>
+				<tr>
+					<td>Bật Compose cho module</td>
+					<td><code>buildFeatures &#123; compose = true &#125;</code></td>
+					<td><strong>Giữ nguyên</strong> — đây là thiết lập của AGP, không phải của Kotlin.</td>
+				</tr>
+				<tr>
+					<td>Thư viện font Google</td>
+					<td><code>ui-text-google-fonts</code> phiên bản 1.5.4</td>
+					<td>Dùng bản mới hơn được; cách dùng API không đổi. (Và như mục 14 đã chỉ ra, project này thật ra không dùng
+						tới nó.)</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			Hệ quả thực dụng: <strong>đừng copy nguyên file build của project mẫu vào một project mới tạo.</strong> Nếu bạn mở
+			project mẫu bằng Android Studio mới và nó đề nghị nâng cấp Gradle/Kotlin, cứ để nó nâng — nhưng biết trước là nó sẽ
+			đòi thêm dòng plugin Compose ở trên.
+		</p>
+	</div>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>content/book/ch05-jetpack-compose.md</code> (941 dòng) — dòng 589–877
+			(<em>Building the Message UI</em> — phần đọc màu/kiểu chữ) · dòng 878–909 (<em>Themes &amp; Working With
+			Fonts</em>) · dòng 928–938 (<em>Key Points</em>).
+		</li>
+		<li>
+			<strong>Code thật — chương 5.3:</strong> <code>{KT}/theme/Themes.kt</code> (133 dòng;
+			<code>KodecochatDarkColorScheme = darkColorScheme(</code> 49–76, <code>KodeochatLightColorScheme = lightColorScheme(</code>
+			78–105 — tên trong code thiếu một chữ <code>c</code>, <code>KodecochatTheme</code> 107–133 với
+			<code>isDarkTheme</code> dòng 110, <code>isDynamicColor</code> dòng 111, khối <code>when</code> 115–126,
+			<code>MaterialTheme(</code> 128–132) · <code>{KT}/theme/Color.kt</code> (78 dòng; 35 màu ở dòng 39–78) ·
+			<code>{KT}/theme/Typography.kt</code> (174 dòng; <code>GoogleFont.Provider</code> 46–50,
+			<code>MontserratFont</code> 52, <code>KarlaFont</code> 54, <code>MontserratFontFamily</code> 56–61,
+			<code>KarlaFontFamily</code> 63–65, <code>KodecochatTypography</code> 68–174 gồm 15 vai trò kiểu chữ) ·
+			<code>{KT}/ui/theme/Theme.kt</code> (104 dòng; <code>KodecoChatTheme</code> dòng 75) ·
+			<code>{FINAL}/AndroidManifest.xml</code> (<code>android:theme</code> dòng 47 trên
+			<code>&lt;application&gt;</code> và dòng 53 trên <code>&lt;activity&gt;</code>) ·
+			<code>{FINAL}/res/values/themes.xml</code> (37 dòng; dòng style duy nhất ở dòng 36) ·
+			<code>{FINAL}/res/font/</code> (6 file <code>.ttf</code>: karla ×2, montserrat ×4) ·
+			<code>{KT}/conversation/Conversation.kt</code> (<code>MaterialTheme.colorScheme</code> ở dòng 196, 198, 213, 286,
+			301, 303, 370 · <code>MaterialTheme.typography</code> ở dòng 276, 284, 337 · <code>AuthorNameTimestamp</code>
+			265–289 · <code>ChatItemBubble</code> 292–320 · <code>ClickableMessage</code> 322–352).
+		</li>
+		<li>
+			<strong>Phiên bản và Gradle đã đối chiếu:</strong>
+			<code>{PROJ}/app/build.gradle.kts</code> (114 dòng;
+			<code>buildFeatures &#123; compose = true &#125;</code> 73–75,
+			<code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code> 76–78,
+			<code>ui-text-google-fonts</code> dòng 102, <code>kotlinx-datetime</code> dòng 107,
+			<code>compileSdk 34</code> dòng 42, <code>minSdk 30</code> dòng 46) ·
+			<code>{PROJ}/gradle/libs.versions.toml</code> (AGP 8.2.0 dòng 3, Kotlin 1.9.10 dòng 7,
+			compose-bom 2023.10.01 dòng 11, kotlinx-datetime 0.4.0 dòng 13, material3 1.1.2 dòng 24,
+			ui-text-google-fonts 1.5.4 dòng 25).
+		</li>
+		<li>
+			<strong>Kiểm chứng bằng cách tìm chuỗi trong project</strong> (thư mục
+			<code>{PROJ}/app/src/</code>): <code>KodecochatTheme</code> → 1 dòng khai báo
+			(<code>theme/Themes.kt</code> dòng 109) + 3 lời gọi (<code>MainActivity.kt</code> dòng 48;
+			<code>components/KodecochatAppBar.kt</code> dòng 85 và 94) · <code>KodecoChatTheme</code> → <strong>đúng 1</strong>
+			kết quả, chính dòng khai báo (<code>ui/theme/Theme.kt</code> dòng 75) ⇒ code chết ·
+			<code>com.kodeco.chat.ui.theme</code> → 3 kết quả, cả 3 là dòng <code>package</code> của chính ba file trong thư mục
+			đó ⇒ không nơi nào import · <code>provider</code> / <code>MontserratFont</code> / <code>KarlaFont</code> → mỗi cái
+			đúng 1 kết quả là dòng khai báo ⇒ API font tải về không được dùng · <code>Font(googleFont =</code> → 0 kết quả ·
+			<code>MaterialTheme.shapes</code> và <code>Shapes</code> → 0 kết quả ·
+			<code>values-night/</code> → thư mục không tồn tại · <code>res/values/styles.xml</code> có
+			<code>AppTheme</code> dòng 38 và <code>SplashTheme</code> dòng 46, không nơi nào trỏ tới.
+		</li>
+		<li>
+			<strong>Phần bổ sung ngoài giáo trình</strong> (do khoá học tự dựng để giải thích cho người mới):
+			mô hình "bảng vật liệu chung của một công trình" cho <code>MaterialTheme</code> ·
+			mô hình "cấp một lần ở ngoài, đọc bao nhiêu lần cũng được ở trong" cho giá trị theme ·
+			cách tách hai lớp tên "màu cụ thể vs vai trò màu" ·
+			bảng phân biệt theme XML và theme Compose theo 5 tiêu chí (thu hoạch và mở rộng từ Chương 3.4) ·
+			kỹ thuật đếm số lần một tên xuất hiện để phát hiện code chết, áp cho cả hai thư mục theme và cho API font tải về
+			(thu hoạch từ Chương 3.4).
+		</li>
+	</ul>
+
+</section>

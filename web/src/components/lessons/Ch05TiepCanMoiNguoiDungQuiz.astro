@@ -1,0 +1,192 @@
+---
+// Quiz + bài tập nhỏ cho chương 5.5 — Tiếp cận mọi người dùng: a11y cơ bản (core-lite). Bài NEW — quiz mới, không tái sử dụng câu của monolith Ch05.
+// Stage 2 (Giai đoạn 2 — Jetpack Compose) — quiz tách từ monolith Ch05Quiz.astro (IMP-033/044).
+// Chuẩn quiz §10/§13: 4 đáp án / 1 đúng, giải thích 100% (đúng + vì sao distractor sai),
+// vị trí & độ dài đáp án đúng phân tán, câu bám đúng mục tiêu bài. Chấm bằng harness chung IMP-001.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">12 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. TalkBack không "xem" màn hình — nó đọc gì?</legend>
+			<label><input type="radio" name="q1" value="a" /> Toàn bộ text hiển thị trên màn hình, theo thứ tự từ trái sang phải</label>
+			<label><input type="radio" name="q1" value="b" /> Phần mô tả kèm theo từng thành phần (semantics): nghĩa, hành động, trạng thái — thứ không tự khớp với phần vẽ ra màn hình</label>
+			<label><input type="radio" name="q1" value="c" /> Ảnh chụp màn hình rồi tự phân tích bằng nhận dạng hình ảnh</label>
+			<label><input type="radio" name="q1" value="d" /> Mã Kotlin của composable để tự suy ra ý nghĩa</label>
+			<p class="explain" hidden>
+				Giao diện luôn có hai bản mô tả: bản vẽ (hình, màu, khoảng cách) và bản chú thích (semantics). Người sáng mắt đọc bản vẽ; TalkBack, Switch Access và các công cụ hỗ trợ khác chỉ đọc được <strong>bản chú thích</strong> — và hai bản không tự khớp nhau, bản chú thích do bạn viết.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. Quy tắc quyết định <code>contentDescription</code> — ba dòng nào dưới đây là ĐÚNG?</legend>
+			<label><input type="radio" name="q2" value="a" /> Chỉ ảnh mới cần <code>contentDescription</code>; icon thì không bao giờ cần</label>
+			<label><input type="radio" name="q2" value="b" /> Icon nào cũng phải có mô tả: mô tả mọi thứ là an toàn nhất</label>
+			<label><input type="radio" name="q2" value="c" /> Hỏi "nếu xoá thành phần này đi, người dùng có mất thông tin nào không?": mất ⇒ viết một câu chữ; không mất ⇒ <code>null</code>; và đè lên cả hai — mọi thứ bấm được đều phải có tên gọi</label>
+			<label><input type="radio" name="q2" value="d" /> <code>null</code> là cách bỏ qua accessibility; người làm tử tế luôn điền một câu mô tả</label>
+
+			<p class="explain" hidden>
+				Điền <code>null</code> cho phần trang trí là phát biểu có nội dung: "thành phần này không cần được đọc lên" — cách bạn <em>giảm tiếng ồn</em>. Thứ làm người dùng TalkBack khổ nhất không phải thiếu mô tả, mà là quá nhiều mô tả vô nghĩa. Còn thứ <strong>luôn</strong> phải có mô tả lại thường bị quên: mọi thành phần bấm được mà không có chữ hiển thị nào bên cạnh.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>3. <code>Button(onClick = onSend) { Icon(..., contentDescription = "Gửi"); Text("Gửi") }</code> — vấn đề gì, sửa thế nào?</legend>
+			<label><input type="radio" name="q3" value="a" /> Không có vấn đề — icon và chữ cùng mô tả giúp người dùng chắc chắn hơn</label>
+			<label><input type="radio" name="q3" value="b" /> Icon không được đặt trong Button; phải tách ra ngoài rồi ghép bằng <code>Row</code></label>
+			<label><input type="radio" name="q3" value="c" /> Nút được đọc lên hai lần thành "Gửi Gửi" — vì cha bấm được tự gộp mô tả của các con; icon trong nút đã có chữ là trang trí ⇒ <code>contentDescription = null</code></label>
+			<label><input type="radio" name="q3" value="d" /> Chữ "Gửi" phải bỏ đi, giữ riêng icon có mô tả</label>
+
+			<p class="explain" hidden>
+				Bẫy phổ biến nhất của người mới, xuất phát từ ý tốt. Hành vi mặc định của Compose: khi một composable cha có thể bấm được, Compose tự gộp mô tả của các con vào cha và đưa cả nhóm cho dịch vụ hỗ trợ như <em>một</em> thành phần. Cách nhớ: trong một nút đã có chữ hiển thị, mọi icon bên trong là trang trí. Chỉ nút <em>chỉ có icon</em> mới cần mô tả.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>4. Lời mô tả nào là tốt nhất cho nút xoá một tin nhắn?</legend>
+			<label><input type="radio" name="q4" value="a" /> <code>"Biểu tượng thùng rác màu đỏ"</code></label>
+			<label><input type="radio" name="q4" value="b" /> <code>"Nút xoá"</code></label>
+			<label><input type="radio" name="q4" value="c" /> <code>"Xoá tin nhắn"</code></label>
+			<label><input type="radio" name="q4" value="d" /> <code>"Thùng rác"</code></label>
+			<p class="explain" hidden>
+				Mô tả <strong>việc thành phần đó làm</strong>, không mô tả nó trông thế nào: người dùng cần biết bấm vào thì gì xảy ra. Đừng nhồi loại thành phần ("Nút xoá" — dịch vụ hỗ trợ tự thông báo "nút", người dùng nghe "nút xoá, nút"); đừng nhồi màu/hình dáng ("màu đỏ" không giúp ai và sai khi đổi design). Lợi ích khác: mô tả theo hành động thì đổi hình không phải đổi mô tả. Và vì người dùng nghe được nó, mô tả là chuỗi hiển thị ⇒ thuộc <code>strings.xml</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>5. Một icon 24dp, chuỗi <code>Modifier.padding(12.dp).clickable { ... }</code>. Về accessibility, vùng chạm của nó hiện nay bao nhiêu và chuẩn tối thiểu là bao nhiêu?</legend>
+			<label><input type="radio" name="q5" value="a" /> 48dp hiện nay — đúng chuẩn rồi, không cần sửa</label>
+			<label><input type="radio" name="q5" value="b" /> Chuẩn là 24dp; 48dp chỉ là khuyến nghị cho tablet</label>
+			<label><input type="radio" name="q5" value="c" /> 24dp hiện nay và chuẩn là 24dp — chỉ icon to hơn mới cần vùng chạm lớn hơn</label>
+			<label><input type="radio" name="q5" value="d" /> ~24dp hiện nay (padding nằm ngoài vùng bấm vì thứ tự modifier); chuẩn Android: <strong>48dp × 48dp</strong> — đổi thành <code>clickable</code> trước <code>padding</code> thì ra 24 + 12 × 2 = 48dp mà icon không to lên</label>
+
+			<p class="explain" hidden>
+				Cùng quy tắc thứ tự modifier ở chương 5.2, lần này với hậu quả accessibility. Con số cần nhớ: <strong>24dp là thứ bạn thấy, 48dp là thứ ngón tay chạm được</strong> — hai con số không nhất thiết bằng nhau. Nhiều component Material (<code>Button</code>, <code>IconButton</code>, <code>ListItem</code>, <code>Checkbox</code>...) <em>đã</em> tự giữ mức 48dp khi thật sự nhận thao tác — nhưng bạn vẫn ép được nó nhỏ lại (vd <code>Modifier.height(36.dp)</code> vào một Button), đừng làm vậy không có lý do rõ ràng.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>6. Một <code>Checkbox</code> hiển thị với <code>onCheckedChange = null</code> (chỉ để hiện trạng thái, không bấm được). Phát biểu đúng?</legend>
+			<label><input type="radio" name="q6" value="a" /> Nó <strong>không</strong> được cấp phần đệm vùng chạm 48dp — hợp lý, vì không ai bấm nó; và người dùng TalkBack vẫn nghe được trạng thái tích/chưa tích</label>
+			<label><input type="radio" name="q6" value="b" /> Nó vẫn có vùng chạm 48dp nhưng TalkBack bỏ qua vì không bấm được</label>
+			<label><input type="radio" name="q6" value="c" /> Nó tự động biến thành <code>Switch</code> ở chế độ tối</label>
+			<label><input type="radio" name="q6" value="d" /> Nó phải đổi thành <code>Icon</code> + <code>contentDescription = "Đã tích"</code> để TalkBack đọc được</label>
+			<p class="explain" hidden>
+				Lời hứa 48dp của component Material chỉ áp khi component <em>thật sự nhận thao tác</em>. Còn trạng thái: các component Material tự thông báo tích/chưa tích, bật/tắt, enabled = false — bài học gọn một câu: nếu component Material đã thể hiện đúng trạng thái thì dùng nó, đừng dựng lại bằng <code>Box</code> + <code>clickable</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>7. Đơn vị nào dùng cho cỡ chữ, và đơn vị nào cho kích thước/khoảng cách — vì sao không dùng lẫn?</legend>
+			<label><input type="radio" name="q7" value="a" /> Cỡ chữ ghi bằng <code>sp</code> (to lên theo thiết lập của người dùng, tối đa 200% trên Android hiện nay); mọi thứ còn lại ghi bằng <code>dp</code> (không đổi) — vì việc phóng chữ không phải phép nhân đơn giản, mọi phép tính bố cục dựa trên <code>sp</code> sẽ lệch</label>
+			<label><input type="radio" name="q7" value="b" /> Cả hai dùng <code>sp</code> — để mọi thứ phóng theo thiết lập cỡ chữ của người dùng</label>
+			<label><input type="radio" name="q7" value="c" /> Cỡ chữ dùng <code>px</code> để chính xác tuyệt đối; còn lại dùng <code>dp</code></label>
+			<label><input type="radio" name="q7" value="d" /> Cả hai dùng <code>dp</code> — Compose tự scale chữ theo màn hình</label>
+
+			<p class="explain" hidden>
+				Cỡ chữ luôn <code>sp</code>; kích thước, khoảng cách, đệm, icon luôn <code>dp</code>. Tin tốt: nếu bạn dùng <code>MaterialTheme.typography</code> như chương 5.3 dạy thì bạn <em>đã</em> dùng <code>sp</code> — vấn đề gần như không bao giờ nằm ở cỡ chữ, mà nằm ở <strong>cái hộp bọc quanh chữ</strong>: hộp cao cứng (<code>Modifier.height(40.dp)</code>), giả định chữ luôn một dòng, xếp hai thành phần quá sát, ghi cứng <code>fontSize = 13.sp</code> rải rác.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>8. Nên viết <code>Row(modifier = Modifier.height(40.dp)) { Text(...) }</code> hay <code>Row(modifier = Modifier.padding(vertical = 8.dp)) { Text(...) }</code>?</legend>
+			<label><input type="radio" name="q8" value="a" /> Hai cách như nhau — chọn cách nào ngắn hơn</label>
+			<label><input type="radio" name="q8" value="b" /> Cả hai đều sai — phải dùng <code>fillMaxHeight()</code> cho mọi hàng chứa chữ</label>
+			<label><input type="radio" name="q8" value="c" /> Cách thứ nhất: chiều cao cố định giúp bố cục ổn định hơn khi đổi thiết bị</label>
+			<label><input type="radio" name="q8" value="d" /> Cách thứ hai: không nói trước chiều cao, để nội dung tự quyết — chữ to lên thì hàng cao lên (đúng như người dùng muốn); cách thứ nhất cắt mất chữ ở cỡ chữ lớn nhất</label>
+
+			<p class="explain" hidden>
+				Điểm khác biệt cốt lõi: bản TỐT <strong>không nói trước chiều cao</strong>. Nó nói "đệm 8dp trên dưới" và để nội dung tự quyết định phần còn lại. Đây là một trong bốn lỗi vỡ bố cục khi chữ to lên đã dạy ở mục 23.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>9. Ô nhập báo lỗi chỉ bằng cách <strong>đổi viền sang màu đỏ</strong>. Thiếu gì?</legend>
+			<label><input type="radio" name="q9" value="a" /> Thiếu animation để màu đỏ nổi bật hơn</label>
+			<label><input type="radio" name="q9" value="b" /> Thiếu sound effect cho người dùng biết có lỗi</label>
+			<label><input type="radio" name="q9" value="c" /> Không thiếu gì — màu đỏ là quy ước phổ quát cho lỗi</label>
+			<label><input type="radio" name="q9" value="d" /> Một dấu hiệu khác ngoài màu — tốt nhất là <strong>chữ</strong> nói rõ vấn đề (vd "Không thể kết nối"): người khó phân biệt màu đọc được, và TalkBack nhận được thông tin vì màu không nằm trong bản chú thích</label>
+
+			<p class="explain" hidden>
+				Màu <strong>không</strong> nằm trong phần mô tả mà dịch vụ hỗ trợ đọc — nếu tín hiệu duy nhất là viền đỏ thì với người dùng TalkBack thông tin đó không tồn tại, chưa kể người mù màu đỏ-xanh và người để màn hình đơn sắc. Chữ là dấu hiệu tốt nhất: phục vụ cả người thấy màu <em>và</em> dịch vụ hỗ trợ, bạn không phải làm hai lần.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>10. <code>Modifier.semantics(mergeDescendants = true) {}</code> trên một <code>Row</code> chứa tên người gửi + thời gian làm gì?</legend>
+			<label><input type="radio" name="q10" value="a" /> Gom cả nhóm thành <strong>một</strong> thành phần với dịch vụ hỗ trợ: TalkBack dừng một lần và đọc "Ada Lovelace, 5 phút trước" thay vì hai lần rời rạc; khối <code>{}</code> để trống là bình thường</label>
+			<label><input type="radio" name="q10" value="b" /> Xoá semantics của các con để chỉ còn đọc được từ cha</label>
+			<label><input type="radio" name="q10" value="c" /> Làm Row bấm được — thay thế cho <code>clickable</code></label>
+			<label><input type="radio" name="q10" value="d" /> Tự động dịch nội dung của Row sang ngôn ngữ khác</label>
+			<p class="explain" hidden>
+				<code>mergeDescendants = true</code> nói: coi cả nhóm là một thành phần và gom mô tả của các con lại. Cách quyết định: <strong>gộp khi các mảnh chỉ có nghĩa khi đi cùng nhau, và không mảnh nào cần bấm riêng</strong>. Bạn không phải viết nó cho <code>Button</code> hay bất cứ thứ gì <code>clickable</code> — những cái đó đã tự gộp. Trong project mẫu, <code>AuthorNameTimestamp</code> (Conversation.kt 265–289) dùng đúng khuôn này.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>11. Thứ tự ưu tiên khi làm accessibility cho một màn hình là gì?</legend>
+			<label><input type="radio" name="q11" value="a" /> Tự viết semantics cho mọi composable trước, rồi dùng component Material cho phần còn lại</label>
+			<label><input type="radio" name="q11" value="b" /> Dùng component có nghĩa sẵn (Material) trước → chỉ điền phần Compose không tự đoán được (<code>contentDescription</code> cho icon/ảnh mang thông tin) → chỉ tự viết semantics khi cấu trúc hình ảnh không diễn đạt đúng ý nghĩa</label>
+			<label><input type="radio" name="q11" value="c" /> Thêm <code>contentDescription</code> cho mọi icon và ảnh, kể cả icon trang trí</label>
+			<label><input type="radio" name="q11" value="d" /> Chạy Accessibility Scanner và sửa hết mọi cảnh báo nó báo</label>
+
+			<p class="explain" hidden>
+				Mỗi lần tự viết semantics là một lần bạn <strong>nhận trách nhiệm</strong> duy trì nó — mô tả tự viết sẽ lạc hậu khi chức năng đổi, còn <code>Button</code> thì không bao giờ quên nói mình là nút. Công cụ tự động (Accessibility Scanner, Compose UI Check) chỉ cần <em>biết là tồn tại</em> — cách dùng thuộc track Mở rộng.
+			</p>
+		
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>12. Vì sao <code>@Preview</code> (và điện thoại của bạn ở thiết lập mặc định) không chứng minh được phần accessibility — và phải kiểm bằng gì?</legend>
+			<label><input type="radio" name="q12" value="a" /> Vì mô tả sai vẫn compile, vùng chạm 24dp vẫn trông đẹp, chữ vẫn vừa khít một dòng — phải tự kiểm bằng tay: TalkBack + cỡ chữ lớn nhất + ngón tay thật (khoảng 5 phút mỗi màn hình), và đọc lại tìm chỗ thông tin chỉ truyền bằng màu</label>
+			<label><input type="radio" name="q12" value="b" /> Vì accessibility kiểm bằng unit test trong CI, không kiểm bằng tay được</label>
+			<label><input type="radio" name="q12" value="c" /> Vì preview chỉ render một composable; bật TalkBack trên máy là đủ, không cần thêm gì</label>
+			<label><input type="radio" name="q12" value="d" /> Vì TalkBack chỉ chạy trên máy thật của Google, nên phải gửi app đi kiểm tra</label>
+
+			<p class="explain" hidden>
+				<strong>Không một điều nào trong bài này kiểm được bằng cách đọc code.</strong> Checklist 8 bước của bài: bật TalkBack, lướt qua cả màn hình mắt không nhìn, nghe các lời đọc có nghĩa không/trùng lặp không/mọi thành phần lướt tới được không — rồi tăng cỡ chữ lớn nhất xem chữ có cắt/chồng không, thử bấm icon nhỏ có trúng không. <code>@Preview</code> là bản vẽ mặt tiền, không phải căn nhà.
+			</p>
+		
+		</fieldset>
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+	<h2>Bài tập nhỏ</h2>
+	<div class="exercise">
+		<p>
+			Soi lại một màn hình bạn đã dựng (hoặc màn hình chat của project mẫu): bật TalkBack và đi qua
+			<strong>cả</strong> màn hình bằng cách lướt, mắt không nhìn. Ghi lại: (1) chỗ nào nghe được "bấm được" mà
+			không biết bấm ra gì; (2) chỗ nào nghe trùng lặp (một chữ hai lần); (3) sau khi tăng cỡ chữ lên mức lớn
+			nhất, chỗ nào chữ bị cắt hoặc chồng lên nhau. Ba cột này chính là ba nhóm việc của bài.
+		</p>
+		<details>
+			<summary>Gợi ý đối chiếu</summary>
+			<p>
+				Trong màn hình chat của project mẫu, kết quả tiêu biểu: (1) avatar bấm được nhưng
+				<code>contentDescription = null</code> (Conversation.kt dòng 218) — thành phần bấm được không có tên;
+				(2) hiện chưa có chỗ nào đọc trùng vì các icon bên trong nút có chữ đều đã <code>null</code> đúng;
+				(3) nút Send bị ép <code>Modifier.height(36.dp)</code> (UserInput.kt dòng 311) — chiều cao dưới 48dp.
+				Mỗi chỗ tương ứng đúng một mục đã học (20, 20, 22).
+			</p>
+		</details>
+	</div>
+
+</section>
+<script>
+	// IMP-001: chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	// Nhánh dữ liệu live Astro nhúng các module theo tham chiếu tĩnh, nên form này
+	// dùng trực tiếp helper initQuiz thay vì import phụ đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>
