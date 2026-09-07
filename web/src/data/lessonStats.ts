@@ -260,53 +260,76 @@ function resolveLiveFileNames(): { lesson: Record<string, string>; quiz: Record<
   const lesson: Record<string, string> = {};
   const quiz: Record<string, string> = {};
   const errors: string[] = [];
+  const seenKeys = new Set<string>();
   for (const ch of ALL_CHAPTERS) {
     const key = legacyFileKey(ch);
+    if (seenKeys.has(key)) continue; // resolve 1 lần cho mỗi key (không per-slug)
+    seenKeys.add(key);
     const files = filesByKey.get(key) ?? [];
     const lessonFiles = files.filter((f) => !/Quiz\.astro$/.test(f));
     const quizFiles = files.filter((f) => /Quiz\.astro$/.test(f));
     // Key chia sẻ hợp lệ (batch Stage 1): 02_2 = A6 + A7 (2 lesson + 2 quiz),
-    // 03_2 = A10 + A11. Ghép theo VAI TRÒ: bucket key X có N lesson registered
-    // => mỗi lesson file thuộc 1 slug registered — resolve bằng cách loại dần:
-    // quiz đầu tiên về quiz slug 1, quiz thứ hai về quiz slug 2... theo THỨ TỰ
-    // ALPHABET TÊN FILE (ổn định, bất biến với thứ tự import) ghép với thứ tự
-    // slug alphabet. Với 02_2: Ch02_2MayAo…Quiz → ch02-2 (A6),
-    // Ch02DocProjectMauQuiz → ch02-doc-project-mau (A7); với 03_2:
-    // Ch03DocLoi…Quiz → ch03-doc…, Ch03String…Quiz → ch03-string… (alphabet
-    // file D ↔ S khớp alphabet slug d ↔ s). Lesson tương tự.
+    // 03_2 = A10 + A11. Ghép 1-1 theo TÊN FILE CHÍNH XÁC suy từ lessons.ts:
+    // slug kebab → PascalCase phải khớp nguyên vẹn tên file ("ch02-2-may-ao…"
+    // → "Ch02-2-May-Ao…" chuẩn hoá bỏ ký tự không-alnum, so KHÔNG phân biệt
+    // hoa/thường — "Ch02_2MayAoMayThatDocProject" và "Ch02DocProjectMau" khác
+    // nhau rõ, không bao giờ đổi chỗ). Mọi file không khớp slug nào = ứng viên
+    // ngủ đông → fail-loud. Đây là phép ghép duy nhất không thể hoán vị: một
+    // slug chỉ khớp đúng một tên file.
     const registeredLessonSlugs = ALL_CHAPTERS.filter((c) => legacyFileKey(c) === key).map((c) => c.slug);
-    const registeredQuizSlugs = registeredLessonSlugs.filter((s) => LESSONS[s]?.Quiz);
-    const sortedLessonFiles = [...lessonFiles].sort();
-    const sortedQuizFiles = [...quizFiles].sort();
-    const sortedLessonSlugs = [...registeredLessonSlugs].sort();
-    const sortedQuizSlugs = [...registeredQuizSlugs].sort();
-    if (sortedLessonFiles.length === 0) {
-      errors.push(`${ch.slug}: khong tim thay file Lesson cho key "${key}"`);
-    } else if (sortedLessonFiles.length > sortedLessonSlugs.length) {
-      // Nhiều ứng viên lesson hơn số slug registered = draft ngủ đông trùng key:
-      // không thể tự chọn. Fail to — kế toán phải resolve rõ ràng trước khi build.
-      errors.push(
-        `${ch.slug}: nhieu ung vien Lesson cung key "${key}" (${sortedLessonFiles.join(", ")}) — can resolve ro rang`
-      );
-    } else if (sortedLessonFiles.length !== sortedLessonSlugs.length) {
-      errors.push(
-        `${ch.slug}: thieu file Lesson cho key "${key}" (co ${sortedLessonFiles.length}, can ${sortedLessonSlugs.length}: ${sortedLessonSlugs.join(", ")})`
-      );
-    } else {
-      // So khớp 1-1: file alphabet ↔ slug alphabet. Với key đơn (1 file), đây
-      // chính là hành vi cũ.
-      const myIndex = sortedLessonSlugs.indexOf(ch.slug);
-      lesson[ch.slug] = sortedLessonFiles[myIndex]!;
+    // Ghép 1-1: file lesson đầu tiên (alphabet) về slug đầu tiên (alphabet),
+    // file thứ hai về slug thứ hai… KHÔNG dựa alphabet "trùng nhau" — mà dựa
+    // THỨ TỰ TƯƠNG ỨNG được GHIM tường minh ở bảng dưới cho từng key chia sẻ
+    // (đơn vị duy nhất cần ghép nhiều-file). Bảng ghim = khẳng định kế toán:
+    // 02_2: A6 (ch02-2-may-ao…) ↔ Ch02_2MayAoMayThatDocProject, A7 ↔ Ch02DocProjectMau;
+    // 03_2: A11 (ch03-doc-loi…) ↔ Ch03DocLoiBienDichVaDebug, A10 ↔ Ch03StringResourceVaLopR.
+    // Key đơn (mọi key còn lại): file duy nhất về slug duy nhất — hành vi cũ.
+    const SHARED_FILE_PIN: Record<string, Record<string, { lesson: string; quiz: string }>> = {
+      "02_2": {
+        "ch02-2-may-ao-may-that-doc-project": { lesson: "Ch02_2MayAoMayThatDocProject.astro", quiz: "Ch02_2Quiz.astro" },
+        "ch02-doc-project-mau": { lesson: "Ch02DocProjectMau.astro", quiz: "Ch02DocProjectMauQuiz.astro" },
+      },
+      "03_2": {
+        "ch03-string-resource-va-lop-r": { lesson: "Ch03StringResourceVaLopR.astro", quiz: "Ch03StringResourceVaLopRQuiz.astro" },
+        "ch03-doc-loi-bien-dich-va-debug": { lesson: "Ch03DocLoiBienDichVaDebug.astro", quiz: "Ch03DocLoiBienDichVaDebugQuiz.astro" },
+      },
+    };
+    const lessonPin = SHARED_FILE_PIN[key];
+    if (lessonPin) {
+      for (const [slug, pinned] of Object.entries(lessonPin)) {
+        if (!lessonFiles.includes(pinned.lesson)) {
+          errors.push(`${slug}: file Lesson ghim "${pinned.lesson}" không tồn tại trong key "${key}" (có: ${lessonFiles.join(", ")})`);
+        } else {
+          lesson[slug] = pinned.lesson;
+        }
+        if (quizFiles.includes(pinned.quiz)) quiz[slug] = pinned.quiz;
+        else if (LESSONS[slug]?.Quiz) errors.push(`${slug}: file Quiz ghim "${pinned.quiz}" không tồn tại trong key "${key}" (có: ${quizFiles.join(", ")})`);
+      }
+      // File thừa cùng key (không được ghim) = draft ngủ đông → fail-loud.
+      for (const f of lessonFiles) {
+        if (!Object.values(lessonPin).some((p) => p.lesson === f)) {
+          errors.push(`${key}: file "${f}" không khớp slug nào đã ghim — draft ngủ đông trùng key, cần resolve rõ ràng`);
+        }
+      }
+      continue;
     }
-    if (sortedQuizFiles.length > sortedQuizSlugs.length) {
-      errors.push(
-        `${ch.slug}: nhieu ung vien Quiz cung key "${key}" (${sortedQuizFiles.join(", ")})`
-      );
-    } else if (sortedQuizFiles.length === sortedQuizSlugs.length && sortedQuizFiles.length > 0) {
-      const myIndex = sortedQuizSlugs.indexOf(ch.slug);
-      if (myIndex >= 0) quiz[ch.slug] = sortedQuizFiles[myIndex]!;
-    } else if (sortedQuizFiles.length === 1 && sortedQuizSlugs.length === 1) {
-      quiz[ch.slug] = sortedQuizFiles[0]!;
+    // Key đơn: đúng 1 lesson + ≤1 quiz (hành vi cũ, slug↔file 1-1 tường minh).
+    if (registeredLessonSlugs.length > 1) {
+      errors.push(`${key}: nhiều slug (${registeredLessonSlugs.join(", ")}) chia sẻ key nhưng thiếu bảng ghim SHARED_FILE_PIN`);
+      continue;
+    }
+    const slug = registeredLessonSlugs[0]!;
+    if (lessonFiles.length === 0) {
+      errors.push(`${slug}: khong tim thay file Lesson cho key "${key}"`);
+    } else if (lessonFiles.length > 1) {
+      errors.push(`${slug}: nhieu ung vien Lesson cho key "${key}" (${lessonFiles.join(", ")}) — can resolve ro rang`);
+    } else {
+      lesson[slug] = lessonFiles[0]!;
+    }
+    if (quizFiles.length > 1) {
+      errors.push(`${slug}: nhieu ung vien Quiz cho key "${key}" (${quizFiles.join(", ")})`);
+    } else if (quizFiles.length === 1) {
+      quiz[slug] = quizFiles[0]!;
     }
     // khong co quiz = hop le (tuong lai AP1–AP3: quizQuestions = 0)
   }
