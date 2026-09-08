@@ -1,5 +1,5 @@
 ---
-// Quiz cho chương 6.1 — State trong Compose (S2). Tách từ monolith Ch06Quiz.astro (batch Stage 3, IMP-035).
+// Quiz cho chương 6.2 — State trong Compose (S2). Tách từ monolith Ch06Quiz.astro (batch Stage 3, IMP-035).
 // Phân bổ theo ownership: S2 sở hữu state/mutableStateOf/remember/rememberSaveable/recomposition.
 // Hai câu kế thừa ý cũ (xoay máy → rememberSaveable; stateSaver TextFieldValue), sáu câu mới bám mục 1–4.
 // Chuẩn quiz §10/§13: 4 đáp án / 1 đúng, giải thích 100% (đúng + vì sao distractor sai),
@@ -11,12 +11,12 @@
 	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
 
 	<form id="quiz-form">
-		<fieldset data-answer="c">
+		<fieldset data-answer="a">
 			<legend>1. Trong màn hình chat, thứ nào dưới đây <strong>không</strong> phải state theo nghĩa bài này đã định nghĩa?</legend>
-			<label><input type="radio" name="q1" value="a" /> Nội dung đang gõ trong ô nhập — đổi sau mỗi ký tự</label>
+			<label><input type="radio" name="q1" value="c" /> Nội dung đang gõ trong ô nhập — đổi sau mỗi ký tự người dùng bấm</label>
 			<label><input type="radio" name="q1" value="b" /> Bảng emoji đang mở hay đóng — đổi khi người dùng bấm</label>
-			<label><input type="radio" name="q1" value="c" /> Tên app hiển thị ngoài thanh hệ thống — không đổi trong khi màn hình vẫn đang hiển thị</label>
-			<label><input type="radio" name="q1" value="d" /> Vị trí cuộn hiện tại của danh sách tin nhắn</label>
+			<label><input type="radio" name="q1" value="a" /> Tên app ngoài thanh hệ thống — không đổi khi màn hình đang mở</label>
+			<label><input type="radio" name="q1" value="d" /> Vị trí cuộn hiện tại của danh sách tin nhắn — đổi liên tục khi người dùng vuốt màn hình</label>
 			<p class="explain" hidden>
 				Câu hỏi phân biệt là: <strong>"giá trị này có thể khác đi trong khi màn hình vẫn đang hiển thị hay không?"</strong>.
 				Tên app là dữ liệu tĩnh — giống tên app trong manifest hay màu cố định của theme, nó không đổi nên giao diện
@@ -24,12 +24,12 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="a">
+		<fieldset data-answer="d">
 			<legend>2. <code>var count = 0</code> khai trong thân composable, nút bấm chạy <code>count++</code> — con số trên màn hình không bao giờ đổi. Vì sao?</legend>
-			<label><input type="radio" name="q2" value="a" /> Compose chỉ theo dõi những state nó thấy composable đọc — một biến Kotlin thường không phát thông báo nào, nên không có lý do gì chạy lại phần giao diện</label>
+			<label><input type="radio" name="q2" value="d" /> Compose chỉ theo dõi những state nó thấy composable đọc — một biến Kotlin thường không phát thông báo nào khi giá trị đổi, nên không có lý do gì để Compose chạy lại phần giao diện đã đọc nó</label>
 			<label><input type="radio" name="q2" value="b" /> Vì <code>count++</code> chạy trong lambda nên giá trị bị trả về 0 ngay sau mỗi lần bấm</label>
-			<label><input type="radio" name="q2" value="c" /> Compose có theo dõi mọi biến, nhưng chỉ vẽ lại tối đa một lần mỗi giây</label>
-			<label><input type="radio" name="q2" value="d" /> Vì thiếu <code>@Composable</code> trên biến <code>count</code></label>
+			<label><input type="radio" name="q2" value="c" /> Compose có theo dõi mọi biến trong composable, nhưng chỉ xếp lịch vẽ lại tối đa một lần mỗi giây để tiết kiệm pin</label>
+			<label><input type="radio" name="q2" value="a" /> Vì thiếu <code>@Composable</code> trên biến <code>count</code></label>
 			<p class="explain" hidden>
 				<code>count</code> chỉ là một ô nhớ Kotlin bình thường — <code>count++</code> thật sự chạy và giá trị thật sự tăng,
 				nhưng không ai báo cho Compose, nên Compose không có lý do gì hỏi lại "giao diện nên trông thế nào?". Đáp án b
@@ -39,12 +39,12 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="d">
+		<fieldset data-answer="c">
 			<legend>3. <code>mutableStateOf</code> và <code>remember</code> lần lượt trả lời câu hỏi nào?</legend>
-			<label><input type="radio" name="q3" value="a" /> Cả hai cùng trả lời "làm sao giữ giá trị qua các lần vẽ lại"</label>
+			<label><input type="radio" name="q3" value="a" /> Cả hai cùng trả lời một câu hỏi "làm sao giữ giá trị qua các lần vẽ lại" — chỉ khác cú pháp gọi</label>
 			<label><input type="radio" name="q3" value="b" /> <code>remember</code> làm giá trị quan sát được; <code>mutableStateOf</code> giữ ô nhớ qua vẽ lại</label>
-			<label><input type="radio" name="q3" value="c" /> <code>mutableStateOf</code> lưu xuống đĩa; <code>remember</code> giữ trong bộ nhớ</label>
-			<label><input type="radio" name="q3" value="d" /> <code>mutableStateOf</code>: "làm sao Compose biết giá trị vừa đổi?" — <code>remember</code>: "làm sao ô nhớ không bị tạo lại từ đầu?"</label>
+			<label><input type="radio" name="q3" value="d" /> <code>mutableStateOf</code> lưu xuống đĩa; <code>remember</code> giữ trong bộ nhớ</label>
+			<label><input type="radio" name="q3" value="c" /> <code>mutableStateOf</code>: "Compose biết giá trị đổi thế nào?" — <code>remember</code>: "ô nhớ sao cho không tạo lại?"</label>
 			<p class="explain" hidden>
 				Hai API trả lời hai câu hỏi khác nhau nên gần như luôn cần cả hai: <code>mutableStateOf(0)</code> tạo ô nhớ mà
 				Compose quan sát được (đọc → ghi nhận, đổi → xếp lịch chạy lại), còn <code>remember &#123; ... &#125;</code> chạy
@@ -54,11 +54,11 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="b">
+		<fieldset data-answer="a">
 			<legend>4. Bạn gõ nửa câu vào ô chat rồi <strong>xoay ngang máy</strong>. Chữ biến mất. Đổi gì để nó còn?</legend>
-			<label><input type="radio" name="q4" value="a" /> Chuyển sang <code>mutableStateOf()</code> không bọc <code>remember</code></label>
-			<label><input type="radio" name="q4" value="b" /> Đổi <code>remember</code> thành <code>rememberSaveable</code></label>
-			<label><input type="radio" name="q4" value="c" /> Đưa chữ đang gõ vào ViewModel là cách duy nhất</label>
+			<label><input type="radio" name="q4" value="b" /> Chuyển sang <code>mutableStateOf()</code> mà không bọc <code>remember</code> để nó tự sống dai hơn</label>
+			<label><input type="radio" name="q4" value="a" /> Đổi <code>remember</code> thành <code>rememberSaveable</code> — đúng vị trí khai báo biến</label>
+			<label><input type="radio" name="q4" value="c" /> Đưa chữ đang gõ vào ViewModel — vì đây là cách duy nhất giữ được giá trị</label>
 			<label><input type="radio" name="q4" value="d" /> Bọc thêm một lớp: <code>remember &#123; rememberSaveable &#123; ... &#125; &#125;</code></label>
 			<p class="explain" hidden>
 				<code>remember</code> chỉ nhớ qua các lần vẽ lại, <strong>không</strong> nhớ qua configuration change vì Activity bị
@@ -70,12 +70,12 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="c">
+		<fieldset data-answer="b">
 			<legend>5. Vì sao <code>textState</code> phải viết <code>rememberSaveable(stateSaver = TextFieldValue.Saver)</code> chứ không chỉ <code>rememberSaveable &#123; ... &#125;</code>?</legend>
-			<label><input type="radio" name="q5" value="a" /> Vì <code>stateSaver</code> làm việc lưu nhanh hơn hẳn</label>
-			<label><input type="radio" name="q5" value="b" /> Vì <code>TextFieldValue</code> quá lớn nên không lưu vào Bundle được</label>
-			<label><input type="radio" name="q5" value="c" /> Vì <code>rememberSaveable</code> chỉ tự lưu được các kiểu đơn giản; <code>TextFieldValue</code> là kiểu phức tạp nên cần một <em>Saver</em> chỉ cách chẻ nó ra để lưu rồi dựng lại</label>
-			<label><input type="radio" name="q5" value="d" /> Vì không có Saver thì <code>TextFieldValue</code> không dùng làm state của Compose được</label>
+			<label><input type="radio" name="q5" value="a" /> Vì <code>stateSaver</code> làm việc lưu và phục hồi nhanh hơn hẳn so với cơ chế mặc định</label>
+			<label><input type="radio" name="q5" value="c" /> Vì <code>TextFieldValue</code> quá lớn so với giới hạn Bundle nên không thể lưu trọn vẹn</label>
+			<label><input type="radio" name="q5" value="b" /> <code>rememberSaveable</code> chỉ tự lưu được kiểu đơn giản; <code>TextFieldValue</code> phức tạp nên cần một <em>Saver</em></label>
+			<label><input type="radio" name="q5" value="d" /> Vì không có Saver thì <code>TextFieldValue</code> không dùng làm state của Compose được — nó chỉ dùng được với <code>remember</code> thường</label>
 			<p class="explain" hidden>
 				Cơ chế saved instance state chỉ nhận các kiểu cơ bản (Int, String, Parcelable...). <code>TextFieldValue</code> chứa
 				cả text lẫn vị trí con trỏ/vùng chọn, nên Compose cần một <code>Saver</code> — ở đây là
@@ -86,11 +86,11 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="a">
+		<fieldset data-answer="c">
 			<legend>6. Ba điều <code>remember</code> <strong>không</strong> làm là gì?</legend>
-			<label><input type="radio" name="q6" value="a" /> Không lưu ra đĩa; không sống qua việc Activity bị tạo lại; không sống qua tắt app rồi mở lại</label>
+			<label><input type="radio" name="q6" value="c" /> Không lưu ra đĩa; không sống qua việc Activity bị tạo lại; không sống qua tắt app rồi mở lại</label>
 			<label><input type="radio" name="q6" value="b" /> Không giữ qua các lần vẽ lại; không lưu ra đĩa; không sống qua tắt app</label>
-			<label><input type="radio" name="q6" value="c" /> Không giữ qua các lần vẽ lại; không sống qua Activity bị tạo lại; không sống qua tắt app</label>
+			<label><input type="radio" name="q6" value="a" /> Không giữ qua các lần vẽ lại; không sống qua Activity bị tạo lại; không sống qua tắt app</label>
 			<label><input type="radio" name="q6" value="d" /> Không lưu ra đĩa; không sống qua Activity bị tạo lại; không sống qua việc app xuống nền rồi quay lại</label>
 			<p class="explain" hidden>
 				Vế cần nhớ nhất: <code>remember</code> <strong>có</strong> giữ giá trị qua các lần vẽ lại — nếu không thì ô nhập đã
@@ -103,10 +103,10 @@
 
 		<fieldset data-answer="d">
 			<legend>7. Một giá trị sống qua xoay máy (Activity bị tạo lại) nhưng mất khi tắt app rồi mở lại. Nó được giữ bằng cách nào?</legend>
-			<label><input type="radio" name="q7" value="a" /> Biến thường khai trong thân composable</label>
-			<label><input type="radio" name="q7" value="b" /> <code>remember &#123; ... &#125;</code></label>
-			<label><input type="radio" name="q7" value="c" /> Không thể xảy ra — sống qua xoay máy thì sống qua cả tắt app</label>
-			<label><input type="radio" name="q7" value="d" /> <code>rememberSaveable</code> — hoặc các cách lưu cao hơn nó trong bảng bốn mức vòng đời</label>
+			<label><input type="radio" name="q7" value="a" /> Biến thường khai trong thân composable — nó giữ nguyên giá trị giữa các lần vẽ lại liên tiếp</label>
+			<label><input type="radio" name="q7" value="b" /> <code>remember &#123; ... &#125;</code> — nó giữ giá trị qua mọi tình huống</label>
+			<label><input type="radio" name="q7" value="c" /> Không thể xảy ra — thứ sống qua xoay máy thì chắc chắn sống qua cả việc tắt app rồi mở lại</label>
+			<label><input type="radio" name="q7" value="d" /> <code>rememberSaveable</code> — hoặc một cách lưu cao hơn nó trong bảng bốn mức vòng đời</label>
 			<p class="explain" hidden>
 				Đây đúng hàng <code>rememberSaveable</code> trong bảng bốn mức: nó gửi giá trị vào saved instance state nên
 				<strong>phục hồi</strong> được khi Activity bị tạo lại, nhưng không phải nơi lưu lâu dài — không có gì để phục hồi
@@ -117,9 +117,9 @@
 
 		<fieldset data-answer="b">
 			<legend>8. Một state mà composable đang đọc vừa đổi. Chuyện gì xảy ra?</legend>
-			<label><input type="radio" name="q8" value="a" /> Toàn bộ Activity được tạo lại từ đầu</label>
-			<label><input type="radio" name="q8" value="b" /> Compose xếp lịch chạy lại những phần code đã đọc state đó — và còn được phép bỏ qua phần nó xác định là không cần chạy lại</label>
-			<label><input type="radio" name="q8" value="c" /> Mọi composable trong app đều chạy lại đúng một lượt</label>
+			<label><input type="radio" name="q8" value="a" /> Toàn bộ Activity được tạo lại từ đầu như một lần mở app mới</label>
+			<label><input type="radio" name="q8" value="b" /> Compose xếp lịch chạy lại những phần code đã đọc state vừa đổi — và được phép bỏ qua phần nó xác định là không cần chạy lại</label>
+			<label><input type="radio" name="q8" value="c" /> Mọi composable trong app đều được chạy lại đúng một lượt theo thứ tự khai báo</label>
 			<label><input type="radio" name="q8" value="d" /> Giao diện được vẽ pixel ngay lập tức, không cần chạy lại code mô tả</label>
 			<p class="explain" hidden>
 				Recomposition = Compose chạy lại đoạn code <em>mô tả</em> phần liên quan. Nó không liên quan gì tới lifecycle của
@@ -129,11 +129,11 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="c">
+		<fieldset data-answer="a">
 			<legend>9. Trong <code>BasicTextField</code> của project mẫu: <code>onValueChange = &#123; onTextChanged(it) &#125;</code>. Mỗi ký tự người dùng gõ thì sao?</legend>
-			<label><input type="radio" name="q9" value="a" /> <code>BasicTextField</code> tự sửa nội dung của chính nó, rồi báo lại cho state sau</label>
-			<label><input type="radio" name="q9" value="b" /> Không có recomposition nào cho đến khi người dùng bấm Send</label>
-			<label><input type="radio" name="q9" value="c" /> Nó chỉ <em>báo</em> "người dùng vừa muốn giá trị mới"; nơi giữ state nhận tin và cập nhật — vì giá trị đó đã được đọc ở đây nên Compose chạy lại phần này: mỗi ký tự là một lượt recomposition</label>
+			<label><input type="radio" name="q9" value="c" /> <code>BasicTextField</code> tự sửa nội dung của chính nó, rồi báo lại cho state sau</label>
+			<label><input type="radio" name="q9" value="b" /> Không có recomposition nào trong lúc gõ — chỉ khi người dùng bấm Send thì danh sách mới được chạy lại</label>
+			<label><input type="radio" name="q9" value="a" /> Nó chỉ <em>báo</em> giá trị mới; nơi giữ state cập nhật — mỗi ký tự là một lượt recomposition</label>
 			<label><input type="radio" name="q9" value="d" /> Chỉ có ô nhập được vẽ lại, phần còn lại của màn hình bị khoá cho đến khi gõ xong</label>
 			<p class="explain" hidden>
 				Đúng như code thật trong <code>UserInput.kt</code>: <code>BasicTextField</code> <strong>không tự sửa nội dung của
@@ -143,12 +143,12 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="a">
+		<fieldset data-answer="c">
 			<legend>10. Vì sao không đặt lời ghi log hay lời gọi mạng thẳng vào thân composable?</legend>
-			<label><input type="radio" name="q10" value="a" /> Vì thân hàm được chạy lại theo số lần Compose thấy cần — con số bạn không kiểm soát; việc phụ có chỗ riêng dành sẵn (<code>LaunchedEffect</code>)</label>
+			<label><input type="radio" name="q10" value="c" /> Vì thân hàm được chạy lại theo số lần Compose thấy cần — con số bạn không kiểm soát</label>
 			<label><input type="radio" name="q10" value="b" /> Vì thân composable không được chứa lời gọi hàm nào, chỉ được mô tả giao diện bằng component</label>
-			<label><input type="radio" name="q10" value="c" /> Vì log và mạng bắt buộc phải chạy trong Activity, không chạy được trong Compose</label>
-			<label><input type="radio" name="q10" value="d" /> Vì Compose cấm khai báo biến cục bộ bên trong thân hàm composable</label>
+			<label><input type="radio" name="q10" value="a" /> Vì log và mạng bắt buộc phải chạy trong Activity, không chạy được trong Compose</label>
+			<label><input type="radio" name="q10" value="d" /> Vì Compose cấm khai báo biến cục bộ và gọi hàm bên trong thân hàm composable — chỉ được dùng component</label>
 			<p class="explain" hidden>
 				Thân hàm composable là <em>câu trả lời</em> cho câu hỏi "giao diện nên trông thế nào" — và nó được chạy lại theo
 				số lần recomposition, không do bạn quyết. Đặt log vào đó thì log đầy rác; đặt gọi mạng vào đó thì app tự gọi mạng

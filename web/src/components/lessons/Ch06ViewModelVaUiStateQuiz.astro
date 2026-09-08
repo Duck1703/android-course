@@ -1,5 +1,5 @@
 ---
-// Quiz cho chương 6.3 — ViewModel & UI state (S4). Tách từ monolith Ch06Quiz.astro (batch Stage 3, IMP-035).
+// Quiz cho chương 6.4 — ViewModel & UI state (S4). Tách từ monolith Ch06Quiz.astro (batch Stage 3, IMP-035).
 // Phân bổ theo ownership: S4 sở hữu ViewModel/process-death, UiState, cặp MutableStateFlow/StateFlow,
 // collectAsStateWithLifecycle, stateIn, chuỗi cú chạm→UI, đọc state chết.
 // Năm câu kế thừa ý cũ (viewModels(), private/public, chuỗi sửa authorId, jump-to-bottom, ảnh đứt ba mắt xích),
@@ -12,11 +12,11 @@
 	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
 
 	<form id="quiz-form">
-		<fieldset data-answer="c">
+		<fieldset data-answer="a">
 			<legend>1. Bạn xoay màn hình sau khi đã gửi 5 tin nhắn trong app chat. Tin nhắn còn không — và nếu tắt app rồi mở lại thì sao?</legend>
-			<label><input type="radio" name="q1" value="a" /> Xoay: mất — Tắt: còn</label>
+			<label><input type="radio" name="q1" value="c" /> Xoay: mất — tắt app: còn, vì ViewModel là nơi lưu dữ liệu của màn hình</label>
 			<label><input type="radio" name="q1" value="b" /> Cả hai đều mất</label>
-			<label><input type="radio" name="q1" value="c" /> Xoay: còn — Tắt: mất. Đó chính là việc ViewModel làm và giới hạn của nó</label>
+			<label><input type="radio" name="q1" value="a" /> Xoay: còn — tắt app: mất</label>
 			<label><input type="radio" name="q1" value="d" /> Cả hai đều còn, vì ViewModel là nơi lưu dữ liệu của màn hình</label>
 			<p class="explain" hidden>
 				Xoay máy (configuration change): Activity bị tạo lại nhưng ViewModel được giữ lại — đó đúng việc nó sinh ra để làm.
@@ -26,11 +26,11 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="a">
+		<fieldset data-answer="c">
 			<legend>2. Vì sao state màn hình cần một chủ nằm <strong>ngoài</strong> UI?</legend>
-			<label><input type="radio" name="q2" value="a" /> Vì configuration change khiến Activity chết đi và sinh ra một object mới — mọi state gắn chặt vào UI chết cùng Activity cũ</label>
-			<label><input type="radio" name="q2" value="b" /> Vì composable không giữ được state — chỉ ViewModel mới gọi được <code>remember</code></label>
-			<label><input type="radio" name="q2" value="c" /> Vì Android cấm giữ state trong hàm <code>setContent</code></label>
+			<label><input type="radio" name="q2" value="c" /> Vì configuration change tạo lại Activity từ đầu — state gắn chặt vào UI chết theo</label>
+			<label><input type="radio" name="q2" value="b" /> Vì composable không giữ được state — <code>remember</code> là hàm của ViewModel, không gọi được trong composable</label>
+			<label><input type="radio" name="q2" value="a" /> Vì Android cấm giữ state trong hàm <code>setContent</code></label>
 			<label><input type="radio" name="q2" value="d" /> Vì ViewModel chạy trên một thread riêng nên nhanh hơn</label>
 			<p class="explain" hidden>
 				Lập luận bốn bước của bài: configuration change kích hoạt lại lifecycle → Activity bị tạo lại từ đầu (không phải
@@ -42,9 +42,9 @@
 		<fieldset data-answer="d">
 			<legend>3. <code>private val viewModel: MainViewModel by viewModels()</code> — <code>by viewModels()</code> là gì?</legend>
 			<label><input type="radio" name="q3" value="a" /> Một hàm khởi tạo, tương đương <code>MainViewModel()</code></label>
-			<label><input type="radio" name="q3" value="b" /> Một annotation của Dagger/Hilt để inject ViewModel</label>
+			<label><input type="radio" name="q3" value="b" /> Một annotation của Dagger/Hilt để inject ViewModel — cần thêm dependency <code>hilt-navigation-compose</code> mới chạy được</label>
 			<label><input type="radio" name="q3" value="c" /> Một cách đặt tên biến để Android tự nhận diện ViewModel</label>
-			<label><input type="radio" name="q3" value="d" /> Một <em>property delegate</em> của Kotlin: lần đầu đọc biến thì xin ViewModel từ <code>ViewModelStore</code>, lần sau trả lại đúng instance đó — nên state sống qua xoay máy</label>
+			<label><input type="radio" name="q3" value="d" /> Một <em>property delegate</em>: xin ViewModel từ <code>ViewModelStore</code> lần đầu, trả lại đúng instance đó về sau</label>
 			<p class="explain" hidden>
 				Nếu viết <code>= MainViewModel()</code> thì mỗi lần Activity tạo lại bạn có ViewModel <em>mới</em> — mất hết dữ
 				liệu, đúng cái mà ViewModel sinh ra để tránh. <code>by viewModels()</code> tra <code>ViewModelStore</code> trước,
@@ -65,11 +65,11 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="c">
+		<fieldset data-answer="a">
 			<legend>5. Trong ViewModel: <code>private val _uiState = MutableStateFlow(ChatUiState())</code> và <code>val uiState: StateFlow&lt;ChatUiState&gt; = _uiState.asStateFlow()</code>. Vì sao cần <em>hai</em> biến?</legend>
-			<label><input type="radio" name="q5" value="a" /> Để có hai bản dữ liệu — một phòng khi bản kia hỏng</label>
-			<label><input type="radio" name="q5" value="b" /> Vì <code>StateFlow</code> không giữ giá trị, phải có <code>MutableStateFlow</code> đứng sau</label>
-			<label><input type="radio" name="q5" value="c" /> Để quyền ghi và quyền đọc khác nhau: chỉ ViewModel ghi được vào biến private; giao diện nhận một cửa sổ chỉ-đọc — ép luồng một chiều ở mức kiểu dữ liệu</label>
+			<label><input type="radio" name="q5" value="c" /> Để có hai bản dữ liệu — một phòng khi bản kia hỏng</label>
+			<label><input type="radio" name="q5" value="b" /> Vì <code>StateFlow</code> không tự giữ giá trị nên phải có <code>MutableStateFlow</code> đứng sau làm kho dữ liệu thật</label>
+			<label><input type="radio" name="q5" value="a" /> Để quyền ghi và quyền đọc khác nhau — giao diện chỉ nhận được cửa sổ chỉ-đọc</label>
 			<label><input type="radio" name="q5" value="d" /> Chỉ là quy ước đặt tên, không có tác dụng kỹ thuật</label>
 			<p class="explain" hidden>
 				<code>asStateFlow()</code> không copy dữ liệu — đó là cùng một dòng, nhìn từ ngoài chỉ đọc được. Nếu phơi thẳng
@@ -79,12 +79,12 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="a">
+		<fieldset data-answer="d">
 			<legend>6. "<code>StateFlow</code> là <code>Flow</code> có sẵn lifecycle awareness" — nhận xét nào đúng?</legend>
-			<label><input type="radio" name="q6" value="a" /> SAI. <code>StateFlow</code> không biết gì về vòng đời Android; việc lắng nghe theo vòng đời là việc của <code>collectAsStateWithLifecycle()</code> ở phía giao diện</label>
+			<label><input type="radio" name="q6" value="d" /> SAI — <code>StateFlow</code> không biết gì về vòng đời Android</label>
 			<label><input type="radio" name="q6" value="b" /> Đúng — <code>StateFlow</code> tự dừng khi màn hình bị ẩn</label>
 			<label><input type="radio" name="q6" value="c" /> Đúng một nửa — <code>StateFlow</code> biết vòng đời nhưng chỉ dừng khi app bị giết</label>
-			<label><input type="radio" name="q6" value="d" /> Sai, nhưng vì lý do khác: <code>StateFlow</code> là thành phần của Android nên không dùng được ngoài Activity</label>
+			<label><input type="radio" name="q6" value="a" /> Sai, nhưng vì lý do khác: <code>StateFlow</code> là thành phần của Android nên không dùng được ngoài Activity hay Fragment</label>
 			<p class="explain" hidden>
 				<code>StateFlow</code> là một kiểu của Kotlin, không phải thành phần Android — nó không biết Activity đang hiển thị
 				hay xuống nền, và không tự dừng khi màn hình ẩn. Điều nó thật sự thêm so với <code>Flow</code>: luôn có giá trị hiện
@@ -93,12 +93,12 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="d">
+		<fieldset data-answer="b">
 			<legend>7. <code>collectAsStateWithLifecycle()</code> hơn <code>collectAsState()</code> ở chỗ nào?</legend>
 			<label><input type="radio" name="q7" value="a" /> Nó không cần <code>StateFlow</code>, dùng được với mọi biến thường</label>
-			<label><input type="radio" name="q7" value="b" /> Nó tự lưu dữ liệu xuống đĩa khi app xuống nền</label>
+			<label><input type="radio" name="q7" value="d" /> Nó tự lưu dữ liệu xuống đĩa khi app xuống nền</label>
 			<label><input type="radio" name="q7" value="c" /> Nó nhanh hơn vì chạy trên thread nền</label>
-			<label><input type="radio" name="q7" value="d" /> Nó ngừng lắng nghe khi màn hình không còn hiển thị và lắng nghe lại khi quay vào; bản không có <code>WithLifecycle</code> vẫn tiếp tục lắng nghe khi app xuống nền nếu màn hình còn trong composition</label>
+			<label><input type="radio" name="q7" value="b" /> Nó ngừng lắng nghe khi màn hình không còn hiển thị và lắng nghe lại khi quay vào; bản không có <code>WithLifecycle</code> vẫn tiếp tục lắng nghe khi app xuống nền nếu màn hình còn trong composition</label>
 			<p class="explain" hidden>
 				Lắng nghe trong lúc không ai xem là làm việc vô ích — tốn pin, tốn dữ liệu di động với dòng mạng. Trên Android,
 				hãy dùng bản có <code>WithLifecycle</code> làm mặc định; <code>collectAsState()</code> là thứ để <em>nhận ra</em>
@@ -107,11 +107,11 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="b">
+		<fieldset data-answer="a">
 			<legend>8. Ba tham số của <code>stateIn</code> lần lượt trả lời câu hỏi nào?</legend>
-			<label><input type="radio" name="q8" value="a" /> Chạy ở đâu · chạy bao lâu · trả về kiểu gì</label>
-			<label><input type="radio" name="q8" value="b" /> <code>scope</code>: ai làm chủ StateFlow · <code>started</code>: khi nào thật sự lắng nghe nguồn · <code>initialValue</code>: trạng thái trước giá trị đầu tiên</label>
-			<label><input type="radio" name="q8" value="c" /> Tên biến · tên dòng nguồn · số phần tử tối đa</label>
+			<label><input type="radio" name="q8" value="b" /> Chạy ở đâu · chạy bao lâu · trả về kiểu gì</label>
+			<label><input type="radio" name="q8" value="a" /> <code>scope</code>: ai làm chủ · <code>started</code>: khi nào lắng nghe nguồn · <code>initialValue</code>: trạng thái ban đầu</label>
+			<label><input type="radio" name="q8" value="c" /> Tên biến · tên dòng nguồn · số phần tử tối đa mà dòng nguồn được phát trong một giây</label>
 			<label><input type="radio" name="q8" value="d" /> Ai gọi · bao nhiêu lần · có cache không</label>
 			<p class="explain" hidden>
 				<code>stateIn(scope = viewModelScope, started = SharingStarted.WhileSubscribed(5_000), initialValue = ChatUiState())</code>:
@@ -124,8 +124,8 @@
 		<fieldset data-answer="c">
 			<legend>9. Gửi tin nhắn <strong>kèm ảnh</strong> trong project final thì điều gì xảy ra?</legend>
 			<label><input type="radio" name="q9" value="a" /> Tin nhắn hiện lên kèm ảnh bình thường</label>
-			<label><input type="radio" name="q9" value="b" /> Tin nhắn hiện lên nhưng thiếu ảnh</label>
-			<label><input type="radio" name="q9" value="c" /> Tin nhắn <strong>mất hoàn toàn</strong>, kể cả phần chữ — tính năng ảnh đứt ở ba mắt xích: giá trị không ra khỏi khu vực nhập liệu (truyền <code>null</code> cứng), điều kiện <code>if (message.photoUri == null)</code> chặn trong ViewModel, và khối hiển thị ảnh bị comment toàn bộ</label>
+			<label><input type="radio" name="q9" value="b" /> Tin nhắn hiện lên nhưng thiếu ảnh — Coil tải không kịp trước lần vẽ đầu tiên</label>
+			<label><input type="radio" name="q9" value="c" /> Tin nhắn <strong>mất hoàn toàn</strong>, kể cả phần chữ — tính năng ảnh đứt ở ba mắt xích</label>
 			<label><input type="radio" name="q9" value="d" /> App crash với exception khi chọn ảnh</label>
 			<p class="explain" hidden>
 				Cả ba mắt xích đều có thật trong code: <code>ConversationContent</code> gọi <code>uiState.addMessage(content, null)</code>;
@@ -135,11 +135,11 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="a">
+		<fieldset data-answer="c">
 			<legend>10. Mở một codebase lạ, gặp một biến state. Quy trình bốn bước để trả lời "cái này có thật sự ảnh hưởng tới giao diện không?" là gì?</legend>
-			<label><input type="radio" name="q10" value="a" /> Khai báo (loại gì, ai sở hữu) → chỗ đọc → chỗ ghi → tác động lên giao diện. Thiếu chỗ đọc = code chết; thiếu chỗ ghi = hằng số trá hình</label>
+			<label><input type="radio" name="q10" value="c" /> Khai báo → chỗ đọc → chỗ ghi → tác động lên giao diện</label>
 			<label><input type="radio" name="q10" value="b" /> Đọc tên biến → đoán mục đích → chạy app → xoá nếu thấy thừa</label>
-			<label><input type="radio" name="q10" value="c" /> Tìm chỗ khai báo → đếm số lần được nhắc trong project → kết luận theo số đếm</label>
+			<label><input type="radio" name="q10" value="a" /> Tìm chỗ khai báo → đếm số lần được nhắc trong toàn project → kết luận theo số đếm</label>
 			<label><input type="radio" name="q10" value="d" /> Kiểm tra annotation → đọc import → hỏi người viết code</label>
 			<p class="explain" hidden>
 				Thứ tự đúng là khai báo → chỗ đọc → chỗ ghi → tác động giao diện. Trong project mẫu, hàm <code>String.toInstant()</code>
