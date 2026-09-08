@@ -99,14 +99,61 @@ Retrofit 3.0.0 (15/05/2025) / nhánh 2.x kết ở 2.12.0 · Moshi 1.15.2 · Coi
 - **Minutes W3:** registry ước lượng 25 phút; engine stats tính 20 phút (200 từ/ph + 0.5/code-block, làm tròn 5). Engine là nguồn hiển thị như mọi bài — không phải lệch wiring; ghi nhận ở đây.
 - Không có deviation nào khác về schema/SPLIT_MAP/redirect/astro.config.mjs — tất cả đúng contract registry §6 row 5 + §7 entry 6.
 
+## Freshness adversarial review
+
+**Reviewer scope:** AGENT FRESH-5 độc lập, KHÔNG đọc-kết-luận-sẵn; tự fetch nguồn chính thức (developer.android.com, kotlinlang.org, square.github.io/retrofit, github.com/square/moshi, coil-kt.github.io/coil, Maven Central, GitHub releases, decompile AAR lifecycle-viewmodel 2.10.0) đối chiếu từng claim trong thân bài W1/W2/W3 + AP3 §Ch08. Ngày review: 2026-09-09.
+
+**Sources independently checked (8 claim areas):**
+
+| # | Claim | Verdict | Evidence độc lập |
+|---|---|---|---|
+| 1 | suspend ≠ background thread | AGREE | kotlinlang/Android coroutines guide: withContext mới chuyển chỗ chạy, dispatcher quyết định thread |
+| 2 | Retrofit suspend main-safe | AGREE | Android data-layer docs nguyên văn "main-thread-safe APIs… Retrofit"; cơ chế OkHttp pool khớp Retrofit CHANGELOG 2.6.0 (suspend support, 2019-06-05 — "từ bản 2.6.0, 2019" trong W1 đúng lịch sử) |
+| 3 | Moshi ≠ KSP | AGREE | Moshi README: codegen là Kotlin SymbolProcessor, sinh adapter lúc compile-time; reflection kéo kotlin-reflect 2.5 MiB; "prefer codegen" |
+| 4 | Coil độc lập Retrofit | AGREE | coil-kt.github.io: "image loading library", AsyncImage, io.coil3 3.6.2 hiện hành; W2 gloss đúng mức, drift Coil 3 ở AP3 đúng contract |
+| 5 | APK không giữ được secret | AGREE | Android security-tips + Google Cloud API-keys docs ("bypass straightforward"); bảng ranh giới W3 khớp nguyên tắc chính thức |
+| 6 | empty ≠ error | AGREE | Android ui-layer guidance dạy ô lỗi riêng trong UiState từ catch — không mâu thuẫn mô hình bốn trạng thái |
+| 7 | Version claim thân bài | AGREE (0 stale) | Grep 3 bài: chỉ có con số trong khối TOML trích nguyên văn project (đúng) + "2.6.0, 2019" (sự kiện lịch sử đúng). AP3 đối chiếu: Retrofit 3.0.0/2.12.0 ✓, Moshi 1.15.2 ✓, Coil 3.6.2 ✓, Kotlin 2.4.20 ✓, Timber 5.0.1 ✓ |
+| 8 | Coroutine concepts (IO 64 · Default = cores min 2 · viewModelScope SupervisorJob+Main.immediate · conflation · collect-never-returns) | AGREE toàn bộ | kotlinx source (Tasks.kt CORE_POOL_SIZE, IO_POOL_SIZE 64), lifecycle 2.10.0 decompile (SupervisorJob + Main.immediate, single creation, auto-cancel), kotlinlang StateFlow docs nguyên văn |
+
+**DISAGREE với gate report:** mục Freshness của report này (phiên trước) ghi "kotlinx-coroutines 1.10.2" — theo Maven/GitHub thì 1.11.0 stable từ 2026-05-08; con số trong AP3 (1.11.x) mới đúng. Câu "thân bài KHÔNG ghim số" overstated nhẹ vì "2.6.0, 2019" là số trong thân (đúng sự kiện lịch sử, không phải version pin).
+
+**Repairs:** không cần cho freshness (0 BLOCKER/0 MAJOR).
+
+**Minor (note-only):** (1) source viewModelScope W1 trích là snapshot AndroidX cũ (lifecycle ≥2.9 đổi sang getCloseable/addCloseable) — mọi kết luận cơ chế vẫn đúng; nếu trích lại sau nên thêm caveat "source as of lifecycle 2.x"; (2) nhãn ngày "(08/2026)" ở dòng kotlinx-coroutines của AP3 lệch với ngày phát hành thật 2026-05-08 (số phiên bản đúng; sửa trong batch AP3).
+
+**Final count: 0 BLOCKER · 0 MAJOR.**
+
+## Final adversarial review
+
+**Reviewer scope:** AGENT FINAL-5 độc lập, tấn công 24 mặt lỗi trên FILE THẬT tại HEAD (không tin gate report; monolith soi từ `git show 59b2173:…`). Ngày review: 2026-09-09.
+
+**Findings (lượt 1):** 21/24 PASS · **2 FAIL:**
+
+1. **BLOCKER — W1 quiz miskey 4/10 câu** (`Ch08CoroutinesVaFlowQuiz.astro`): Q1 key d (đúng: a), Q7 key a (đúng: b), Q8 key c (đúng: b), Q9 key b (đúng: d) — mỗi câu key chỉ option SAI trong khi giải thích in kèm dưới nó lại mô tả đúng option kia; quiz không chấm đúng được. W2/W3 verify đúng 20/20.
+2. **MAJOR — cue vị trí đầu:** đáp án đúng hiển thị ĐẦU tiên trong 9/10 câu W2 và 10/10 câu W3 (baseline monolith 6/19 ≈ 32%; quiz anh em 2–3/10). `quiz_audit.mjs` mù với lỗi này vì audit đọc `value` attribute trong khi thứ tự HIỂN THỊ label chưa từng được xáo — vi phạm chuẩn quiz §13 "vị trí đáp án đúng phân tán".
+
+22 mặt còn lại PASS có bằng chứng riêng (content-loss map 1:1 cả 23 mục; W1 deepen không re-teach S1; không myth suspend=thread; UDF/StateFlow đúng; Retrofit/Moshi/KSP chính xác; Coil gloss trước khi dùng; nav 2023 giữ nguyên văn; repository không dạy lại; bốn trạng thái đúng; API-key trung thực; log ≠ thông báo; paging nguyên vẹn; migration shape + no-fabricate + redirect + stats pins đúng; voice sạch; không used-before-taught; không dead link; không cleanup loss). 3 minor kèm theo (xuống dưới).
+
+**Repairs (commit `d40b12a`):**
+- Sửa 4 key W1: Q1 d→a, Q7 a→b, Q8 c→b, Q9 b→d (giải thích giữ nguyên — chúng vốn mô tả đúng đáp án thật); cân đối lại length-rank (đáp án đúng đang rank-4 8/10) về **1..4 = 3/3/3/1**.
+- Xáo thứ tự HIỂN THỊ label W2/W3 (giữ nguyên cặp value↔text, data-answer, giải thích; mọi tham chiếu "Đáp án x" trong giải thích là theo value nên không vỡ): W2 displayPos **{1:2, 2:3, 3:2, 4:3}**, W3 **{1:3, 2:4, 3:2, 4:1}** — hết pattern "đáp án luôn đứng đầu".
+- Minor kèm theo: W1 fence "Cần biết trước" thêm chỉ dẫn chạy starter trước + trỏ W2 mục 14.1 (mất đoạn "chạy project mẫu trước khi sửa gì" của monolith — lượt 1 phát hiện); W2 #nguon sửa cite toml coil "dòng 15"→"dòng 16" (verify trực tiếp `aaf-materials/…/libs.versions.toml`).
+
+**Re-verification sau repairs:** `quiz_audit.mjs` **3/3 PASS** (W1 pos 3/4/1/2 · rank 3/3/3/1; W2 pos 2/3/3/2 · rank 0/3/4/3; W3 pos 2/3/3/2 · rank 3/4/3/0) + display-position check 3/3 phân tán (max 4/10 = 40%) + build PASS 39 pages + astro check 0/0/65 + migration sim 6/6 PASS (schema 10, map 11, ch08 fan-out, idempotent, không fabricate S1/S5/N1/N2) + live 38 / redirect 5 không đổi.
+
+**Verdict lượt 2: STAGE5_ADVERSARIAL_PASS — 0 BLOCKER · 0 MAJOR.**
+
+**Minor còn lại (note-only, không gating):** (1) đoạn intro chung không-numbered của monolith ("chạy starter trước") không mang hết sang W1 — đã xử lý bằng pointer trong repairs; (2) cite toml 15→16 — đã sửa trong repairs; (3) hai minor của freshness reviewer (viewModelScope source snapshot; nhãn tháng AP3).
+
 ## Findings
 
-- **Blockers:** none.
-- **Major:** none.
-- **Minor (documented):** (1) câu hẹn operator ở S1 — đã sửa trong batch; (2) minutes W3 registry-vs-engine 25↔20 — note-only; (3) 3 file ngủ đông Ch08_1CoroutineVaFlow/Ch08_2RetrofitVaMoshi/Ch08_3LoiGoiMangDauTien vẫn trên đĩa (không thuộc registry, bị loại bởi filter key — đúng thiết kế; dọn theo batch cleanup IMP-064 như các file ngủ đông khác).
+- **Blockers:** none (lượt adversarial 1 phát hiện 1 — W1 quiz miskey — đã sửa `d40b12a`, re-verify PASS).
+- **Major:** none (lượt adversarial 1 phát hiện 1 — cue vị trí đầu W2/W3 — đã sửa `d40b12a`, re-verify PASS).
+- **Minor (documented):** (1) câu hẹn operator ở S1 — đã sửa trong batch; (2) minutes W3 registry-vs-engine 25↔20 — note-only; (3) 3 file ngủ đông Ch08_1CoroutineVaFlow/Ch08_2RetrofitVaMoshi/Ch08_3LoiGoiMangDauTien vẫn trên đĩa (không thuộc registry, bị loại bởi filter key — đúng thiết kế; dọn theo batch cleanup IMP-064 như các file ngủ đông khác); (4) viewModelScope source snapshot + nhãn tháng AP3 (freshness reviewer) — note-only; (5) "2.6.0, 2019" trong thân W1 là sự kiện lịch sử đúng, không phải version pin — ghi nhận để nhất quán tiêu chuẩn.
 
 ## Gate verdict
 
-**GATE PASS** — W1/W2/W3 live đúng thứ tự và đúng số mục liên tục 1–23 theo mốc monolith · 3 quiz PASS (10 câu, 4 option, 1 đúng, harness chung, key 30%, rank ≤40%) · schema 10 / map 11 / redirect 5 đúng contract · migration regression 11/11 · monolith + monolith quiz đã xoá, route chết có redirect 1 đích về W1 · live 38 / network stage 3 · slug equality + stats pairing (FILE_KEY_PIN 08_1/08_2/08_3) đúng · voice 0 leak · build PASS · astro check 0/0/65 (baseline giữ nguyên) · S1 IOU audit xong, 1 câu lệch đã sửa · working tree clean · **chưa push**.
+**GATE PASS** (sau adversarial closure `d40b12a`) — W1/W2/W3 live đúng thứ tự và đúng số mục liên tục 1–23 theo mốc monolith · 3 quiz PASS (10 câu, 4 option, 1 đúng, harness chung, key 30%, rank ≤40%, **thêm sau adversarial: display-position phân tán, key verify đúng ngữ nghĩa 30/30**) · schema 10 / map 11 / redirect 5 đúng contract · migration regression 11/11 + 6/6 sau repairs · monolith + monolith quiz đã xoá, route chết có redirect 1 đích về W1 · live 38 / network stage 3 · slug equality + stats pairing (FILE_KEY_PIN 08_1/08_2/08_3) đúng · voice 0 leak · freshness adversarial **0 BLOCKER / 0 MAJOR** (8/8 AGREE, sources độc lập) · final adversarial **STAGE5_ADVERSARIAL_PASS** (24 mặt, 1 BLOCKER + 1 MAJOR phát hiện và sửa trong `d40b12a`) · build PASS · astro check 0/0/65 (baseline giữ nguyên) · S1 IOU audit xong, 1 câu lệch đã sửa · working tree clean · **chưa push**.
 
 Sẵn sàng cho owner review trước Stage 6 / Data (Ch09 → D1/D2, Ch11 → X1/X2).
