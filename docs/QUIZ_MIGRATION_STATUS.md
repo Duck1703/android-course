@@ -54,7 +54,7 @@ Quy ước: **harness** = đã gọi `initQuiz` + có nút retry; **legacy** = s
 | `Ch04_1Quiz.astro` | legacy | — |
 | `Ch06Quiz.astro` | legacy | — |
 | `Ch07Quiz.astro` | legacy | — |
-| `Ch08Quiz.astro` | legacy | — |
+| `Ch08Quiz.astro` | **retired (Stage 5)** | monolith tách W1–W3: quiz chết cùng batch, thay bằng 3 quiz harness (Ch08CoroutinesVaFlowQuiz · Ch08RetrofitMoshiJsonQuiz · Ch08TrangThaiMangApiKeyQuiz) |
 | `Ch09Quiz.astro` | legacy | — |
 | `Ch10_1Quiz.astro` | legacy | — |
 | `Ch10_3Quiz.astro` | legacy | — |

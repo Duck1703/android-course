@@ -1,0 +1,747 @@
+---
+// W1 — "Coroutines & Flow trong code thật" (slug: ch08-coroutines-va-flow).
+// Tách từ monolith Ch08Networking.astro (batch Stage 5 — Giai đoạn 5: Mạng, bài 1/3).
+// Registry: W1 — stageId network · theo TARGET_REGISTRY_v5 §3 (mốc W1 START/END, mục 1–7).
+//
+// SỞ HỮU: con số dispatcher (IO 64 / Default = core) · đọc source viewModelScope · SupervisorJob
+// ở mức nhận diện · CoroutineContext `+` · chữ ký launch · tuần-tự-theo-mặc-định · main-safe
+// trong code mạng thật (Retrofit) · Flow ↔ StateFlow khi đọc code · conflation · collect trong
+// LaunchedEffect (áp dụng) · phê phán queryRecipe (suspend+launch dư, Dispatchers.Default) ·
+// quan sát launch-then-pop. KHÔNG dạy lại S1/S4/S5/N1/N2; KHÔNG chi tiết Job hierarchy;
+// KHÔNG catalogue toán tử Flow; KHÔNG async/await (không cần ở đây).
+//
+// Code thật lấy từ aaf-materials/08-networking/projects/{starter,final}/; mọi số dòng trích
+// dẫn đã mở file thật để kiểm (phiên 2026-09-08). starter ≡ final ở MainActivity.kt và
+// ui/RecipeDetails.kt. Ví dụ tối giản do khoá dựng được đánh dấu trong thân bài.
+import { Code } from "astro:components";
+
+const AAF = "aaf-materials/08-networking/projects/final/app/src/main/java/com/kodeco/recipefinder";
+const AAF_GRADLE = "aaf-materials/08-networking/projects/final";
+
+const viewModelScopeSrc = `public val ViewModel.viewModelScope: CoroutineScope
+    // 1
+    get() {
+        // 2
+        val scope: CoroutineScope? = this.getTag(JOB_KEY)
+        if (scope != null) {
+            return scope
+        }
+        // 3
+        return setTagIfAbsent(
+            JOB_KEY,
+            CloseableCoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        )
+    }`;
+
+const tomlCoroutines = `# [versions]
+kotlinx-coroutines = "1.7.2"
+
+# [libraries]
+coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }`;
+
+const gradleCoroutines = `dependencies {
+  // ...
+  implementation(libs.coroutines.android)
+}`;
+
+const launchSignature = `public fun CoroutineScope.launch(
+    context: CoroutineContext = EmptyCoroutineContext,
+    start: CoroutineStart = CoroutineStart.DEFAULT,
+    block: suspend CoroutineScope.() -> Unit
+): Job {
+  ...
+}`;
+
+const launchUsage = `viewModelScope.launch {
+  ...
+}`;
+
+const sequentialExample = `viewModelScope.launch {
+  val a = loadA()   // chạy xong…
+  val b = loadB()   // …rồi mới tới dòng này
+  // trừ khi bạn CỐ Ý mở công việc chạy song song,
+  // code trong một coroutine là tuần tự
+}`;
+
+const allFlowsReal = `private val _recipeListState = MutableStateFlow<List<Recipe>>(listOf())
+val recipeListState = _recipeListState.asStateFlow()
+
+private val _recipeState = MutableStateFlow<RecipeInformationResponse?>(null)
+val recipeState = _recipeState.asStateFlow()
+
+private val _queryState = MutableStateFlow(QueryState())
+val queryState = _queryState.asStateFlow()
+
+private val _uiState = MutableStateFlow(UIState())
+val uiState = _uiState.asStateFlow()`;
+
+const collectAsStateSnippet = `val uiState by viewModel.uiState.collectAsState()`;
+
+const collectBookSnippet = `val scope = rememberCoroutineScope()
+LaunchedEffect(Unit) {
+    scope.launch {
+        viewModel.recipeListState.collect { state ->
+            recipeListState.value = state
+        }
+    }
+}`;
+
+const recipeListReal = `@Composable
+fun RecipeList() {
+  // TODO: Add Prefs
+  // TODO: Update RecipeModel
+  val viewModel: RecipeViewModel = viewModel(factory = viewModelFactory {
+    RecipeViewModel()
+  })
+  val recipeListState = remember { mutableStateOf(listOf<Recipe>()) }
+  val scope = rememberCoroutineScope()
+  val uiState by viewModel.uiState.collectAsState()
+  LaunchedEffect(Unit) {
+    scope.launch {
+      viewModel.queryState.collect { state ->
+        if (state.number > 0) {
+          viewModel.setSearching(false)
+        }
+      }
+    }
+    scope.launch {
+      viewModel.recipeListState.collect { state ->
+        recipeListState.value = state
+      }
+    }
+  }
+  Column(modifier = Modifier.fillMaxSize()) {
+    ImageRow()
+    ChipRow(viewModel)
+    if (uiState.allChecked) {
+      SearchRow(viewModel)
+    }
+    if (uiState.allChecked) {
+      ShowRecipeList(recipeListState, viewModel)
+    } else {
+      ShowBookmarks(viewModel)
+    }
+  }
+}`;
+
+const queryRecipeFinal = `suspend fun queryRecipe(
+  id: Int,
+) {
+  viewModelScope.launch(Dispatchers.Default) {
+    try {
+      val spoonacularRecipe = spoonacularService.queryRecipe(id)
+      _recipeState.value = spoonacularRecipe
+    } catch (e: Exception) {
+      Timber.e(e, "Problems getting Recipe for id $id")
+      _recipeState.value = null
+    }
+  }
+}`;
+
+const recipeDetailsCollect = `if (recipeId != null) {
+  LaunchedEffect(Unit) {
+    scope.launch {
+      viewModel.recipeState.collect { state ->
+        recipeState.value = state
+      }
+    }
+    scope.launch {
+      viewModel.queryRecipe(recipeId)
+    }
+  }
+} else if (databaseRecipeId != null) {
+  LaunchedEffect(Unit) {
+    scope.launch {
+      viewModel.recipeState.collect { state ->
+        recipeState.value = state
+      }
+    }
+    scope.launch {
+      // TODO: Add Repository
+      viewModel.getBookmark()
+    }
+  }
+}`;
+---
+
+<section class="lesson">
+	<div class="callout journey">
+		<strong>App minh hoạ đổi từ giai đoạn này.</strong> Bảy bài đầu bạn làm việc với các app nhỏ, dữ liệu tự bịa trong code.
+		Từ đây trở đi, khoá chuyển sang <strong>một app duy nhất, xây dần qua 4 giai đoạn cuối</strong>:
+		<em>Recipe Finder</em> — app tìm công thức nấu ăn. Giai đoạn Mạng (3 bài) dạy nó <strong>lấy dữ liệu thật từ internet</strong>;
+		giai đoạn Dữ liệu cục bộ dạy nó nhớ vài lựa chọn nhỏ của người dùng và lưu công thức xuống database; giai đoạn Real-world dạy
+		các kiểu lưu trữ nâng cao. Nếu bạn nhảy thẳng vào đây mà thấy tên file lạ, đó là bình thường — đây là điểm bắt đầu
+		của app đó.
+	</div>
+
+	<div class="callout goals">
+		<strong>Học xong bài này bạn sẽ</strong>
+		<ul>
+			<li>Nói đúng <strong>quy ước chọn dispatcher</strong> kèm lý do cơ học phía sau (<code>IO</code> mở được nhiều
+				thread, <code>Default</code> bị chặn theo số core) — và không bọc <code>withContext(Dispatchers.IO)</code>
+				quanh lời gọi Retrofit chỉ vì "đó là code mạng".</li>
+			<li>Đọc được source của <code>viewModelScope</code> và suy ra ba hệ quả thực dụng: tạo một lần, tự huỷ theo
+				ViewModel, mặc định chạy trên UI thread.</li>
+			<li>Nói được quy tắc <strong>tuần-tự-theo-mặc-định</strong> của code trong một coroutine — và khi nào mới cần
+				thiết bị chạy song song.</li>
+			<li>Đọc được ViewModel thật với <strong>sáu StateFlow</strong>, phân biệt đúng <code>Flow</code> ↔
+				<code>StateFlow</code> khi đọc code (giá trị hiện tại, giá trị trùng bị bỏ qua).</li>
+			<li>Giải thích được vì sao <strong>hai <code>scope.launch</code> song song</strong> là bắt buộc khi mỗi luồng cần
+				một <code>collect</code> riêng.</li>
+			<li>Phê phán được hai quyết định trong code mẫu: <code>suspend</code> + <code>launch</code> cùng lúc, và
+				<code>Dispatchers.Default</code> cho lời gọi mạng.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Vì sao bài này quan trọng.</strong> S1 đã cho bạn <em>bản đồ</em>: coroutine không phải thread,
+		<code>suspend</code> chỉ cho phép tạm dừng, scope làm chủ công việc, Flow là giá trị theo thời gian. Nhưng bản đồ
+		đó dựng từ ví dụ tối giản. Trong app Recipe Finder, những khái niệm đó xuất hiện dày đặc và có thật: một ViewModel
+		giữ sáu dòng state, một lời gọi mạng nằm giữa <code>try/catch</code>, và hai cách viết khác nhau cho hai hàm cùng
+		loại việc. S1 cho bản đồ; bài này dạy cách các mảnh <em>hoạt động trong code thật</em> — để sang bài W2, mọi
+		dòng coroutine trong code mạng đều đọc được mà không cần đoán.
+	</p>
+	<div class="callout">
+		<strong>Cần biết trước.</strong> <strong>S1</strong> — coroutine ≠ thread · <code>suspend</code> cho phép tạm
+		dừng, không chọn thread · scope làm chủ công việc · <code>Main</code>/<code>IO</code>/<code>Default</code> ·
+		<code>withContext</code> · quy tắc main-safety · <code>Flow</code> và <code>StateFlow</code> ở mức mô hình ·
+		<code>collect</code> xong khi nào. <strong>S4</strong> — ViewModel sở hữu UI state, cặp
+		<code>MutableStateFlow</code> private + <code>asStateFlow()</code> public, <code>collectAsState</code>.
+		<strong>F1/F2</strong> — lambda đuôi, <code>by</code>, data class, generics ở mức nhận diện. <strong>N2</strong> —
+		<code>popBackStack()</code> (chỉ dùng để đọc một đoạn code ở mục 7). Bài này
+		<strong>dựng thêm tầng trên</strong> những cái đó, không dạy lại.
+	</div>
+
+	<h2 id="dispatcher-thuc-te">1. Bản đồ S1, và ba con số S1 cố tình để lại</h2>
+	<p>
+		S1 nói: chọn dispatcher theo <em>bản chất của việc</em> — giao diện thì <code>Main</code>, việc chặn thread thì
+		<code>IO</code>, tính toán nặng thì <code>Default</code>. Điều đó đủ để <em>chọn</em>. Để <em>đọc</em> code thật và
+		hiểu vì sao quy ước đó tồn tại, cần thêm cơ học phía sau ba cái tên:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Dispatcher</th><th>Thiết kế</th><th>Hệ quả khi dùng sai</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>Dispatchers.Main</code></td>
+				<td>Một thread duy nhất: UI thread, nơi vẽ giao diện và nhận cú chạm</td>
+				<td>Đặt việc chờ vào đây là treo màn hình — lỗi số một của người mới</td>
+			</tr>
+			<tr>
+				<td><code>Dispatchers.IO</code></td>
+				<td>Chuyên cho việc <em>chờ</em> (mạng, file, database): mặc định mở được tới <strong>64 thread</strong>, vì
+					các thread này phần lớn thời gian chỉ ngồi không, chờ dữ liệu về</td>
+				<td>Đặt việc tính toán nặng vào đây lãng phí thread đang ngồi chờ</td>
+			</tr>
+			<tr>
+				<td><code>Dispatchers.Default</code></td>
+				<td>Chuyên cho việc <em>tính</em> tốn CPU: số thread bằng số core của máy (tối thiểu 2), vì nhiều thread
+					hơn core chỉ làm hệ điều hành mất công đổi qua đổi lại</td>
+				<td>Đặt việc chờ vào đây là <strong>chiếm chỗ</strong> của các tác vụ tính toán thật</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Hai con số đó (64 và số core) là lý do vật lý của quy ước S1: <strong>việc chờ và việc tính không cùng một loại tài
+		nguyên, nên không cùng một bể thread.</strong> Trong app này sẽ có một lời gọi mạng được viết
+		<code>viewModelScope.launch(Dispatchers.Default)</code> (mục 7) — nhớ bảng này để khi tới đó bạn tự phán được chuyện
+		đang xảy ra.
+	</p>
+	<p class="hint">
+		<strong>Thêm thư viện coroutines vào project — 30 giây thôi.</strong> Đã có nền Gradle ở A14: khai
+		<code>kotlinx-coroutines-android</code> trong version catalog rồi tham chiếu qua <code>libs.*</code>. Chi tiết nhỏ
+		mà dễ quên: tên khai trong TOML dùng <strong>dấu gạch</strong> (<code>coroutines-android</code>) nhưng chỗ dùng là
+		<strong>dấu chấm</strong> (<code>libs.coroutines.android</code>) — Gradle tự chuyển, và nhờ vậy các thư viện liên
+		quan nhóm lại với nhau + có auto-complete. Project mẫu đã khai sẵn từ <code>starter</code>
+		(<code>{AAF_GRADLE}/gradle/libs.versions.toml</code> dòng 19 và 65):
+	</p>
+	<Code code={tomlCoroutines} lang="toml" theme="github-dark" />
+	<Code code={gradleCoroutines} lang="kotlin" theme="github-dark" />
+
+	<h2 id="viewmodelscope">2. <code>viewModelScope</code>: đọc source, thu ba kết luận</h2>
+	<p>
+		S1 dạy scope là <em>chủ sở hữu</em> của công việc, và <code>viewModelScope</code> là scope có sẵn của ViewModel.
+		Bài này đọc luôn source của nó — đây là một trong những đoạn đáng học nhất của cả giai đoạn, vì ba dòng code giải thích
+		được cả vòng đời:
+	</p>
+	<p class="src">Nguồn: <code>{AAF}</code> dùng nó ở <code>viewmodels/RecipeViewModel.kt</code>; source dưới đây thuộc thư viện <code>androidx.lifecycle</code></p>
+	<Code code={viewModelScopeSrc} lang="kotlin" theme="github-dark" />
+	<p>Ba chỗ được đánh số, đọc thành ba kết luận thực dụng:</p>
+	<ol>
+		<li>
+			Đây là một <strong>getter tự viết</strong> (property có getter, không phải field lưu sẵn).
+		</li>
+		<li>
+			Trước khi tạo, nó kiểm tra scope <strong>đã tồn tại chưa</strong> — có rồi thì trả về cái cũ. Nghĩa là
+			<code>viewModelScope</code> <strong>chỉ được tạo một lần cho mỗi ViewModel</strong>; bạn viết 100 lần vẫn là cùng
+			một scope.
+		</li>
+		<li>
+			Nếu chưa có, nó tạo mới và <strong>lưu lại</strong> dưới dạng <code>CloseableCoroutineScope</code> — "scope có
+			khóa đóng". Khi ViewModel bị huỷ (màn hình vĩnh viễn đi khỏi back stack), cái khoá đó được kéo: <strong>mọi
+			coroutine đang chạy trong scope bị huỷ tự động</strong>. Đây là lý do dùng <code>viewModelScope</code> thay vì tự
+			tạo scope: bạn được dọn rác miễn phí.
+		</li>
+	</ol>
+	<p>
+		Dòng tạo scope còn chứa một chi tiết: <code>SupervisorJob() + Dispatchers.Main.immediate</code>. Hai ý, cả hai chỉ
+		cần tới mức nhận diện:
+	</p>
+	<ul>
+		<li>
+			<code>Dispatchers.Main.immediate</code> — code trong <code>viewModelScope.launch &#123; &#125;</code> mặc định
+			chạy trên <strong>UI thread</strong>. Thoạt nghe ngược với "đừng làm việc nặng trên UI thread", nhưng không
+			mâu thuẫn: <code>launch</code> trên UI thread rồi bên trong gọi một hàm <code>suspend</code> tự chuyển chỗ chạy thì
+			UI thread không bị chặn — nó chỉ "đăng ký chờ" rồi đi làm việc khác. Chính cơ chế đó, áp vào Retrofit, là nội
+			dung của mục 4.
+		</li>
+		<li>
+			<code>SupervisorJob</code> — một loại job mà <strong>một coroutine con thất bại không kéo cả scope chết theo</strong>.
+			Với job thường, một con chết thì cha chết, và theo cha là mọi con còn lại. Đặt vào app này: nếu lời gọi lấy chi
+			tiết thất bại mà scope dùng job thường, thì <em>toàn bộ</em> <code>viewModelScope</code> bị huỷ — từ đó mọi lời
+			gọi mạng khác trong ViewModel này im lặng không chạy, kể cả tìm kiếm mới; người dùng thấy app "chết một nửa"
+			không rõ nguyên nhân. <code>SupervisorJob</code> khiến các coroutine con thất bại độc lập. <em>Cơ chế bên
+				trong của job hierarchy không thuộc bài này — chỉ cần đúng ý: con lỗi thì chết riêng, không kéo nhà.</em>
+		</li>
+	</ul>
+	<p class="hint">
+		<strong>Dấu <code>+</code> không phải phép cộng số.</strong> Nó là toán tử ghép <code>CoroutineContext</code>:
+		context là một tập các thành phần (job, dispatcher, exception handler…), và <code>+</code> ghép chúng thành một
+		context đầy đủ. Đây cũng là lý do bạn viết được <code>launch(Dispatchers.IO)</code> — truyền vào một context chỉ có
+		một thành phần, nó <strong>ghi đè dispatcher của scope cha và giữ nguyên các thành phần khác</strong> (kể cả
+		<code>SupervisorJob</code>).
+	</p>
+
+	<h2 id="launch-tuan-tu">3. <code>launch</code>, và quy tắc "tuần tự theo mặc định"</h2>
+	<p>
+		Chữ ký đầy đủ của <code>launch</code> — đọc một lần để không còn thấy lạ khi gặp các biến thể:
+	</p>
+	<Code code={launchSignature} lang="kotlin" theme="github-dark" />
+	<p>
+		Ba tham số: <code>context</code> (mặc định <code>EmptyCoroutineContext</code> — "kế thừa hết từ scope"), <code>start</code>
+		(mặc định chạy ngay), và <code>block</code> là chính đoạn code bạn muốn chạy. Kiểu trả về là <code>Job</code> — một
+		tay cầm để <code>cancel()</code> hoặc <code>join()</code> nếu cần. Vì <code>block</code> là <strong>tham số cuối</strong>,
+		Kotlin cho phép đưa nó ra ngoài cặp ngoặc (lambda đuôi — F1), nên cách dùng quen thuộc:
+	</p>
+	<Code code={launchUsage} lang="kotlin" theme="github-dark" />
+	<p>
+		thực chất là <code>launch(EmptyCoroutineContext, CoroutineStart.DEFAULT, &#123; ... &#125;)</code> — kế thừa
+		<code>SupervisorJob</code> và <code>Main.immediate</code> của <code>viewModelScope</code>, đúng như mục 2 vừa đọc.
+	</p>
+	<p>
+		Và đây là quy tắc mà người mới hay thiếu nhất khi đọc code coroutine — <strong>code trong một coroutine là tuần tự
+		theo mặc định</strong>:
+	</p>
+	<Code code={sequentialExample} lang="kotlin" theme="github-dark" />
+	<p>
+		Không có gì "chạy song song tự động". Việc <code>loadB()</code> chỉ bắt đầu khi <code>loadA()</code> đã trả về — trừ
+		khi ai đó <em>cố ý</em> mở thêm coroutine cho một việc con. Quy tắc này có hai hệ quả thực dụng trong app này:
+	</p>
+	<ul>
+		<li>
+			Đọc code <code>try &#123; gọi mạng; ghi state; ghi state thứ hai &#125;</code> — bạn biết chắc chúng chạy đúng thứ
+			tự viết, không ai chen ngang (mục 14 sẽ đọc đúng đoạn đó — trong W2).
+		</li>
+		<li>
+			<strong>Đừng thêm <code>async</code>/<code>await</code> chỉ vì "nghĩ rằng cần nhanh hơn".</strong> Muốn chạy
+			song song thật sự thì đó là công cụ; nhưng mọi code mạng của giai đoạn này đều <em>không cần</em> — mỗi lần chỉ có
+			một việc đang chờ. Không thêm API không cần thiết.
+		</li>
+	</ul>
+	<p class="hint">
+		<strong>Pattern "hàm thường mở coroutine" — bạn sẽ gặp nó hai lần.</strong> Trong project mẫu, hàm
+		<code>queryRecipes</code> là hàm Kotlin <em>thường</em> (không có <code>suspend</code>): gọi được từ một
+		<code>onClick</code> bình thường, và bên trong nó tự mở <code>viewModelScope.launch</code>. Đó là khuôn đúng cho
+		một hàm "khởi động một việc": người gọi không cần biết gì về coroutine, không phải chờ. Mục 7 sẽ đối chiếu với một
+		hàm viết theo kiểu khác trong cùng ViewModel.
+	</p>
+
+	<h2 id="main-safe">4. <code>suspend</code> trong code mạng thật: vì sao không cần <code>withContext(IO)</code></h2>
+	<p>
+		Đây là câu hỏi mà mọi người mới đều hỏi sau khi code chạy được: <em>nếu <code>viewModelScope</code> chạy trên UI
+		thread, tại sao gọi mạng trong đó lại không làm treo màn hình?</em> Truy vết một lời gọi, từng bước:
+	</p>
+	<ol class="chain">
+		<li>
+			<code>viewModelScope.launch</code> bắt đầu chạy khối code <strong>ngay trên UI thread</strong> (vì
+			<code>Dispatchers.Main.immediate</code>).
+		</li>
+		<li>
+			Chạy tới <code>spoonacularService.queryRecipes(...)</code>. Đây là hàm <code>suspend</code>: Retrofit
+			<strong>chuyển việc gửi request sang thread pool riêng của OkHttp</strong>, đăng ký một callback, rồi
+			<strong>suspend coroutine</strong>.
+		</li>
+		<li>
+			Suspend nghĩa là: coroutine lưu lại "tôi đang ở dòng nào, biến nào đang giữ gì" rồi <strong>trả UI thread lại
+			cho Android</strong>. UI thread quay về vẽ khung hình và nhận cú chạm như thường — <em>không có gì bị chặn</em>.
+		</li>
+		<li>
+			Vài trăm milisecond sau, OkHttp có response. Moshi parse JSON (trên thread của OkHttp).
+		</li>
+		<li>
+			Retrofit gọi <code>resume</code> để đánh thức coroutine. Vì scope có dispatcher là <code>Main</code>, phần code
+			<em>sau</em> lời gọi được <strong>đưa trở lại UI thread</strong>.
+		</li>
+		<li>
+			Dòng <code>_recipeListState.value = response.recipes</code> chạy trên UI thread — đúng chỗ, vì đây là state mà
+			Compose đang đọc.
+		</li>
+	</ol>
+	<p>
+		Kết luận, nói đúng theo quy tắc main-safety của S1: <strong>Retrofit suspend call là main-safe</strong> — thư viện
+		tự lo chuyển chỗ chạy cho phần chờ HTTP, nên bạn <strong>không cần</strong> và <strong>không nên</strong> bọc thêm:
+	</p>
+	<div class="callout">
+		<strong>Đừng cargo-cult.</strong> Viết <code>withContext(Dispatchers.IO) &#123; retrofitCall() &#125;</code> chỉ vì
+		"đây là code mạng" là thêm một lần chuyển ngữ cảnh vô ích: phần chờ HTTP <em>đã</em> không nằm trên dispatcher nào
+		của bạn. Quy tắc của S1 vẫn nguyên giá trị — nhưng đúng đối tượng: <code>withContext(Dispatchers.IO)</code> dành
+		cho <strong>code tự bạn viết mà nó chặn thread</strong> — đọc file bằng <code>File.readText()</code>, dùng
+		<code>HttpURLConnection</code>, gọi một SDK Java cũ. Thư viện hiện đại hỗ trợ <code>suspend</code> (Retrofit, Room)
+		thì tự main-safe. Học theo thư viện, không học theo cảm giác "mạng thì phải IO".
+	</div>
+	<p>
+		Để thấy <code>suspend</code> tiết kiệm được gì, đây là cùng một việc viết bằng callback — cách bắt buộc trước khi
+		Retrofit hỗ trợ <code>suspend</code> (từ bản 2.6.0, 2019):
+	</p>
+	<div class="ba">
+		<div class="ba-col">
+			<p class="ba-head">Trước — callback</p>
+			<ul>
+				<li>Interface khai báo <code>fun queryRecipes(...): Call&lt;SearchRecipesResponse&gt;</code></li>
+				<li>Gọi <code>.enqueue(object : Callback&lt;...&gt; &#123; onResponse / onFailure &#125;)</code></li>
+				<li>Trong <code>onResponse</code> phải tự kiểm tra <code>response.isSuccessful</code>, rồi tự xử lý
+					<code>body()</code> có thể <code>null</code></li>
+				<li>Không dùng được <code>try/catch</code> — lỗi mạng đi vào <code>onFailure</code>, lỗi HTTP đi vào
+					<code>onResponse</code>: <strong>hai đường xử lý lỗi khác nhau</strong></li>
+				<li>Muốn gọi 2 API liên tiếp thì phải lồng callback trong callback</li>
+				<li>Tự huỷ bằng <code>call.cancel()</code> trong <code>onCleared()</code>, dễ quên → memory leak</li>
+			</ul>
+		</div>
+		<div class="ba-col">
+			<p class="ba-head">Sau — <code>suspend</code></p>
+			<ul>
+				<li>Interface khai báo <code>suspend fun queryRecipes(...): SearchRecipesResponse</code></li>
+				<li>Gọi thẳng như hàm thường, kết quả là giá trị trả về</li>
+				<li>Kiểu trả về không nullable — Retrofit ném exception nếu HTTP lỗi</li>
+				<li><strong>Một khối <code>try/catch</code> duy nhất</strong> bắt cả lỗi mạng, lỗi HTTP và lỗi parse</li>
+				<li>Gọi 2 API liên tiếp: viết hai dòng nối nhau, đọc như code tuần tự — đúng quy tắc mục 3</li>
+				<li><code>viewModelScope</code> tự cancel khi ViewModel bị huỷ — không phải nhớ gì</li>
+			</ul>
+		</div>
+	</div>
+	<p>
+		Đây là ý nghĩa thật của câu "coroutine giúp viết code bất đồng bộ như code tuần tự". Không phải nhanh hơn — mà là
+		<strong>đọc được</strong>, và xử lý lỗi gom về một chỗ. W2 sẽ khai báo đúng interface <code>suspend</code> đó.
+	</p>
+
+	<h2 id="doc-viewmodel">5. Đọc <code>RecipeViewModel</code>: một ViewModel, sáu dòng state</h2>
+	<p>
+		Đến giờ xem một ViewModel thật làm gì trước khi W2 gắn phần mạng vào. <code>RecipeViewModel</code> khai báo
+		<strong>sáu</strong> cặp state theo đúng khuôn S4 (private <code>MutableStateFlow</code> + public
+		<code>asStateFlow()</code>) — bốn cái quan trọng nhất:
+	</p>
+	<p class="src">Nguồn: <code>{AAF}/viewmodels/RecipeViewModel.kt</code> (dòng 73–83)</p>
+	<Code code={allFlowsReal} lang="kotlin" theme="github-dark" />
+	<p>Mỗi flow lo một việc — đọc đúng vai của từng cái, vì cả ba bài của giai đoạn đều chạm vào chúng:</p>
+	<ul>
+		<li>
+			<code>recipeListState</code> — kết quả tìm kiếm: danh sách công thức hiện đang hiện trên lưới.
+		</li>
+		<li>
+			<code>recipeState</code> — chi tiết một công thức (nullable: lúc đầu và lúc lỗi đều là <code>null</code>).
+		</li>
+		<li>
+			<code>queryState</code> — thông tin truy vấn hiện tại (từ khoá, offset, số lượng, tổng kết quả) — tồn tại
+			<em>chỉ vì</em> phân trang ở W3.
+		</li>
+		<li>
+			<code>uiState</code> — trạng thái giao diện thuần: đang tìm hay không, tab nào đang chọn, các từ khoá đã tìm.
+		</li>
+	</ul>
+	<p>
+		Đây cũng là chỗ <strong>đọc đúng <code>Flow</code> ↔ <code>StateFlow</code> trong code thật</strong> — nối thẳng
+		phát biểu của S1: <code>StateFlow</code> <strong>luôn có đúng một giá trị hiện tại</strong> (nên tạo là phải truyền
+		giá trị khởi tạo: <code>MutableStateFlow(QueryState())</code>), người đăng ký muộn nhận được ngay giá trị đó, và
+		<strong>giá trị trùng lặp bị bỏ qua</strong> — set lại đúng giá trị cũ thì UI không vẽ lại. Một <code>Flow</code>
+		thường thì không có "giá trị hiện tại": ai đến muộn thì không thấy gì, và dòng đó có thể kết thúc.
+	</p>
+	<p class="hint">
+		<strong>Thuật ngữ cho hành vi "set lại giá trị cũ thì không phát":</strong> <em>conflation</em> (gộp). StateFlow
+		không xếp hàng từng giá trị — nó chỉ giữ và phát <em>giá trị mới nhất</em>. Với UI state đây là tính chất tốt (màn
+		hình không cần những giá trị đã lỗi thời ở giữa đường); với dòng sự kiện một-lần (snackbar, điều hướng) thì là tính
+		chất <em>xấu</em> — sự kiện có thể bị gộp mất. Đó là lý do cùng một ViewModel có thể cần cả hai loại dòng — chi
+		tiết <code>SharedFlow</code> không thuộc bài này, chỉ cần nhận ra <strong>hai loại dòng tồn tại vì hai loại nhu
+		cầu</strong>.
+	</p>
+	<p class="hint">
+		<strong>Một câu nói cũ hay gặp trong tài liệu:</strong> "Flows thay thế LiveData". Nói cho đúng:
+		<code>LiveData</code> chưa bị deprecate và vẫn chạy bình thường; code Kotlin/Compose viết mới gần như luôn chọn
+		<code>StateFlow</code> vì nó sinh ra từ coroutine và không phụ thuộc Android. Project cũ dùng LiveData không phải
+		code sai. (Bảng đối chiếu nằm ở phần tra cứu phiên bản — AP3.)
+	</p>
+
+	<h2 id="collect-hai-luong">6. Hai <code>collect</code>, hai <code>launch</code>: quy tắc đọc code có dòng chảy</h2>
+	<p>
+		Mục 5 nhìn ViewModel <em>phát</em> tin. Bên giao diện, ai <em>nhận</em>? Có hai cách, và code thật dùng cả hai cùng
+		lúc — nên phải tách được:
+	</p>
+	<p>
+		<strong>Cách 1 — chỉ để đọc và vẽ:</strong>
+	</p>
+	<Code code={collectAsStateSnippet} lang="kotlin" theme="github-dark" />
+	<p>
+		<code>collectAsState()</code> là extension của Compose: lắng nghe flow, biến giá trị mới nhất thành một
+		<code>State</code> của Compose. Nhờ <code>by</code> (F2), bạn dùng <code>uiState</code> như biến thường. Mỗi khi
+		flow phát giá trị mới, Compose tự vẽ lại đúng composable đã đọc biến đó. S4 đã dạy khuôn này với
+		<code>collectAsStateWithLifecycle</code> — cách viết lifecycle-aware; bản gọn ở đây vẫn dùng được trong project
+		mẫu.
+	</p>
+	<p>
+		<strong>Cách 2 — khi mỗi lần state đổi cần <em>làm một việc</em>, chứ không chỉ vẽ lại:</strong>
+	</p>
+	<p class="src">Nguồn: <code>{AAF}/ui/recipes/RecipeList.kt</code> (dòng 57–93)</p>
+	<Code code={collectBookSnippet} lang="kotlin" theme="github-dark" />
+	<p>Hai điều then chốt — cả hai đã có nền, giờ thấy nó hoạt động trong code thật:</p>
+	<ol>
+		<li>
+			<code>collect</code> là hàm <strong><code>suspend</code></strong> — bắt buộc phải nằm trong một coroutine. Đúng
+			quy tắc "gọi suspend từ đâu" của S1.
+		</li>
+		<li>
+			<code>LaunchedEffect</code> khởi động coroutine <strong>khi composable vào composition</strong> và
+			<strong>tự huỷ khi composable rời khỏi composition</strong>. C4 và S1 đã nối quy tắc "việc phụ có chỗ riêng" —
+			ở đây chính là chỗ đó: không muốn lắng nghe khi màn hình đã đi khỏi back stack.
+		</li>
+	</ol>
+	<p class="hint">
+		<strong>Và hệ quả gộp của cả hai: <code>collect</code> trên một dòng trạng thái không bao giờ "chạy xong".</strong>
+		S1 đã nói: một <code>Flow</code> có thể phát vài giá trị rồi kết thúc, riêng dòng <em>trạng thái</em> thì không có
+		điểm kết thúc tự nhiên. Trong code thật, hệ quả rất cụ thể: <strong>mọi dòng code viết <em>sau</em>
+		<code>collect</code> trong cùng một <code>launch</code> sẽ không bao giờ chạy.</strong> Đó là lý do code thật mở
+		<strong>hai <code>scope.launch</code> riêng</strong> cho hai flow — đặt hai <code>collect</code> nối tiếp trong một
+		<code>launch</code> thì flow thứ hai không bao giờ được lắng nghe.
+	</p>
+	<p>Toàn bộ <code>RecipeList</code> — nơi hai cách gặp nhau:</p>
+	<Code code={recipeListReal} lang="kotlin" theme="github-dark" />
+	<p>Đọc từ trên xuống, có sáu điều đáng chú ý:</p>
+	<ul>
+		<li>
+			<strong>ViewModel được tạo qua factory.</strong> <code>viewModel(factory = viewModelFactory &#123;
+			RecipeViewModel() &#125;)</code> — <code>viewModelFactory</code> là một helper tự viết của project
+			(<code>{AAF}/utils/ComposeUtils.kt</code>, dòng 77–80), chuẩn bị cho các giai đoạn sau khi ViewModel cần tham số
+			constructor. Cách tạo ViewModel trong constructor đã học ở S4 — cơ chế factory chi tiết thuộc phần sau của khoá,
+			ở đây chỉ cần nhận diện.
+		</li>
+		<li>
+			<strong><code>uiState</code> dùng cách 1</strong> — nó chỉ để <em>đọc và vẽ</em>: quyết định hiện
+			<code>SearchRow</code> hay hiện <code>ShowBookmarks</code>.
+		</li>
+		<li>
+			<strong><code>queryState</code> và <code>recipeListState</code> dùng cách 2</strong> — mỗi lần đổi cần
+			<em>làm việc gì đó</em>: gọi <code>viewModel.setSearching(false)</code> để tắt vòng xoay loading, hoặc ghi vào
+			state cục bộ <code>recipeListState</code>.
+		</li>
+		<li>
+			<strong><code>LaunchedEffect(Unit)</code></strong> — key không bao giờ đổi, nên khối chạy <strong>đúng một
+			lần</strong> trong suốt đời của composable. Truyền một biến hay đổi vào đó, khối bị huỷ và chạy lại mỗi lần biến
+			đổi — thường là bug (quiz đã từng hỏi).
+		</li>
+		<li>
+			<strong>Một state cục bộ trung gian:</strong> <code>val recipeListState = remember &#123; mutableStateOf(listOf&lt;Recipe&gt;()) &#125;</code>
+			— chỗ khối <code>collect</code> ghi kết quả vào. Chú ý nó <strong>trùng tên</strong> với flow
+			<code>viewModel.recipeListState</code>: hai thứ khác nhau hoàn toàn, chỉ trùng tên — điểm gây rối kinh điển khi
+			đọc code.
+		</li>
+		<li>
+			<strong>Đường phân nhánh cuối:</strong> <code>if (uiState.allChecked)</code> quyết định hiện danh sách tìm được
+			hay danh sách bookmark. Ở giai đoạn này nhánh bookmark chưa có dữ liệu — <code>getBookmarks()</code> còn rỗng.
+		</li>
+	</ul>
+	<p class="hint">
+		<strong>Nếu tự viết lại đoạn này hôm nay:</strong> bỏ luôn state cục bộ, dùng
+		<code>val recipes by viewModel.recipeListState.collectAsState()</code> — vì việc duy nhất khối <code>collect</code>
+		làm là copy giá trị sang một state khác. Khi thấy pattern "collect chỉ để gán vào state khác", hãy nghĩ tới
+		<code>collectAsState</code> trước. Cách trong project mẫu vẫn đúng — nó là cách tốt để <em>thấy rõ</em> cơ chế
+		<code>collect</code>.
+	</p>
+
+	<h2 id="hai-ham">7. Đọc code thật: cùng một ViewModel, hai kiểu viết — và một cặp hành động đáng để ý</h2>
+	<p>
+		Màn hình chi tiết cần một lời gọi thứ hai: bấm vào một công thức thì thấy một màn hình trắng (chưa có code tải chi
+		tiết). Đây là hàm trong <code>final</code>:
+	</p>
+	<p class="src">Nguồn: <code>{AAF}/viewmodels/RecipeViewModel.kt</code> (dòng 117–129)</p>
+	<Code code={queryRecipeFinal} lang="kotlin" theme="github-dark" />
+	<p>
+		Cấu trúc giống <code>queryRecipes</code> — nhưng có <strong>hai chỗ khác</strong>, và cả hai đều là bài học
+		đọc code. Quy tắc S1: <code>suspend</code> không chọn thread, network call không tự nghĩa là
+		<code>Dispatchers.IO</code> — giờ áp lên từng dòng.
+	</p>
+	<p>
+		<strong>Một — <code>suspend</code> cộng <code>launch</code> là một lớp dư.</strong> Hàm khai báo
+		<code>suspend fun queryRecipe(id: Int)</code> nhưng bên trong lại mở <code>viewModelScope.launch &#123; ... &#125;</code>.
+		Hệ quả: hàm <strong>trả về ngay lập tức</strong> sau khi mở coroutine, nên người gọi dù <code>await</code> cũng
+		<strong>không chờ được kết quả</strong> — chữ <code>suspend</code> chỉ buộc người gọi phải đang ở trong coroutine,
+		không mang lại lợi ích gì. Chọn một trong hai:
+	</p>
+	<ul>
+		<li>
+			<strong>Bỏ <code>suspend</code></strong>, giữ <code>launch</code> — giống hệt <code>queryRecipes</code>: hàm
+			"khởi động một việc", gọi được từ mọi nơi.
+		</li>
+		<li>
+			<strong>Bỏ <code>launch</code></strong>, giữ <code>suspend</code> (bọc <code>withContext</code> nếu thật sự cần
+			đổi chỗ chạy): lúc đó người gọi mới chờ được và biết khi nào xong.
+		</li>
+	</ul>
+	<p>
+		Cùng một ViewModel, cùng loại việc, hai hàm viết hai kiểu — sự không nhất quán tự nó là dấu hiệu cần xem lại khi
+		bạn tự viết.
+	</p>
+	<p>
+		<strong>Hai — <code>Dispatchers.Default</code> cho một lời gọi mạng.</strong> Đối chiếu bảng mục 1:
+		<code>Default</code> là bể thread <em>tính toán</em>, còn chờ mạng là việc <em>chờ</em>. Thực tế ở đây
+		<strong>vẫn chạy đúng</strong> — theo đúng cơ chế mục 4, Retrofit tự chuyển việc gửi request sang thread pool của
+		OkHttp, nên tham số dispatcher này gần như không thay đổi hành vi gì. Nhưng nó dựng <strong>thói quen sai</strong>:
+		nếu sau này bạn đặt code <em>thật sự chặn thread</em> vào <code>Default</code>, bạn chiếm chỗ của các tác vụ tính
+		toán. Quy ước vẫn là: code tự chặn thread để chờ I/O → <code>Dispatchers.IO</code>. Và chú ý sự bất đối xứng:
+		<code>queryRecipes</code> không truyền dispatcher gì cả, <code>queryRecipe</code> lại truyền <code>Default</code> —
+		hai hàm gọi cùng một API, khác dispatcher, không có lý do kỹ thuật nào giải thích.
+	</p>
+	<p>
+		Phía giao diện, màn hình chi tiết lặp đúng quy tắc mục 6 — <strong>hai <code>scope.launch</code> song song</strong>:
+		một để <code>collect</code> (lắng nghe mãi mãi), một để <em>khởi động</em> lời gọi mạng. Viết nối tiếp trong một
+		<code>launch</code> thì lệnh gọi sẽ không bao giờ chạy, vì <code>collect</code> chặn ở trên:
+	</p>
+	<p class="src">Nguồn: <code>{AAF}/ui/RecipeDetails.kt</code> (dòng 94–117)</p>
+	<Code code={recipeDetailsCollect} lang="kotlin" theme="github-dark" />
+	<p class="hint">
+		<strong>Vì sao thứ tự là collect trước, gọi API sau?</strong> Vì <code>recipeState</code> là
+		<code>StateFlow</code> — luôn giữ giá trị hiện tại, người đăng ký muộn vẫn nhận được. Về lý thuyết thứ tự không
+		quan trọng ở đây. Nhưng nếu đây là loại dòng <em>phát một lần rồi mất</em> (như <code>SharedFlow</code>/<code>Channel</code>),
+		gọi API trước khi kịp <code>collect</code> sẽ <strong>mất kết quả</strong> — race condition rất khó tái hiện. Viết
+		collect trước là thói quen an toàn.
+	</p>
+	<p class="notice">
+		<strong>Một cặp hành động đáng để ý trong cùng file này.</strong> Nút bookmark của màn hình chi tiết làm <em>hai
+		việc trong cùng một cú bấm</em>: mở <code>scope.launch &#123; ... &#125;</code> để ghi/xoá dữ liệu, rồi gọi
+		<code>navController.popBackStack()</code> ngay sau (dòng 180–191 của
+		<code>{AAF}/ui/RecipeDetails.kt</code> — <code>popBackStack</code> đã học ở bài <strong>N2</strong>). Hai động
+		tác đó có mối quan hệ đáng để ý: <code>scope</code> ở đây là <code>rememberCoroutineScope()</code> —
+		<strong>scope gắn với composable</strong>, theo đúng nguyên tắc "scope làm chủ" của S1; và một coroutine thuộc scope
+		nào thì có thể bị scope đó huỷ khi việc không còn liên quan (màn hình rời khỏi màn hình). Nói ở mức bài này:
+		<em>khởi động việc</em> và <em>rời màn hình</em> là hai hành động riêng biệt, và khi chúng xảy ra gần như cùng lúc
+		thì app thật cần nghĩ tới "việc có kịp xong trước khi màn hình đi không?". Phân tích chính xác khoảnh khắc huỷ đòi
+		hỏi cơ chế vòng đời sâu hơn — không thuộc bài này; giữ lại như một dấu hỏi khi bạn tự viết app: <strong>đừng cho
+		công việc có ý nghĩa dữ liệu vào scope của một màn hình rồi rời màn hình ngay.</strong>
+	</p>
+
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Đồng nghiệp viết: <code>viewModelScope.launch &#123; withContext(Dispatchers.IO) &#123; spoonacularService.queryRecipes(q,
+			0) &#125; &#125;</code> và nói "mạng thì phải IO". Chỉ ra <strong>(a)</strong> vì sao lời bọc đó thừa trong trường hợp
+			này, <strong>(b)</strong> vì sao <code>Dispatchers.IO</code> lại <em>đúng</em> cho một tình huống khác trong cùng app,
+			và <strong>(c)</strong> dòng code viết <em>sau</em> <code>viewModel.recipeState.collect &#123; ... &#125;</code> trong cùng
+			một <code>launch</code> sẽ ra sao?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>(a)</strong> Retrofit suspend call tự main-safe: phần chờ HTTP chạy trên thread pool của OkHttp, không nằm
+				trên dispatcher nào của bạn (mục 4). Bọc thêm <code>withContext(Dispatchers.IO)</code> chỉ thêm một lần chuyển ngữ
+				cảnh. Quy tắc đúng: <code>withContext(IO)</code> dành cho code <em>tự bạn viết mà nó chặn thread</em>.
+			</p>
+			<p>
+				<strong>(b)</strong> Khi code <em>chặn thread</em> để chờ I/O — đọc file, database không hỗ trợ suspend, SDK cũ — thì
+				<code>Dispatchers.IO</code> đúng: nó mở được tới 64 thread vì các thread đó phần lớn thời gian chỉ ngồi chờ (mục 1).
+			</p>
+			<p>
+				<strong>(c)</strong> Không bao giờ chạy. <code>collect</code> trên một dòng trạng thái không có điểm kết thúc, nên
+				code sau nó trong cùng <code>launch</code> không bao giờ được tới — mỗi việc cần một <code>launch</code> riêng (mục 6).
+			</p>
+		</details>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía trên.
+		Bảng lệch phiên bản đầy đủ của cả giai đoạn Mạng nằm ở phần tra cứu của khoá (AP3).
+	</p>
+	<ul>
+		<li>
+			<strong>Tưởng "code mạng thì phải <code>Dispatchers.IO</code>", bọc <code>withContext(IO)</code> quanh Retrofit.</strong>
+			Retrofit suspend call tự main-safe — phần chờ HTTP nằm trên thread pool của OkHttp, không nằm trên dispatcher nào
+			của bạn (mục 1, 4). <code>withContext(IO)</code> dành cho code <em>tự bạn viết mà nó chặn thread</em>.
+		</li>
+		<li>
+			<strong>Tưởng <code>suspend</code> nghĩa là "chạy nền".</strong> S1 đã chặn: <code>suspend</code> chỉ cho phép
+			tạm dừng; ai quyết định chỗ chạy là dispatcher. <code>suspend</code> + <code>launch</code> trong cùng một hàm
+			(mục 7) còn là lớp dư: hàm trả về ngay, người gọi không chờ được gì.
+		</li>
+		<li>
+			<strong>Tưởng code trong coroutine tự chạy song song.</strong> Tuần-tự-theo-mặc-định (mục 3): dòng sau chỉ chạy
+			khi dòng trước xong, trừ khi ai đó cố ý mở thêm coroutine. App này không cần <code>async</code>/<code>await</code>.
+		</li>
+		<li>
+			<strong>Đặt <code>collect</code> nối tiếp trong một <code>launch</code>.</strong> <code>collect</code> trên dòng
+			trạng thái không bao giờ trả về — flow thứ hai sẽ không bao giờ được lắng nghe. Hai luồng, hai
+			<code>scope.launch</code> (mục 6).
+		</li>
+		<li>
+			<strong>Lẫn <code>Flow</code> với <code>StateFlow</code> khi đọc code.</strong> StateFlow luôn có giá trị hiện
+			tại và gộp giá trị trùng (conflation); Flow thường không. Hợp với UI state; không hợp với sự kiện một-lần
+			(mục 5).
+		</li>
+	</ul>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+	<div class="callout journey">
+		<strong>Tóm tắt — 7 điều cần giữ lại</strong>
+		<ol>
+			<li><strong>Quy ước dispatcher có cơ học phía sau:</strong> <code>IO</code> mở tới 64 thread (cho việc chờ),
+				<code>Default</code> bằng số core (cho việc tính). Việc chờ và việc tính không cùng một bể thread.</li>
+			<li><strong><code>viewModelScope</code>:</strong> tạo một lần, tự huỷ theo ViewModel, mặc định
+				<code>Main.immediate</code>; <code>SupervisorJob</code> để một con lỗi không kéo cả nhà (mức nhận diện).</li>
+			<li><strong>Tuần-tự-theo-mặc-định:</strong> code trong một coroutine chạy theo thứ tự viết; song song phải được
+				cố ý mở ra — và app này không cần <code>async</code>/<code>await</code>.</li>
+			<li><strong>Retrofit suspend call là main-safe:</strong> không bọc <code>withContext(IO)</code> quanh nó;
+				<code>withContext(IO)</code> dành cho code tự viết mà chặn thread.</li>
+			<li><strong>StateFlow ≠ Flow khi đọc code:</strong> luôn có giá trị hiện tại, giá trị trùng bị gộp (conflation)
+				— hợp với UI state, không hợp với sự kiện một-lần.</li>
+			<li><strong>Hai <code>collect</code> cần hai <code>launch</code>:</strong> <code>collect</code> là
+				<code>suspend</code> và trên dòng trạng thái nó không bao giờ trả về.</li>
+			<li><strong>Đọc phê phán:</strong> <code>suspend</code>+<code>launch</code> cùng lúc là lớp dư;
+				<code>Default</code> cho lời gọi mạng là thói quen sai dù chạy đúng.</li>
+		</ol>
+	</div>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>content/book/ch08-networking.md</code> — Coroutines (dòng 33–104:
+			thread/dispatcher · coroutine · <code>suspend</code> · source <code>viewModelScope</code> ·
+			<code>SupervisorJob</code> · chữ ký <code>launch</code> · thêm thư viện coroutines), Flows (dòng 108–132:
+			LiveData → Flow · cặp StateFlow · hai cách collect), Key Points (dòng 589–594).
+		</li>
+		<li>
+			<strong>Code thật</strong> (số dòng đã kiểm 2026-09-08):
+			<code>{AAF}/viewmodels/RecipeViewModel.kt</code> (dòng 73–83 — sáu StateFlow; dòng 95–111 —
+			<code>queryRecipes</code>; dòng 117–129 — <code>queryRecipe</code>), <code>{AAF}/ui/recipes/RecipeList.kt</code>
+			(dòng 57–93 — hai cách collect cùng lúc; dòng 55 — <code>PAGING_OFFSET</code>), <code>{AAF}/ui/RecipeDetails.kt</code>
+			(dòng 94–117 — hai <code>scope.launch</code>; dòng 180–191 — launch-then-<code>popBackStack</code>),
+			<code>{AAF_GRADLE}/gradle/libs.versions.toml</code> (dòng 19, 65 — coroutines).
+		</li>
+		<li>
+			<strong>Đối chiếu nền tảng:</strong> <code>docs/drafts/s1-coroutine-foundation.md</code> (quy tắc S1 được áp dụng
+			ở mục 1–7) · <code>web/src/components/lessons/Ch06ViewModelVaUiState.astro</code> (khuôn cặp StateFlow của S4) ·
+			<code>web/src/components/lessons/NavigationBackStackTypeSafe.astro</code> mục 15 (bối cảnh
+			<code>popBackStack</code> ở <code>RecipeDetails</code>).
+		</li>
+		<li>
+			<strong>Ví dụ tối giản do khoá dựng:</strong> <code>loadA/loadB</code> (mục 3), bảng Before/after callback ↔
+			<code>suspend</code> (mục 4, viết lại từ giáo trình gốc) — không trích project mẫu.
+		</li>
+	</ul>
+</section>
+

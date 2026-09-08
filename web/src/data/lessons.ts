@@ -59,8 +59,12 @@ import NavigationBackStackTypeSafe from "../components/lessons/NavigationBackSta
 import NavigationBackStackTypeSafeQuiz from "../components/lessons/NavigationBackStackTypeSafeQuiz.astro";
 import Ch07AdvancedArchitecture from "../components/lessons/Ch07AdvancedArchitecture.astro";
 import Ch07Quiz from "../components/lessons/Ch07Quiz.astro";
-import Ch08Networking from "../components/lessons/Ch08Networking.astro";
-import Ch08Quiz from "../components/lessons/Ch08Quiz.astro";
+import Ch08CoroutinesVaFlow from "../components/lessons/Ch08CoroutinesVaFlow.astro";
+import Ch08CoroutinesVaFlowQuiz from "../components/lessons/Ch08CoroutinesVaFlowQuiz.astro";
+import Ch08RetrofitMoshiJson from "../components/lessons/Ch08RetrofitMoshiJson.astro";
+import Ch08RetrofitMoshiJsonQuiz from "../components/lessons/Ch08RetrofitMoshiJsonQuiz.astro";
+import Ch08TrangThaiMangApiKey from "../components/lessons/Ch08TrangThaiMangApiKey.astro";
+import Ch08TrangThaiMangApiKeyQuiz from "../components/lessons/Ch08TrangThaiMangApiKeyQuiz.astro";
 import Ch09DataStore from "../components/lessons/Ch09DataStore.astro";
 import Ch09Quiz from "../components/lessons/Ch09Quiz.astro";
 import Ch10_1RoomLaGi from "../components/lessons/Ch10_1RoomLaGi.astro";
@@ -153,7 +157,16 @@ export const LESSONS: Partial<Record<string, LessonEntry>> = {
     Quiz: NavigationBackStackTypeSafeQuiz,
   },
   "ch07-advanced-architecture": { Lesson: Ch07AdvancedArchitecture, Quiz: Ch07Quiz },
-  "ch08-networking": { Lesson: Ch08Networking, Quiz: Ch08Quiz },
+  // Giai đoạn 5 (batch Stage 5): Ch08 monolith tách thành W1–W3 theo mốc W1/W2/W3 START/END.
+  // Old slug ch08-networking chết trong batch này → redirect 1 đích sang W1 (astro.config.mjs)
+  // + SPLIT_MAP replace (progress.ts). Credit ch08 cũ chia cho cả ba bài kế nhiệm trực tiếp
+  // (registry §7 entry 6). KHÔNG có bài NEW trong batch này.
+  "ch08-coroutines-va-flow": { Lesson: Ch08CoroutinesVaFlow, Quiz: Ch08CoroutinesVaFlowQuiz },
+  "ch08-retrofit-moshi-json": { Lesson: Ch08RetrofitMoshiJson, Quiz: Ch08RetrofitMoshiJsonQuiz },
+  "ch08-trang-thai-mang-api-key": {
+    Lesson: Ch08TrangThaiMangApiKey,
+    Quiz: Ch08TrangThaiMangApiKeyQuiz,
+  },
   "ch09-data-store": { Lesson: Ch09DataStore, Quiz: Ch09Quiz },
   // Chương 10 đã tách thành 4 chương nhỏ — mỗi chương nhỏ có quiz riêng ngay sau nội dung.
   "ch10-room-la-gi-va-sqlite": { Lesson: Ch10_1RoomLaGi, Quiz: Ch10_1Quiz },

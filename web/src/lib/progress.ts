@@ -46,7 +46,8 @@
 //    +1 vì sửa entry ch01 monolith (typo dead slug → slug live, map content
 //    đổi nên mọi máy phải re-run: correct-criterion §12.4 đơn điệu theo thứ tự
 //    thực thi — không gán cứng sẵn dãy version tương lai); 8 = Stage 2 (ch05
-//    monolith split → C1–C4); 9 = Stage 3 (ch06 monolith split → S2–S4).
+//    monolith split → C1–C4); 9 = Stage 3 (ch06 monolith split → S2–S4);
+//    10 = Stage 5 (ch08 monolith split → W1–W3).
 // ────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "hoc-android-tv:progress";
 const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
@@ -66,7 +67,11 @@ const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
 // [S2, S3, S4] (SPLIT_MAP #4 của registry §7). S1 (coroutines-20-phut-khong-so)
 // và S5 (kien-truc-ui-data-repository) là bài HỌC MỚI — KHÔNG nằm trong mapping,
 // không tự done (no-fabricate §D; đặc biệt ch10-1 cũ vẫn chỉ sang R1, không S5).
-const SCHEMA_VERSION = 9;
+// 10 = Stage 5: Ch08 monolith tách thành W1–W3 (registry §7 entry 6). Old slug
+// "ch08-networking" chết → entry replace old → [W1, W2, W3]. KHÔNG có bài NEW
+// trong batch này — cả ba bài kế nhiệm trực tiếp nội dung monolith, credit chia
+// đủ ba theo mapping khai báo (không no-fabricate case nào).
+const SCHEMA_VERSION = 10;
 
 // Khi một chương lớn được tách thành nhiều chương nhỏ, slug cũ trong localStorage
 // của người học không còn ứng với trang nào — tiến độ của họ sẽ "bốc hơi".
@@ -153,6 +158,17 @@ const SPLIT_MAP: Record<string, string[]> = {
     "ch06-state-va-recomposition",
     "ch06-state-hoisting-va-udf",
     "ch06-viewmodel-va-ui-state",
+  ],
+  // IMP-0xx (v10) — Stage 5: Ch08 monolith dead-source split (registry §7 entry 6).
+  // Old slug CHẾT (route retired) → replace: W1 (coroutines & Flow) + W2 (Retrofit,
+  // JSON/Moshi-KSP & Coil) + W3 (trạng thái mạng, lỗi, API key & phân trang). KHÔNG
+  // có bài NEW trong batch này — cả ba bài kế nhiệm trực tiếp nội dung monolith
+  // theo mốc W1/W2/W3 START/END, credit chia đủ ba theo mapping khai báo.
+  // Redirect 1 đích old → W1 (astro.config.mjs).
+  "ch08-networking": [
+    "ch08-coroutines-va-flow",
+    "ch08-retrofit-moshi-json",
+    "ch08-trang-thai-mang-api-key",
   ],
 };
 

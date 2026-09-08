@@ -480,11 +480,40 @@ export const SECTIONS: SectionInfo[] = [
         // Stage DICH là optional (nội dung O1/AP2) dù route đang sống giữa ch06/ch08.
         stageId: "optional",
       },
+      // Giai đoạn 5 (Mạng) — batch Stage 5: Ch08 monolith tách thành 3 bài (W1–W3) theo
+      // mốc W1/W2/W3 START/END của monolith (mục 1–7 · 8–15 · 16–23). Mỗi bài có quiz riêng.
+      // Old slug ch08-networking chết trong batch này → redirect 1 đích sang W1
+      // (astro.config.mjs) + SPLIT_MAP replace (progress.ts). W1–W3 là tách nội dung
+      // kế nhiệm trực tiếp — credit chia theo đúng mapping (registry §7 entry 6).
       {
         number: 8,
-        slug: "ch08-networking",
-        title: "Networking",
-        summaryVi: "Coroutine, Flow, gọi API bằng Retrofit, parse JSON bằng Moshi.",
+        subNumber: 1,
+        slug: "ch08-coroutines-va-flow",
+        title: "Coroutines & Flow trong code thật",
+        parentTitle: "Networking",
+        summaryVi: "Bản đồ dispatcher (IO 64/Default theo core), đọc source viewModelScope, tuần-tự-theo-mặc-định, Retrofit suspend main-safe, Flow ↔ StateFlow khi đọc code, hai collect hai launch, và hai điểm phê phán trong code mẫu.",
+        aafFolder: "08-networking",
+        hasProject: true,
+        stageId: "network",
+      },
+      {
+        number: 8,
+        subNumber: 2,
+        slug: "ch08-retrofit-moshi-json",
+        title: "Retrofit, JSON/Moshi-KSP & Coil",
+        parentTitle: "Networking",
+        summaryVi: "Mô hình HTTP tối thiểu, interface Retrofit là bản mô tả API (@GET/@Query/@Path), Moshi đổi JSON ↔ data class, RetrofitInstance object+lazy, codegen KSP thay reflection, toàn mạch mười bước, và lần đầu gặp Coil.",
+        aafFolder: "08-networking",
+        hasProject: true,
+        stageId: "network",
+      },
+      {
+        number: 8,
+        subNumber: 3,
+        slug: "ch08-trang-thai-mang-api-key",
+        title: "Trạng thái mạng, lỗi, API key & phân trang",
+        parentTitle: "Networking",
+        summaryVi: "Bốn tình huống loading/content/empty/error (rỗng ≠ lỗi), UiState trung thực có ô chứa lỗi, log ≠ thông báo, try/catch không nuốt huỷ, keys.properties→BuildConfig và ranh giới bảo mật của nó, phân trang offset.",
         aafFolder: "08-networking",
         hasProject: true,
         stageId: "network",

@@ -152,6 +152,15 @@ const FILE_KEY_PIN: Record<string, string> = {
   // (tên kebab→Pascal thuần, như F1/F2/S1/S5) — key = slug bỏ gạch, cùng cơ chế.
   "navigation-destination-nav-host": "navigationdestinationnavhost",
   "navigation-back-stack-type-safe": "navigationbackstacktypesafe",
+  // Stage 5 (Giai đoạn 5 — Mạng): W1–W3 là tách monolith Ch08Networking.astro —
+  // file live KHÔNG mang số đơn vị (Ch08CoroutinesVaFlow…) nên regex "Ch(\d{2})"
+  // cho key "08" (không thuộc registry) → bị loại, trong khi file ngủ đông
+  // Ch08_1CoroutineVaFlow/Ch08_2RetrofitVaMoshi/Ch08_3LoiGoiMangDauTien thắng
+  // key 08_1/08_2/08_3 — đúng bug-class stats-pairing Stage 1/3. Ghim key =
+  // "08_N" theo subNumber registry để file live vào đúng bucket của mình.
+  "ch08-coroutines-va-flow": "08_1",
+  "ch08-retrofit-moshi-json": "08_2",
+  "ch08-trang-thai-mang-api-key": "08_3",
   "ch06-state-va-recomposition": "06_2",
   "ch06-state-hoisting-va-udf": "06_3",
   "ch06-viewmodel-va-ui-state": "06_4",

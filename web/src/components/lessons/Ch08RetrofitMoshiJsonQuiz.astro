@@ -1,0 +1,159 @@
+---
+// Quiz cho W2 — Retrofit, JSON/Moshi-KSP & Coil (slug: ch08-retrofit-moshi-json).
+// Tách từ monolith Ch08Quiz.astro (batch Stage 5). Phân bổ theo ownership:
+// W2 sở hữu HTTP vocabulary, Retrofit interface/annotations/dynamic proxy, Moshi/@Json/nullability,
+// RetrofitInstance object+lazy, codegen KSP vs implementation, thứ tự cập nhật state, Coil gloss.
+// Sáu câu kế thừa ý cũ của monolith (câu 11–18), bốn câu mới bám mục 8–15.
+// Chuẩn quiz §13: 4 đáp án / 1 đúng, giải thích 100%, vị trí & độ dài đáp án đúng phân tán.
+// Chấm bằng harness chung IMP-001.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>1. Retrofit làm gì với <code>interface SpoonacularService</code> mà bạn viết?</legend>
+			<label><input type="radio" name="q1" value="c" /> Lúc chạy, đọc annotation và tự dựng object thực thi interface (dynamic proxy)</label>
+			<label><input type="radio" name="q1" value="a" /> Bắt bạn tự viết một class implement interface đó</label>
+			<label><input type="radio" name="q1" value="b" /> Sinh code cho interface đó lúc biên dịch, giống KSP</label>
+			<label><input type="radio" name="q1" value="d" /> Đổi interface đó thành một file cấu hình JSON được đọc lại mỗi khi app khởi động</label>
+			<p class="explain" hidden>
+				Bạn chỉ khai <em>hình dạng</em> của API; <code>retrofit.create(SpoonacularService::class.java)</code> trả về
+				một đối tượng do Retrofit dựng lúc chạy, đọc <code>@GET</code>/<code>@Query</code>/<code>@Path</code> để
+				biết phải gửi request nào (mục 9). Đây là lý do bạn không bao giờ thấy class nào implement interface này
+				trong project. Codegen lúc biên dịch là việc của Moshi adapter, không phải Retrofit.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>2. Khác biệt giữa <code>@Query</code> và <code>@Path</code> là gì?</legend>
+			<label><input type="radio" name="q2" value="b" /> <code>@Query</code> thêm tham số sau <code>?</code>; <code>@Path</code> thay chỗ trống trong path</label>
+			<label><input type="radio" name="q2" value="a" /> <code>@Query</code> chỉ dùng được với HTTP method GET, còn <code>@Path</code> dùng riêng cho POST</label>
+			<label><input type="radio" name="q2" value="d" /> <code>@Query</code> mã hoá dữ liệu, <code>@Path</code> thì không</label>
+			<label><input type="radio" name="q2" value="c" /> <code>@Query</code> gắn vào hàm, <code>@Path</code> gắn vào tham số</label>
+			<p class="explain" hidden>
+				Ví dụ cụ thể ở mục 10: <code>recipes/complexSearch?query=pasta&amp;offset=0</code> — <code>query</code> và
+				<code>offset</code> là <code>@Query</code>. Còn <code>recipes/716429/information</code> — số
+				<code>716429</code> nằm <em>trong</em> đường dẫn, nên khai bằng <code>@Path("id")</code> ứng với chỗ trống
+				<code>&#123;id&#125;</code>. Cả hai annotation đều gắn vào tham số — đáp án c đảo ngược vai.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. Vì sao <code>baseUrl</code> của Retrofit bắt buộc phải kết thúc bằng dấu <code>/</code>?</legend>
+			<label><input type="radio" name="q3" value="a" /> Retrofit ném <code>IllegalArgumentException</code> ngay khi dựng nếu thiếu nó</label>
+			<label><input type="radio" name="q3" value="c" /> Chỉ là một quy ước viết cho dễ đọc, hoàn toàn không có tác dụng kỹ thuật nào</label>
+			<label><input type="radio" name="q3" value="b" /> Vì Spoonacular yêu cầu như vậy</label>
+			<label><input type="radio" name="q3" value="d" /> Vì thiếu dấu <code>/</code> thì Retrofit âm thầm bỏ phần path của <code>@GET</code></label>
+			<p class="explain" hidden>
+				Đây là một trong những lỗi hay gặp nhất khi mới dùng Retrofit, và may là nó "fail fast" — báo lỗi ngay lúc
+				khởi tạo chứ không âm thầm gọi sai URL (mục 12). Ngược lại, path trong <code>@GET</code> mà <em>bắt đầu</em>
+				bằng <code>/</code> mới là lỗi im lặng: nó bị coi là tuyệt đối và xoá phần path của base URL.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>4. <code>RetrofitInstance</code> khai bằng <code>object</code> và dùng <code>by lazy</code>. Lợi ích thực tế là gì?</legend>
+			<label><input type="radio" name="q4" value="d" /> Một instance duy nhất cho cả app, dựng trễ tới lần dùng đầu tiên</label>
+			<label><input type="radio" name="q4" value="a" /> Giúp code ngắn hơn, không có lợi ích khác</label>
+			<label><input type="radio" name="q4" value="b" /> Bắt buộc phải viết đúng khuôn này, nếu không Retrofit sẽ từ chối khởi động ở lần chạy đầu tiên</label>
+			<label><input type="radio" name="q4" value="c" /> Cho phép Retrofit chạy trên nhiều thread song song — class thường thì không</label>
+			<p class="explain" hidden>
+				Mỗi lần dựng <code>Retrofit</code> mới là dựng luôn một <code>OkHttpClient</code> mới với thread pool và
+				connection pool riêng. Nếu mỗi lời gọi tạo một instance, app phải bắt tay TLS lại từ đầu mỗi lần — chậm và
+				tốn pin (mục 12). <code>by lazy</code> mặc định <code>SYNCHRONIZED</code> nên còn an toàn thread khi hai
+				coroutine gọi cùng lúc.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>5. Vì sao phải có class <code>SearchRecipesResponse</code> bọc ngoài <code>List&lt;Recipe&gt;</code> chứ không để hàm trả về thẳng danh sách?</legend>
+			<label><input type="radio" name="q5" value="b" /> Vì JSON trả về là object có field <code>results</code>, <code>totalResults</code> — class phải phản chiếu JSON</label>
+			<label><input type="radio" name="q5" value="c" /> Vì Moshi không parse được kiểu <code>List</code> khi nó đứng là kiểu trả về của hàm Retrofit</label>
+			<label><input type="radio" name="q5" value="a" /> Vì Retrofit yêu cầu mọi hàm phải trả về một class có hậu tố <code>Response</code></label>
+			<label><input type="radio" name="q5" value="d" /> Vì <code>List</code> không thể nullable, còn server đôi khi trả <code>null</code></label>
+			<p class="explain" hidden>
+				Moshi map theo hình dạng: JSON là object thì phía Kotlin phải là một class có đúng các field đó (mục 11).
+				Bonus là bạn nhận được luôn <code>totalResults</code> và <code>offset</code> — chính là dữ liệu cần cho phân
+				trang ở W3. Moshi parse <code>List</code> rất tốt khi JSON là mảng — vấn đề là JSON này là object.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>6. Annotation <code>@Json(name = "results")</code> dùng khi nào?</legend>
+			<label><input type="radio" name="q6" value="c" /> Khi tên field trong JSON khác tên biến Kotlin muốn dùng</label>
+			<label><input type="radio" name="q6" value="a" /> Khi muốn field đó không bị parse</label>
+			<label><input type="radio" name="q6" value="b" /> Khi field khai nullable (<code>String?</code>) nhưng server có thể không trả</label>
+			<label><input type="radio" name="q6" value="d" /> Khi muốn field đó bắt buộc phải có trong JSON, thiếu là lỗi</label>
+			<p class="explain" hidden>
+				Nếu tên trùng khớp thì Moshi tự map, không cần annotation (mục 11). <code>@Json(name = ...)</code> là cầu
+				nối khi bạn muốn đặt tên Kotlin dễ đọc hơn (JSON trả <code>results</code> nhưng bạn muốn gọi là
+				<code>recipes</code>), hoặc khi JSON dùng <code>snake_case</code> mà Kotlin quy ước <code>camelCase</code>.
+				Nullability do kiểu khai báo quyết định (<code>String?</code> hay <code>String</code>).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>7. Moshi codegen (KSP) tốt hơn Moshi reflection ở những điểm nào?</legend>
+			<label><input type="radio" name="q7" value="a" /> Chạy nhanh hơn, APK nhẹ hơn, an toàn hơn khi obfuscate</label>
+			<label><input type="radio" name="q7" value="c" /> Build nhanh hơn đáng kể và code trong project của bạn cũng ít hơn hẳn</label>
+			<label><input type="radio" name="q7" value="b" /> Hỗ trợ nhiều kiểu dữ liệu hơn</label>
+			<label><input type="radio" name="q7" value="d" /> Không cần khai dependency Moshi trong Gradle nữa</label>
+			<p class="explain" hidden>
+				Đánh đổi nằm ở chiều ngược lại: codegen làm <strong>build lâu hơn</strong> vì phải sinh code cho từng class
+				(mục 13). Cái bạn nhận lại là adapter đã có sẵn khi app chạy (không phải soi class lúc runtime), không cần
+				<code>kotlin-reflect</code> trong APK, và code sinh ra được obfuscate cùng nhau nên R8 không làm vỡ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>8. Khác biệt giữa <code>implementation(libs.moshi)</code> và <code>ksp(libs.moshiCodeGen)</code> trong <code>build.gradle.kts</code>?</legend>
+			<label><input type="radio" name="q8" value="d" /> <code>implementation</code> đưa thư viện vào app để chạy; <code>ksp</code> chỉ chạy lúc build để sinh code, không nằm trong APK</label>
+			<label><input type="radio" name="q8" value="a" /> <code>ksp</code> là bản mới của <code>implementation</code>, nên thay thế hoàn toàn</label>
+			<label><input type="radio" name="q8" value="b" /> Cả hai giống nhau, chỉ khác tên gọi</label>
+			<label><input type="radio" name="q8" value="c" /> <code>implementation</code> dành cho thư viện của Google, <code>ksp</code> dành cho thư viện của bên thứ ba</label>
+			<p class="explain" hidden>
+				Đây là lý do phải khai <strong>cả hai</strong> (mục 13): <code>moshi</code> là thư viện app dùng lúc chạy, còn
+				<code>moshi-kotlin-codegen</code> là công cụ sinh code lúc build. Nếu chỉ khai
+				<code>implementation(libs.moshiCodeGen)</code>, bộ sinh code không chạy và annotation
+				<code>@JsonClass</code> không có tác dụng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>9. Trong <code>queryRecipes</code>, danh sách kết quả được gán vào state <em>trước</em>, query state gán <em>sau</em>. Vì sao thứ tự đó quan trọng?</legend>
+			<label><input type="radio" name="q9" value="a" /> Vì Kotlin yêu cầu gán biến khai trước trước biến khai sau</label>
+			<label><input type="radio" name="q9" value="d" /> Không quan trọng — hai flow độc lập, thứ tự gán không ảnh hưởng gì tới giao diện</label>
+			<label><input type="radio" name="q9" value="b" /> Vì query state phải đợi danh sách được Moshi parse xong mới có dữ liệu để ghi</label>
+			<label><input type="radio" name="q9" value="c" /> Vì khối <code>collect</code> trên query state là chỗ gọi <code>setSearching(false)</code> — tắt loading trước khi danh sách kịp vào state sẽ tạo một nhịp màn hình trống</label>
+			<p class="explain" hidden>
+				Code trong một coroutine chạy tuần tự theo thứ tự viết (W1 mục 3) — nên thứ tự viết <em>chính là</em> thứ tự
+				chạy (mục 14). Nếu đảo hai dòng, vòng xoay loading tắt trước khi lưới có gì để vẽ: người dùng thấy một nhịp
+				màn hình trống thay vì chuyển mượt từ loading sang nội dung.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>10. Trong <code>RecipeCard</code>, dòng <code>contentDescription = null</code> của <code>AsyncImage</code> là đúng hay lỗi a11y?</legend>
+			<label><input type="radio" name="q10" value="b" /> Đúng — ảnh chỉ minh hoạ, tiêu đề chữ ngay dưới đã nói đủ</label>
+			<label><input type="radio" name="q10" value="a" /> Lỗi — mọi ảnh trong Compose đều bắt buộc phải có <code>contentDescription</code> dạng chữ</label>
+			<label><input type="radio" name="q10" value="c" /> Lỗi — phải truyền cả URL ảnh vào đó để người dùng biết ảnh từ đâu</label>
+			<label><input type="radio" name="q10" value="d" /> Đúng — vì Coil tự sinh mô tả từ URL ảnh</label>
+			<p class="explain" hidden>
+				Chuẩn a11y đã dạy ở C5 (mục 15): <code>null</code> đúng cho ảnh <em>trang trí</em> — screen reader bỏ qua,
+				người dùng vẫn đọc được "Pasta with Garlic" từ <code>Text</code> ngay dưới. Cho ảnh mang thông tin riêng
+				(ảnh của công thức là dữ liệu chính) thì <code>null</code> là lỗi — và Coil không tự sinh mô tả từ URL.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	import { initQuiz } from "../../scripts/quiz.ts";
+	initQuiz();
+</script>

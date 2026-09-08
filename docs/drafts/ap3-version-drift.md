@@ -207,7 +207,9 @@ Android.
 **Nguồn:** `aaf-materials/08-networking/projects/{starter,final}/` ·
 `content/book/ch08-networking.md`
 **Số liệu chốt:** 2026-09-06 (verify trực tiếp trong phiên dựng lại trang Ch08; bản của giáo trình = 2023).
-**Bài lõi trỏ về đây:** trang Ch08 hiện tại (ba đơn vị W1/W2/W3), khối `#cam-bay` → mục "Cạm bẫy &
+**Bài lõi trỏ về đây:** ba bài Ch08 hiện tại (W1 `ch08-coroutines-va-flow` · W2
+`ch08-retrofit-moshi-json` · W3 `ch08-trang-thai-mang-api-key`, tách từ monolith
+tại Stage 5), khối `#cam-bay` → mục "Cạm bẫy &
 tài liệu lỗi thời"; các con số dưới đây không lặp lại trong thân bài.
 
 ### 1. Kiến thức bền vs cú pháp dễ đổi

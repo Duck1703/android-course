@@ -1,0 +1,508 @@
+---
+// W3 — "Trạng thái mạng, lỗi, API key & phân trang" (slug: ch08-trang-thai-mang-api-key).
+// Tách từ monolith Ch08Networking.astro (batch Stage 5 — Giai đoạn 5: Mạng, bài 3/3).
+// Registry: W3 — stageId network · theo TARGET_REGISTRY_v5 §3 (mốc W3 START/END, mục 16–23;
+// keys.properties; MR-015/027 error-to-user).
+//
+// SỞ HỮU: bốn trạng thái mạng (loading/content/empty/error) · EMPTY ≠ ERROR · UiState trung thực
+// + chuyển state · log ≠ lỗi-cho-người-dùng · try/catch đúng mức (không nuốt cancellation) ·
+// chẩn đoán logcat (401/402/UnknownHost) · keys.properties→Gradle→BuildConfig + ranh giới bảo
+// mật (hygiene ≠ true secret) · phân trang offset/append · khuôn "ba mức" đọc code thật.
+// KHÔNG: sealed-hierarchy framework lớn, Paging 3 (một câu tham chiếu), signing/secrets Gradle
+// sâu, coroutine cancellation internals.
+//
+// Code thật lấy từ aaf-materials/08-networking/projects/{starter,final}/; mọi số dòng trích
+// dẫn đã mở file thật để kiểm (phiên 2026-09-08). Ví dụ tối giản do khoá dựng được đánh dấu.
+import { Code } from "astro:components";
+
+const AAF = "aaf-materials/08-networking/projects/final/app/src/main/java/com/kodeco/recipefinder";
+const AAF_GRADLE = "aaf-materials/08-networking/projects/final";
+
+const searchUiStateExample = `data class SearchUiState(
+  val isLoading: Boolean = false,
+  val items: List<RecipeUiModel> = emptyList(),
+  val errorMessage: String? = null
+)`;
+
+const apiKeyConst = `const val apiKey = "<Replace with API Key>"`;
+
+const keysPropertiesCode = `# keys.properties (KHÔNG commit file này)
+SPOONACULAR_API_KEY=chuỗi-key-của-bạn`;
+
+const gradleReadKeysCode = `import java.util.Properties
+
+val keys = Properties().apply {
+  val f = rootProject.file("keys.properties")
+  if (f.exists()) f.inputStream().use { load(it) }
+}
+
+android {
+  defaultConfig {
+    buildConfigField(
+      "String",
+      "SPOONACULAR_API_KEY",
+      '"${'$'}{keys.getProperty("SPOONACULAR_API_KEY") ?: ""}"'
+    )
+  }
+}`;
+
+const pagingSnippet = `val lazyGridState: LazyGridState = rememberLazyGridState()
+val loadMore = remember(lazyGridState) {
+  derivedStateOf {
+    val lastVisibleIndex =
+      lazyGridState.firstVisibleItemIndex + lazyGridState.layoutInfo.visibleItemsInfo.size
+    lastVisibleIndex + PAGING_OFFSET > recipes.value.size &&
+        lastVisibleIndex < queryState.totalResults
+  }
+}
+var firstTime by remember {
+  mutableStateOf(true)
+}
+LaunchedEffect(loadMore) {
+  val offset = if (firstTime) 0 else queryState.offset + PAGE_SIZE
+  firstTime = false
+  viewModel.updateQueryState(queryState.copy(offset = offset))
+  searchRecipes(queryState.query, viewModel)
+}`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Học xong bài này bạn sẽ</strong>
+		<ul>
+			<li>Liệt kê và phân biệt được <strong>bốn tình huống</strong> của một vùng dữ liệu mạng — đang tải, có nội dung,
+				rỗng, lỗi — và giải thích vì sao <strong>rỗng ≠ lỗi</strong>.</li>
+			<li>Từ state của ViewModel, trả lời được câu hỏi "màn hình <em>đang</em> nên hiện gì" — và nhận ra khi code mẫu
+				không đủ thông tin để trả lời.</li>
+			<li>Tách đúng <strong>log cho developer</strong> khỏi <strong>thông báo cho người dùng</strong>, và viết được một
+				thông báo lỗi tử tế thay vì để exception nói chuyện.</li>
+			<li>Đọc <code>try/catch</code> trong code mạng: bắt ở mức nào là hợp lý, và vì sao nuốt <em>mọi</em> exception
+				có thể giết cả cơ chế huỷ của coroutine.</li>
+			<li>Áp dụng khuôn <strong>keys.properties → Gradle → BuildConfig</strong>, và — quan trọng nhất — phát biểu đúng
+				nó bảo vệ <em>cái gì</em> và <strong>không</strong> bảo vệ cái gì.</li>
+			<li>Đọc được cơ chế phân trang theo offset của project mẫu, chỉ ra chỗ ghi đè-thay-vì-nối, và biết khi nào nên
+				để thư viện chuyên trách nhiệm này.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Vì sao bài này quan trọng.</strong> W2 cho app <em>lấy được</em> dữ liệu. Nhưng code mạng chạy đúng
+		chỉ là nửa câu chuyện: mạng là nguồn dữ liệu duy nhất trong app mà bạn <em>không kiểm soát</em> — nó chậm, nó rỗng,
+		nó lỗi, và nó đòi một khoá số mà bạn không được để bừa. Người dùng không nhìn thấy coroutine của bạn đẹp cỡ nào;
+		họ chỉ thấy app có nói thật với mình hay không. Bài này dạy app <em>nói thật</em> — bằng state, bằng thông báo,
+		và bằng cách giữ key không rơi vào sai chỗ.
+	</p>
+	<div class="callout">
+		<strong>Cần biết trước.</strong> <strong>S4</strong> — ViewModel sở hữu UI state, <code>StateFlow</code>.
+		<strong>W1</strong> — <code>try/catch</code> trong coroutine, scope làm chủ công việc, cơ chế huỷ ở mức thực
+		dụng. <strong>W2</strong> — <code>queryRecipes</code>, <code>QueryState</code>, Timber, toàn mạch mười bước.
+		<strong>A14</strong> — version catalog, <code>build.gradle.kts</code> (khuôn keys.properties của bài này dựng trên
+		nền đó — A14 đã giới thiệu tên, bài này dạy đủ). <strong>F2</strong> — data class + giá trị
+		mặc định.
+	</div>
+
+	<h2 id="bon-trang-thai">16. Một request không chỉ có "thành công"</h2>
+	<p>
+		Nhìn lại khối <code>catch</code> của <code>queryRecipes</code> (W2 mục 14): có lỗi thì
+		<code>_recipeListState.value = listOf()</code> — danh sách rỗng. Giờ là lúc gọi đúng tên vấn đề. Một vùng dữ liệu
+		mạng có <strong>bốn</strong> tình huống, không phải hai:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Tình huống</th><th>Nghĩa là</th><th>Giao diện nên hiện</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><strong>loading</strong></td><td>request đang chạy, chưa có kết quả</td><td>vòng xoay / skeleton</td></tr>
+			<tr><td><strong>content</strong></td><td>thành công, có dữ liệu</td><td>danh sách / lưới công thức</td></tr>
+			<tr><td><strong>empty</strong></td><td>thành công, server trả <em>không có kết quả nào</em></td><td>"Không tìm thấy công thức nào" — một câu thành công, không phải lỗi</td></tr>
+			<tr><td><strong>error</strong></td><td>thất bại: mất mạng, key sai, server hỏng, hết hạn mức</td><td>thông báo lỗi + đường đi tiếp (thử lại)</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Sự phân biệt quan trọng nhất: <strong>EMPTY ≠ ERROR.</strong> "Tìm 'zxqv' không ra món nào" là một
+		<em>thành công</em> của request; "mất mạng" là một <em>thất bại</em>. Hai cái cần hai câu chữ, hai hành động tiếp
+		theo khác nhau — nhưng code mẫu gộp cả hai thành một danh sách rỗng, nên người dùng mất mạng sẽ đọc là "món này
+		không có công thức". Khi bạn gặp khối code <code>catch (...) &#123; emptyList() &#125;</code>, đó không phải là
+		"không có kết quả" — đó là <strong>lỗi bị cải trang thành kết quả rỗng</strong>.
+	</p>
+
+	<h2 id="uistate-trung-thuc">17. UiState trung thực: một chỗ để trả lời "màn hình hiện gì?"</h2>
+	<p>
+		S4 đã dựng khuôn: ViewModel sở hữu <em>một</em> UI state, mọi quyết định vẽ của màn hình đều đọc từ đó. Với dữ liệu
+		mạng, câu hỏi mà state phải trả lời được là: <strong>"tại thời điểm này, màn hình nên hiện gì?"</strong> — và để
+		trả lời được cả bốn tình huống ở mục 16, state phải mang đủ thông tin để phân biệt chúng. Khuôn tối giản:
+	</p>
+	<Code code={searchUiStateExample} lang="kotlin" theme="github-dark" />
+	<p>Và các chuyển trạng thái điển hình của một lần tìm kiếm:</p>
+	<ol class="chain">
+		<li><strong>idle</strong> — mới vào màn hình, chưa tìm gì (chưa có trong khuôn trên — app của bạn có thể thêm
+			<code>idle</code> hoặc dùng <code>isLoading = false, items = [], errorMessage = null</code> tạm)</li>
+		<li>người dùng bấm tìm → <strong>loading</strong> (<code>isLoading = true</code>, xoá lỗi cũ)</li>
+		<li>response về:
+			<ul>
+				<li>có kết quả → <strong>content</strong> (<code>items</code> có dữ liệu)</li>
+				<li>không kết quả → <strong>empty</strong> (<code>items = []</code>, <code>errorMessage = null</code>)</li>
+				<li>thất bại → <strong>error</strong> (<code>errorMessage</code> có nội dung)</li>
+			</ul>
+		</li>
+	</ol>
+	<p class="hint">
+		<strong>Không cần một hệ thống kiểu mới.</strong> Khuôn <code>data class</code> ba field ở trên là đủ cho giai đoạn
+		này và gọi tên được cả bốn tình huống: <code>isLoading</code> · <code>items</code> rỗng/không ·
+		<code>errorMessage</code> có/không. Có một cách viết khác — <em>sealed class</em> <code>UiState</code> với các biến
+		thể <code>Loading / Success(data) / Error(message)</code> (họ sealed-state mà F2 đã cho bạn nhận diện) — nơi các
+		biến thể <em>loại trừ lẫn nhau</em> ngay trong kiểu. Cách nào cũng dùng được; điều bắt buộc chỉ là
+		<strong>state phải phân biệt được rỗng và lỗi</strong>.
+	</p>
+	<p class="notice">
+		<strong>So với hiện trạng của project mẫu:</strong> <code>RecipeViewModel</code> có
+		<code>uiState</code> (đang tìm hay không) và <code>recipeListState</code> (danh sách) — <strong>không có chỗ nào
+		chứa thông tin lỗi</strong>. Đó chính là lý do lỗi biến mất khỏi giao diện: không phải code quên hiện thông báo,
+		mà <em>state không có ô để chứa nó</em>. Bài học thiết kế: nếu người dùng cần thấy một thông tin, thì state phải có
+		ô cho thông tin đó. (Cách sửa thành sealed class đã từng là bài tập — giờ bạn có đủ công cụ để tự làm.)
+	</p>
+
+	<h2 id="log-va-loi">18. Log cho developer ≠ thông báo cho người dùng</h2>
+	<p>
+		Code mẫu <em>có</em> phản ứng với lỗi — bằng một dòng log:
+		<code>Timber.e(e, "Problems getting Recipes")</code>. Vậy tại sao nói app "im lặng"? Vì hai thứ này là hai đối
+		tượng khác nhau:
+	</p>
+	<table class="cmp">
+		<thead>
+			<tr><th></th><th>Log (Timber/Log)</th><th>Lỗi cho người dùng</th></tr>
+			</thead>
+		<tbody>
+			<tr><td><strong>Đối tượng đọc</strong></td><td>developer, qua Logcat khi cắm máy</td><td>người dùng, ngay trên màn hình</td></tr>
+			<tr><td><strong>Nội dung</strong></td><td>exception, stack trace, kỹ thuật</td><td>một câu người dùng làm được gì tiếp theo</td></tr>
+			<tr><td><strong>Có thể thay nhau không</strong></td><td colspan="2" style="text-align:center"><strong>Không.</strong> Người dùng không thấy logcat; developer không ngồi đọc log hộ người dùng.</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Quy tắc cần mang đi: <strong>ViewModel biến thất bại thành UI state</strong> — đúng luồng dữ liệu một chiều mà S3/S4
+		đã dựng. Khối <code>catch</code> của một ViewModel trung thực ghi log <em>và</em> đặt thông báo vào state:
+	</p>
+	<Code code={`catch (e: Exception) {
+  Timber.e(e, "Problems getting Recipes")       // cho developer
+  _uiState.update { it.copy(errorMessage = "Không thể tải công thức. Kiểm tra kết nối và thử lại.") }
+}`} lang="kotlin" theme="github-dark" />
+	<p>
+		Chú ý chữ trong thông báo: nó <strong>không</strong> là <code>e.message</code>. Nội dung raw của exception
+		("<code>Failed to connect to api.spoonacular.com</code>", "<code>HTTP 401</code>…") là tiếng của developer — cho
+		người dùng nó vừa vô nghĩa vừa lộ chi tiết kỹ thuật. Bằng tiếng người dùng, cùng nguyên nhân một dòng: <em>đã xảy
+		ra việc gì</em> + <em>bạn có thể làm gì</em>.
+	</p>
+
+	<h2 id="try-catch">19. <code>try/catch</code> trong code mạng: bắt gì, không nuốt gì</h2>
+	<p>
+		Code mẫu bắt <code>catch (e: Exception)</code> — bắt <em>mọi</em> exception. Ở đây nó hợp lý hơn vẻ ngoài: các lỗi
+		có thể xảy ra thuộc nhiều tầng khác nhau (OkHttp: lỗi kết nối; Retrofit/Moshi: lỗi parse; Kotlin: lỗi logic) và
+		chúng đều được xử lý <em>giống nhau</em> ở tầng ViewModel — biến thành trạng thái lỗi. Bắt rộng ở biên giới nơi
+		bạn biến lỗi thành thông báo là một mức hợp lý.
+	</p>
+	<p class="hint">
+		<strong>Nhưng đừng biến nó thành quy tắc phổ quát.</strong> Bắt rộng <code>Exception</code> ở <em>mọi chỗ</em> che
+		mất loại lỗi — code của bạn không thể phân biệt "mất mạng" với "bug thật của mình", và bug thật bị ngụy trang thành
+		lỗi mạng suốt cả đời project. Mức hợp lý của bài này: <strong>bắt rộng ở biên giới (ViewModel, chỗ quy lỗi thành
+		state), bắt hẹp nơi bạn có thể xử lý cụ thể một loại lỗi.</strong> Code mẫu làm đúng mức biên giới; điều khiến nó
+		chưa trung thực không phải chỗ bắt, mà là chỗ <em>xử lý sau khi bắt</em> (mục 16–18).
+	</p>
+	<p class="notice">
+		<strong>Một cái bẫy riêng của coroutine — đừng nuốt huỷ.</strong> Trong một coroutine, việc bị huỷ cũng được giao
+		tiếp qua exception (<code>CancellationException</code>). Khối <code>catch (e: Exception)</code> bắt được cả nó:
+		coroutine đã bị huỷ (màn hình đóng, ViewModel xoá) nhưng code trong <code>catch</code> vẫn chạy — đúng thứ bạn muốn
+		<em>tránh</em> ở W1 mục 6. Thói quen an toàn: ở khối bắt rộng, <strong>cho huỷ đi tiếp</strong> thay vì xử lý như lỗi
+		thường (ném lại <code>CancellationException</code>, hoặc kiểm tra <code>isActive</code> trước khi đặt state). Cơ
+		chế chi tiết của huỷ thuộc phần sâu hơn của coroutine; ở mức bài này chỉ cần quy tắc: <strong>đừng để khối catch xử
+		lý "lỗi" cho một việc mà người dùng đã cố tình bỏ đi.</strong> Code mẫu không làm bước này — một trong những chỗ
+		sample-code đơn giản hoá mà bạn nên biết khi đọc.
+	</p>
+
+	<h2 id="logcat">20. Chẩn đoán bằng logcat — nhưng vẫn là việc của developer</h2>
+	<p>
+		Chừng nào state lỗi chưa được thêm vào app, logcat vẫn là nơi duy nhất phân biệt được nguyên nhân. Lọc theo thông
+		điệp trong <code>catch</code> (<code>Problems getting Recipes</code>), ba nội dung hay gặp nhất:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Trong log</th><th>Nghĩa là</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>HTTP 401</code></td><td>API key sai, hoặc chưa dán key — server không nhận bạn</td></tr>
+			<tr><td><code>HTTP 402</code> / 429</td><td>đã hết hạn mức miễn phí trong ngày (rate limit — W2 mục 14.1)</td></tr>
+			<tr><td><code>UnknownHostException</code></td><td>không phân giải được tên server — máy/emulator không có mạng</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Logcat hoàn toàn trống thì khả năng cao <code>queryRecipes</code> chưa được gọi — truy lại chuỗi mười bước ở W2,
+		từ bước 3. Và một lưu ý từ chính khoá này: <code>Timber</code> trong project được cấu hình
+		<strong>chỉ in log ở bản debug</strong> (<code>{AAF}/RecipeApp.kt</code> dòng 44–48, điều kiện
+		<code>BuildConfig.DEBUG</code>) — bản release không in log. Đó là lựa chọn đúng: log có thể chứa thông tin không
+		muốn lộ; và cũng là lời nhắc cuối cùng rằng <strong>log là công cụ của bạn, không phải của người dùng</strong>.
+	</p>
+
+	<h2 id="api-key">21. API key: keys.properties — và ranh giới của nó</h2>
+	<p>
+		Chìa khóa của toàn bộ phần mạng là một chuỗi ký tự: <strong>API key</strong> của Spoonacular. Project mẫu đặt nó
+		thẳng trong code:
+	</p>
+	<Code code={apiKeyConst} lang="kotlin" theme="github-dark" />
+	<p class="notice">
+		<strong>Đọc có phê phán: đây là cấu trúc mời bạn phạm lỗi.</strong> Bản <code>final</code> của project mẫu
+		(<code>{AAF}/network/SpoonacularService.kt</code> dòng 47) chứa dòng trên <em>và file đó đã được commit</em> vào
+		repo công khai. Giá trị chỉ là placeholder nên không rò rỉ gì — nhưng khoảnh khắc bạn dán key thật vào đúng chỗ đó
+		rồi commit, key của bạn đi theo vào lịch sử Git. Cách đúng từ đầu là khuôn bốn bước dưới đây — đúng khuôn mà A14 đã
+		giới thiệu tên.
+	</p>
+	<ol class="chain">
+		<li>
+			<strong><code>keys.properties</code></strong> — một file mới ở gốc project:
+			<Code code={keysPropertiesCode} lang="kotlin" theme="github-dark" />
+			và thêm nó vào <strong><code>.gitignore</code></strong> — Git sẽ bỏ qua, không bao giờ commit.
+		</li>
+		<li>
+			<strong>Gradle đọc file</strong> khi build (trong <code>app/build.gradle.kts</code>):
+			<Code code={gradleReadKeysCode} lang="kotlin" theme="github-dark" />
+		</li>
+		<li>
+			<strong><code>BuildConfig</code> phơi giá trị ra cho code</strong> (cần
+			<code>buildFeatures &#123; buildConfig = true &#125;</code> — project mẫu đã bật sẵn,
+			<code>{AAF_GRADLE}/app/build.gradle.kts</code> dòng 52).
+		</li>
+		<li>
+			<strong>Kotlin dùng:</strong> <code>BuildConfig.SPOONACULAR_API_KEY</code> thay cho chuỗi cứng. Interface Retrofit
+			giữ nguyên hình dạng — chỉ đổi nguồn của giá trị key.
+		</li>
+	</ol>
+	<p class="callout">
+		<strong>Ranh giới bảo mật — phát biểu đúng, không hơn không kém.</strong> Khuôn trên bảo vệ bạn khỏi
+		<em>một</em> lỗi cụ thể: <strong>để key rơi vào Git</strong> (và vào lịch sử, và vào tay mọi người có quyền đọc
+		repo). Đó là <strong>vệ sinh mã nguồn</strong> (source-control hygiene). Nó <strong>không</strong> làm key trở thành
+		bí mật thật: giá trị key vẫn được <em>dịch vào trong app khi build</em> — nằm trong APK trên máy người dùng, nơi ai
+		có công cụ và quyết tâm đều lấy ra được. Tóm lại:
+	</p>
+	<table class="cmp">
+		<thead>
+			<tr><th>Câu nói</th><th>Đúng hay sai</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>"keys.properties giúp tôi không commit key."</td><td><strong>Đúng.</strong> Đó chính là nhiệm vụ của nó.</td></tr>
+			<tr><td>"Key nằm trong keys.properties nên an toàn, không ai lấy được."</td><td><strong>Sai.</strong> BuildConfig nhúng giá trị vào app; APK là nơi công khai về mặt kỹ thuật.</td></tr>
+			<tr><td>"Muốn key không nằm trong app thì làm sao?"</td><td>Key phải nằm ở <strong>máy chủ của bạn</strong>: app gọi backend của bạn, backend giữ key và gọi Spoonacular; hoặc dùng giới hạn từ provider (hạn chế theo app/domain). Đó là kiến trúc, không phải một file Gradle.</td></tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		<strong>Một chi tiết kỹ thuật của code mẫu nữa, cùng một chủ đề:</strong> key được nhúng thẳng vào
+		<em>chuỗi path của annotation</em> (<code>@GET("recipes/complexSearch?&amp;apiKey=$apiKey")</code>). Annotation được
+		đánh giá <strong>lúc biên dịch</strong>, nên giá trị key bị "đóng băng" vào file class trong APK. Nghĩa là kể cả
+		khi đổi sang <code>BuildConfig</code>, dạng key-trong-annotation này vẫn đóng băng giá trị lúc build. Với API miễn
+		phí không nhạy cảm khi học thì chấp nhận được; với API tính phí thật — hãy xem lại hàng ba của bảng trên.
+	</p>
+
+	<h2 id="phan-trang">22. Phân trang theo offset — và chỗ nó chưa thật sự "trang"</h2>
+	<p>
+		Cuộn lưới công thức xuống gần đáy, app tự tải thêm. Cơ chế nằm trong
+		<code>{AAF}/ui/recipes/ShowRecipeList.kt</code> (dòng 76–93), dựng trên đúng ba field mà
+		<code>QueryState</code> giữ từ W2:
+	</p>
+	<Code code={pagingSnippet} lang="kotlin" theme="github-dark" />
+	<p>Đọc từ trên xuống — và ghép với các khái niệm đã có:</p>
+	<ul>
+		<li>
+			<code>rememberLazyGridState()</code> — object theo dõi <strong>vị trí cuộn</strong> của lưới: item đầu đang hiện
+			là item nào, bao nhiêu item đang thấy.
+		</li>
+		<li>
+			<code>derivedStateOf</code> — tính một <code>Boolean</code> <em>suy ra</em> từ state khác: "đã cuộn gần đáy
+			chưa?". Điều kiện hai phần: chỉ số item cuối đang thấy + <code>PAGING_OFFSET</code> (6 — "tải trước khi còn cách
+			đáy 6 ô") vượt quá số item hiện có, <strong>và</strong> vẫn còn kết quả chưa lấy
+			(<code>lastVisibleIndex &lt; queryState.totalResults</code>).
+		</li>
+		<li>
+			<code>LaunchedEffect(loadMore)</code> — key là <code>loadMore</code>; mỗi lần điều kiện đổi, khối chạy lại:
+			tăng <code>offset</code> thêm <code>PAGE_SIZE</code> (20) rồi gọi lại <code>searchRecipes</code>.
+			<code>firstTime</code> xử lý lần đầu: lần đầu offset phải là 0.
+		</li>
+	</ul>
+	<p>
+		Từ vựng của cơ chế, gọn: <strong>offset</strong> = bỏ qua bao nhiêu kết quả đầu; <strong>page size</strong> =
+		mỗi lần lấy bao nhiêu; <strong>yêu cầu trang tiếp</strong> = giữ nguyên query, tăng offset; và server trả kèm
+		<code>totalResults</code> để app biết còn trang nữa hay không.
+	</p>
+	<p class="notice">
+		<strong>Đọc có phê phán: trang mới ghi đè trang cũ.</strong> Mỗi lần <code>queryRecipes</code> thành công, nó
+		<code>_recipeListState.value = response.recipes</code> — <strong>thay hẳn</strong> danh sách, không nối thêm
+		(<em>appending</em>). Nghĩa là lưới không thật sự dài ra: cuộn tới đáy, 20 item cũ biến mất và 20 item mới thay vào
+		— người dùng bị mất chỗ đang xem. Kết hợp với việc kích hoạt theo <em>vị trí cuộn</em>, còn có nguy cơ gọi API nhiều
+		lần liên tiếp — điều đáng lo với API bị rate limit (W2 mục 14.1). Một bản "infinite scroll" đúng nghĩa phải nối:
+		<code>_recipeListState.value = _recipeListState.value + response.recipes</code>, kèm khoá chặn để không gọi trùng
+		khi đang tải. Trong project thật, việc này thường giao hẳn cho thư viện chuyên trách — <strong>Paging 3</strong> của
+		Jetpack; khoá này không dạy nó, chỉ cần biết tên để khi gặp không ngỡ ngàng.
+	</p>
+
+	<h2 id="ba-muc">23. Đọc code mẫu theo ba mức — và đi tiếp từ đây</h2>
+	<p>
+		Cả giai đoạn, bạn đã gặp những chỗ project mẫu làm khác với cách khoá khuyên — vài chỗ là lỗi thật, vài chỗ chỉ là lựa
+		chọn khác. Kỹ năng cần luyện không phải "tìm ra ai sai", mà là <strong>phân biệt ba mức</strong>:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Mức</th><th>Đặc điểm</th><th>Ví dụ trong chính app này</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>(a) Sai thật — phải sửa</strong></td>
+				<td>Kết quả sai hoặc dữ liệu lộ</td>
+				<td>key nằm trong code committed (mục 21); lỗi bị gộp thành "rỗng" (mục 16–18)</td>
+			</tr>
+			<tr>
+				<td><strong>(b) Chạy được nhưng dạy thói quen xấu</strong></td>
+				<td>Kết quả đúng; quy tắc bị vi phạm sẽ nổ ở chỗ khác</td>
+				<td><code>suspend</code> + <code>launch</code> dư, <code>Default</code> cho lời gọi mạng (W1 mục 7); trang mới
+					ghi đè trang cũ (mục 22); bắt Exception mà không trả huỷ (mục 19)</td>
+			</tr>
+			<tr>
+				<td><strong>(c) Lựa chọn khác — không sai</strong></td>
+				<td>Chạy đúng, có cái giá riêng, hoặc chỉ là cách viết thời điểm đó</td>
+				<td><code>collect</code> thủ công thay <code>collectAsState</code> (W1 mục 6); state cục bộ trùng tên flow
+					(W1 mục 6); hàm helper đặt ở file khác (W2 mục 14)</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Bạn sẽ đọc code người khác suốt sự nghiệp, và phần lớn code đó vừa chạy được vừa có chỗ chưa tối ưu. Ba mức trên
+		là bộ lọc: mức (a) sửa ngay, mức (b) hiểu để không bắt chước, mức (c) tôn trọng và tiếp tục.
+	</p>
+	<p>Ba bài tập mở rộng, xếp theo độ khó tăng dần — cả ba đều bạn đủ công cụ làm ngay:</p>
+	<ol>
+		<li>
+			<strong>Tách trạng thái lỗi khỏi trạng thái rỗng.</strong> Áp khuôn mục 17 vào <code>RecipeViewModel</code>: thêm
+			<code>errorMessage</code> vào state (hoặc đổi <code>recipeListState</code> thành sealed class
+			<code>Loading / Success / Error</code>), sửa khối <code>catch</code> đặt thông báo vào state, và thêm một dòng
+			hiện thông báo trong <code>RecipeList</code>. Thử bằng cách bật chế độ máy bay rồi tìm kiếm.
+		</li>
+		<li>
+			<strong>Sửa phân trang để nối thêm thay vì ghi đè.</strong> Mục 22: đổi dòng gán danh sách thành phép nối, và
+			nghĩ xem đặt "đang tải thêm" vào đâu để không gọi trùng.
+		</li>
+		<li>
+			<strong>Đưa API key ra khỏi source code.</strong> Làm đủ khuôn bốn bước ở mục 21, rồi kiểm chứng: xoá key khỏi
+			<code>SpoonacularService.kt</code>, commit thử (Git phải bỏ qua keys.properties), app vẫn chạy.
+		</li>
+	</ol>
+
+	<div class="callout journey">
+		<strong>Giai đoạn Dữ liệu cục bộ tiếp nối ngay tại đây.</strong> App hiện tại có một điểm yếu dễ thấy: đóng app rồi mở lại, mọi thứ
+		về số không — ô tìm kiếm trống, danh sách trống, phải gọi mạng lại từ đầu. Giai đoạn tiếp theo giới thiệu
+		<strong>DataStore</strong>, cách lưu những mẩu dữ liệu nhỏ (lựa chọn của người dùng, lần tìm kiếm gần nhất) xuống
+		thiết bị để chúng sống qua các lần khởi động. Bạn sẽ thấy lý do hàm <code>addPreviousSearch()</code> trong
+		<code>RecipeViewModel</code> có thân rỗng — nó đang chờ giai đoạn sau. Sau đó Room database mang vào để lưu cả
+		công thức đã bookmark, và <code>getBookmark()</code> — cái TODO thứ hai bạn gặp ở W1 — cuối cùng
+		cũng có nội dung.
+	</div>
+
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Một đồng nghiệp khoe: "Tôi đã bảo mật API key — dán vào <code>keys.properties</code>, thêm vào
+			<code>.gitignore</code>, đọc qua <code>BuildConfig</code>. Không ai lấy được key của tôi nữa." Trả lời
+			<strong>(a)</strong> đồng nghiệp vừa làm đúng <em>việc gì</em>, <strong>(b)</strong> khẳng định "không ai lấy được"
+			sai ở đâu, và <strong>(c)</strong> nếu server Spoonacular ngày mai tính phí theo key, khuôn trên còn đủ không?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>(a)</strong> Vệ sinh mã nguồn: key không còn rơi vào Git, không nằm trong lịch sử commit, không phát tán
+				cho ai đọc được repo (mục 21).
+			</p>
+			<p>
+				<strong>(b)</strong> Giá trị vẫn được build vào app: <code>buildConfigField</code> nhúng key vào APK, và APK nằm
+				trên máy người dùng ở dạng có thể dịch ngược. "Không ai lấy được" chỉ đúng với người không đọc APK. Bí mật thật
+				phải nằm ngoài app — backend/proxy của bạn giữ key (mục 21, bảng ranh giới).
+			</p>
+			<p>
+				<strong>(c)</strong> Không đủ — và đó là lúc chuyển sang kiến trúc: app gọi server của bạn, server giữ key và gọi
+				Spoonacular; hoặc dùng giới hạn theo app/domain nếu provider hỗ trợ. keys.properties vẫn giữ vai trò vệ sinh mã
+				nguồn ở phía backend của bạn.
+			</p>
+		</details>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía trên.
+		Bảng lệch phiên bản đầy đủ của cả giai đoạn Mạng nằm ở phần tra cứu của khoá (AP3).
+	</p>
+	<ul>
+		<li>
+			<strong>Gộp "rỗng" với "lỗi".</strong> <code>catch &#123; emptyList() &#125;</code> không phải "không có kết quả"
+			— nó là lỗi cải trang; người dùng mất mạng sẽ đọc thành "món này không có công thức" (mục 16). State phải có ô
+			cho errorMessage (mục 17).
+		</li>
+		<li>
+			<strong>Tưởng log = xử lý lỗi.</strong> Timber ghi cho developer qua logcat; người dùng cần một câu hành động
+			trên màn hình, do ViewModel đặt vào state (mục 18). Cũng đừng cho người dùng xem raw exception message
+			(mục 18).
+		</li>
+		<li>
+			<strong>Nuốt huỷ trong khối <code>catch (e: Exception)</code>.</strong> Huỷ coroutine đi qua exception riêng;
+			bắt rộng bắt được cả nó và xử lý như lỗi thường — đúng thứ người dùng đã bỏ đi. Cho huỷ đi tiếp (mục 19).
+		</li>
+		<li>
+			<strong>Tưởng keys.properties/BuildConfig là két sắt.</strong> Khuôn này chống commit — không chống đọc APK. Key
+			nhúng vào app là key có thể bị lấy. Bí mật thật nằm ở backend/proxy (mục 21).
+		</li>
+		<li>
+			<strong>Tưởng cuộn-hết-dân là "app tự nối danh sách".</strong> Bản phân trang của project ghi đè trang cũ thay vì
+			nối; gọi thêm còn có nguy cơ lặp khi đang tải. Hiểu cơ chế trước khi tin vào cảm giác "infinite scroll" (mục 22).
+		</li>
+	</ul>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+	<div class="callout journey">
+		<strong>Tóm tắt — 7 điều cần giữ lại</strong>
+		<ol>
+			<li><strong>Bốn tình huống, không phải hai:</strong> loading · content · empty · error — và rỗng ≠ lỗi. Bắt lỗi
+				rồi trả <code>emptyList()</code> là lỗi cải trang thành kết quả.</li>
+			<li><strong>State phải có ô cho thông tin người dùng cần thấy:</strong> nếu không có chỗ chứa lỗi trong UiState,
+				thì lỗi sẽ không bao giờ hiện — dù code có bắt nó. Khuôn <code>SearchUiState</code> (hoặc sealed class) đủ để
+				phân biệt cả bốn.</li>
+			<li><strong>Log ≠ thông báo:</strong> Timber cho developer qua logcat; người dùng cần một câu hành động trong UI,
+				do ViewModel đặt vào state — không phải raw exception message.</li>
+			<li><strong><code>try/catch</code> ở biên giới ViewModel:</strong> bắt rộng hợp lý ở nơi quy lỗi thành state; và
+				đừng nuốt <code>CancellationException</code> — huỷ không phải lỗi.</li>
+			<li><strong>keys.properties → Gradle → BuildConfig:</strong> bảo vệ chống commit — <em>không</em> phải bảo mật
+				thật; key trong APK lấy ra được. Bí mật thật nằm ở server của bạn.</li>
+			<li><strong>Phân trang theo offset:</strong> offset + page size + totalResults; bản của project ghi đè thay vì
+				nối — và Paging 3 là cái tên dành cho lúc app thật cần.</li>
+			<li><strong>Ba mức đọc code:</strong> sai-thật (sửa) · thói quen-xấu (hiểu, không bắt chước) · lựa chọn-khác
+				(tôn trọng).</li>
+		</ol>
+	</div>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>content/book/ch08-networking.md</code> — Query Recipes (dòng 402–425: khối
+			catch gốc), Signing Up (dòng 267 — rate limit), Key Points (dòng 589–594), Where to Go From Here (dòng
+			596–604). Phần "trạng thái lỗi/rỗng", keys.properties và phân trang là nội dung do khoá dựng trên code thật —
+			giáo trình gốc không dạy.
+		</li>
+		<li>
+			<strong>Code thật</strong> (số dòng đã kiểm 2026-09-08): <code>{AAF}/viewmodels/RecipeViewModel.kt</code> (dòng
+			95–111 — catch + empty list; dòng 151 — <code>updateQueryState</code>), <code>{AAF}/ui/recipes/ShowRecipeList.kt</code>
+			(dòng 76–93 — phân trang; <code>PAGING_OFFSET = 6</code> khai ở <code>RecipeList.kt</code> dòng 55),
+			<code>{AAF}/network/SpoonacularService.kt</code>
+			(dòng 47 — key), <code>{AAF_GRADLE}/app/build.gradle.kts</code> (dòng 52 — buildConfig),
+			<code>{AAF}/RecipeApp.kt</code> (dòng 44–48 — Timber chỉ trong DEBUG).
+		</li>
+		<li>
+			<strong>Đối chiếu nền tảng:</strong> S3/S4 (luồng dữ liệu một chiều, UiState) · S1 (huỷ coroutine ở mức thực dụng)
+			· A14 (Gradle: khuôn keys.properties của bài này dựng trên nền version catalog/build.gradle.kts đã dạy).
+		</li>
+		<li>
+			<strong>Ví dụ tối giản do khoá dựng:</strong> bảng bốn tình huống (mục 16), <code>SearchUiState</code> + chuỗi
+			chuyển trạng thái (mục 17), khối <code>catch</code> với <code>errorMessage</code> (mục 18), khuôn
+			keys.properties → Gradle → BuildConfig (mục 21), bảng ba mức đọc code (mục 23).
+		</li>
+	</ul>
+</section>
