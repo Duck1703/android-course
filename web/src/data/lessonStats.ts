@@ -382,12 +382,16 @@ function resolveLiveFileNames(): { lesson: Record<string, string>; quiz: Record<
     const slug = registeredLessonSlugs[0]!;
     const pascalOf = (s: string) =>
       s.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
-    // Ghim tường minh cho những slug có TÊN FILE lệch chuẩn pascalOf(slug):
-    // duy nhất một ca hiện tại là "ch06-viewmodel-va-ui-state" — pascalOf cho ra
-    // "Ch06ViewmodelVaUiState" trong khi tên file thật (registry §9: tên thật giữ
-    // nguyên danh pháp API) là "Ch06ViewModelVaUiState". Bảng này chỉ ghi CA LỆCH.
+    // Ghim tường minh cho những slug có TÊN FILE lệch chuẩn pascalOf(slug): hai ca
+    // hiện tại — "ch06-viewmodel-va-ui-state" (pascalOf cho ra "Ch06ViewmodelVaUiState"
+    // trong khi tên file thật là "Ch06ViewModelVaUiState") và Stage 6
+    // "ch09-data-store-va-sharedpreferences" (pascalOf cho ra
+    // "Ch09DataStoreVaSharedpreferences", tên file thật giữ casing API
+    // "Ch09DataStoreVaSharedPreferences") — registry §9: tên thật giữ nguyên danh pháp
+    // API. Bảng này chỉ ghi CA LỆCH.
     const FILE_NAME_PIN: Record<string, string> = {
       "ch06-viewmodel-va-ui-state": "Ch06ViewModelVaUiState",
+      "ch09-data-store-va-sharedpreferences": "Ch09DataStoreVaSharedPreferences",
     };
     const fileBase = FILE_NAME_PIN[slug] ?? pascalOf(slug);
     const exactLesson = `${fileBase}.astro`;
