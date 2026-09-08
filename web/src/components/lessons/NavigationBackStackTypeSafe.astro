@@ -1,0 +1,697 @@
+---
+// Bài N2 — Back stack & truyền dữ liệu type-safe (slug: navigation-back-stack-type-safe).
+// Bài NEW — Giai đoạn 4 (Điều hướng), bài 2/2: ngay sau N1 (destination, route, NavHost,
+// navigate, bức tranh đầu tiên về back stack), trước giai đoạn Mạng (W1–W3).
+// Nguồn nội dung: docs/drafts/n2-navigation-backstack-typesafe.md (đã chấp nhận, đợt sửa N2B) — chỉ phần "Bài học".
+// Code project mẫu: trích nguyên văn từ aaf-materials/08-networking (số dòng kiểm lại 2026-09-08 — xem #nguon).
+// Đánh số mục 1–16 (mỗi bài đánh số lại từ 1).
+// Freshness (freshness matrix Stage 4, kiểm lại 2026-09-08 từ developer.android.com ?hl=en):
+//   • route type-safe có từ Navigation 2.8.0 (04/09/2024) — còn đúng.
+//   • bản ổn định hiện hành Navigation 2.x: 2.10.0 (26/08/2026) — trang releases giờ ghi rõ
+//     Navigation 2 "in maintenance mode, chỉ nhận critical fixes"; ghi chú phiên bản mục 9 nói theo đó.
+//   • Navigation 3 ổn định (1.0.0 ngày 19/11/2025; bản ổn định hiện hành 1.1.7, 26/08/2026) —
+//     ghi chú duy nhất của bài ở mục 9, không nhắc số cho người học (số nằm ở AP3).
+//   • "mang ID nhỏ, đừng mang cả object" là khuyến nghị hiện hành của docs ("pass only the minimal
+//     amount of data… pass a key to retrieve an object rather than the object itself").
+import { Code } from "astro:components";
+
+const stackN1Tree = `TRÊN CÙNG    Settings     ← destination đang hiện
+             Details
+DƯỚI CÙNG    Home         ← startDestination`;
+
+const navigateCode = `navController.navigate(...)`;
+
+const onBackCode = `DetailsScreen(
+  onBack = {
+    navController.popBackStack()
+  }
+)`;
+
+const navigateHomeSaiCode = `// ❌ Ý định: "quay về Home"
+Button(onClick = { navController.navigate("home") }) {
+  Text("Về trang chính")
+}`;
+
+const stackPhinhTree = `bắt đầu ở Home:
+TRÊN CÙNG    Home
+
+mở Details — navigate("details") thêm mục:
+TRÊN CÙNG    Details
+             Home
+
+bấm nút "Về trang chính" — navigate("home") THÊM MỤC MỚI:
+TRÊN CÙNG    Home        ← bản sao MỚI, không phải Home cũ được "tìm lại"
+             Details
+             Home        ← Home cũ vẫn nằm đó`;
+
+const popBackStackTruyVetTree = `người dùng chạm mũi tên quay lại trên Details
+  → Compose gọi lambda onClick / callback được nối
+    → lambda đó gọi onBack()                          (callback của S3)
+      → onBack gọi navController.popBackStack()
+        → controller bỏ mục Details khỏi đỉnh lịch sử
+        → mục ngay dưới (Home) trở thành destination hiện hành
+      → NavHost tháo nội dung Details, dựng nội dung Home
+→ HomeScreen được vẽ lại`;
+
+const routeCoDuLieuCode = `"details/123"`;
+
+const routeKhaiBaoCode = `@Serializable
+object HomeRoute
+
+@Serializable
+data class RecipeDetailsRoute(
+  val recipeId: Int
+)`;
+
+const graphTypeSafeCode = `@Composable
+fun AppNavigation() {
+  val navController = rememberNavController()
+
+  NavHost(
+    navController = navController,
+    startDestination = HomeRoute
+  ) {
+    composable<HomeRoute> {
+      HomeScreen(
+        onOpenRecipe = { recipeId ->
+          navController.navigate(
+            RecipeDetailsRoute(recipeId)
+          )
+        }
+      )
+    }
+
+    composable<RecipeDetailsRoute> { backStackEntry ->
+      // … mục 8 sẽ điền nội dung
+    }
+  }
+}`;
+
+const toRouteCode = `composable<RecipeDetailsRoute> { backStackEntry ->
+  val route = backStackEntry.toRoute<RecipeDetailsRoute>()
+  RecipeDetailsScreen(
+    recipeId = route.recipeId,
+    onBack = { navController.popBackStack() }
+  )
+}`;
+
+const toRouteImportCode = `import androidx.navigation.toRoute`;
+
+const quyetDinhCode = `// ❌ Hình dạng sai — đừng viết
+RecipeDetailsRoute(
+  recipe = wholeRecipeObject
+)
+
+// ✅ Hình dạng đúng
+RecipeDetailsRoute(
+  recipeId = recipe.id
+)`;
+
+const machDuLieuTree = `route mang recipeId
+  → destination đọc ra (toRoute)
+    → ViewModel dùng recipeId để tải dữ liệu          (S4: ViewModel sở hữu UI state)
+      → repository trả về dữ liệu hiện có của ID đó   (S5: biên giới dữ liệu)
+        → ViewModel biến dữ liệu thành UI state
+          → màn hình vẽ theo UI state`;
+
+const machDayDuCode = `// Trong danh sách — RecipeCard nhận một callback (S3)
+RecipeCard(
+  onClick = {
+    onOpenRecipe(recipe.id)                          // ① màn hình phát sự kiện kèm ID
+  }
+)`;
+
+const machDayDuGraphCode = `// Ở chỗ khai đồ thị — sự kiện thành lệnh điều hướng (N1 + bài này)
+composable<HomeRoute> {
+  HomeScreen(
+    onOpenRecipe = { recipeId ->
+      navController.navigate(                        // ② tạo giá trị route từ ID
+        RecipeDetailsRoute(recipeId)
+      )
+    }
+  )
+}`;
+
+const machDayDuDestCode = `// Trong destination đích — route thành dữ liệu cho ViewModel
+composable<RecipeDetailsRoute> { backStackEntry ->
+  val route = backStackEntry.toRoute<RecipeDetailsRoute>()   // ③ giải mã route
+  RecipeDetailsScreen(
+    recipeId = route.recipeId,                        // ④ ID đi vào màn hình
+    onBack = { navController.popBackStack() }
+  )
+}`;
+
+const mainActivityNguyenVanCode = `composable(
+  "details/{recipeId}",
+  arguments = listOf(navArgument("recipeId") {
+    type = NavType.IntType
+  })
+) { backStackEntry ->
+  RecipeDetails(
+    recipeId = backStackEntry.arguments?.getInt("recipeId") ?: 0
+  )
+}`;
+
+const showRecipeListNguyenVanCode = `RecipeCard(
+  modifier = Modifier.clickable {
+    navController.navigate("details/${"${item.id}"}")
+  },
+  item
+)`;
+
+const popBackStackBackCode = `IconButton(onClick = { navController.popBackStack() }) {
+  Icon(
+    imageVector = Icons.Default.ArrowBack,
+    tint = Color.Black,
+    contentDescription = "Go back"
+  )
+}`;
+
+const popBackStackBookmarkCode = `IconButton(onClick = {
+  scope.launch {
+    if (isBookmark) {
+      viewModel.deleteBookmark()
+    } else {
+      viewModel.bookmarkRecipe()
+    }
+  }
+  navController.popBackStack()                          // dòng 190
+})`;
+
+const luyenTapCode = `@Serializable
+object HomeRoute                                              // ①
+
+@Serializable
+data class RecipeDetailsRoute(
+  val recipeId: Int                                           // ②
+)
+
+@Composable
+fun HomeScreen(onOpenRecipe: (Int) -> Unit) {
+  Column {
+    Text("Danh sách công thức")
+    Button(onClick = { onOpenRecipe(42) }) {                  // ③
+      Text("Mở chi tiết")
+    }
+  }
+}
+
+@Composable
+fun RecipeDetailsScreen(
+  recipeId: Int,
+  onBack: () -> Unit                                          // ④
+) {
+  Column {
+    Text("Chi tiết công thức #${"$"}recipeId")
+    Button(onClick = onBack) {                                // ⑤
+      Text("Quay lại")
+    }
+  }
+}
+
+@Composable
+fun AppNavigation() {
+  val navController = rememberNavController()                 // ⑥
+
+  NavHost(
+    navController = navController,
+    startDestination = HomeRoute                              // ⑦
+  ) {
+    composable<HomeRoute> {                                   // ⑧
+      HomeScreen(
+        onOpenRecipe = { id ->
+          navController.navigate(RecipeDetailsRoute(id))      // ⑨
+        }
+      )
+    }
+    composable<RecipeDetailsRoute> { backStackEntry ->        // ⑩
+      val route = backStackEntry.toRoute<RecipeDetailsRoute>()  // ⑪
+      RecipeDetailsScreen(
+        recipeId = route.recipeId,
+        onBack = { navController.popBackStack() }             // ⑫
+      )
+    }
+  }
+}`;
+---
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Học xong bài này bạn sẽ</strong>
+		<ul>
+			<li>Vẽ được back stack sau một chuỗi <code>navigate(...)</code> và sau mỗi lần Back, và nói được <strong>câu nào đúng</strong>: Back là <em>đi lui trên lịch sử có sẵn</em>, còn <code>navigate(...)</code> là <em>ghi thêm vào lịch sử</em>.</li>
+			<li>Tự viết được một <strong>nút Back tường minh</strong> bằng <code>popBackStack()</code> qua callback — mà không đưa <code>NavController</code> vào màn hình con.</li>
+			<li>Giải thích được vì sao gọi <code>navigate("home")</code> để "quay về Home" là <strong>sai mô hình</strong> — và chuyện gì thật sự xảy ra với stack khi gọi như vậy.</li>
+			<li>Định nghĩa được một <strong>route type-safe</strong>: <code>@Serializable object</code> cho destination không tham số, <code>@Serializable data class</code> cho destination có tham số — rồi điều hướng tới nó bằng <code>navigate(GiáTriRoute(...))</code> và đọc tham số ra bằng <code>toRoute&lt;T&gt;()</code>.</li>
+			<li>Phát biểu và <strong>áp dụng được</strong> quy tắc quan trọng nhất của truyền dữ liệu: <strong>truyền một định danh nhỏ (ID), không truyền cả object</strong> — và nối ID đó tới ViewModel/repository (S4/S5) để lấy dữ liệu hiện có.</li>
+			<li>Đọc được code route-dạng-chuỗi 2023 của project mẫu — <code>"details/&#123;recipeId&#125;"</code>, <code>navArgument</code>, <code>NavType</code>, <code>backStackEntry.arguments?.getInt(...)</code> — và <strong>map từng mảnh</strong> sang mô hình type-safe.</li>
+		</ul>
+		<p>
+			<strong>Vì sao điều này quan trọng khi làm Android.</strong> N1 dạy bạn đọc được bộ khung điều hướng trong <code>MainActivity.kt</code> của project mẫu — nhưng cố tình chừa lại ba mảnh cho bài này: route có chỗ trống <code>&#123;recipeId&#125;</code>, một <code>navArgument</code>, và một <code>backStackEntry</code>. Ở giai đoạn Mạng ngay sau đây, bạn chạm vào một thẻ công thức và app mở trang chi tiết <em>của đúng món đó</em> — chính là ba mảnh đó đang chạy. Ngoài ra, "Back làm gì" nghe hiển nhiên, nhưng viết <strong>Back bằng <code>navigate</code></strong> là một trong những lỗi mô hình phổ biến nhất của người mới: app vẫn chạy, không crash, chỉ là lịch sử phình ra và Back trở nên khó đoán. Bài này dựng đúng mô hình ngay từ đầu.
+		</p>
+		<div class="callout">
+			<strong>Cần biết trước.</strong>
+			<ul>
+				<li><strong>N1</strong> — destination · route · đồ thị · <code>NavController</code> vs <code>NavHost</code> · <code>startDestination</code> · <code>composable("route")</code> · <code>navigate(route)</code> · bức tranh đầu tiên về back stack (<code>navigate</code> thường thêm mục, Back thường bỏ mục trên cùng). Bài này <strong>dựng lại trên nền đó</strong>; mọi khái niệm N1 được dùng lại, không dạy lại.</li>
+				<li><strong>S2</strong> — <code>remember</code>, recomposition.</li>
+				<li><strong>S3</strong> — state hoisting, callback <code>() -&gt; Unit</code>, luồng dữ liệu một chiều. Ranh giới "màn hình phát ra sự kiện, controller thực hiện" của N1 là <strong>cùng khuôn này</strong>.</li>
+				<li><strong>S4</strong> — ViewModel sở hữu UI state; <code>StateFlow</code>; đã <strong>nghe tên</strong> <code>SavedStateHandle</code> (chỉ nhận diện).</li>
+				<li><strong>S5</strong> — tầng UI / tầng dữ liệu; <strong>repository như biên giới</strong>; ViewModel biến dữ liệu thành UI state. Quy tắc "truyền ID" của bài này kết thúc đúng ở biên giới đó.</li>
+				<li><strong>F1/F2</strong> — hàm, lambda đuôi, string template, nullability (<code>?.</code>, <code>?:</code>), data class với thuộc tính <code>val</code>, generics ở mức <strong>nhận diện</strong> (<code>List&lt;T&gt;</code>).</li>
+			</ul>
+			<p>
+				<strong>Chưa cần biết:</strong> <code>popUpTo</code> · <code>launchSingleTop</code> · <code>saveState</code>/<code>restoreState</code> · nhiều back stack · đồ thị lồng nhau · deep link · truyền kết quả ngược giữa hai destination · custom <code>NavType</code> · kotlinx.serialization như một thư viện có cú pháp riêng · API Navigation 3 · ViewModel factory và dependency injection · Retrofit/mạng (bài <strong>W1–W3</strong>) · <code>CompositionLocal</code> ở mức dùng được (bài <strong>D2</strong>).
+			</p>
+		</div>
+	</div>
+
+	<h2 id="nhac-lai-chong-lich-su">1. Nhắc lại: chồng lịch sử mà controller đang giữ</h2>
+	<p>N1 kết thúc bằng bức tranh này: người dùng đi Home → Details → Settings, và controller giữ lịch sử:</p>
+	<pre class="tree"><code>{stackN1Tree}</code></pre>
+	<p>Bài này xoay quanh <strong>hai hành động</strong> lên chồng lịch sử đó, nên phải nói cho thật chuẩn ngay từ đầu.</p>
+	<p><strong>Đi tới.</strong> Mặc định, mỗi lời gọi:</p>
+	<Code code={navigateCode} lang="kotlin" theme="github-dark" />
+	<p><strong>thêm một mục lên đỉnh</strong> của lịch sử. Settings được mở sau Details, nên nó nằm <em>trên</em> Details — và destination đang hiện luôn là mục trên cùng.</p>
+	<p><strong>Đi lui.</strong> Người dùng bấm Back: mục <strong>trên cùng</strong> bị bỏ đi, và mục ngay dưới nó trở thành destination đang hiện. Từ Settings bấm Back → về Details; bấm nữa → về Home. Khi lịch sử chỉ còn một mục, bấm Back thường đưa người dùng ra khỏi app — đúng như họ mong đợi.</p>
+	<p>Hai chữ "mặc định" và "thường" ở trên <strong>có thật, không phải chào đón lỏng</strong>: tồn tại những biến thể của <code>navigate</code>/<code>popBackStack</code> vừa đi vừa <em>dọn</em> lịch sử — chúng thuộc phần tra cứu, không thuộc bài này. Với mọi thứ bạn viết ở giai đoạn này, hai câu trên là mô hình đủ và đúng.</p>
+	<p>Và một câu N1 đã nói mà bây giờ mới tới lúc dùng: <strong>chồng lịch sử này do controller giữ, không nằm trong một biến nào của bạn.</strong> Bạn không tự thêm, không tự bớt — bạn <em>ra lệnh</em>, và lệnh bạn có chỉ có hai loại: đi tới, và đi lui.</p>
+
+	<h2 id="hai-noi-roi-khoi-man-hinh">2. Hai nơi rời khỏi màn hình: nút Back của hệ thống và nút Back của app</h2>
+	<p>Trong một app thật, "quay lại" đến từ hai nơi:</p>
+	<p><strong>1. Nút Back của hệ thống</strong> — nút cảm ứng/cử chỉ của điện thoại. Bạn <strong>không phải viết dòng nào</strong>: controller giữ lịch sử, và hệ thống điều hướng đã nối nút Back với việc bỏ mục trên cùng. Đây là việc bạn được miễn tự làm nhờ dùng thư viện điều hướng — nhớ lại bảng "cách dùng biến <code>screen</code>" ở N1 mục 1, xử lý Back là một trong những thứ nó không có.</p>
+	<p><strong>2. Nút Back của chính app</strong> — ví dụ mũi tên quay lại trên thanh đầu trang (app bar). Nút này là <strong>một nút của UI</strong>, không có phép màu nào gắn sẵn với Back của hệ thống. Nó cần được viết tường minh, và cách viết đúng là đúng khuôn S3: màn hình phát ra <strong>sự kiện</strong>, chỗ giữ controller thực hiện:</p>
+	<Code code={onBackCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc dòng thứ hai: <strong><code>popBackStack()</code> = yêu cầu controller bỏ destination đang hiện khỏi lịch sử</strong> — đúng động tác của nút Back hệ thống, chỉ khác chỗ <em>bạn</em> gọi nó, tại chỗ callback được nối vào nút của app. Controller thực hiện xong, mục dưới đỉnh trở thành destination hiện hành, và <code>NavHost</code> vẽ lại.</p>
+	<p>Hai điểm chính xác, để không nhân rộng thành superstitious code:</p>
+	<ul>
+		<li><strong>Đừng đưa <code>NavController</code> vào màn hình lá</strong> chỉ để nút Back gọi được <code>popBackStack()</code>. N1 mục 10 đã dựng toàn bộ lập luận này với <code>navigate</code>; <code>popBackStack</code> không phải ngoại lệ — màn hình nhận <code>onBack: () -&gt; Unit</code>, lệnh <code>popBackStack()</code> nằm ở chỗ khai đồ thị. (Project mẫu làm ngược lại — <code>TitleRow</code> nhận thẳng <code>navController: NavHostController</code>, <code>ui/RecipeDetails.kt</code> dòng 155. Bạn sẽ đọc nó ở mục 15.)</li>
+		<li><strong><code>popBackStack()</code> trả về một giá trị Boolean</strong> — "có pop được hay không". Có một trường hợp nó trả về <code>false</code>: khi lịch sử gần như rỗng (ví dụ bạn đã tự pop mất <code>startDestination</code>). Tài liệu chính thức ghi rõ hành vi đó. Với nhu cầu của giai đoạn này — nút Back trên một destination bình thường — bạn <strong>gọi và thôi</strong>; đừng bọc thêm <code>if</code> quanh giá trị trả về. Chi tiết này ở mức "biết là có", không hơn.</li>
+	</ul>
+
+	<h2 id="back-khong-phai-navigate">3. Cạm bẫy trung tâm: Back không phải <code>navigate("home")</code></h2>
+	<p>Đây là phần quan trọng nhất của bài, nên đi chậm.</p>
+	<p>Vấn đề đặt ra rất đời thường: đang ở Details, muốn <em>quay về</em> Home. Cách viết đầu tiên người mới nghĩ ra:</p>
+	<Code code={navigateHomeSaiCode} lang="kotlin" theme="github-dark" />
+	<p>Chạy được, không crash, không báo lỗi. Vậy mà nó <strong>sai mô hình</strong>. Chuyện gì thật sự xảy ra — vẽ stack:</p>
+	<pre class="tree"><code>{stackPhinhTree}</code></pre>
+	<p><code>navigate(...)</code> <strong>không tra xem Home đã có trong lịch sử hay chưa</strong> — mặc định, nó ghi <em>thêm</em> một mục mới lên đỉnh, như mọi lần. Giờ lịch sử là <code>Home · Details · Home</code>: người dùng thấy Home, nhưng nếu họ bấm Back, họ không ra khỏi app — họ về <strong>Details</strong> lần nữa. Bấm Back thêm lần nữa mới hết chuỗi. Với app thật, cứ vài lần "quay về" kiểu này là lịch sử thành một chồng giấy mà không ai đoán nổi bấm Back sẽ tới đâu.</p>
+	<p>Bước ngược lại một nhịp để thấy mô hình nào đang bị vi phạm:</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan — đi tới là đặt thẻ, đi lui là bỏ thẻ</strong>
+		<p>Nhớ lại ẩn dụ chồng thẻ của N1:</p>
+		<ul>
+			<li><strong><code>navigate(x)</code></strong> = <strong>đặt thêm một tấm thẻ lên đỉnh</strong> — luôn là <em>đi tới</em>, luôn <em>ghi thêm lịch sử</em>, kể cả khi "đích" tên giống một chỗ bạn đã đi qua.</li>
+			<li><strong>Back / <code>popBackStack()</code></strong> = <strong>bỏ tấm thẻ trên đỉnh</strong> — đi <em>lui</em> trên <strong>lịch sử đã có sẵn</strong>, không tạo gì mới.</li>
+		</ul>
+		<p>Câu mô tả ngắn nhất, và là câu mang ra khỏi cả bài:</p>
+		<p><strong><code>navigate</code> = di chuyển tới trước và ghi lịch sử. <code>popBackStack</code> = di chuyển ngược trên lịch sử đã ghi.</strong></p>
+		<p>Muốn "quay lại Home", câu trả lời đúng là <strong>không gọi gì cả</strong> — bấm Back. Muốn có <em>nút</em> quay về, nút đó gọi <code>popBackStack()</code>. Chỉ khi bạn muốn <em>tới một nơi mới</em> — một luồng mới, một destination mà lịch sử chưa có — thì mới dùng <code>navigate</code>.</p>
+	</div>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 1.</strong>
+		<p>Lịch sử đang là <code>Home · Details</code>. Người dùng bấm một nút viết <code>navigate("details")</code>, rồi bấm Back một lần. Lịch sử sau mỗi bước, từ dưới lên?</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>Sau nút — <strong><code>Home · Details · Details</code></strong>; navigate mặc định ghi thêm một mục mới lên đỉnh, kể cả khi tên trùng mục đang có — vì vậy đỉnh là một bản Details <strong>khác</strong> mục dưới nó. Sau Back — <strong><code>Home · Details</code></strong>; mục đỉnh bị bỏ đi, lộ ra Details ban đầu vẫn còn nguyên dưới đó. Đây là hai lý do để không "quay lại" bằng <code>navigate</code>: nó không tái sử dụng mục cũ, và nó để lại rác trong lịch sử.</p>
+		</details>
+	</div>
+
+	<h2 id="pop-back-stack">4. <code>popBackStack()</code>: phát biểu chính xác về một lời gọi</h2>
+	<p>Giờ chụp cận động tác mà mục 2 và 3 đang dùng. Tài liệu chính thức mô tả <code>popBackStack()</code> như sau, được diễn lại đúng ý: nó <strong>cố gắng bỏ destination hiện hành khỏi back stack và về destination trước đó</strong> — tức là đi lui đúng một bước trên lịch sử. Trả về Boolean cho biết pop có thành công không.</p>
+	<p>Truy vết một cú bấm nút Back của app, từng bước — cùng khuôn truy vết của N1 mục 9:</p>
+	<pre class="tree"><code>{popBackStackTruyVetTree}</code></pre>
+	<p>Ba điểm chính xác cho ngắn gọn:</p>
+	<ul>
+		<li><strong>Nó "cố gắng" pop — vì có thể không có gì để pop.</strong> Đó chính là nguồn của Boolean ở mục 2. Ở mức bài này, giữ đúng câu: nếu lịch sử còn gì đó phía dưới thì pop thành công; nếu bạn đã tự pop đến mức rỗng thì nó trả <code>false</code>. Không cần code xử lý <code>false</code> trong app của giai đoạn này.</li>
+		<li><strong>Nó không "vẽ" gì cả.</strong> <code>popBackStack()</code> chỉ đổi <em>đỉnh của lịch sử</em>. Việc vẽ destination mới vẫn là việc của <code>NavHost</code> — đúng vai tách hai bên như N1 mục 6.</li>
+		<li><strong>Có các biến thể <code>popBackStack(...)</code> nhận tham số đích</strong> (pop về một destination chỉ định, kèm tuỳ chọn pop luôn đích đó). Project mẫu <strong>không dùng</strong> biến thể nào, bài này <strong>không dạy</strong> chúng — chỉ cần nhận ra rằng chúng tồn tại trong tài liệu để đỡ ngỡ ngàng. (Mục "Chưa cần biết" đã liệt kê.)</li>
+	</ul>
+	<p>Một quy tắc nhỏ nối với S2, nguyên bản N1 mục 9 nhưng giờ áp cho cả hai chiều: gọi <code>popBackStack()</code> <strong>bên trong callback</strong>, không gọi thẳng trong thân composable — thân composable chạy lại mỗi lần vẽ lại (recomposition), còn nút Back chỉ được bấm khi có sự kiện thật.</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 2.</strong>
+		<p>Hai dòng dưới đây khác nhau ở chỗ nào — và khác nhau <em>về mô hình</em> chứ không chỉ về chữ?</p>
+		<pre><code>navController.navigate("home")
+navController.popBackStack()</code></pre>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>Dòng một <strong>ghi thêm</strong> một mục Home mới lên đỉnh lịch sử — đi tới, tạo lịch sử. Dòng hai <strong>bỏ</strong> mục đỉnh hiện tại — đi lui, tiêu thụ lịch sử đã có. Cùng một "hệ quả thấy được" là màn hình Home hiện ra, nhưng mô hình lịch sử hoàn toàn khác nhau — chính là cái bẫy mục 3.</p>
+		</details>
+	</div>
+
+	<h2 id="destination-can-du-lieu">5. Destination cần dữ liệu: "mở chi tiết của món nào?"</h2>
+	<p>Từ mục 1 đến 4, mọi destination đều "tự đủ" — Details không cần biết gì thêm để vẽ. App thật không vậy, và project mẫu của chính khoá là bằng chứng gần nhất: ở giai đoạn Mạng, danh sách công thức mở ra trang chi tiết <strong>của một món cụ thể</strong>. Destination chi tiết buộc phải trả lời được câu hỏi:</p>
+	<p class="notice"><strong>"Mở chi tiết của món nào?"</strong></p>
+	<p>Cái cần truyền rất nhỏ — một mã số. Nhưng câu hỏi kỹ thuật thật là: <strong>mang nó qua đâu?</strong></p>
+	<p>Cách cũ — cách project mẫu viết năm 2023 — là nhét thẳng vào route:</p>
+	<Code code={routeCoDuLieuCode} lang="kotlin" theme="github-dark" />
+	<p>trong đó route thực sự được khai báo là một <strong>mẫu có chỗ trống</strong> <code>"details/&#123;recipeId&#125;"</code> (bạn đã thấy dòng này trong N1 mục 14, được dán nhãn "thuộc N2" — hôm nay giải phẫu nó). Đọc kỹ cái ý tưởng trước, rồi mới nói cái giá:</p>
+	<ul>
+		<li>Về <strong>ý niệm</strong>, nó đúng và nó hoạt động: route vừa định danh destination, vừa mang theo <code>recipeId</code>.</li>
+		<li>Về <strong>cách biểu diễn</strong>, nó gộp hai thứ khác bản chất vào <strong>một chuỗi</strong>: cái <em>tên</em> của destination và cái <em>dữ liệu</em> destination cần. Chuỗi thì trình biên dịch chỉ thấy là… một chuỗi. Cái giá cụ thể:</li>
+	</ul>
+	<table class="cmp">
+		<thead>
+			<tr><th>Rủi ro khi route là chuỗi tự ghép</th><th>Chuyện gì xảy ra</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><strong>Typo</strong></td><td><code>navigate("detials/$id")</code> — biên dịch bình thường; lỗi chỉ nổ ra <strong>lúc chạy</strong>, đúng lúc người dùng bấm nút</td></tr>
+			<tr><td><strong>Sai tên khoá</strong></td><td>Mẫu khai <code>&#123;recipeId&#125;</code> nhưng code đọc <code>"recipId"</code> — đọc ra <code>null</code>/<code>0</code> tuỳ cách đọc, và nơi nhận phải bọc giá trị lấp để sống sót (project mẫu làm đúng thế — mục 14)</td></tr>
+			<tr><td><strong>Sai kiểu</strong></td><td>Khai <code>IntType</code> rồi truyền <code>"details/abc"</code> — lỗi lúc chạy, không phải lúc biên dịch</td></tr>
+			<tr><td><strong>Ghép chuỗi bằng tay</strong></td><td>Mỗi lời gọi navigate là một phép nội suy <code>"…/$id"</code> tự viết — sai một chỗ là mất một chỗ, và không máy nào kiểm giúp</td></tr>
+			<tr><td><strong>Phát hiện muộn</strong></td><td>Cả bốn lỗi trên đều là <strong>lỗi lúc chạy</strong> — loại lỗi đắt nhất, vì nó chỉ gặp khi có người dùng bấm đúng chỗ</td></tr>
+		</tbody>
+	</table>
+	<p>Cần nói ngay cho công bằng — và đây là tư duy phê phán mà khoá luyện suốt: <strong>không gọi cách viết này là "dở".</strong> Project mẫu dùng Navigation <strong>2.7.2</strong> (2023) — chuỗi với chỗ trống là cách biểu diễn route <em>thông thường của thời điểm đó</em>, và code của nó làm việc đúng. Thư viện đã đi tiếp từ đó, và phần còn lại của bài dạy mô hình mà khoá này khuyên dùng khi viết code <strong>mới</strong> — trong khi vẫn giữ cho bạn đọc thạo code cũ (mục 14), vì bạn sẽ gặp nó trong project mẫu và trong rất nhiều code ngoài thực tế.</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 3.</strong>
+		<p><code>navigate("detials/$id")</code> (thừa chữ <em>t</em>) biên dịch được không? Lỗi lộ ra khi nào?</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>Biên dịch được — với trình biên dịch, đó chỉ là một chuỗi hợp lệ; nó không biết đồ thị có destination tên <code>detials</code> hay không. Lỗi lộ ra <strong>lúc chạy</strong>, đúng lúc người dùng chạm vào cái nút gọi nó. Đây là cái giá cốt lõi của route-dạng-chuỗi, đã được N1 mục 9 nhắc như một dự báo — giờ có toàn bài sau để giải quyết.</p>
+		</details>
+	</div>
+
+	<h2 id="route-type-safe">6. Mô hình route type-safe: destination là một kiểu Kotlin</h2>
+	<p>Ý tưởng của mô hình mới, gói gọn một câu: <strong>thay vì gọi tên destination bằng chuỗi, hãy định nghĩa destination bằng một kiểu Kotlin.</strong> Cái tên, tham số, kiểu tham số — tất cả nằm trong khai báo kiểu; trình biên dịch đọc được hết.</p>
+	<p>Hai kiểu route của ví dụ xuyên bài — Home (không mang gì) và chi tiết công thức (mang một mã số):</p>
+	<Code code={routeKhaiBaoCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc từng mảnh — có hai thứ Kotlin mới trong đó, giải thích đúng đủ rồi quay lại mạch chính:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Mảnh</th><th>Thuộc về</th><th>Nghĩa</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>@Serializable</code></td><td><strong>Annotation</strong> — như <code>@Composable</code> của N1 mục 8: một <em>chú thích</em> gắn trước khai báo, dành cho trình biên dịch, không phải code chạy</td><td>Cho hệ thống điều hướng biết: giá trị route này <strong>có thể được mã hoá và giải mã lại</strong> khi đi vào và đọc ra khỏi lịch sử. Bạn không viết code mã hoá nào cả — thư viện lo</td></tr>
+			<tr><td><code>object HomeRoute</code></td><td><strong>Kotlin</strong> — khai báo kiểu mới ở đây</td><td>Một khai báo <code>object</code> tạo ra <strong>một kiểu mà cả app chỉ có đúng một giá trị</strong>. Hợp lý cho Home: "đi tới Home" không cần mang thông tin gì thêm, nên route của nó chỉ cần <em>tồn tại</em></td></tr>
+			<tr><td><code>data class RecipeDetailsRoute(val recipeId: Int)</code></td><td><strong>Kotlin</strong> — đúng khuôn data class của F2</td><td>Route có tham số là <strong>một data class với thuộc tính <code>val</code></strong>: tên tham số (<code>recipeId</code>) và kiểu (<code>Int</code>) đều là <em>phần khai báo chính thức</em> — không phải chuỗi tự ghép</td></tr>
+		</tbody>
+	</table>
+	<p>Điều đáng chú ý nhất so với mục 5: <strong>route giờ là một giá trị Kotlin có kiểu.</strong> <code>HomeRoute</code> là một giá trị (của kiểu <code>object</code>); <code>RecipeDetailsRoute(recipeId = 42)</code> là một giá trị data class. Bạn tạo nó, truyền nó, và nếu bạn gõ sai tên thuộc tính hay truyền sai kiểu — <strong>trình biên dịch từ chối ngay</strong>, trước cả khi app chạy.</p>
+	<p>Ba ranh giới cần vạch ngay, để không suy diễn quá xa:</p>
+	<ul>
+		<li><strong>Đây không phải bài học về kotlinx.serialization.</strong> Annotation <code>@Serializable</code> đến từ một plugin Kotlin, nhưng ở đây bạn chỉ cần đúng một vai của nó: <em>phép điều hướng dùng để đóng gói/giải đóng giá trị route</em>. Không định dạng dữ liệu, không cú pháp serializer nào khác xuất hiện trong khoá này.</li>
+		<li><strong>Chữ <code>object</code> ở đây có nghĩa mới so với F1/F2.</strong> Ở F1/F2, "object" chỉ là <em>một object cụ thể</em> — một bản sao tạo ra từ khuôn. Khai báo <code>object HomeRoute</code> thì khác: nó <strong>khai báo một kiểu</strong> mà <em>tự thân vừa là kiểu, vừa là giá trị duy nhất của chính nó</em> — không cần gọi tên kiểu như gọi hàm để tạo bản sao. Hình dung: <code>HomeRoute</code> là một "con dấu" — ai cầm con dấu đó nghĩa là người đó nói "tới Home".</li>
+		<li><strong>Route class nên nhỏ.</strong> Một vài thuộc tính định danh là đủ — phần sau của bài (mục 10) sẽ biến điều này thành quy tắc cứng.</li>
+	</ul>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 4.</strong>
+		<p>Hai khai báo dưới đây khác nhau ở <em>vai</em> gì?</p>
+		<pre><code>@Serializable
+object SettingsRoute
+
+@Serializable
+data class RecipeDetailsRoute(val recipeId: Int)</code></pre>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p><code>SettingsRoute</code> là route <strong>không tham số</strong> — toàn bộ thông tin "đi tới Settings" gói gọn trong sự tồn tại của giá trị; một kiểu - một giá trị. <code>RecipeDetailsRoute</code> là route <strong>có tham số</strong> — mỗi lần mở chi tiết là một giá trị data class khác nhau, theo <code>recipeId</code> khác nhau. Chọn <code>object</code> khi destination không cần biết thêm gì; chọn data class khi cần mang dữ liệu.</p>
+		</details>
+	</div>
+
+	<h2 id="do-thi-type-safe">7. Dựng đồ thị với route kiểu Kotlin</h2>
+	<p>Toàn bộ đồ thị hai destination — đúng khuôn <code>NavHost</code> của N1 mục 6, chỉ đổi cách <em>gọi tên</em>:</p>
+	<Code code={graphTypeSafeCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc từng dòng — chỉ ghi lại cái <em>đổi</em>, vì phần còn lại là y nguyên N1:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Dòng</th><th>Đổi gì so với N1</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>startDestination = HomeRoute</code></td><td>Trước: một chuỗi <code>"home"</code>. Nay: <strong>giá trị route</strong> — controller so khớp bằng kiểu, không bằng chữ</td></tr>
+			<tr><td><code>composable&lt;HomeRoute&gt; &#123; … &#125;</code></td><td>Trước: <code>composable("home") &#123; … &#125;</code> — tên destination truyền như tham số chuỗi. Nay: <strong>tên kiểu nằm trong dấu <code>&lt; &gt;</code></strong> — cùng khuôn nhận diện generics của F2 (<code>List&lt;T&gt;</code>): bạn đọc là "đăng ký destination của kiểu <code>HomeRoute</code>"</td></tr>
+			<tr><td><code>navController.navigate(RecipeDetailsRoute(recipeId))</code></td><td>Trước: <code>navigate("details/$id")</code> — tự ghép chuỗi. Nay: <strong>tạo giá trị route</strong> và truyền nó. Tên thuộc tính sai → không biên dịch. Kiểu sai → không biên dịch</td></tr>
+			<tr><td><code>&#123; backStackEntry -> … &#125;</code></td><td>Y như N1 đã dán nhãn: lambda nhận <strong>mục lịch sử</strong> của destination đang vẽ — mục 8 dùng nó để lấy dữ liệu ra</td></tr>
+		</tbody>
+	</table>
+	<p>Và điều đáng để dừng lại một nhịp: <strong>ranh giới của S3 không hề xê dịch.</strong> <code>HomeScreen</code> vẫn chỉ nhận một callback; nó không biết <code>NavController</code>, không biết <code>RecipeDetailsRoute</code>, không biết "mở chi tiết" nghĩa là đi đâu. Route type-safe đổi cách <em>chỗ khai đồ thị thực hiện</em> điều hướng — không đổi ai được phát sự kiện. <code>navController.navigate(RecipeDetailsRoute(recipeId))</code> nằm đúng chỗ đó: trong lambda callback, ngay cạnh khai báo destination.</p>
+	<p>So với N1 mục 9, có một lời hứa mới được lấp đầy: N1 nói <em>route sai chỉ lộ lúc chạy</em>. Với route kiểu Kotlin, phần lớn lỗi "đi tới destination không tồn tại" được bắt <strong>lúc biên dịch</strong> — vì destination và lệnh đi tới cùng tham chiếu một kiểu. Nói cho an toàn: <strong>không phải mọi lỗi điều hướng đều biến mất</strong> — những lỗi về <em>luồng</em> (đi tới sai destination <em>đúng kiểu</em>, back stack cấu trúc sai ý) vẫn là lỗi thiết kế mà trình biên dịch không đoán hộ được. Type-safe nghĩa là <em>phần sai sót về tên và kiểu</em> được chuyển từ lúc-chạy sang lúc-biên-dịch — chính là phần đắt đỏ nhất của mục 5.</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 5.</strong>
+		<p>Bốn dòng nào dưới đây biên dịch lỗi? Vì sao?</p>
+		<pre><code>navController.navigate(RecipeDetailsRoute("42"))       // (a)
+navController.navigate(RecipeDetailsRoute(recipeId))   // (b)
+navController.navigate(RecipeDetialsRoute(recipeId))   // (c)
+navController.navigate("RecipeDetailsRoute")           // (d)</code></pre>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p><strong>(a)</strong> — truyền chuỗi <code>"42"</code> cho thuộc tính <code>Int</code> — bị từ chối lúc biên dịch. <strong>(c)</strong> — gõ sai tên kiểu — không tồn tại kiểu đó, biên dịch lỗi. (b) biên dịch được: <code>recipeId</code> là <code>Int</code>. (d) cũng biên dịch được — đó là một chuỗi, trình biên dịch không biết nó phải trỏ tới destination nào; lỗi (nếu có) lộ lúc chạy. (d) chính là cách project mẫu phải sống chung — mục 14.</p>
+		</details>
+	</div>
+
+	<h2 id="to-route">8. Lấy dữ liệu ra: <code>toRoute&lt;T&gt;()</code></h2>
+	<p>Trong <code>composable&lt;RecipeDetailsRoute&gt; &#123; backStackEntry -> … &#125;</code>, giá trị route mà người dùng đã đi tới được <strong>giải mã lại</strong> từ mục lịch sử. API chính thức của bước đó:</p>
+	<Code code={toRouteCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc từng dòng:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Dòng</th><th>Nó làm gì</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>backStackEntry</code></td><td><strong>Mục lịch sử</strong> của destination đang được vẽ — cùng đối tượng mà N1 mục 14 đã dán nhãn "thuộc N2". Đối tượng này giữ cả tham số đã đi kèm lần navigate đó</td></tr>
+			<tr><td><code>.toRoute&lt;RecipeDetailsRoute&gt;()</code></td><td><strong>Hàm mở rộng</strong> (extension function — Kotlin) của thư viện điều hướng: giải mã tham số của mục lịch sử <strong>về đúng giá trị route gốc</strong>. Tên kiểu đặt trong <code>&lt; &gt;</code> ở đây là <em>bạn nói cho nó biết</em> nên dựng lại kiểu gì — cùng khuôn đọc generics của F2</td></tr>
+			<tr><td><code>val route = …</code></td><td>Giá trị trả về là một <code>RecipeDetailsRoute</code> <strong>thật sự</strong> — có thuộc tính, có kiểu, trình biên dịch biết hết</td></tr>
+			<tr><td><code>route.recipeId</code></td><td>Đọc tham số như đọc một thuộc tính data class bình thường — F2. Không chuỗi, không khoá tra cứu, không <code>?: 0</code></td></tr>
+			<tr><td><code>onBack = &#123; navController.popBackStack() &#125;</code></td><td>Nút Back của app, đúng khuôn mục 2 — callback ở biên màn hình</td></tr>
+		</tbody>
+	</table>
+	<p>Cần biết cho chính xác, đúng một dòng: hàm này cần một import —</p>
+	<Code code={toRouteImportCode} lang="kotlin" theme="github-dark" />
+	<p>— và các import của <code>NavHost</code>/<code>composable</code>/<code>rememberNavController</code> vẫn là của <code>androidx.navigation.compose</code> như N1. <code>import kotlinx.serialization.Serializable</code> đi kèm chỗ khai route (mục 6). Chừng đó là đủ để ví dụ của bài compile được — <strong>trừ một điều kiện phiên bản</strong>, nói ngay ở phần sau.</p>
+	<p>Một so sánh để nhớ vai của dòng <code>.toRoute(...)</code> so với code cũ sẽ đọc ở mục 14: đây là chỗ mà code 2023 viết <code>backStackEntry.arguments?.getInt("recipeId") ?: 0</code> — tra tham số <strong>bằng tên-chuỗi</strong> trên một bộ tham số <strong>nullable</strong> (<code>arguments</code> có thể không có gì), và nếu tên gõ sai thì <code>getInt</code> <strong>âm thầm trả <code>0</code></strong> — không lỗi, không cảnh báo. <code>toRoute</code> thay cả hai tầng rủi ro đó: tra bằng <strong>kiểu</strong>, nhận lại <strong>giá trị route hoàn chỉnh</strong>. Đó là sự khác nhau giữa "hỏi bằng chữ, tự chịu rủi ro chữ sai" và "hỏi bằng kiểu, sai kiểu thì biên dịch đã kêu".</p>
+
+	<h2 id="ghi-chu-phien-ban">9. Để ví dụ này compile: một ghi chú phiên bản, không hơn</h2>
+	<div class="callout note">
+		<strong>Ghi chú phiên bản — code mẫu 2023, API trong bài 2024+, hôm nay 2026</strong>
+		<ul>
+			<li><strong>Project mẫu của khoá</strong> dùng <code>androidx.navigation:navigation-compose</code> <strong>2.7.2</strong> (<code>gradle/libs.versions.toml</code> dòng 17). Bản này <strong>chưa có</strong> route type-safe — nên các ví dụ <code>@Serializable</code>/<code>composable&lt;T&gt;()</code>/<code>toRoute&lt;T&gt;()</code> của bài <strong>không compile được trên project mẫu, và không được dán vào đó</strong>. Điều này không làm giảm giá trị bài học: bạn đang học <em>cách đọc code cũ</em> và <em>cách viết code mới</em> song song — đúng mô hình của cả khoá.</li>
+			<li><strong>Route type-safe có từ Navigation 2.8.0.</strong> Muốn ví dụ của bài chạy thật, cần nâng phiên bản điều hướng lên <strong>2.8.0 trở lên</strong> (bản ổn định hiện hành: <strong>2.10.0</strong>, 26/08/2026) và thêm <strong>plugin Kotlin serialization</strong> (<code>org.jetbrains.kotlin.plugin.serialization</code>) cùng thư viện <code>org.jetbrains.kotlinx:kotlinx-serialization-json</code> vào Gradle. Việc nâng phiên bản là một thao tác Gradle riêng — phần trao đổi chi tiết về các con số nằm ở phần tra cứu phiên bản của khoá, không ở đây.</li>
+			<li><strong>Về Navigation 3:</strong> một thư viện điều hướng thế hệ sau cho Compose <strong>đã ổn định</strong> trong hệ sinh thái Android hiện tại — và chính dòng Navigation 2 (thế hệ mà project mẫu dùng) giờ được tài liệu chính thức ghi là <strong>chế độ bảo trì</strong>: chỉ nhận sửa lỗi nghiêm trọng, không thêm tính năng mới. Khoá này vẫn dạy mô hình route type-safe của Navigation 2 ở đây, vì đó là lộ trình nâng cấp rõ ràng nhất từ code Navigation 2 của project mẫu; API Navigation 3 không thuộc bài này. Bản phát hành hiện hành của cả hai dòng được ghi trong phần tra cứu phiên bản của khoá — con số đó là dữ liệu tra cứu, không phải khái niệm cần nhớ của bài.</li>
+		</ul>
+	</div>
+	<p>Đó là toàn bộ nội dung "phiên bản" của bài. Tại sao nó phải nằm đây mà không chui vào mục 14: vì nếu không, bạn có quyền ngỡ rằng ví dụ type-safe <strong>nên</strong> dán vào project mẫu 2.7.2 — và không compile được mà không hiểu vì sao. Một ghi chú, đúng chỗ, hết vấn đề.</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 6.</strong>
+		<p>Bạn dán khối <code>@Serializable object HomeRoute</code> vào project mẫu và biên dịch. Kết quả?</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p><strong>Lỗi biên dịch</strong> — project mẫu dùng Navigation 2.7.2, chưa có API route type-safe (2.8.0 trở lên). Lỗi đó không phải bạn gõ sai; đó là ranh giới phiên bản. Đúng động tác: giữ project mẫu nguyên vẹn để đọc, viết code type-safe trong project mới/học tập đã nâng phiên bản.</p>
+		</details>
+	</div>
+
+	<h2 id="truyen-id">10. Quy tắc số một: truyền ID, đừng truyền cả object</h2>
+	<p>Đã biết <em>cách</em> truyền dữ liệu — giờ là phần quan trọng nhất về <em>truyền cái gì</em>.</p>
+	<p>Vì route type-safe chấp nhận mọi thuộc tính <code>@Serializable</code>, người mới gặp một cám dỗ rất tự nhiên: chiều Details cần dữ liệu công thức, list đang có sẵn object <code>Recipe</code> — vậy nhét luôn cả object vào route cho rồi:</p>
+	<Code code={quyetDinhCode} lang="kotlin" theme="github-dark" />
+	<p>Bản thứ hai <strong>không hề thiệt thòi</strong> — nó không phải "cách viết tiết kiệm" mà là cách đúng kiến trúc, và mạch dữ liệu sau đó đã có sẵn từ S4/S5:</p>
+	<pre class="tree"><code>{machDuLieuTree}</code></pre>
+	<p>Năm lý do — cả năm đều đã có nền từ các bài trước:</p>
+	<ol>
+		<li><strong>Object có thể lớn.</strong> Route được mang theo trong <strong>lịch sử điều hướng</strong> — mỗi mục lịch sử lôi theo nó. Mở mười trang chi tiết là mười bản sao object trong lịch sử. Một <code>Int</code> thì không bao giờ là vấn đề.</li>
+		<li><strong>Object có thể cũ.</strong> Bạn chụp object ở <em>thời điểm bấm nút</em>. Nếu dữ liệu đổi (repo vừa cập nhật, ảnh mới được tải), trang chi tiết vẫn cầm <strong>bản cũ</strong> — vì bạn đã chốt dữ liệu vào route. Với ID, bạn hỏi <strong>dữ liệu hiện có</strong> lúc tới nơi — đúng nguyên tắc <em>nguồn đáng tin</em> của S5.</li>
+		<li><strong>Destination nên tự lấy dữ liệu hiện hành.</strong> Cùng một destination ("chi tiết của món X") phải hiển thị đúng ở cả hai lối vào — từ list, từ bookmark — project mẫu làm đúng việc này: hai route khác nhau (<code>details/&#123;recipeId&#125;</code> và <code>bookmarks/&#123;recipeId&#125;</code>) cùng đổ về một ID rồi một màn hình. ID là thứ hợp lệ cho <em>cả hai lối vào</em>; một object chụp từ list thì không.</li>
+		<li><strong>Back stack là lịch sử điều hướng, không phải kho dữ liệu.</strong> Nhét object vào route nghĩa là dùng lịch sử làm bộ nhớ tạm — và rò rỉ dữ liệu vào một cơ chế không được thiết kế cho việc đó. Route chỉ nên chứa <strong>thông tin định danh</strong> đủ để destination tự biết phải đi hỏi ai, hỏi gì.</li>
+		<li><strong>Lưu/khôi phục trở nên dễ dàng.</strong> Hệ thống có thể dựng lại lịch sử điều hướng (xoay máy, thu hồi tiến trình). Khôi phục một <code>Int</code> ổn định là chuyện nhỏ; khôi phục cả object là chuyện lớn — và có thể là chuyện <strong>không làm được</strong> nếu object không được thiết kế để phục hồi. Định danh nhỏ, ổn định — thì bên nhận tự dựng lại được dữ liệu.</li>
+	</ol>
+	<div class="callout diff">
+		<strong>Cảnh báo — không cất object vào back stack</strong>
+		<p>Route type-safe cho phép bạn truyền <em>gì cũng được</em> — đó là quyền, không phải lời mời. Một route nên chứa <strong>thông tin định danh nhỏ</strong> (ID, vài tham số lựa chọn), không chứa object dữ liệu, UI state, ViewModel, hay bất kỳ cơ chế nào của app. Quy tắc của mục 11 nói cụ thể những gì nên/không nên; lý do nằm ở năm dòng trên. Khi phân vân, hỏi: <em>"đây là thông tin để <strong>định danh</strong> một lần mở destination, hay là <strong>dữ liệu</strong> mà destination nên tự lấy?"</em></p>
+	</div>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 7.</strong>
+		<p>Một đồng nghiệp viết <code>RecipeDetailsRoute(recipe = recipe)</code> để "đỡ phải query lại". Điểm sai <em>kiến trúc</em> nào ở đây — không phải điểm hiệu năng?</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>Nó lấy <strong>dữ liệu chụp tại một thời điểm</strong> thay thế cho <strong>quyền hỏi dữ liệu hiện có</strong> — trang chi tiết không còn đi qua biên giới dữ liệu của S5, nên không thể phản ánh thay đổi; và nó biến lịch sử điều hướng thành kho lưu object — thứ nó không phải là. Hiệu năng chỉ là lớp ngoài; sai lầm nằm ở chỗ dữ liệu bị chốt vào một cơ chế thuộc về điều hướng.</p>
+		</details>
+	</div>
+
+	<h2 id="nen-truyen-gi">11. Nên truyền gì, không nên truyền gì</h2>
+	<p>Quy tắc ra quyết định của người mới — không tuyệt đối hoá, nhưng đủ để chấm dứt phân vân:</p>
+	<p><strong>Thường nên truyền qua route:</strong></p>
+	<ul>
+		<li><strong>ID</strong> — <code>recipeId</code>, <code>userId</code>, <code>orderId</code> — cái điển hình và đúng nhất.</li>
+		<li><strong>Một giá trị nhỏ định danh biến thể</strong> — enum/tuỳ chọn nhỏ: <code>"detail"</code> vs <code>"summary"</code>, tab nào, chế độ xem nào.</li>
+		<li><strong>Một lựa chọn lọc/sắp xếp đơn giản</strong> — chuỗi tìm kiếm người dùng vừa gõ, một cờ boolean.</li>
+		<li>Tóm một câu: <em>thông tin tối thiểu để destination biết phải tự dựng lại trạng thái nào.</em></li>
+	</ul>
+	<p><strong>Không nên truyền qua route:</strong></p>
+	<table class="cmp">
+		<thead>
+			<tr><th>Không nên</th><th>Vì sao</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><strong>Object dữ liệu lớn</strong> (<code>Recipe</code> cả, danh sách cả)</td><td>Lý do 1–3 của mục 10 — lớn, có thể cũ, nên lấy lại qua ID</td></tr>
+			<tr><td><strong>UI state</strong> (<code>UiState</code>, loading/error)</td><td>UI state là <em>kết quả</em> mà destination tự dựng — mục 12</td></tr>
+			<tr><td><strong>ViewModel</strong></td><td>Sở hữu state của màn hình; không phải hành lý của route (S4)</td></tr>
+			<tr><td><strong>Repository</strong></td><td>Là biên giới dữ liệu của <em>cả app</em>; mọi destination dùng chung một biên giới, không mang nó theo từng lần navigate (S5)</td></tr>
+			<tr><td><strong><code>Context</code>, resource manager</strong></td><td>Thứ thuộc nền tảng/môi trường; route là dữ liệu thuần của điều hướng</td></tr>
+			<tr><td><strong><code>NavController</code></strong></td><td>Controller thuộc chỗ khai đồ thị — N1 mục 10 đã dựng toàn bộ lý do</td></tr>
+			<tr><td><strong>Đối tượng database/mạng</strong></td><td>Thứ nằm <em>dưới</em> biên giới dữ liệu; lộ qua route là phá tầng (S5)</td></tr>
+		</tbody>
+	</table>
+	<p>Chữ "không nên" là chính xác — đừng biến nó thành giáo điều "chỉ bao giờ được truyền ID". Có những route hợp lệ mang vài tham số (<code>RecipeDetailsRoute(recipeId, fromWhere)</code>). Thước đo luôn là câu hỏi cuối mục 10: <strong>định danh, hay dữ liệu?</strong> Định danh thì nhỏ, ổn định, số lượng ít — hợp lệ. Dữ liệu thì để destination tự lấy qua biên giới S5.</p>
+
+	<h2 id="route-khong-phai-ui-state">12. Dữ liệu route ≠ UI state</h2>
+	<p>Sau S2–S4, bạn đã có khái niệm UI state — và nguy hiểm của bài này là trộn nó với dữ liệu route. Tách hai cái, và mỗi thứ trả lời một câu hỏi khác nhau:</p>
+	<table class="cmp">
+		<thead>
+			<tr><th></th><th><strong>Dữ liệu route</strong> (tham số điều hướng)</th><th><strong>UI state</strong> (S2–S4)</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>Trả lời câu hỏi</td><td><em>"Đây là <strong>lần mở</strong> destination nào?"</em></td><td><em>"Destination đó <strong>hiện đang hiển thị</strong> gì?"</em></td></tr>
+			<tr><td>Ví dụ</td><td><code>recipeId = 42</code> — định danh lần mở trang chi tiết của món 42</td><td><code>loading</code> → <code>recipe</code> → <code>error</code> — trạng thái hiển thị của trang đó</td></tr>
+			<tr><td>Ai giữ</td><td>Controller — trong mục lịch sử</td><td>ViewModel của màn hình</td></tr>
+			<tr><td>Có đổi theo thời gian không</td><td>Không — một mục lịch sử được sinh ra với một ID rồi <strong>không đổi</strong></td><td>Có — dữ liệu tải xong, lỗi xảy ra, người dùng tương tác</td></tr>
+		</tbody>
+	</table>
+	<p>Điểm phân biệt thực dụng nhất nằm ở hàng cuối: <strong>route là "hồ sơ sinh" của một lần mở destination — sinh ra thì không sửa</strong>; còn UI state thì sống và đổi suốt đời màn hình. <code>recipeId = 42</code> của mục lịch sử không bao giờ thành <code>43</code> — nếu người dùng muốn xem món 43, đó là <em>một lần navigate khác</em>, một mục lịch sử mới. Muốn trang 42 đổi từ loading sang có-dữ-liệu, đó là việc của UI state trong ViewModel — không phải của route.</p>
+	<p>Hệ quả đúng như bảng ở mục 11: <strong>đừng nhét <code>UiState</code> vào route</strong> — route nói "mở món nào", không nói "màn hình đang trông thế nào". (N1 mục 12 đã tách <em>trạng thái điều hướng</em> khỏi <em>UI state</em> ở tầm nhìn bức tranh lớn; bài này tinh chỉnh thêm một mặt của cùng ranh giới đó.)</p>
+
+	<h2 id="noi-lai-toan-mach">13. Nối lại toàn mạch: từ RecipeCard đến repository</h2>
+	<p>Bài này khép lại Giai đoạn 4 — nên khép bằng mạch dữ liệu hoàn chỉnh, từng mắt xích một. Tất cả đều là thứ bạn đã học, chỉ giờ mới đứng cùng nhau:</p>
+	<Code code={machDayDuCode} lang="kotlin" theme="github-dark" />
+	<Code code={machDayDuGraphCode} lang="kotlin" theme="github-dark" />
+	<Code code={machDayDuDestCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc ①→④ ngược lại, theo chiều dữ liệu: một <strong>ID nhỏ</strong> là thứ duy nhất đi qua ranh giới điều hướng; tới nơi thì nó trở thành <strong>tham số để hỏi dữ liệu</strong> — ViewModel dùng nó gọi xuống biên giới dữ liệu (repository của S5), nhận dữ liệu hiện có, biến thành UI state, và màn hình vẽ. Không có object nào bị nhét vào lịch sử; không có ViewModel nào biết <code>NavController</code> tồn tại (N1 mục 13).</p>
+	<p class="notice">🔭 <em>Bước ③ có một biến thể "nâng cao hơn": thay vì destination đọc route rồi truyền xuống, ViewModel của destination có thể tự đọc route qua <code>SavedStateHandle.toRoute&lt;RecipeDetailsRoute&gt;()</code> — bạn đã nghe tên <code>SavedStateHandle</code> ở S4 ở mức "biết là nó tồn tại". Ở đây chỉ cần nhận ra <strong>hình dạng</strong>: cùng một lời gọi <code>toRoute&lt;T&gt;()</code>, khác chỗ nó đứng. Cách nối ViewModel với route đầy đủ thuộc phần kiến trúc sau này — bài này dừng ở bước ④.</em></p>
+	<p>Chú ý một điều nữa về ②: <code>recipe.id</code> nằm trong <strong>callback</strong> — đúng quy tắc "navigate trong callback, không trong thân composable" của N1 mục 9. Cả mạch ①→④ không có một dòng nào chạy lúc vẽ; tất cả chạy khi có sự kiện.</p>
+
+	<h2 id="doc-code-2023">14. Đọc code thật: project mẫu 2023 làm việc đó thế nào</h2>
+	<p>Toàn bộ phần trước dạy cách <em>viết mới</em>. Đây là phần dạy cách <em>đọc cũ</em> — và "cũ" nghĩa là code thật, nguyên văn, trong project mẫu của giai đoạn Mạng. Mở lại đúng file mà N1 đã định vị: <code>aaf-materials/08-networking/projects/final/app/src/main/java/com/kodeco/recipefinder/MainActivity.kt</code>, dòng <strong>86–95</strong> — khối mà N1 mục 14 dán ba nhãn "thuộc N2", giờ giải phẫu:</p>
+	<Code code={mainActivityNguyenVanCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc từng mảnh, theo đúng thứ tự mà một lần navigate đi qua:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Mảnh</th><th>Vai</th><th>Mô hình type-safe tương ứng</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>"details/&#123;recipeId&#125;"</code></td><td><strong>Route mẫu có chỗ trống</strong>: tên destination (<code>details</code>) + ô dữ liệu tên <code>recipeId</code></td><td><code>@Serializable data class RecipeDetailsRoute(val recipeId: Int)</code> — ô trống thành <strong>thuộc tính</strong></td></tr>
+			<tr><td><code>navArgument("recipeId") &#123; … &#125;</code></td><td>Khai báo <strong>metadata của tham số</strong> "recipeId" — gắn cho destination, theo <em>tên chuỗi</em></td><td>Không cần gì tương ứng — tên và kiểu đã nằm trong thuộc tính của route class</td></tr>
+			<tr><td><code>type = NavType.IntType</code></td><td><strong>Kiểu</strong> của tham số: số nguyên</td><td><code>val recipeId: Int</code> — kiểu của thuộc tính</td></tr>
+			<tr><td><code>backStackEntry.arguments</code></td><td><strong>Bộ tham số của mục lịch sử</strong> — tra giá trị theo <em>tên chuỗi</em></td><td><code>backStackEntry.toRoute&lt;RecipeDetailsRoute&gt;()</code> — tra theo <em>kiểu</em></td></tr>
+			<tr><td><code>?.getInt("recipeId") ?: 0</code></td><td>Đọc một <code>Int</code> từ bộ tham số <strong>có thể <code>null</code></strong> (<code>arguments</code>), nên phải bọc <code>?. </code>và lấp <code>?: 0</code>; và tra sai tên thì <code>getInt</code> âm thầm trả <code>0</code></td><td><code>route.recipeId</code> — không nullable, không cần giá trị lấp</td></tr>
+			<tr><td>(phía gọi — <code>ui/recipes/ShowRecipeList.kt</code> dòng 114)</td><td><code>navController.navigate("details/&#36;&#123;item.id&#125;")</code> — <strong>tự ghép chuỗi</strong> trong callback</td><td><code>navController.navigate(RecipeDetailsRoute(item.id))</code></td></tr>
+		</tbody>
+	</table>
+	<p>Hai điều nên nhận ra trong code thật, vì chúng là "vết" của mô hình chuỗi mà mục 5 đã dự báo:</p>
+	<ul>
+		<li><strong><code>?: 0</code> không phải phong cách — nó là lá chắn phải có.</strong> <code>arguments</code> là bộ tham số <strong>nullable</strong>, nên code phải bọc <code>?. </code>và lấp <code>?: 0</code> cho trường hợp bộ tham số rỗng. Còn tra <strong>sai tên key</strong> thì <code>getInt</code> không báo lỗi — nó âm thầm trả <code>0</code>. Hai đường lỗi khác nhau, cùng một kết quả: destination cầm một con số không có thật.</li>
+		<li><strong><code>recipeId = 0</code> là một món "không tồn tại"</strong> chui vào luồng dữ liệu như một ID hợp lệ — không crash, không cảnh báo, chỉ là trang chi tiết không có nội dung đúng. Đó là cái giá của giá-trị-lấp; nó minh hoạ vì sao "đọc bằng chuỗi, lỗi muộn" đắt.</li>
+	</ul>
+	<p>Còn một khối nữa cùng khuôn — <code>composable("bookmarks/&#123;recipeId&#125;", …)</code> ngay dưới (dòng 96–105): cùng mẫu, cùng kiểu, chỉ khác chỗ tham số được <strong>đổ vào một tham số khác</strong> của cùng một màn hình (<code>databaseRecipeId = …</code>). Nó là bằng chứng sống cho mục 2 của N1 (3 destination — 2 hàm màn hình) và cho mục 10 của bài này: <strong>hai lối vào khác nhau, cùng một thứ định danh — một ID — cùng trỏ về một destination.</strong></p>
+	<p>Phía gọi (lấy nguyên văn, <code>ui/recipes/ShowRecipeList.kt</code> dòng 112–117):</p>
+	<Code code={showRecipeListNguyenVanCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc đúng chỗ: <code>navigate</code> nằm trong <code>clickable</code> — callback, đúng quy tắc; <code>item.id</code> là ID của object <code>Recipe</code> đang được vẽ (F2: data class có thuộc tính <code>id: Int</code>) — <strong>cái được truyền là ID, không phải cả object</strong>. Code cũ này <strong>đúng nguyên tắc truyền-dữ-liệu</strong> của mục 10 một cách trọn vẹn — sai ở <em>cách biểu diễn route</em>, không sai ở <em>cái được truyền</em>. Đọc phê phán nghĩa là phân biệt được hai tầng đó.</p>
+	<p>Sau mục này, sáu dòng mà bài học yêu cầu bạn "đọc mà không thấy thần kỳ" — <code>"details/&#123;recipeId&#125;"</code>, <code>navArgument("recipeId")</code>, <code>NavType.IntType</code>, <code>backStackEntry.arguments?.getInt("recipeId") ?: 0</code>, <code>navigate("details/$recipeId")</code>, <code>popBackStack()</code> — đều đã có tên và vai.</p>
+
+	<h2 id="hai-loi-goi-pop">15. Hai lời gọi <code>popBackStack()</code> thật trong <code>RecipeDetails</code></h2>
+	<p>Project mẫu có đúng <strong>hai</strong> lời gọi <code>popBackStack()</code> — cả hai nằm trong <code>ui/RecipeDetails.kt</code>, và mỗi cái dạy một tình huống rời khỏi màn hình.</p>
+	<p><strong>Lời gọi thứ nhất — dòng 167: nút Back của app.</strong></p>
+	<Code code={popBackStackBackCode} lang="kotlin" theme="github-dark" />
+	<p>Truy vết đúng khuôn mục 2 và 4: người dùng chạm mũi tên → <code>onClick</code> chạy → <code>popBackStack()</code> → mục chi tiết bị bỏ khỏi đỉnh lịch sử → mục dưới (danh sách) hiện lại. Một điểm mà N1 đã chỉ rõ: nút này không tự gọi <code>popBackStack()</code> — nó nằm trong <code>TitleRow</code>, mà <code>TitleRow</code> <strong>được truyền thẳng <code>navController</code></strong> (dòng 155). Khuôn đúng của bài này là <code>onBack: () -&gt; Unit</code> — nói lại để bạn nhớ rằng code thật làm <em>khác</em> khuôn khoá, và N1 mục 10 đã có toàn bộ lập luận; không lặp lại ở đây.</p>
+	<p><strong>Lời gọi thứ hai — dòng 190: rời màn hình khi một việc vừa làm.</strong></p>
+	<Code code={popBackStackBookmarkCode} lang="kotlin" theme="github-dark" />
+	<p>Đây là một <strong>tình huống khác nút Back</strong>: nút bookmark có nhiệm vụ <em>ghi/xoá</em> một dữ liệu, và <strong>app quyết định rời màn hình</strong> — đúng khuôn "xong việc thì tự đóng trang" mà N1 mục 12 nhắc là tồn tại. Lời gọi <code>popBackStack()</code> ở đây không thay cho Back của người dùng; nó là phần <strong>hành vi của app</strong> sau một hành động: "đã xử lý yêu cầu bookmark, màn hình này không còn việc gì nữa — đưa người dùng về trước đó."</p>
+	<p>Và một quan sát cẩn trọng, <strong>chỉ ở mức nhận diện</strong>: dòng <code>scope.launch &#123; … &#125;</code> là coroutine — bạn biết từ S1 rằng <code>launch</code> <strong>khởi động</strong> công việc và <em>không chờ</em> nó chạy xong; rồi dòng 190 chạy ngay sau đó. Câu hỏi "việc bookmark có kịp hoàn thành trước khi màn hình bị pop, và việc pop ảnh hưởng ra sao tới coroutine đang chạy" đòi hỏi cơ chế vòng đời của scope gắn với composable và cơ chế huỷ coroutine — <strong>không thuộc bài này</strong>. Nói một cách an toàn: hai dòng trên <em>nào là khởi động việc, nào là rời màn hình</em> — đó là toàn bộ điều bài này đòi bạn đọc được; phân tích sâu hơn được ghi lại cho <strong>W1</strong>, nơi coroutine đầy đủ được dạy. Đừng tự kết luận sớm từ nửa bài học — đó chính là kỹ năng đọc phê phán mà khoá luyện: biết <em>khi nào mình chưa đủ công cụ để kết luận</em>.</p>
+	<p>Ngoài hai chỗ đó, trong cả project không còn lời gọi pop nào khác (đã kiểm), và <strong>không có</strong> biến thể <code>popBackStack(route, inclusive)</code>, <code>popUpTo</code>, <code>launchSingleTop</code>, <code>saveState</code>/<code>restoreState</code> — "không có" trong project nghĩa là mục 14 không cần chúng để đọc; còn học thì thuộc phần tra cứu, như đã ghi ở đầu bài.</p>
+
+	<h2 id="up-va-back">16. Up và Back: một câu, không hơn</h2>
+	<p>Mở đúng một khái niệm nhỏ cho đủ, rồi đóng lại.</p>
+	<ul>
+		<li><strong>Back</strong> = <em>điều hướng lịch sử</em>: đưa bạn về nơi bạn <strong>thực sự vừa đi qua</strong> — đỉnh stack bị bỏ đi.</li>
+		<li><strong>Up</strong> = <em>khái niệm điều hướng theo thứ bậc</em>: đưa bạn về "cha" của màn hình hiện tại trong cây phân cấp của app — kể cả khi bạn không đến từ đó (mở app thẳng vào trang chi tiết từ một thông báo, chẳng hạn).</li>
+	</ul>
+	<p>Với đồ thị đơn giản của giai đoạn này — không deep link, không luồng lạ — hai thứ trùng nhau: nút mũi tên trên app bar gọi <code>popBackStack()</code> là đủ đúng. Bài này <strong>không</strong> dạy <code>navigateUp()</code> hay các trường hợp Up và Back tách nhau — khi app của bạn bắt đầu có lối vào không phải điều hướng, đó là lúc tra lại tài liệu. Ghi lại ranh giới là kỹ năng; nhồi hết mọi trường hợp là nguyên nhân các bài dài lê thê.</p>
+	<div class="callout note">
+		<strong>Ghi chú quan trọng — Up/Back trong project mẫu</strong>
+		<p>Mũi tên trên trang chi tiết của project mẫu (<code>RecipeDetails</code>) thực chất đang làm vai <strong>Up</strong> một cách hình thức (nó là mũi tên "lên/trở về" của app bar) nhưng dùng <code>popBackStack()</code> — và trong đồ thị đơn giản của project, hành vi đó là đúng. Đừng sửa nó; chỉ đừng lẫn rằng "mũi tên app bar = luôn là Up nghiêm ngặt". Trong giai đoạn này, callback trên app bar gọi <code>popBackStack()</code> là đủ.</p>
+	</div>
+	<p>Đến đây trọn bộ nội dung học của bài đã xong. Còn lại: cạm bẫy, tóm tắt, và một bài luyện tập tổng hợp.</p>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p><strong>(a) "Quay lại chỉ là một lệnh đi tới."</strong> Niềm tin đứng sau lỗi mô hình phổ biến nhất của bài:</p>
+	<ul>
+		<li><em>Viết Back bằng <code>navigate(previousRoute)</code>.</em> <code>navigate</code> mặc định <strong>ghi thêm</strong> mục mới; "quay về Home" bằng <code>navigate("home")</code> cho ra lịch sử <code>Home · Details · Home</code> — Home <em>mới</em> đè lên Details cũ, Back lúc này không ra khỏi app mà đi ngược qua đống lịch sử phình ra (mục 3). Back đúng nghĩa là <code>popBackStack()</code> — bỏ đỉnh, không tạo gì (mục 2, 4).</li>
+		<li><em>Ngỡ navigate sẽ "tìm lại" destination đã có.</em> Không — theo mặc định nó không tra lịch sử. Chồng thẻ chỉ được <em>bỏ thẻ</em> từ trên xuống; không có động tác "nhảy về tấm thẻ cũ ở giữa" trong bài này (các biến thể đó tồn tại nhưng thuộc phần tra cứu — mục 4).</li>
+	</ul>
+	<p><strong>(b) "Route là chỗ chứa dữ liệu tiện tay."</strong> Niềm tin đứng sau việc lạm dụng tham số điều hướng:</p>
+	<ul>
+		<li><em>Truyền cả object</em> (<code>RecipeDetailsRoute(recipe = wholeRecipe)</code>) — dữ liệu bị chốt theo thời điểm bấm nút, lịch sử thành kho object, khôi phục sau khi app bị dựng lại trở nên nặng nề. Truyền <strong>ID</strong>, để destination tự hỏi dữ liệu hiện có qua ViewModel/repository (mục 10).</li>
+		<li><em>Nhét UI state, ViewModel, repository, <code>Context</code>, <code>NavController</code>, đối tượng database/mạng vào tham số route</em> — mỗi thứ vi phạm một ranh giới đã dựng ở S3/S4/S5 và N1 (mục 11). Câu hỏi chốt luôn là: <em>định danh, hay dữ liệu?</em> (mục 10, 11).</li>
+		<li><em>Coi route là chỗ lưu lâu dài.</em> Tham số của một mục lịch sử sinh ra là không đổi; dữ liệu <em>hiện tại</em> của destination nằm ở ViewModel/UI state, không nằm trong route (mục 12).</li>
+	</ul>
+	<p><strong>(c) "Chuỗi thô và kiểu Kotlin chỉ là hai cách viết."</strong> Niềm tin đứng sau cả hai chiều sai:</p>
+	<ul>
+		<li><em>Tự ghép route chuỗi trong code mới.</em> <code>"details/&#36;&#123;item.id&#125;"</code> là cách biểu diễn của thế hệ Navigation 2023 — project mẫu viết vậy là đúng thời của nó; code mới của bạn có mô hình type-safe, dùng nó (mục 6, 9). Ghép chuỗi thủ công mang lại đúng cái giá mục 5 liệt kê: typo, sai khoá, sai kiểu — tất cả chỉ nổ lúc chạy.</li>
+		<li><em>Typo lệch giữa chỗ khai và chỗ đọc trong code cũ.</em> Mẫu khai <code>&#123;recipeId&#125;</code> mà chỗ đọc gõ lệch tên key thì không có báo lỗi nào: <code>getString("recipId")</code> nhận <code>null</code>, <code>getInt("recipId")</code> âm thầm nhận <code>0</code> — và code phải sống sót bằng giá trị lấp. Khi đọc code 2023, đây là chỗ đầu tiên nên soi (mục 14).</li>
+		<li><em>Ngỡ type-safe là vô địch.</em> Route kiểu Kotlin bắt được <em>lỗi tên và kiểu</em> lúc biên dịch — không bắt được <em>lỗi luồng</em>: đi tới đúng destination nhưng sai lúc, back stack dựng sai ý, vẫn là lỗi thiết kế. Không có công cụ nào thay được việc vẽ stack ra giấy trước khi viết (mục 7).</li>
+	</ul>
+	<p>Câu để nhớ, và là câu nên mang ra khỏi cả bài:</p>
+	<div class="callout note">
+		<strong><code>navigate</code> ghi lịch sử; Back tiêu lịch sử; route chỉ mang định danh.</strong> Ba nửa câu đó giữ được thì cả bài này chỉ còn là chi tiết.
+	</div>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+	<div class="callout journey">
+		<strong>Tóm tắt — năm điều cần giữ lại</strong>
+		<p>Năm điều cần giữ lại — nếu chỉ nhớ được năm dòng, hãy là năm dòng này:</p>
+		<ol>
+			<li><strong>Back thường pop lịch sử hiện có; đừng dùng <code>navigate</code> để giả Back.</strong> <code>navigate</code> = đi tới + ghi thêm mục; <code>popBackStack()</code> = bỏ mục đỉnh và lộ mục dưới. Nút Back của app nên là callback <code>onBack</code> → <code>popBackStack()</code> ở chỗ khai đồ thị.</li>
+			<li><strong>Tham số route nên chứa thông tin định danh tối thiểu.</strong> ID, một giá trị nhỏ, một lựa chọn lọc — đủ để destination biết phải tự dựng lại trạng thái nào. Không tuyệt đối hoá "chỉ ID", nhưng object lớn thì gần như luôn là dấu hiệu sai.</li>
+			<li><strong>Truyền ID, đừng truyền cả object.</strong> ID nhỏ, ổn định, dễ khôi phục; object thì lớn, có thể cũ, và khoá dữ liệu vào thời điểm bấm nút. Destination lấy dữ liệu hiện có qua ViewModel/repository — đúng biên giới của S5.</li>
+			<li><strong>Route type-safe biểu diễn destination/tham số bằng kiểu Kotlin.</strong> <code>@Serializable object</code> cho destination không tham số; <code>@Serializable data class</code> cho destination có tham số; điều hướng bằng <code>navigate(GiáTriRoute(...))</code>; đọc lại bằng <code>backStackEntry.toRoute&lt;T&gt;()</code>. Phần lớn lỗi tên/kiểu được bắt lúc biên dịch — không phải mọi lỗi điều hướng đều biến mất.</li>
+			<li><strong>Đọc code mẫu 2023 thành thạo, nhưng đừng chép sang code mới.</strong> <code>"details/&#123;recipeId&#125;"</code> + <code>navArgument</code> + <code>NavType</code> + <code>backStackEntry.arguments</code> + <code>navigate("details/$id")</code> là khuôn chuỗi của Navigation 2.7.2; đọc được từng mảnh, map được sang mô hình type-safe — và biết vì sao nó vẫn "đúng thời của nó".</li>
+		</ol>
+	</div>
+
+	<h2 id="luyen-tap">Luyện tập — đọc một app hai màn hình và truy vết từng cú chạm</h2>
+	<p>Đây là toàn bộ phần điều hướng của một app hai màn hình, viết theo mô hình route type-safe của bài (mỗi dòng có số đánh dấu để trả lời). Đọc rồi trả lời sáu câu bên dưới.</p>
+	<Code code={luyenTapCode} lang="kotlin" theme="github-dark" />
+	<ol>
+		<li>Lịch sử điều hướng <strong>ban đầu</strong> (ngay khi app mở) gồm những gì? Mảnh nào quyết định điều đó?</li>
+		<li>Người dùng bấm ③. Giá trị nào được tạo ra ở ⑨, và nó thuộc kiểu nào? Lịch sử bây giờ?</li>
+		<li>Ở ⑪, dữ liệu đi vào <code>route</code> từ đâu? <code>route.recipeId</code> bằng mấy, và ai "nhớ" giá trị đó giữa lần navigate và lần đọc?</li>
+		<li>Ở ⑫, <code>onBack</code> <strong>không</strong> là <code>navigate(HomeRoute)</code>. Vì sao cách viết tại ⑫ đúng hơn cho nút này?</li>
+		<li>Người dùng bấm ⑤. Lịch sử sau đó? Màn hình nào đang hiện?</li>
+		<li>Nếu ai đó sửa ⑨ thành <code>navController.navigate("RecipeDetailsRoute")</code> (nhét cả kiểu vào trong chuỗi), chuyện gì xảy ra — và ở <em>giai đoạn nào</em>: biên dịch hay chạy?</li>
+	</ol>
+	<details>
+		<summary>Xem lời giải</summary>
+		<ol>
+			<li><strong>Chỉ một mục: <code>HomeRoute</code>.</strong> Mảnh quyết định là ⑦ — <code>startDestination = HomeRoute</code>, chỗ vào bình thường của đồ thị (N1 mục 7). Nói cho đúng: destination khởi đầu <em>bình thường</em>, không phải lời hứa vĩnh viễn.</li>
+			<li>⑨ tạo <strong>một giá trị data class</strong> <code>RecipeDetailsRoute(recipeId = 42)</code> — thuộc kiểu ②. <code>navigate</code> mặc định ghi thêm nó lên đỉnh lịch sử: <code>HomeRoute · RecipeDetailsRoute</code> (RecipeDetailsRoute ở trên cùng, đang hiện). Lưu ý cái được truyền từ ③ là <strong>số 42</strong> — một ID, không phải object nào cả (mục 10).</li>
+			<li>Từ <strong>mục lịch sử</strong> của destination — chính là <code>backStackEntry</code> ở ⑩. <code>toRoute&lt;RecipeDetailsRoute&gt;()</code> giải mã tham số đã đi kèm lần navigate về đúng giá trị route gốc; <code>route.recipeId = 42</code>. Giá trị được <strong>controller giữ trong mục lịch sử</strong> — không phải trong một biến của bạn (mục 8, 12).</li>
+			<li><code>navigate(HomeRoute)</code> sẽ <strong>thêm một mục Home mới</strong> lên đỉnh — lịch sử thành <code>HomeRoute · RecipeDetailsRoute · HomeRoute</code>: Back sau đó không ra khỏi app mà rơi lại chi tiết lần nữa (cái bẫy mục 3). <code>popBackStack()</code> <strong>bỏ mục đỉnh</strong> và lộ đúng Home đã có từ trước — lịch sử sạch, đúng mô hình "Back tiêu lịch sử" (mục 2, 4).</li>
+			<li>Sau ⑤: mục <code>RecipeDetailsRoute</code> bị pop — lịch sử còn <strong><code>HomeRoute</code></strong>; Home hiện lại. Bấm Back hệ thống lúc này thường kết thúc app, vì lịch sử chỉ còn một mục (mục 1).</li>
+			<li><strong>Biên dịch không báo lỗi</strong> — nó chỉ là một chuỗi hợp lệ; trình biên dịch không có cơ chế nào biết chuỗi đó có trỏ tới destination nào không. Lỗi lộ ra <strong>lúc chạy</strong>, đúng lúc người dùng bấm ③. Đây chính là cái giá của route-dạng-chuỗi mà mục 5 dự báo và là toàn bộ động cơ của mô hình type-safe — và cũng là lý do code mẫu 2023 (mục 14) buộc phải sống chung với lỗi-loại-này.</li>
+		</ol>
+	</details>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<h3>Tài liệu chính thức Android (đọc bản <code>?hl=en</code>)</h3>
+	<ul>
+		<li><em>Type safety in Kotlin DSL and Navigation Compose</em> (developer.android.com/guide/navigation/design/type-safety) — nguồn chính của mục 6–8: "Type-safe APIs are available as of Navigation 2.8.0"; quy tắc chọn kiểu route (object cho route không tham số, class/data class cho route có tham số, bắt buộc serializable); ví dụ <code>@Serializable object Home</code> / <code>@Serializable data class Profile(val id: String)</code>, <code>composable&lt;T&gt;</code>, <code>navigate(GiáTriRoute(...))</code>, <code>backStackEntry.toRoute()</code>; <code>SavedStateHandle.toRoute&lt;T&gt;()</code> trong ViewModel (mục 13 chỉ nhận diện).</li>
+		<li><em>Migrating to Type-Safe Navigation</em> (developer.android.com/guide/navigation/type-safe-destinations) — nguồn của ghi chú phiên bản/dependency (mục 9): yêu cầu Navigation 2.8.0+, plugin <code>org.jetbrains.kotlin.plugin.serialization</code> + <code>kotlinx-serialization-json</code>; mục đích tuyên bố: bắt lỗi typo/sai kiểu lúc biên dịch thay vì lúc chạy.</li>
+		<li><em>Navigation and the back stack</em> (developer.android.com/guide/navigation/backstack) — nguồn của mục 1–4: NavController giữ back stack là cấu trúc "last in, first out"; mỗi <code>navigate()</code> đẩy destination lên đỉnh; Up/Back pop đỉnh (<code>navigateUp()</code>/<code>popBackStack()</code>); <code>popBackStack()</code> "cố gắng bỏ destination hiện hành và về destination trước đó", trả Boolean cho biết pop có thành công không, và khi nào trả <code>false</code> (kiểm lại ngày 2026-09-08 — còn nguyên văn hiện hành).</li>
+		<li><em>Navigation releases</em> (developer.android.com/jetpack/androidx/releases/navigation) — số liệu phiên bản mục 9: 2.8.0 ổn định 04/09/2024; bản ổn định hiện hành 2.10.0 (26/08/2026); trang releases hiện ghi Navigation 2 ở <strong>chế độ bảo trì</strong> (maintenance mode — chỉ nhận critical fixes) (kiểm ngày 2026-09-08).</li>
+		<li><em>Navigation 3 releases</em> (developer.android.com/jetpack/androidx/releases/navigation3) — dữ kiện duy nhất của ghi chú Nav 3 (mục 9): Navigation 3 ổn định 1.0.0 ngày 19/11/2025, bản ổn định hiện hành 1.1.7 (26/08/2026), thư viện riêng <code>androidx.navigation3</code>; tài liệu mô tả Nav 3 là thư viện điều hướng mới thiết kế cho Compose (Compose-first) (kiểm ngày 2026-09-08).</li>
+		<li><em>Navigate to a destination</em> (developer.android.com/guide/navigation/use-graph/navigate) — kế thừa từ N1: quy tắc callback <code>() -&gt; Unit</code> ở biên composable (mục 2, 7 dùng lại, không dạy lại).</li>
+	</ul>
+	<h3>Tài liệu Kotlin chính thức</h3>
+	<ul>
+		<li><em>kotlinlang.org — Kotlin serialization</em> — annotation <code>@Serializable</code> do plugin Kotlin serialization sinh code; plugin khai bằng id <code>org.jetbrains.kotlin.plugin.serialization</code> (đối chiếu với yêu cầu của trang type-safe-destinations; kiểm ngày 2026-09-08).</li>
+	</ul>
+	<h3>Code thật của project mẫu (nguyên văn, số dòng đã kiểm 2026-09-08)</h3>
+	<ul>
+		<li><code>aaf-materials/08-networking/projects/final/app/src/main/java/com/kodeco/recipefinder/MainActivity.kt</code> — dòng 86–95 (khối <code>details/&#123;recipeId&#125;</code> trích nguyên văn mục 14), 96–105 (khối <code>bookmarks/&#123;recipeId&#125;</code>).</li>
+		<li><code>ui/recipes/ShowRecipeList.kt</code> — dòng 112–117 (phía gọi trích nguyên văn mục 14, lời gọi ở dòng 114); <code>ui/widgets/BookmarkCard.kt</code> — dòng 75, 108 (cùng khuôn, không trích).</li>
+		<li><code>ui/RecipeDetails.kt</code> — dòng 84 (signature <code>RecipeDetails</code>), 152–159 (<code>TitleRow</code> nhận <code>navController</code>), 167–173 (nút Back — trích nguyên văn mục 15), 180–191 (bookmark + pop — trích nguyên văn mục 15, pop ở dòng 190).</li>
+		<li><code>gradle/libs.versions.toml</code> dòng 17 (<code>navigation="2.7.2"</code>). Project 09 = 2.7.2, 10 = 2.7.2, 11 = 2.7.4. Kiểm bổ sung (zero match trong toàn bộ project 08): <code>popUpTo</code> · <code>launchSingleTop</code> · <code>saveState</code>/<code>restoreState</code> · <code>navigateUp</code> · <code>@Serializable</code> · <code>toRoute</code> · khai báo kotlinx-serialization.</li>
+	</ul>
+	<h3>Nội dung của chính khoá học</h3>
+	<ul>
+		<li>N1 (<code>NavigationDestinationNavHost.astro</code>) — bộ khung điều hướng, ranh giới callback, ba mảnh "thuộc N2"; S2–S4 (<code>Ch06StateVaRecomposition.astro</code>, <code>Ch06StateHoistingVaUdf.astro</code>, <code>Ch06ViewModelVaUiState.astro</code>) — remember/recomposition, hoisting/UDF, ViewModel + <code>SavedStateHandle</code> (nhận diện); S5 (<code>KienTrucUiDataRepository.astro</code>) — biên giới dữ liệu, nguồn đáng tin; S1 — <code>launch</code> khởi động việc, không chờ.</li>
+	</ul>
+	<h3>Ví dụ tối giản do khoá dựng</h3>
+	<ul>
+		<li>Toàn bộ code <code>HomeRoute</code>/<code>RecipeDetailsRoute</code>/<code>AppNavigation</code>/<code>HomeScreen</code>/<code>RecipeDetailsScreen</code> trong bài và Luyện tập — không trích <code>aaf-materials/</code>, chỉ <em>map</em> sang code thật ở mục 14. Riêng khối mục 14, 15 và bảng số dòng là trích nguyên văn project mẫu.</li>
+	</ul>
+</section>

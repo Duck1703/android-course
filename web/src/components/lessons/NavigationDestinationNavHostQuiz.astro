@@ -1,0 +1,134 @@
+---
+// Quiz cho N1 — Điều hướng: nhiều màn hình trong một app. Bài NEW (Giai đoạn 4 — Điều hướng, bài 1/2).
+// Nguồn nội dung: docs/drafts/n1-navigation-foundation.md (đã chấp nhận) — quiz mới theo bài.
+// Chuẩn quiz: 4 đáp án / 1 đúng, giải thích 100% (đúng + vì sao từng distractor sai),
+// vị trí & độ dài đáp án đúng phân tán (max share ≤ ~40%). Chấm bằng harness chung IMP-001.
+// Các myth bài đã bác bỏ (destination = hàm composable · NavController = NavHost · navigate = gọi hàm
+// màn hình · rót NavController xuống mọi composable · ViewModel cầm NavController · navigate trong
+// thân composable) chỉ xuất hiện ở vị trí đáp án SAI và bị đánh đổ trong giải thích.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>1. Destination là gì, nói cho đúng?</legend>
+			<label><input type="radio" name="q1" value="a" /> Một hàm composable — bao nhiêu hàm màn hình thì bấy nhiêu destination</label>
+			<label><input type="radio" name="q1" value="b" /> Một Activity riêng biệt — mỗi destination cần một entry point trong Manifest</label>
+			<label><input type="radio" name="q1" value="c" /> Một chỗ trong app mà người dùng có thể được đưa tới</label>
+			<label><input type="radio" name="q1" value="d" /> Một file Kotlin chứa nội dung màn hình</label>
+			<p class="explain" hidden>
+				<strong>(c) đúng</strong> — destination là khái niệm của điều hướng: một chỗ đến. Ba phương án còn lại đều là các cách gộp destination với thứ được vẽ ra tại đó (mục 2). Project mẫu của phần Mạng là bằng chứng ngược lại: <strong>một</strong> Activity duy nhất, <strong>hai</strong> route khác nhau cùng vẽ ra một hàm <code>RecipeDetails</code> — destination đếm theo bản đồ, không đếm theo Activity, theo file hay theo hàm.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>2. Trong project mẫu, hai route <code>"details/&#123;recipeId&#125;"</code> và <code>"bookmarks/&#123;recipeId&#125;"</code> cùng vẽ ra một hàm <code>RecipeDetails</code>. Vậy app đó có bao nhiêu destination liên quan tới hàm này?</legend>
+			<label><input type="radio" name="q2" value="a" /> Hai — destination đếm theo đồ thị, không theo hàm</label>
+			<label><input type="radio" name="q2" value="b" /> Một — vì chỉ có một hàm composable duy nhất được vẽ ra</label>
+			<label><input type="radio" name="q2" value="c" /> Không đếm được — phải xem số dòng của từng khối composable</label>
+			<label><input type="radio" name="q2" value="d" /> Hai Activity — vì có hai đường đi tới khác nhau nên phải có hai cửa vào</label>
+			<p class="explain" hidden>
+				<strong>(a) đúng</strong> — destination là <em>ô trong bản đồ</em>, composable là <em>thứ được vẽ ra khi tới ô đó</em> (mục 2, 14.4). Cùng một thứ được vẽ có thể nằm ở hai ô khác nhau — project mẫu đúng vậy. (b) là chính cái bẫy mà mục 2 dựng cả bài để tách; (c) bịa ra một phép đếm không tồn tại — số dòng không liên quan; (d) sai vì cả app chỉ có một Activity, và destination không đồng nghĩa với Activity.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>3. <code>NavController</code> và <code>NavHost</code> khác nhau ở điểm nào?</legend>
+			<label><input type="radio" name="q3" value="a" /> Là hai tên cho cùng một thứ — <code>NavHost</code> là tên thân thiện của <code>NavController</code> trong Compose</label>
+			<label><input type="radio" name="q3" value="b" /> <code>NavHost</code> giữ lịch sử điều hướng còn <code>NavController</code> chỉ vẽ giao diện</label>
+			<label><input type="radio" name="q3" value="c" /> <code>NavController</code> là nơi khai báo các destination; <code>NavHost</code> là nơi gọi <code>navigate()</code></label>
+			<label><input type="radio" name="q3" value="d" /> <code>NavController</code> giữ lịch sử và nhận lệnh; <code>NavHost</code> khai đồ thị</label>
+			<p class="explain" hidden>
+				<strong>(d) đúng</strong> — đúng bảng phân vai ở mục 6: controller là <em>đối tượng</em> (hành động + trạng thái), host là <em>composable</em> (khai báo + chỗ hiển thị). Đây là chỗ lẫn phổ biến nhất khi mới học điều hướng. (a) đảo ngược hoàn toàn; (b) hoán đổi vai giữ-lịch-sử và vẽ; (c) hoán đổi vai khai-đồ-thị và ra-lệnh — bạn không gọi <code>navigate()</code> trên <code>NavHost</code>, và không khai destination trên <code>NavController</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>4. <code>rememberNavController()</code> — cách hiểu nào đúng?</legend>
+			<label><input type="radio" name="q4" value="a" /> Là chính hàm <code>remember</code> của S2, được đặt tên thêm cho dễ đọc</label>
+			<label><input type="radio" name="q4" value="b" /> Một hàm riêng của thư viện Navigation Compose — muốn có controller thì gọi nó</label>
+			<label><input type="radio" name="q4" value="c" /> Một hàm của Compose lõi mà bạn thay được bằng <code>remember &#123; NavController(...) &#125;</code> tự viết</label>
+			<label><input type="radio" name="q4" value="d" /> Một hàm chỉ dùng được trong <code>MainActivity</code> — controller sống cùng Activity</label>
+			<p class="explain" hidden>
+				<strong>(b) đúng</strong> — tên có chữ "remember" vì nó cũng giữ giá trị qua các lần vẽ lại, nhưng đó là một hàm riêng của thư viện điều hướng và nó tạo sẵn controller theo đúng cách điều hướng cần (mục 5). (a) và (c) sai ở cùng một chỗ: bạn không tự <code>remember &#123; NavController(...) &#125;</code> — chi tiết bên trong không thuộc bài, điều cần nhớ là gọi <code>rememberNavController()</code>. (d) bịa ra một ranh giới không tồn tại — controller tạo ở chỗ cao trong cây composable, ngay cạnh <code>NavHost</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>5. <code>startDestination = "home"</code> hứa điều gì — và không hứa điều gì?</legend>
+			<label><input type="radio" name="q5" value="a" /> Hứa app luôn mở ra ở <code>home</code> trong mọi trường hợp</label>
+			<label><input type="radio" name="q5" value="b" /> Hứa destination <code>home</code> không bao giờ bị pop khỏi stack</label>
+			<label><input type="radio" name="q5" value="c" /> Destination đầu tiên của <em>đồ thị này</em> khi được dựng — không phải lời hứa vĩnh viễn</label>
+			<label><input type="radio" name="q5" value="d" /> Chỉ là một dòng chú thích cho người đọc — không ảnh hưởng thứ tự dựng</label>
+			<p class="explain" hidden>
+				<strong>(c) đúng</strong> — phát biểu chính xác của mục 7: <code>startDestination</code> là chỗ vào <em>bình thường</em> của đồ thị. Sau này app có thể mở thẳng vào chỗ khác (thông báo, màn hình đăng nhập, khôi phục trạng thái) — những trường hợp đó có cơ chế riêng. (a) là chính cái suy diễn quá xa mà mục 7 rào trước; (b) bịa ra một "bất biến" không có trong tài liệu; (d) sai vì nó quyết định destination nào được đặt vào đầu tiên.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>6. <code>@Composable</code> và <code>composable("details")</code> khác nhau thế nào?</legend>
+			<label><input type="radio" name="q6" value="a" /> Annotation cho trình biên dịch Compose vs hàm của thư viện điều hướng dùng để đăng ký destination</label>
+			<label><input type="radio" name="q6" value="b" /> Giống nhau — chỉ khác chữ hoa, viết kiểu nào trình biên dịch cũng hiểu</label>
+			<label><input type="radio" name="q6" value="c" /> <code>@Composable</code> khai route, còn <code>composable(...)</code> vẽ giao diện</label>
+			<label><input type="radio" name="q6" value="d" /> <code>composable(...)</code> là cú pháp cũ, đã bị thay bằng annotation trong các bản Navigation hiện hành</label>
+			<p class="explain" hidden>
+				<strong>(a) đúng</strong> — mục 8: annotation <code>@Composable</code> gắn trước <code>fun</code> để hàm tham gia vẽ giao diện; hàm <code>composable(...)</code> nằm trong khối của <code>NavHost</code> để đăng ký destination. Hai thứ gặp nhau tại: nội dung của một destination được viết bằng các hàm <code>@Composable</code>. (b) là bẫy thật — khác nhau đúng một dấu <code>@</code> và một chữ hoa, nhưng vai hoàn toàn khác; (c) hoán đổi vai; (d) bịa ra một "thay thế" không có — cả hai đều đang hiện hành.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>7. Câu nào phát biểu <strong>đúng</strong> về <code>navController.navigate("details")</code>?</legend>
+			<label><input type="radio" name="q7" value="a" /> Đó là một lời gọi hàm trực tiếp tới <code>DetailsScreen()</code></label>
+			<label><input type="radio" name="q7" value="b" /> Sai chính tả route sẽ bị trình biên dịch bắt ngay</label>
+			<label><input type="radio" name="q7" value="c" /> Nó tra lịch sử để tái sử dụng mục cũ nếu đích đã từng đi qua</label>
+			<label><input type="radio" name="q7" value="d" /> Một lệnh kèm một cái tên: controller tra đồ thị, ghi lịch sử; host mới vẽ</label>
+			<p class="explain" hidden>
+				<strong>(d) đúng</strong> — điểm chính xác quan trọng nhất của mục 9: bạn <strong>không</strong> gọi <code>DetailsScreen()</code>; controller tra bản đồ, ghi lịch sử, host mới vẽ. Hai hệ quả thật: route sai chỉ lộ lúc chạy (nên (b) sai — biên dịch không kiểm chuỗi), và <code>navigate</code> làm nhiều hơn "hiện màn hình khác" là ghi lịch sử. (c) sai: mặc định navigate không tra lịch sử — đó là cội nguồn của cái bẫy "quay về bằng navigate" mà N2 sẽ mổ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>8. Đoạn nào đặt lời gọi <code>navigate</code> đúng chỗ?</legend>
+			<label><input type="radio" name="q8" value="a" /> <code>composable("home") &#123; navController.navigate("details"); Button(onClick = &#123; &#125;) &#123; Text("Đi") &#125; &#125;</code> — gọi sẵn để có đường đi</label>
+			<label><input type="radio" name="q8" value="b" /> <code>Button(onClick = &#123; navController.navigate("details") &#125;)</code> — lệnh nằm trong callback</label>
+			<label><input type="radio" name="q8" value="c" /> Trong thân <code>LaunchedEffect(Unit)</code> ở đầu mỗi composable — để điều hướng được "kích hoạt" ngay khi vào trang</label>
+			<label><input type="radio" name="q8" value="d" /> Đặt ở đâu cũng được — <code>navigate</code> tự biết chỉ thực hiện một lần dù bị gọi nhiều</label>
+			<p class="explain" hidden>
+				<strong>(b) đúng</strong> — quy tắc mục 9, bắc cầu từ tài liệu chính thức: chỉ gọi <code>navigate()</code> bên trong callback, không trong thân composable — tránh gọi <code>navigate()</code> ở mỗi lần recomposition. (a) là chính vi phạm đó: app tự nhảy trang lúc vẽ và gọi lại mỗi lần vẽ lại. (c) là biến thể tinh vi hơn của cùng lỗi: <code>LaunchedEffect</code> vẫn chạy lại theo vòng đời, và "tự nhảy trang" không phải một sự kiện người dùng; tự nhiên hơn thì đó là chủ đề ngoài bài này. (d) sai — không có cơ chế nào như vậy.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>9. Người dùng mở app → <code>navigate("details")</code> → <code>navigate("settings")</code>. Back stack lúc này là gì, và bấm Back một lần thì sao?</legend>
+			<label><input type="radio" name="q9" value="a" /> Stack chỉ giữ <code>Settings</code> — các màn hình trước bị thay thế; bấm Back là ra khỏi app</label>
+			<label><input type="radio" name="q9" value="b" /> Stack giữ <code>Home · Details · Settings</code>; Back thêm lần nữa mới thoát app vì stack đã đầy</label>
+			<label><input type="radio" name="q9" value="c" /> Stack <code>Home · Details · Settings</code> — Settings trên cùng; Back lộ <code>Details</code></label>
+			<label><input type="radio" name="q9" value="d" /> Stack là <code>Settings · Details · Home</code> — mục mới nằm dưới cùng, nên Back về Settings</label>
+			<p class="explain" hidden>
+				<strong>(c) đúng</strong> — hai câu của mục 11: <code>navigate(route)</code> thường <em>thêm</em> một mục lên trên cùng (mục cũ nằm xuống dưới), Back thường <em>bỏ</em> mục trên cùng và hiện lại mục ngay dưới. Bấm Back tiếp: về Home; khi chỉ còn một mục thì bấm Back thường ra khỏi app. (a) mô tả đúng cách dùng một biến <code>screen</code> ở mục 1 — chính điều thư viện điều hướng sinh ra để tránh; (b) thêm một quy tắc "stack đầy" không tồn tại; (d) đảo ngược đỉnh/đáy.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>10. Một ViewModel vừa lưu xong dữ liệu và app cần mở trang danh sách. Hình dạng đúng là gì?</legend>
+			<label><input type="radio" name="q10" value="a" /> ViewModel đổi state; tầng giao diện thấy rồi gọi <code>navigate(...)</code></label>
+			<label><input type="radio" name="q10" value="b" /> Truyền <code>NavController</code> vào constructor của ViewModel để ViewModel tự điều hướng sau khi lưu xong</label>
+			<label><input type="radio" name="q10" value="c" /> Lưu destination hiện hành vào <code>UiState</code> để ViewModel tự thay đổi nó khi lưu xong</label>
+			<label><input type="radio" name="q10" value="d" /> Gọi <code>navigate(...)</code> thẳng trong thân composable của ViewModel — vì ViewModel là chỗ hợp lệ duy nhất quyết định điều hướng</label>
+			<p class="explain" hidden>
+				<strong>(a) đúng</strong> — ranh giới mục 13, nối với S5: ViewModel sở hữu state của màn hình, không sở hữu API điều hướng; ai gọi <code>navigate(...)</code> là <strong>tầng giao diện</strong>. (b) phá cả ba lý do của mục 13: lẫn tầng framework, mất khả năng kiểm thử, và ViewModel cầm API mà nó không sở hữu. (c) trộn hai loại state của mục 12 — controller đã giữ thông tin đó, <code>UiState</code> giữ thêm một bản là hai nguồn có thể lệch nhau. (d) sai kép: ViewModel không gọi <code>navigate</code>, và thân composable cũng không phải chỗ gọi (mục 9).
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	import { initQuiz } from "../../scripts/quiz.ts";
+	initQuiz();
+</script>

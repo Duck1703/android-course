@@ -53,6 +53,10 @@ import Coroutines20PhutKhongSo from "../components/lessons/Coroutines20PhutKhong
 import Coroutines20PhutKhongSoQuiz from "../components/lessons/Coroutines20PhutKhongSoQuiz.astro";
 import KienTrucUiDataRepository from "../components/lessons/KienTrucUiDataRepository.astro";
 import KienTrucUiDataRepositoryQuiz from "../components/lessons/KienTrucUiDataRepositoryQuiz.astro";
+import NavigationDestinationNavHost from "../components/lessons/NavigationDestinationNavHost.astro";
+import NavigationDestinationNavHostQuiz from "../components/lessons/NavigationDestinationNavHostQuiz.astro";
+import NavigationBackStackTypeSafe from "../components/lessons/NavigationBackStackTypeSafe.astro";
+import NavigationBackStackTypeSafeQuiz from "../components/lessons/NavigationBackStackTypeSafeQuiz.astro";
 import Ch07AdvancedArchitecture from "../components/lessons/Ch07AdvancedArchitecture.astro";
 import Ch07Quiz from "../components/lessons/Ch07Quiz.astro";
 import Ch08Networking from "../components/lessons/Ch08Networking.astro";
@@ -138,6 +142,16 @@ export const LESSONS: Partial<Record<string, LessonEntry>> = {
   "ch06-state-hoisting-va-udf": { Lesson: Ch06StateHoistingVaUdf, Quiz: Ch06StateHoistingVaUdfQuiz },
   "ch06-viewmodel-va-ui-state": { Lesson: Ch06ViewModelVaUiState, Quiz: Ch06ViewModelVaUiStateQuiz },
   "kien-truc-ui-data-repository": { Lesson: KienTrucUiDataRepository, Quiz: KienTrucUiDataRepositoryQuiz },
+  // Giai đoạn 4 (batch Stage 4): N1/N2 là hai bài NEW — KHÔNG nằm trong mapping nào
+  // (no-fabricate, như F1/F2/S1/S5). Không redirect, không SPLIT_MAP, không legacy credit.
+  "navigation-destination-nav-host": {
+    Lesson: NavigationDestinationNavHost,
+    Quiz: NavigationDestinationNavHostQuiz,
+  },
+  "navigation-back-stack-type-safe": {
+    Lesson: NavigationBackStackTypeSafe,
+    Quiz: NavigationBackStackTypeSafeQuiz,
+  },
   "ch07-advanced-architecture": { Lesson: Ch07AdvancedArchitecture, Quiz: Ch07Quiz },
   "ch08-networking": { Lesson: Ch08Networking, Quiz: Ch08Quiz },
   "ch09-data-store": { Lesson: Ch09DataStore, Quiz: Ch09Quiz },

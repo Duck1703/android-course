@@ -148,6 +148,10 @@ const FILE_KEY_PIN: Record<string, string> = {
   // (key = slug-bỏ-gạch, không phải "06_N") để vòng resolve khớp vòng quét file.
   "coroutines-20-phut-khong-so": "coroutines20phutkhongso",
   "kien-truc-ui-data-repository": "kientrucuidatarepository",
+  // Stage 4 (Giai đoạn 4 — Điều hướng): N1/N2 là bài NEW không theo quy ước ChNN
+  // (tên kebab→Pascal thuần, như F1/F2/S1/S5) — key = slug bỏ gạch, cùng cơ chế.
+  "navigation-destination-nav-host": "navigationdestinationnavhost",
+  "navigation-back-stack-type-safe": "navigationbackstacktypesafe",
   "ch06-state-va-recomposition": "06_2",
   "ch06-state-hoisting-va-udf": "06_3",
   "ch06-viewmodel-va-ui-state": "06_4",

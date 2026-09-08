@@ -912,7 +912,7 @@ const searchUiStateExample = `data class SearchUiState(
 		<strong>Một cặp hành động đáng để ý trong cùng file này.</strong> Nút bookmark của màn hình chi tiết làm <em>hai
 		việc trong cùng một cú bấm</em>: mở <code>scope.launch &#123; ... &#125;</code> để ghi/xoá dữ liệu, rồi gọi
 		<code>navController.popBackStack()</code> ngay sau (dòng 180–191 của
-		<code>{AAF}/ui/RecipeDetails.kt</code> — <code>popBackStack</code> và callback boundary đã học ở N1/N2). Hai động
+		<code>{AAF}/ui/RecipeDetails.kt</code> — <code>popBackStack</code> đã học ở bài <strong>N2</strong>, callback boundary ở bài <strong>N1</strong>). Hai động
 		tác đó có mối quan hệ đáng để ý: <code>scope</code> ở đây là <code>rememberCoroutineScope()</code> —
 		<strong>scope gắn với composable</strong>, theo đúng nguyên tắc "scope làm chủ" của S1; và một coroutine thuộc scope
 		nào thì có thể bị scope đó huỷ khi việc không còn liên quan (màn hình rời khỏi màn hình). Nói ở mức bài này:
@@ -1012,8 +1012,8 @@ const searchUiStateExample = `data class SearchUiState(
 		<strong>Cần biết trước.</strong> <strong>Đơn vị 1</strong> — <code>suspend</code>/<code>launch</code>, quy tắc tuần
 		tự, main-safe, StateFlow. <strong>S5</strong> — tầng UI / tầng dữ liệu, repository là biên giới (đơn vị này
 		<em>áp</em>, không dạy lại vì sao). <strong>F2</strong> — data class, generics. <strong>A12</strong> — manifest &
-		permission. <strong>N1/N2</strong> — biết route <code>details/&#123;recipeId&#125;</code> nghĩa là gì để đọc được màn
-		hình nào đang gọi mạng (không reteach).
+		permission. <strong>N1/N2</strong> — destination · route · <code>NavHost</code> (N1), back stack · truyền dữ liệu · route
+		có chỗ trống <code>&#123;recipeId&#125;</code> (N2) — để đọc được màn hình nào đang gọi mạng (không reteach).
 	</div>
 
 	<h2 id="http">8. Từ app đến server: mô hình HTTP tối thiểu</h2>

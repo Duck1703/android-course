@@ -1,0 +1,763 @@
+---
+// Bài N1 — Điều hướng: nhiều màn hình trong một app (slug: navigation-destination-nav-host).
+// Bài NEW — Giai đoạn 4 (Điều hướng), bài 1/2: ngay sau S5 (kiến trúc & repository),
+// trước N2 (back stack & truyền dữ liệu type-safe) và trước giai đoạn Mạng (W1–W3).
+// Nguồn nội dung: docs/drafts/n1-navigation-foundation.md (đã chấp nhận) — chỉ phần "Bài học".
+// Code project mẫu: trích nguyên văn từ aaf-materials/08-networking (starter ≡ final ở mọi file
+// điều hướng; số dòng kiểm lại 2026-09-08 — xem #nguon). Ví dụ Home/Details/Settings do khoá dựng.
+// Đánh số mục 1–15 (mỗi bài đánh số lại từ 1).
+// Freshness: các claim "tài liệu chính thức khuyên" đã verify lại trên developer.android.com ?hl=en
+// ngày 2026-09-08 (freshness matrix Stage 4) — navigate-in-callback warning + don't-pass-NavController
+// + "create the NavController high in your composable hierarchy" đều còn nguyên văn hiện hành.
+import { Code } from "astro:components";
+
+const manHinhNhieuCode = `@Composable
+fun App() {
+  var screen by remember { mutableStateOf("home") }
+
+  if (screen == "home") {
+    HomeScreen(onOpenDetails = { screen = "details" })
+  } else if (screen == "details") {
+    DetailsScreen()
+  } else {
+    SettingsScreen()
+  }
+}`;
+
+const baRouteCode = `"home"
+"details"
+"settings"`;
+
+const haiManHinhCode = `@Composable
+fun HomeScreen(onOpenDetails: () -> Unit) {
+  Column {
+    Text("Trang chính")
+    Button(onClick = onOpenDetails) {
+      Text("Xem chi tiết")
+    }
+  }
+}
+
+@Composable
+fun DetailsScreen() {
+  Text("Trang chi tiết")
+}`;
+
+const taoControllerCode = `val navController = rememberNavController()`;
+
+const navHostCode = `@Composable
+fun AppNavigation() {
+  val navController = rememberNavController()
+
+  NavHost(
+    navController = navController,
+    startDestination = "home"
+  ) {
+    composable("home") {
+      HomeScreen(
+        onOpenDetails = { navController.navigate("details") }
+      )
+    }
+
+    composable("details") {
+      DetailsScreen()
+    }
+  }
+}`;
+
+const composableDetailsCode = `composable("details") {
+  DetailsScreen()
+}`;
+
+const navigateHomeCode = `composable("home") {
+  HomeScreen(
+    onOpenDetails = { navController.navigate("details") }
+  )
+}`;
+
+const truyVetTree = `người dùng chạm nút "Xem chi tiết"
+  → Compose gọi lambda onClick của Button
+    → lambda đó gọi onOpenDetails()          (callback của S3)
+      → onOpenDetails gọi navController.navigate("details")
+        → controller nhận lệnh, tra route "details" trong đồ thị
+        → controller ghi thêm một mục vào lịch sử điều hướng      (mục 11)
+      → destination hiện hành đổi thành "details"
+    → NavHost tháo nội dung cũ, dựng nội dung của route "details"
+  → DetailsScreen() được vẽ ra`;
+
+const saiCachCode = `// ❌ Màn hình nhận cả controller
+@Composable
+fun HomeScreen(navController: NavHostController) {
+  Button(onClick = { navController.navigate("details") }) {
+    Text("Xem chi tiết")
+  }
+}
+
+// ✅ Màn hình chỉ nhận một sự kiện
+@Composable
+fun HomeScreen(onOpenDetails: () -> Unit) {
+  Button(onClick = onOpenDetails) {
+    Text("Xem chi tiết")
+  }
+}`;
+
+const dungCachCode = `NavHost(navController = navController, startDestination = "home") {
+  composable("home") {
+    HomeScreen(
+      onOpenDetails = { navController.navigate("details") }
+    )
+  }
+  composable("details") {
+    DetailsScreen()
+  }
+}`;
+
+const backStackTree = `TRÊN CÙNG    Settings     ← destination đang hiện
+             Details
+DƯỚI CÙNG    Home         ← startDestination, vào trước nhất`;
+
+const khungBonDongCode = `val navController = rememberNavController()                                  // dòng 78
+
+NavHost(navController = navController, startDestination = "main") {           // dòng 84
+  composable("main") { MainScreen() }                                        // dòng 85
+  composable("details/{recipeId}",   /* … */) { /* … */ }                    // dòng 86–95
+  composable("bookmarks/{recipeId}", /* … */) { /* … */ }                    // dòng 96–105
+}`;
+
+const navHostNguyenVanCode = `NavHost(navController = navController, startDestination = "main") {
+  composable("main") { MainScreen() }
+  composable(
+    "details/{recipeId}",
+    arguments = listOf(navArgument("recipeId") {
+      type = NavType.IntType
+    })
+  ) { backStackEntry ->
+    RecipeDetails(
+      recipeId = backStackEntry.arguments?.getInt("recipeId") ?: 0
+    )
+  }
+  composable(
+    "bookmarks/{recipeId}",
+    arguments = listOf(navArgument("recipeId") {
+      type = NavType.IntType
+    })
+  ) { backStackEntry ->
+    RecipeDetails(
+      databaseRecipeId = backStackEntry.arguments?.getInt("recipeId") ?: 0
+    )
+  }
+}`;
+
+const showRecipeListCode = `@Composable
+fun ColumnScope.ShowRecipeList(
+  recipes: MutableState<List<Recipe>>,
+  viewModel: RecipeViewModel
+) {
+  val navController = LocalNavigatorProvider.current      // dòng 73`;
+
+const khiTabCode = `// ui/MainScreen.kt — dòng 59–61 khai biến, dòng 89–92 phân nhánh
+val selectedIndex = remember { mutableIntStateOf(0) }
+// …
+when (selectedIndex.intValue) {
+  0 -> RecipeList()
+  1 -> GroceryList()
+}`;
+
+const luyenTapCode = `@Composable
+fun HomeScreen(                                                    // ①
+  onOpenDetails: () -> Unit,
+  onOpenSettings: () -> Unit
+) {
+  Column {
+    Text("Trang chính")
+    Button(onClick = onOpenDetails) { Text("Xem chi tiết") }
+    Button(onClick = onOpenSettings) { Text("Thiết lập") }
+  }
+}
+
+@Composable
+fun DetailsScreen() { Text("Trang chi tiết") }
+
+@Composable
+fun SettingsScreen() { Text("Thiết lập") }
+
+@Composable
+fun AppNavigation() {
+  val navController = rememberNavController()                      // ②
+
+  NavHost(                                                         // ③
+    navController = navController,
+    startDestination = "home"                                      // ④
+  ) {
+    composable("home") {                                           // ⑤
+      HomeScreen(
+        onOpenDetails = { navController.navigate("details") },      // ⑥
+        onOpenSettings = { navController.navigate("settings") }
+      )
+    }
+    composable("details") { DetailsScreen() }                       // ⑦
+    composable("settings") { SettingsScreen() }
+  }
+}`;
+---
+<section class="lesson">
+	<div class="callout goals">
+		<strong>Học xong bài này bạn sẽ</strong>
+		<ul>
+			<li>Giải thích được vì sao một app Compose cần một <strong>cơ chế điều hướng</strong> thay vì tự thay màn hình bằng một chuỗi <code>if</code>/<code>when</code> — và cũng nói được khi nào một <code>when</code> đơn giản vẫn là lựa chọn đúng.</li>
+			<li>Phân biệt được <strong>destination</strong> (một chỗ đến), <strong>route</strong> (cái tên định danh chỗ đến đó) và <strong>composable</strong> (nội dung được vẽ ra khi tới đó) — ba thứ hay bị gộp thành một.</li>
+			<li>Nói rõ được khác biệt giữa <strong><code>NavController</code></strong> và <strong><code>NavHost</code></strong>, không đổi lẫn hai cái.</li>
+			<li>Đọc được một <code>NavHost</code> nhỏ và chỉ ra: controller · <code>startDestination</code> · từng destination được đăng ký · chỗ <code>navigate(...)</code> được gọi.</li>
+			<li>Vẽ được <strong>back stack</strong> sau một chuỗi <code>navigate(...)</code>, và nói được nút Back thường làm gì.</li>
+			<li>Chỉ ra được ranh giới: composable con <strong>phát ra sự kiện điều hướng</strong>, <code>NavHost</code>/controller <strong>thực hiện</strong> điều hướng; ViewModel thường không cần biết <code>NavController</code> tồn tại.</li>
+		</ul>
+		<p>
+			<strong>Vì sao điều này quan trọng khi làm Android.</strong> Ở giai đoạn Mạng ngay sau đây, file <code>MainActivity.kt</code> của project mẫu mở ra là một <code>NavHost</code> với ba destination, một <code>startDestination</code>, và những lời gọi <code>navigate("details/…")</code> rải trong các composable con. Không có bài này, đoạn đó là <strong>phép thuật của framework</strong>: bạn chỉ biết "đừng sửa gì trong đó". Có bài này, bạn đọc được bộ khung điều hướng và bỏ qua phần mạng — đúng thứ tự cần thiết để học từng thứ một.
+		</p>
+		<div class="callout">
+			<strong>Cần biết trước.</strong>
+			<ul>
+				<li><strong>C1–C3</strong> — composable là gì, <code>Column</code>/<code>Row</code>/<code>Box</code>, <code>Modifier</code>, <code>Button</code>, <code>Text</code>, <code>Scaffold</code>, Material 3.</li>
+				<li><strong>C4</strong> — <code>@Preview</code> và vì sao một composable render được độc lập là điều tốt.</li>
+				<li><strong>S2</strong> — <code>remember</code> giữ giá trị qua các lần vẽ lại; state là gì.</li>
+				<li><strong>S3</strong> — state hoisting, callback <code>() -&gt; Unit</code>, và <strong>luồng dữ liệu một chiều</strong>: giá trị đi xuống, sự kiện đi lên. Đây là nền quan trọng nhất của bài này.</li>
+				<li><strong>S4</strong> — ViewModel sở hữu state của màn hình (dùng ở mục 13).</li>
+				<li><strong>S5</strong> — ý niệm <strong>biên giới trách nhiệm</strong> giữa các phần của app (dùng ở mục 10, 12, 13).</li>
+				<li><strong>F1</strong> — hàm, tham số, <strong>lambda đuôi</strong> (trailing lambda). Cả bài này đọc được hay không phụ thuộc mảnh này.</li>
+			</ul>
+			<p>
+				<strong>Chưa cần biết:</strong> truyền dữ liệu giữa các màn hình · route type-safe · <code>popBackStack</code> · <code>popUpTo</code> · <code>launchSingleTop</code> · deep link · đồ thị lồng nhau · Navigation 3 (tất cả là bài <strong>N2</strong> hoặc phần tra cứu) · Retrofit và mọi thứ thuộc phần mạng (bài <strong>W1–W3</strong>) · <code>CompositionLocal</code> ở mức dùng được (bài <strong>D2</strong>). Ở đây chúng chỉ xuất hiện dưới dạng <em>tên</em>, luôn kèm nhãn "sẽ học ở bài nào".
+			</p>
+		</div>
+	</div>
+
+	<h2 id="mot-app-nhieu-man-hinh">1. Vấn đề: một app, nhiều màn hình</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>Cho tới hết Giai đoạn 3, mọi thứ bạn dựng đều nằm trên <strong>một</strong> màn hình. App thật thì không: một app nhỏ nhất cũng đã có vài chỗ để đi tới. Lấy một app ba màn hình làm ví dụ xuyên suốt bài này:</p>
+	<pre class="tree"><code>Home  →  Details        (xem chi tiết một mục)
+Home  →  Settings       (thiết lập)</code></pre>
+	<p>Với những gì đã học, cách làm tự nhiên nhất là giữ một biến "đang ở màn hình nào" rồi phân nhánh:</p>
+	<Code code={manHinhNhieuCode} lang="kotlin" theme="github-dark" />
+	<p><strong>Đoạn code này chạy được, và nó không "sai".</strong> Nói rõ điều đó ngay từ đầu, vì bài học này không nhằm dán nhãn xấu lên một cách viết. Nó chỉ <strong>không phải một mô hình điều hướng mở rộng được</strong>. Sáu chỗ dưới đây là chỗ nó bắt đầu tốn kém, và đọc kỹ sáu chỗ này chính là hiểu được thư viện điều hướng tồn tại để làm gì:</p>
+	<table class="cmp">
+		<thead>
+			<tr><th>Khi app lớn dần</th><th>Chuyện gì xảy ra với cách trên</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><strong>Thêm/đổi màn hình</strong></td><td>Mỗi màn hình mới lại phải sửa đúng cái hàm <code>App()</code>; chuỗi <code>if</code> dài dần và mọi thứ dồn vào một chỗ</td></tr>
+			<tr><td><strong>Nút Back của hệ thống</strong></td><td>Hệ điều hành không biết gì về biến <code>screen</code>. Đang ở Details bấm Back → app <strong>thoát</strong>, không quay về Home, trừ khi bạn tự viết thêm code xử lý Back</td></tr>
+			<tr><td><strong>Lịch sử màn hình</strong></td><td>"Quay lại chỗ vừa rồi" đòi phải nhớ <em>thứ tự</em> đã đi qua, không chỉ nhớ <em>đang ở đâu</em>. Một biến không đủ; bạn phải tự dựng một danh sách lịch sử</td></tr>
+			<tr><td><strong>Dữ liệu kèm theo</strong></td><td>"Mở Details của mục số 715538" — một chuỗi <code>"details"</code> không mang theo dữ liệu, nên bạn thêm biến thứ hai, rồi thứ ba</td></tr>
+			<tr><td><strong>Mở app từ bên ngoài</strong></td><td>Một thông báo hoặc một link muốn mở thẳng Details. Không có chỗ nào trong app <em>khai</em> rằng "Details tồn tại và mở tới được"</td></tr>
+			<tr><td><strong>App bị dựng lại</strong></td><td>Xoay máy hay hệ thống thu hồi tiến trình: bạn phải tự lo lưu và khôi phục cả lịch sử màn hình</td></tr>
+		</tbody>
+	</table>
+	<p>Điều hướng của Compose (thư viện <strong>Navigation Compose</strong>) tồn tại để nhận lấy đúng những việc đó. Nó cho bạn một chỗ để <strong>khai báo</strong> app có những chỗ đến nào, và một đối tượng để <strong>ra lệnh</strong> di chuyển — thay vì bạn tự quản lý bằng biến.</p>
+	<p>Một lời rào cần thiết, để bạn không suy diễn quá xa: một <code>when</code> phân nhánh <strong>vẫn là lựa chọn đúng</strong> cho việc đổi nội dung <em>bên trong một màn hình</em> — ví dụ hai tab trong cùng một trang. Project mẫu của phần Mạng làm <strong>cả hai</strong> cùng lúc: <code>NavHost</code> cho việc mở trang chi tiết, và một <code>when</code> theo chỉ số cho hai tab dưới đáy. Mục 15 sẽ xem đúng đoạn code đó.</p>
+
+	<h2 id="destination">2. Destination: một chỗ có thể đi tới</h2>
+	<p>Từ đầu tiên cần đặt cho đúng.</p>
+	<p class="notice"><strong>Destination = một chỗ trong app mà người dùng có thể được đưa tới.</strong></p>
+	<p>Ví dụ trong app ba màn hình ở trên: Home là một destination, Details là một destination, Settings là một destination.</p>
+	<p>Điểm chính xác quan trọng, và cũng là cạm bẫy số một của cả bài: <strong>destination là một khái niệm của điều hướng.</strong> Nó <strong>không</strong> đồng nghĩa với:</p>
+	<ul>
+		<li><strong>một Activity</strong> — cả app trong project mẫu chỉ có <strong>một</strong> Activity duy nhất, mà vẫn có ba destination;</li>
+		<li><strong>một file</strong> — hai destination có thể dùng lại cùng một file (project mẫu làm đúng vậy: hai route khác nhau cùng vẽ ra <code>RecipeDetails</code>);</li>
+		<li><strong>một hàm composable</strong> — một destination <em>thường</em> vẽ ra một composable, nhưng "chỗ đến" và "hàm vẽ nội dung" là hai vai khác nhau.</li>
+	</ul>
+	<p>Cách giữ hai ý đó tách rời trong đầu: destination là <strong>một ô trong bản đồ</strong>; composable là <strong>thứ được vẽ ra khi bạn tới ô đó</strong>. Cùng một thứ được vẽ ra có thể nằm ở hai ô khác nhau của bản đồ.</p>
+
+	<h2 id="route">3. Route: cái tên để chỉ một destination</h2>
+	<p>Hệ thống điều hướng cần một cách <strong>gọi tên</strong> chỗ đến. Cách gọi tên đó là route.</p>
+	<p class="notice"><strong>Route = định danh mà hệ thống điều hướng dùng để chỉ tới một destination.</strong></p>
+	<p>Trong ví dụ của bài này, route là ba chuỗi:</p>
+	<Code code={baRouteCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc thẳng: khi code nói <code>navigate("details")</code>, nó đang nói <em>"đưa người dùng tới chỗ đến có tên <code>details</code>"</em>. Không có gì huyền bí — route là một cái nhãn, và ở đây nhãn đó tình cờ là một chuỗi.</p>
+	<p>Hai điều cần nói cho chính xác, để bạn không nhớ sai:</p>
+	<ul>
+		<li><strong>Chuỗi không phải cách duy nhất, cũng không phải cách "hiện đại nhất", để biểu diễn route.</strong> Nó là cách mà <strong>project mẫu của khoá này</strong> dùng, và là cách phổ biến trong tài liệu viết quanh năm 2023. Bài này dùng chuỗi vì mục tiêu số một là bạn đọc được code thật của project mẫu.</li>
+		<li><strong>Route không chỉ định danh chỗ đến, nó còn là chỗ mang dữ liệu mà chỗ đến cần.</strong> Ví dụ "mở Details của mục số 715538" — thông tin <code>715538</code> phải đi đâu đó. Đó là lúc chuỗi thô bắt đầu chật, và là lý do có bài tiếp theo.</li>
+	</ul>
+	<p class="notice">🔭 <em>Bài này chỉ dùng route dạng chuỗi đơn giản, không mang dữ liệu. <strong>N2</strong> sẽ dạy mô hình route <strong>type-safe</strong> — cách khoá này khuyên dùng khi destination cần mang dữ liệu theo — và giải thích cả cách project mẫu làm việc đó bằng chuỗi có chỗ trống. Ở đây bạn chỉ cần hiểu vai trò của route: một cái tên để chỉ chỗ đến.</em></p>
+
+	<h2 id="do-thi-dieu-huong">4. Đồ thị điều hướng: bản đồ các chỗ đến</h2>
+	<p>Có ba chỗ đến và ba cái tên rồi, còn thiếu một thứ: <strong>một chỗ khai báo tất cả</strong>.</p>
+	<p class="notice"><strong>Đồ thị điều hướng (navigation graph) = bản đồ những destination mà app biết cách đi tới.</strong></p>
+	<p>Đồ thị định nghĩa ba thứ:</p>
+	<ol>
+		<li><strong>Có những destination nào</strong> — và mỗi cái mang route gì.</li>
+		<li><strong>Bắt đầu ở đâu</strong> — destination đầu tiên khi đồ thị này được dựng lên (mục 7).</li>
+		<li><strong>Nội dung của từng destination</strong> — khi tới đó thì vẽ gì (mục 8).</li>
+	</ol>
+	<p>Với Compose, đồ thị này được khai ngay trong code Kotlin, bên trong <code>NavHost</code> (mục 6). Nếu bạn tra tài liệu và thấy người ta dựng đồ thị bằng một <strong>file XML</strong>, đó là cách làm của điều hướng cho Fragment/View — cùng thư viện Navigation, nhưng khác cách khai báo. Khoá này chỉ dùng Navigation <strong>Compose</strong>, và không có file XML nào.</p>
+	<p>Trước khi vào code, gom cả năm khái niệm vào một bức tranh:</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan — một sân khấu và một người điều khiển</strong>
+		<p>Hình dung một buổi diễn có nhiều cảnh:</p>
+		<ul>
+			<li><strong>Destination</strong> = <strong>một cảnh</strong> — "cảnh phòng khách", "cảnh sân vườn".</li>
+			<li><strong>Route</strong> = <strong>tên cảnh ghi trong kịch bản</strong> — cách gọi cảnh đó ra.</li>
+			<li><strong>Đồ thị điều hướng</strong> = <strong>kịch bản</strong> — danh sách các cảnh và cảnh nào diễn đầu tiên.</li>
+			<li><strong><code>NavHost</code></strong> = <strong>sân khấu</strong> — chỗ cảnh được dựng lên. Mỗi lúc trên sân khấu chỉ có <strong>một</strong> cảnh; đổi cảnh nghĩa là tháo cảnh cũ và dựng cảnh mới lên đúng chỗ đó.</li>
+			<li><strong><code>NavController</code></strong> = <strong>người điều khiển</strong> — biết đang diễn cảnh nào, đã đi qua những cảnh nào, và nhận lệnh "sang cảnh <code>details</code>".</li>
+		</ul>
+		<p>Hai điều đáng nhớ từ ẩn dụ này: sân khấu và người điều khiển là <strong>hai vai khác nhau</strong> (mục 6), và diễn viên trên sân khấu <strong>không tự đổi cảnh</strong> — họ ra hiệu, người điều khiển đổi (mục 10).</p>
+	</div>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 1.</strong>
+		<p>Trong app mẫu của phần Mạng, hai route khác nhau (<code>details/…</code> và <code>bookmarks/…</code>) cùng vẽ ra một hàm composable duy nhất tên <code>RecipeDetails</code>. Vậy app đó có bao nhiêu destination liên quan tới hàm này?</p>
+		<ol>
+			<li>Một — vì chỉ có một hàm composable.</li>
+			<li>Hai — vì có hai chỗ đến trong đồ thị, dù nội dung được vẽ ra bởi cùng một hàm.</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p><strong>Đáp án: 2.</strong> Destination đếm theo <strong>bản đồ</strong>, không đếm theo <strong>hàm</strong>. Đây chính là lý do mục 2 tách hai ý đó ra: gộp chúng lại là cạm bẫy đầu tiên của điều hướng.</p>
+		</details>
+	</div>
+
+	<h2 id="nav-controller">5. <code>NavController</code>: cái biết đang ở đâu và nhận lệnh đi</h2>
+	<h3>Vấn đề trước cú pháp</h3>
+	<p>Trước khi gõ một dòng nào, hỏi: để điều hướng hoạt động, phải có <strong>ai đó</strong> giữ những thông tin gì?</p>
+	<ul>
+		<li><strong>Đang ở destination nào</strong> — không có cái này thì không biết vẽ gì.</li>
+		<li><strong>Đã đi qua những destination nào</strong> — không có cái này thì nút Back không có gì để quay về.</li>
+		<li><strong>Nhận lệnh di chuyển</strong> — phải có một chỗ để code nói "sang <code>details</code>".</li>
+	</ul>
+	<p>Ba việc đó thuộc một đối tượng: <strong><code>NavController</code></strong>.</p>
+	<p class="notice"><strong><code>NavController</code> = đối tượng điều phối điều hướng.</strong> Nó theo dõi người dùng đã tới những chỗ nào, và nó cung cấp các hàm để di chuyển giữa các chỗ đến.</p>
+	<p>Bắt đầu dựng ví dụ. <strong>Bước 1 — hai màn hình.</strong> Chưa có gì mới ở đây; đúng khuôn hoisting của S3, màn hình nhận một callback thay vì tự xử lý:</p>
+	<Code code={haiManHinhCode} lang="kotlin" theme="github-dark" />
+	<p><strong>Bước 2 — tạo controller.</strong> Đúng một dòng:</p>
+	<Code code={taoControllerCode} lang="kotlin" theme="github-dark" />
+	<p>Tách ba tầng cho rõ, vì dòng này trộn cả ba:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Mảnh</th><th>Thuộc về</th><th>Nghĩa</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>val navController = …</code></td><td><strong>Kotlin</strong></td><td>Khai một biến chỉ đọc (F1)</td></tr>
+			<tr><td><code>rememberNavController()</code></td><td><strong>Navigation Compose</strong></td><td>Một hàm của <em>thư viện điều hướng</em>, không phải của Compose lõi</td></tr>
+			<tr><td>kết quả</td><td>Navigation Compose</td><td>Một <code>NavController</code> dùng được cho cả đồ thị</td></tr>
+		</tbody>
+	</table>
+	<p>Một điểm chính xác dễ đọc trượt: <strong><code>rememberNavController()</code> không phải <code>remember</code> của S2.</strong> Tên nó có chữ "remember" vì nó cũng giữ giá trị qua các lần vẽ lại, nhưng nó là một hàm riêng của thư viện điều hướng và nó tạo sẵn controller theo đúng cách mà điều hướng cần. Bạn không tự <code>remember &#123; NavController(...) &#125;</code>. Chi tiết bên trong không thuộc bài này — điều cần nhớ là: <strong>muốn có controller trong Compose thì gọi <code>rememberNavController()</code>.</strong></p>
+	<p>Đặt dòng đó ở đâu? Tài liệu chính thức khuyên: <strong>tạo <code>NavController</code> ở chỗ cao trong cây composable</strong>, cao đủ để mọi composable cần tham chiếu tới nó đều với tới được. Trong thực tế của bài này, "cao" nghĩa là: <strong>ngay cạnh <code>NavHost</code></strong>, trong cùng một composable. Mục 10 sẽ nói vì sao <em>không</em> nên rót nó xuống sâu hơn.</p>
+
+	<h2 id="nav-host">6. <code>NavHost</code>: chỗ đồ thị được dựng lên</h2>
+	<p><strong>Bước 3 và 4 — dựng <code>NavHost</code> và đăng ký hai destination.</strong></p>
+	<Code code={navHostCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc từng dòng:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Dòng</th><th>Nó làm gì</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>NavHost(</code></td><td>Bản thân <code>NavHost</code> <strong>là một composable</strong>. Nó chiếm một chỗ trong layout của bạn, và destination đang hiện hành được vẽ ra <strong>ở đúng chỗ đó</strong></td></tr>
+			<tr><td><code>navController = navController</code></td><td>Nối <code>NavHost</code> này với controller vừa tạo. Từ đây, lệnh gửi cho controller sẽ đổi nội dung của <code>NavHost</code> này</td></tr>
+			<tr><td><code>startDestination = "home"</code></td><td>Route của destination được dựng đầu tiên (mục 7)</td></tr>
+			<tr><td><code>&#123; … &#125;</code> — lambda đuôi (F1)</td><td><strong>Toàn bộ đồ thị nằm trong khối này.</strong> Đây là chỗ khai báo app có những chỗ đến nào</td></tr>
+			<tr><td><code>composable("home") &#123; … &#125;</code></td><td>Đăng ký một destination: route <code>"home"</code>, và nội dung của nó (mục 8)</td></tr>
+			<tr><td><code>onOpenDetails = &#123; navController.navigate("details") &#125;</code></td><td>Callback được truyền xuống <code>HomeScreen</code>: khi màn hình đó báo "người dùng muốn mở chi tiết", <em>chỗ này</em> ra lệnh cho controller (mục 9, 10)</td></tr>
+		</tbody>
+	</table>
+	<div class="callout note">
+		<strong>Ghi chú quan trọng — <code>NavController</code> và <code>NavHost</code> không phải một thứ</strong>
+		<p>Đây là chỗ lẫn phổ biến nhất khi mới học điều hướng, và nếu lẫn thì mọi thứ sau đó đều mờ. Nói thẳng cả hai vai:</p>
+		<table class="cmp">
+			<thead>
+				<tr><th></th><th><code>NavController</code></th><th><code>NavHost</code></th></tr>
+			</thead>
+			<tbody>
+				<tr><td><strong>Nó là gì</strong></td><td>Một <strong>đối tượng</strong> điều phối</td><td>Một <strong>composable</strong></td></tr>
+				<tr><td><strong>Giữ gì</strong></td><td>Đang ở đâu · đã đi qua đâu</td><td>Không giữ lịch sử; nó <em>vẽ</em> destination hiện hành</td></tr>
+				<tr><td><strong>Bạn làm gì với nó</strong></td><td>Ra lệnh: <code>navigate(...)</code></td><td>Khai báo: đồ thị và nội dung từng destination</td></tr>
+				<tr><td><strong>Ẩn dụ mục 4</strong></td><td>Người điều khiển</td><td>Sân khấu</td></tr>
+			</tbody>
+		</table>
+		<p>Cách nhớ ngắn: <strong><code>NavController</code> là <em>hành động và trạng thái</em>; <code>NavHost</code> là <em>bản khai báo và chỗ hiển thị</em>.</strong> Bạn không gọi <code>navigate()</code> trên <code>NavHost</code>, và bạn không khai destination trên <code>NavController</code>.</p>
+		<p>Thêm một chi tiết đúng và hữu ích: <strong>mỗi <code>NavHost</code> có <code>NavController</code> riêng của nó.</strong> Đó là lý do dòng <code>navController = navController</code> phải có — nó là chỗ hai vai được nối lại với nhau.</p>
+	</div>
+
+	<h2 id="start-destination">7. <code>startDestination</code>: chỗ đồ thị bắt đầu</h2>
+	<p>Câu hỏi mà <code>startDestination</code> trả lời, phát biểu chính xác:</p>
+	<p class="notice"><strong>Khi <code>NavHost</code> này được dựng lên và lịch sử điều hướng còn trống, destination nào được đặt vào đầu tiên?</strong></p>
+	<p>Trong ví dụ trên, câu trả lời là <code>"home"</code>.</p>
+	<p>Hai điều cần nói cho đúng:</p>
+	<ul>
+		<li><strong>Nó là destination khởi đầu <em>bình thường</em> của <em>đồ thị này</em></strong> — không phải một lời hứa vĩnh viễn rằng "app luôn mở ra ở đây". Sau này app có thể mở thẳng vào một chỗ khác: một thông báo dẫn tới trang chi tiết, một màn hình đăng nhập chen vào trước, hoặc hệ thống khôi phục lại đúng chỗ người dùng đang dừng. Những trường hợp đó có cơ chế riêng và không thuộc bài này.</li>
+		<li><strong>Route bạn viết ở đây phải trùng với một route đã được đăng ký</strong> trong khối bên dưới. Gõ lệch một chữ (<code>"hom"</code>) thì lỗi lộ ra ngay lúc đồ thị được dựng, chứ không phải một màn hình trắng lặng lẽ. Đó là hành vi tốt: sai thì sai to và sai ngay.</li>
+	</ul>
+	<p>Với N1, chừng đó là đủ. <code>startDestination</code> = <strong>chỗ vào bình thường của đồ thị</strong>.</p>
+
+	<h2 id="dang-ky-destination">8. <code>composable(...)</code>: đăng ký một destination</h2>
+	<p>Nhìn lại đúng một khối:</p>
+	<Code code={composableDetailsCode} lang="kotlin" theme="github-dark" />
+	<p>Cách đọc, thành một câu:</p>
+	<p class="notice"><strong>"Khi route hiện hành là <code>details</code>, khối này cung cấp nội dung giao diện cho destination đó."</strong></p>
+	<p>Ba mảnh trong đó:</p>
+	<ul>
+		<li><code>composable(...)</code> là <strong>một hàm</strong>, thuộc thư viện điều hướng. Gọi nó nghĩa là <em>đăng ký</em> một destination vào đồ thị đang được khai trong <code>NavHost</code>.</li>
+		<li><code>"details"</code> là route — cái tên để chỉ destination này.</li>
+		<li><code>&#123; DetailsScreen() &#125;</code> là <strong>lambda đuôi</strong> (F1): tham số cuối là một lambda nên viết được ra ngoài cặp ngoặc. Nội dung bên trong chính là code Compose bình thường — bạn gọi các hàm <code>@Composable</code> như mọi khi.</li>
+	</ul>
+	<p>Và đây là chỗ cần một hộp riêng, vì hai cái tên gần như trùng nhau:</p>
+	<div class="callout note">
+		<strong>Đọc cú pháp — <code>@Composable</code> và <code>composable(...)</code> là hai thứ khác nhau</strong>
+		<table class="cmp">
+			<thead>
+				<tr><th></th><th><code>@Composable</code></th><th><code>composable(...)</code></th></tr>
+			</thead>
+			<tbody>
+				<tr><td>Nó là gì</td><td>Một <strong>annotation</strong> (chú thích) gắn lên một hàm</td><td>Một <strong>hàm</strong> của thư viện điều hướng</td></tr>
+				<tr><td>Viết ở đâu</td><td>Ngay trước <code>fun</code></td><td>Bên trong khối <code>&#123; … &#125;</code> của <code>NavHost</code></td></tr>
+				<tr><td>Ai đọc nó</td><td>Trình biên dịch Compose</td><td>Thư viện điều hướng, lúc dựng đồ thị</td></tr>
+				<tr><td>Nó làm gì</td><td>Cho phép hàm đó tham gia vẽ giao diện</td><td>Đăng ký một destination vào đồ thị</td></tr>
+			</tbody>
+		</table>
+		<p>Khác nhau chỉ ở dấu <code>@</code> và một chữ hoa — nên đây là bẫy thật, không phải bẫy tưởng tượng.</p>
+		<p>Nhưng hai thứ đó <strong>có gặp nhau</strong>, và hiểu chỗ gặp mới hết mờ: <code>composable("details")</code> đăng ký một chỗ đến, còn <em>nội dung</em> của chỗ đến ấy được viết bằng các hàm <code>@Composable</code>. Một cái là <strong>mục trong bản đồ</strong>, một cái là <strong>cách vẽ</strong>.</p>
+	</div>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 2.</strong>
+		<p>Đoạn nào dưới đây khai một destination, đoạn nào khai một hàm vẽ giao diện?</p>
+		<pre><code>// (a)
+@Composable
+fun SettingsScreen() &#123; /* … */ &#125;
+
+// (b)
+composable("settings") &#123; SettingsScreen() &#125;</code></pre>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p><strong>(a)</strong> là hàm vẽ giao diện — annotation <code>@Composable</code>. <strong>(b)</strong> là destination — lời gọi hàm <code>composable(...)</code> của thư viện điều hướng, đăng ký route <code>"settings"</code> và nói nội dung của nó là gì. Bỏ (b) đi thì <code>SettingsScreen</code> vẫn tồn tại, chỉ là không có đường điều hướng nào tới nó.</p>
+		</details>
+	</div>
+
+	<h2 id="navigate">9. <code>navigate(...)</code>: một cú chạm đi tới đâu</h2>
+	<p><strong>Bước 5 — nối sự kiện với lệnh điều hướng.</strong> Đây là dòng đã xuất hiện ở mục 6:</p>
+	<Code code={navigateHomeCode} lang="kotlin" theme="github-dark" />
+	<p>Truy lại đường đi của một cú chạm, từng bước:</p>
+	<pre class="tree"><code>{truyVetTree}</code></pre>
+	<p>Điểm chính xác quan trọng nhất của phần này, và là một trong bảy cạm bẫy ở cuối bài:</p>
+	<p class="notice"><strong><code>navigate("details")</code> không phải một lời gọi hàm tới màn hình kế tiếp.</strong> Bạn <strong>không</strong> gọi <code>DetailsScreen()</code>. Bạn gửi cho controller một <strong>lệnh</strong> kèm một <strong>cái tên</strong>. Controller tra bản đồ, đổi destination hiện hành, và <code>NavHost</code> mới là chỗ gọi hàm vẽ.</p>
+	<p>Hai hệ quả cụ thể của sự thật đó, cả hai đều thực dụng:</p>
+	<ul>
+		<li><strong>Route sai thì lỗi lộ ra lúc chạy, không phải lúc biên dịch.</strong> <code>navController.navigate("detials")</code> biên dịch bình thường — vì với trình biên dịch nó chỉ là một chuỗi — rồi app dừng khi bạn bấm nút. Đây chính là cái giá của route dạng chuỗi mà mục 3 đã nhắc, và là một trong những lý do có mô hình route type-safe (bài <strong>N2</strong>).</li>
+		<li><strong><code>navigate</code> làm nhiều hơn "hiện màn hình khác": nó ghi vào lịch sử.</strong> Gọi một hàm thì không. Mục 11 nói riêng về chuyện này.</li>
+	</ul>
+	<p>Nối lại với S3: <strong>sự kiện vẫn đi theo chiều cũ.</strong> <code>HomeScreen</code> không tự quyết định đi đâu; nó chỉ <em>báo ra</em> rằng "người dùng muốn mở chi tiết". Việc <em>quyết định điều đó nghĩa là gì</em> nằm ở chỗ cao hơn — nơi đang giữ controller. Điều hướng, nhìn theo S3, chỉ là <strong>một hành động của app được một sự kiện kích hoạt</strong>.</p>
+	<p><strong>Một quy tắc nhỏ nhưng quan trọng, nối với S2:</strong> chỉ gọi <code>navigate(...)</code> <strong>bên trong một callback</strong>, không gọi nó thẳng trong thân composable. Lý do rất cụ thể: thân một composable có thể chạy lại nhiều lần (recomposition — S2), nên <code>navigate(...)</code> viết ở đó sẽ bị gọi lại mỗi lần vẽ lại. Đặt nó trong <code>onClick</code>/callback thì nó chỉ chạy khi có sự kiện thật.</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 3.</strong>
+		<p>Đoạn nào dưới đây có vấn đề?</p>
+		<pre><code>// (a)
+composable("home") &#123;
+  Button(onClick = &#123; navController.navigate("details") &#125;) &#123; Text("Đi") &#125;
+&#125;
+
+// (b)
+composable("home") &#123;
+  navController.navigate("details")
+  Button(onClick = &#123; &#125;) &#123; Text("Đi") &#125;
+&#125;</code></pre>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p><strong>Đáp án: (b).</strong> <code>navigate</code> nằm thẳng trong thân composable, nên nó chạy ngay lúc destination <code>home</code> được vẽ — và chạy lại mỗi lần vẽ lại. Kết quả là app tự nhảy sang <code>details</code> mà không ai bấm gì. (a) đúng: lệnh nằm trong callback.</p>
+		</details>
+	</div>
+
+	<h2 id="khong-rot-controller">10. Đừng rót <code>NavController</code> xuống mọi composable</h2>
+	<p>Đây là chỗ S3 trả cổ tức, nên nói kỹ.</p>
+	<p>Khi một màn hình cần mở màn hình khác, có hai cách viết. Chúng chỉ khác nhau ở <strong>tham số</strong>:</p>
+	<Code code={saiCachCode} lang="kotlin" theme="github-dark" />
+	<p>(<code>NavHostController</code> là tên kiểu cụ thể mà <code>rememberNavController()</code> trả về. Gặp tên đó thì đọc là "cái controller điều hướng".)</p>
+	<p>Với bản ✅, lời gọi <code>navigate</code> chuyển lên chỗ khai đồ thị — đúng nơi controller đang sống:</p>
+	<Code code={dungCachCode} lang="kotlin" theme="github-dark" />
+	<p>Bốn lý do, tất cả đều kiểm được:</p>
+	<table class="cmp">
+		<thead>
+			<tr><th>Lý do</th><th>Cụ thể là gì</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><strong>Dùng lại được</strong></td><td><code>HomeScreen</code> không dính gì tới điều hướng, nên đặt được ở chỗ khác: một layout hai cột, một trang khác, hay một app khác</td></tr>
+			<tr><td><strong>Preview được</strong></td><td><code>@Preview</code> chỉ cần truyền <code>onOpenDetails = &#123; &#125;</code>. Bản ❌ thì preview phải dựng cả bộ máy điều hướng mới render nổi (C4)</td></tr>
+			<tr><td><strong>Màn hình không cần biết máy móc điều hướng</strong></td><td>Nó chỉ biết "người dùng muốn xem chi tiết"; <em>xem chi tiết nghĩa là đi đâu</em> là chuyện của tầng trên</td></tr>
+			<tr><td><strong>Giữ đúng ranh giới của S3</strong></td><td>Giá trị đi vào qua tham số, sự kiện đi ra qua callback. Điều hướng không phải ngoại lệ</td></tr>
+		</tbody>
+	</table>
+	<p>Đây cũng là điều tài liệu chính thức khuyên, và họ nói bằng đúng từ vựng của S3: composable <strong>không nên</strong> được truyền một tham chiếu <code>NavController</code> để tự gọi <code>navigate()</code>; theo nguyên tắc luồng dữ liệu một chiều, composable nên <strong>phát ra một sự kiện</strong> để controller xử lý — cụ thể là <strong>một tham số kiểu <code>() -&gt; Unit</code></strong>.</p>
+	<p><strong>Không phải một điều cấm tuyệt đối.</strong> Một số composable <em>đúng vai</em> là phần khung điều hướng — cái bọc ngoài đang giữ <code>NavHost</code>, một thanh trên có nút quay lại, một thanh dưới chuyển tab theo route. Những composable đó cần controller, và đưa nó vào là hợp lý. Quy tắc ở đây nhắm vào <strong>màn hình và các composable lá</strong>: chúng chỉ nên báo ra sự kiện.</p>
+	<p>Cần biết trước khi đọc code thật ở mục 14: <strong>project mẫu của khoá này không dùng cách nào trong hai cách trên.</strong> Nó chọn cách thứ ba, và mục 15 sẽ mổ đúng cách đó cùng cái giá của nó.</p>
+
+	<h2 id="back-stack">11. Back stack: bức tranh đầu tiên</h2>
+	<p><strong>Bước 6 — vẽ ra lịch sử.</strong> Mục 9 nói <code>navigate</code> <em>ghi thêm một mục vào lịch sử điều hướng</em>. Đây là chỗ nhìn thấy cái lịch sử đó.</p>
+	<p>Giả sử người dùng làm ba việc:</p>
+	<pre class="tree"><code>mở app                    →  đang ở Home
+chạm "Xem chi tiết"       →  navigate("details")
+chạm "Thiết lập"          →  navigate("settings")</code></pre>
+	<p>Lịch sử điều hướng lúc này:</p>
+	<pre class="tree"><code>{backStackTree}</code></pre>
+	<p>Hai câu là đủ cho N1:</p>
+	<ul>
+		<li><strong><code>navigate(route)</code> thường <em>thêm</em> một mục lên trên cùng.</strong> Mục đang hiện trước đó không mất đi, nó nằm xuống dưới.</li>
+		<li><strong>Bấm Back thường <em>bỏ</em> mục trên cùng và hiện lại mục ngay dưới nó.</strong> Từ Settings bấm Back → về Details; bấm nữa → về Home. Khi chỉ còn một mục, bấm Back thường đưa người dùng <strong>ra khỏi app</strong> — đúng như họ mong đợi.</li>
+	</ul>
+	<p>So lại với mục 1: đây chính là việc mà cách dùng một biến <code>screen</code> không làm được. Bạn không viết một dòng nào để xử lý Back; thư viện điều hướng giữ lịch sử, nên nút Back của hệ thống có sẵn thứ để quay về.</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan — chồng thẻ, và ba chỗ ẩn dụ này hụt</strong>
+		<p>Hình dung mỗi lần <code>navigate</code> là <strong>đặt thêm một tấm thẻ lên trên chồng thẻ</strong>, và mỗi lần Back là <strong>bỏ tấm trên cùng đi</strong>. Đó là lý do người ta gọi nó là <em>stack</em> (chồng/ngăn xếp), và cái tên "back stack" đọc thẳng ra là "chồng thẻ để đi lui".</p>
+		<p>Nhưng ẩn dụ nào cũng hụt ở đâu đó, nên nói luôn ba chỗ để bạn khỏi hiểu sai:</p>
+		<ol>
+			<li><strong>Không có nhiều màn hình cùng được vẽ.</strong> Mỗi lúc <code>NavHost</code> chỉ hiển thị <strong>một</strong> destination. Các mục bên dưới là <em>lịch sử được ghi nhớ</em>, không phải mấy màn hình đang nằm đó vẽ sẵn.</li>
+			<li><strong>Chữ "thường" trong hai câu trên là có thật.</strong> Có những lệnh điều hướng nói "đi tới đó <strong>và</strong> dọn bớt lịch sử" — dùng nhiều khi làm đăng nhập hoặc tab. Chúng thuộc bài <strong>N2</strong>.</li>
+			<li><strong>Chồng thẻ này không nằm trong một biến của bạn.</strong> Nó do controller giữ, và nó sống sót qua những thứ như xoay máy — đó là một trong những việc bạn được miễn tự làm.</li>
+		</ol>
+	</div>
+	<p><strong>Bài này cố tình không dạy:</strong> <code>popBackStack()</code> · <code>popUpTo</code> và <code>inclusive</code> · phân biệt Up với Back · <code>launchSingleTop</code> · lưu/khôi phục trạng thái của từng nhánh (<code>saveState</code>/<code>restoreState</code>) · đồ thị lồng nhau · nhiều back stack song song. Đó là <strong>toàn bộ nội dung của bài N2</strong>, và cố nhồi vào đây chỉ làm mờ bức tranh vừa dựng được.</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 4.</strong>
+		<p>Từ trạng thái ba mục ở trên (Home · Details · Settings), người dùng bấm Back <strong>một</strong> lần rồi chạm một nút gọi <code>navigate("settings")</code>. Lịch sử lúc này gồm những gì, từ dưới lên?</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p><strong>Home · Details · Settings.</strong> Back bỏ Settings đi, còn Home · Details; rồi <code>navigate("settings")</code> thêm Settings lên trên cùng lần nữa. Chú ý mục Settings mới <strong>không</strong> phải mục cũ được lấy lại — nó là một mục mới được ghi vào lịch sử.</p>
+		</details>
+	</div>
+
+	<h2 id="dieu-huong-khong-phai-state">12. Điều hướng không phải state của màn hình</h2>
+	<p>Sau S2–S4, từ "state" đã nằm sẵn trong đầu bạn. Bài này thêm một loại thứ hai, và trộn hai loại là một lỗi thiết kế tốn kém về sau.</p>
+	<table class="cmp">
+		<thead>
+			<tr><th>Thuộc <strong>UI state</strong> (S2–S4)</th><th>Thuộc <strong>trạng thái điều hướng</strong></th></tr>
+		</thead>
+		<tbody>
+			<tr><td>Chữ người dùng đang gõ</td><td>Destination nào đang hiện</td></tr>
+			<tr><td>Đang tải hay đã xong</td><td>Lịch sử điều hướng (back stack)</td></tr>
+			<tr><td>Bộ lọc/tab đang chọn <em>trong một màn hình</em></td><td></td></tr>
+			<tr><td>Mục nào đang mở rộng</td><td></td></tr>
+		</tbody>
+	</table>
+	<p>Khác nhau ở chỗ: UI state trả lời <em>"màn hình này đang trông thế nào"</em>, còn trạng thái điều hướng trả lời <em>"người dùng đang ở đâu trong app, và đã đi qua đâu"</em>. Cái thứ hai do controller giữ (mục 5, 11), không phải do <code>UiState</code> của bạn giữ.</p>
+	<p>Hai điều <strong>đừng</strong> làm mặc định:</p>
+	<ul>
+		<li><strong>Đừng nhét mọi quyết định điều hướng vào <code>UiState</code></strong> chỉ vì <code>UiState</code> là chỗ bạn quen đặt state.</li>
+		<li><strong>Đừng nhớ thành "điều hướng thuộc ViewModel"</strong> — mục 13 nói riêng về chuyện này.</li>
+	</ul>
+	<p>Một quy tắc an toàn, đủ dùng cho cả khoá:</p>
+	<p class="notice"><strong>Sự kiện của giao diện <em>yêu cầu</em> điều hướng; <code>NavHost</code>/controller <em>thực hiện</em> điều hướng.</strong></p>
+	<p>Có những tình huống phức tạp hơn — "lưu xong thì tự đóng trang", "đăng nhập thành công thì sang trang chính" — cần một cách để ViewModel <em>báo ra</em> rằng có việc vừa xảy ra. Cách tổ chức những tín hiệu một-lần đó là một chủ đề thiết kế riêng, không thuộc bài này.</p>
+
+	<h2 id="ranh-gioi-viewmodel">13. Ranh giới ViewModel</h2>
+	<p>Câu hỏi sẽ đến rất nhanh khi bạn viết app thật: <em>"Cho <code>NavController</code> vào ViewModel luôn có được không, để ViewModel tự điều hướng?"</em></p>
+	<p>Câu trả lời mặc định của khoá này: <strong>không.</strong> ViewModel thường nên <strong>không biết</strong> các class của Compose Navigation tồn tại.</p>
+	<p>Ba lý do, và cả ba đã quen từ S5:</p>
+	<ol>
+		<li><strong>Tách khỏi framework.</strong> <code>NavController</code> là một mảnh của thư viện giao diện. Đưa nó vào ViewModel là kéo giao diện vào chỗ đang giữ state và logic của màn hình — đúng loại lẫn tầng mà S5 dạy cách tránh.</li>
+		<li><strong>Kiểm thử được.</strong> Một ViewModel chỉ nhận dữ liệu và phơi ra state thì thử được không cần dựng giao diện. Một ViewModel cầm <code>NavController</code> thì không.</li>
+		<li><strong>ViewModel sở hữu state của màn hình, không sở hữu API điều hướng.</strong> Nó biết "việc lưu đã xong"; nó không cần biết "xong thì đi đâu" — vì cùng một ViewModel có thể được dùng ở hai chỗ đi tới hai nơi khác nhau.</li>
+	</ol>
+	<p>Khi một việc thành công trong ViewModel <em>nên</em> dẫn tới điều hướng, hình dạng chung là:</p>
+	<pre class="tree"><code>ViewModel đổi state (hoặc phát ra một tín hiệu)
+  → giao diện quan sát thấy
+    → phần giao diện/điều hướng gọi navigate(...)</code></pre>
+	<p>Chú ý ai gọi <code>navigate(...)</code> trong chuỗi đó: <strong>tầng giao diện</strong>, không phải ViewModel. Đây đúng là mô hình của mục 10, chỉ khác chỗ sự kiện xuất phát: ở mục 10 nó đến từ một cú chạm, ở đây nó đến từ một việc vừa xong.</p>
+	<p>Chỉ cần nhận ra hình dạng đó là đủ cho N1. Cách hiện thực chi tiết cho những tín hiệu một-lần không thuộc bài này.</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 5.</strong>
+		<p>Câu nào <em>đúng</em>?</p>
+		<ol>
+			<li><code>NavController</code> nên được truyền vào constructor của ViewModel để ViewModel điều hướng được.</li>
+			<li>ViewModel đổi state; tầng giao diện thấy state đó rồi gọi <code>navigate(...)</code>.</li>
+			<li>Destination đang hiện nên được lưu trong <code>UiState</code> để ViewModel biết người dùng đang ở đâu.</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p><strong>Đáp án: 2.</strong> Câu 1 phá ranh giới của mục 13. Câu 3 trộn hai loại state của mục 12 — controller đã giữ thông tin đó, <code>UiState</code> giữ thêm một bản là tự tạo hai nguồn có thể lệch nhau.</p>
+		</details>
+	</div>
+
+	<h2 id="doc-code-that">14. Đọc code điều hướng thật trong project mẫu</h2>
+	<p>Giờ tới phần bài này tồn tại vì nó. Project mẫu của giai đoạn Mạng có một <code>NavHost</code> thật, và bạn sắp mở nó ra.</p>
+	<p>Định vị: <code>aaf-materials/08-networking/projects/final/app/src/main/java/com/kodeco/recipefinder/MainActivity.kt</code> — cả file 121 dòng, và toàn bộ phần điều hướng nằm trong đó.</p>
+	<p>Hai dữ kiện nên biết trước khi đọc:</p>
+	<ul>
+		<li><strong>Code điều hướng đã có sẵn trong <code>starter</code>.</strong> File <code>MainActivity.kt</code> của <code>starter</code> và <code>final</code> giống nhau từng byte. Nghĩa là chương nguồn <em>dùng</em> điều hướng chứ không <em>dạy</em> điều hướng — bạn không phải gõ nó, bạn phải <strong>đọc được</strong> nó.</li>
+		<li><strong>Đây là chỗ điều hướng xuất hiện lần đầu trong cả bộ project mẫu.</strong> Các chương trước không có dòng nào: không <code>NavHost</code>, không <code>rememberNavController</code>, và cũng không khai thư viện điều hướng.</li>
+	</ul>
+	<h3>14.1 Bộ khung: bốn dòng</h3>
+	<p>Bỏ hết chi tiết đi thì bộ khung đúng bằng những gì bạn vừa học:</p>
+	<Code code={khungBonDongCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc được ngay: một controller, một host, <code>startDestination = "main"</code>, và <strong>ba</strong> destination.</p>
+	<h3>14.2 Nguyên văn, và chỗ nào thuộc bài sau</h3>
+	<p>Đây là toàn bộ khối <code>NavHost</code> như nó thật sự được viết, dòng 84–106:</p>
+	<Code code={navHostNguyenVanCode} lang="kotlin" theme="github-dark" />
+	<p>Trông rối hơn ví dụ của bài này, nhưng phần rối thêm chỉ làm <strong>một</strong> việc: mang một con số theo cùng route. Bảng dưới tách rõ chỗ nào bạn đã học và chỗ nào để bài sau:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Dòng</th><th>Code</th><th>Thuộc đâu</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>78</td><td><code>val navController = rememberNavController()</code></td><td><strong>N1</strong> — mục 5</td></tr>
+			<tr><td>84</td><td><code>NavHost(navController = …, startDestination = "main")</code></td><td><strong>N1</strong> — mục 6 và 7</td></tr>
+			<tr><td>85</td><td><code>composable("main") &#123; MainScreen() &#125;</code></td><td><strong>N1</strong> — mục 8, đúng khuôn bạn vừa đọc</td></tr>
+			<tr><td>87 · 97</td><td>route có chỗ trống: <code>"details/&#123;recipeId&#125;"</code></td><td><strong>N2</strong> — route mang dữ liệu</td></tr>
+			<tr><td>88–90 · 98–100</td><td><code>arguments = listOf(navArgument("recipeId") &#123; type = NavType.IntType &#125;)</code></td><td><strong>N2</strong> — khai kiểu của dữ liệu đi kèm</td></tr>
+			<tr><td>91 · 101</td><td><code>&#123; backStackEntry -> … &#125;</code></td><td><strong>N2</strong> — lấy dữ liệu ra từ mục lịch sử</td></tr>
+			<tr><td>92–93 · 102–103</td><td><code>RecipeDetails(recipeId = backStackEntry.arguments?.getInt("recipeId") ?: 0)</code></td><td><strong>N2</strong></td></tr>
+		</tbody>
+	</table>
+	<p>Nói cách khác: <strong>bỏ ba mảnh N2 ra thì đoạn code trên chính là ví dụ của mục 6.</strong> Đó là toàn bộ mục tiêu của bài này — nhận ra bộ khung dưới lớp chi tiết.</p>
+	<h3>14.3 Lệnh <code>navigate</code> được gọi ở đâu</h3>
+	<p>Có đúng <strong>ba</strong> lời gọi <code>navigate</code> trong cả app, và không cái nào nằm trong <code>MainActivity.kt</code>:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Chỗ gọi</th><th>Lệnh</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>ui/recipes/ShowRecipeList.kt</code> dòng 114</td><td><code>navController.navigate("details/&#36;&#123;item.id&#125;")</code> — chạm vào một thẻ công thức</td></tr>
+			<tr><td><code>ui/widgets/BookmarkCard.kt</code> dòng 75</td><td><code>navController.navigate("bookmarks/&#36;&#123;recipe.id&#125;")</code> — chạm vào thân thẻ đã lưu</td></tr>
+			<tr><td><code>ui/widgets/BookmarkCard.kt</code> dòng 108</td><td><code>navController.navigate("bookmarks/&#36;&#123;recipe.id&#125;")</code> — chạm vào nút mũi tên của cùng thẻ đó</td></tr>
+		</tbody>
+	</table>
+	<p>Cả ba đều nằm trong một callback (<code>Modifier.clickable &#123; … &#125;</code> hoặc <code>onClick = &#123; … &#125;</code>) — đúng quy tắc ở mục 9.</p>
+	<p>Nhưng câu hỏi thú vị hơn là: <strong><code>ShowRecipeList</code> lấy <code>navController</code> ở đâu ra?</strong> Nó không nhận controller qua tham số, và nó không nhận callback. Nó tự lấy:</p>
+	<Code code={showRecipeListCode} lang="kotlin" theme="github-dark" />
+	<p><em>(Hai chi tiết cú pháp trong dòng khai hàm, chỉ cần đọc qua rồi bỏ: <code>ColumnScope.</code> nghĩa là hàm này được viết để gọi bên trong một <code>Column</code>; <code>MutableState&lt;List&lt;Recipe&gt;&gt;</code> là chính cái kiểu mà <code>mutableStateOf(...)</code> của S2 trả về, ở đây được truyền xuống làm tham số. Cả hai không liên quan tới điều hướng.)</em></p>
+	<p><code>LocalNavigatorProvider</code> được khai ở <code>MainActivity.kt</code> dòng 59–60 và được "rót" vào ở dòng 81–83, ngay trước <code>NavHost</code>. Đây là <strong>cơ chế thứ ba</strong> để đưa một giá trị xuống cây composable: không truyền qua tham số, không truyền qua callback, mà đặt sẵn ở trên rồi mọi composable bên dưới lấy ra bằng <code>.current</code>.</p>
+	<p class="notice">🔭 <em>Cơ chế đó tên là <code>CompositionLocal</code>. Bài này chỉ cần bạn <strong>nhận ra</strong> nó khi đọc code: <code>.current</code> nghĩa là "lấy giá trị đã được rót từ trên xuống". Cách dùng nó cho tử tế, và khi nào nên dùng, là nội dung bài <strong>D2</strong>. Mục 15 nói về cái giá của việc dùng nó cho <code>NavController</code>.</em></p>
+	<p>Ba chỗ đọc <code>.current</code> trong app: <code>ui/RecipeDetails.kt</code> dòng 92 · <code>ui/recipes/ShowRecipeList.kt</code> dòng 73 · <code>ui/widgets/BookmarkCard.kt</code> dòng 68.</p>
+	<h3>14.4 Ba route, hai màn hình</h3>
+	<table class="api">
+		<thead>
+			<tr><th>Route</th><th>Vẽ ra gì</th><th>Ở đâu</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>"main"</code></td><td><code>fun MainScreen()</code> — không tham số</td><td><code>ui/MainScreen.kt</code> dòng 57–58</td></tr>
+			<tr><td><code>"details/&#123;recipeId&#125;"</code></td><td><code>fun RecipeDetails(recipeId: Int? = null, databaseRecipeId: Int? = null)</code></td><td><code>ui/RecipeDetails.kt</code> dòng 83–84</td></tr>
+			<tr><td><code>"bookmarks/&#123;recipeId&#125;"</code></td><td><strong>cùng hàm <code>RecipeDetails</code></strong>, chỉ điền tham số khác</td><td>như trên</td></tr>
+		</tbody>
+	</table>
+	<p>Đây là bằng chứng sống cho mục 2: <strong>ba destination, hai hàm composable.</strong> Nếu bạn đếm destination theo số hàm, bạn sẽ đếm sai app này.</p>
+	<p>Thư viện được khai ở đâu: <code>gradle/libs.versions.toml</code> dòng 17 (<code>navigation="2.7.2"</code>) và dòng 54 (trỏ tới <code>androidx.navigation:navigation-compose</code>), rồi <code>app/build.gradle.kts</code> dòng 69 (<code>implementation(libs.navigation)</code>).</p>
+	<h3>14.5 Điều bạn vừa mở khoá được</h3>
+	<p>Đáng dừng một nhịp để thấy rõ mình vừa được gì.</p>
+	<p>Trước bài này, mở <code>MainActivity.kt</code> của project mẫu ra là gặp một khối mười mấy dòng với <code>NavHost</code>, <code>composable</code>, <code>navArgument</code>, <code>NavType</code>, <code>backStackEntry</code>, <code>CompositionLocalProvider</code> — tất cả cùng lúc, không cái nào từng được giới thiệu. Cách xử lý duy nhất là "đừng sửa gì trong đó".</p>
+	<p>Sau bài này bạn đọc được bộ khung, biết ba mảnh nào để dành cho N2, và biết chắc một điều nữa: <strong>trong cả file <code>MainActivity.kt</code> không có một dòng nào thuộc phần mạng.</strong> Retrofit, JSON, ảnh tải về — chúng nằm ở file khác và là nội dung của <strong>W1–W3</strong>. Bộ khung điều hướng đứng độc lập, đọc được mà không cần biết gì về mạng. Đó chính là tiêu chí thành công của bài này.</p>
+
+	<h2 id="bon-cho-code-mau-khac">15. Bốn chỗ code mẫu làm khác cách khoá này khuyên</h2>
+	<p>Bài này dạy một cách, project mẫu làm một cách khác. Cả hai đều chạy. Việc của bạn không phải chọn bên, mà là <strong>đọc được code mẫu</strong> và <strong>biết mình sẽ viết theo cách nào</strong>.</p>
+	<table class="cmp">
+		<thead>
+			<tr><th>#</th><th>Code mẫu làm gì</th><th>Khoá này khuyên gì</th><th>Nên theo cái nào</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>1</td><td>Route là <strong>chuỗi thô</strong>, kèm chỗ trống <code>&#123;recipeId&#125;</code></td><td>N2 dạy mô hình route <strong>type-safe</strong> cho destination mang dữ liệu</td><td>Đọc code mẫu bằng chuỗi (không đổi gì); viết code mới theo mô hình N2</td></tr>
+			<tr><td>2</td><td>Controller được <strong>rót xuống cả cây</strong> bằng <code>LocalNavigatorProvider</code>, composable lá tự lấy bằng <code>.current</code></td><td>Màn hình nhận <strong>callback <code>() -&gt; Unit</code></strong>, lệnh <code>navigate</code> nằm ở chỗ khai đồ thị (mục 10)</td><td>Callback ở biên màn hình — xem cái giá cụ thể ngay dưới</td></tr>
+			<tr><td>3</td><td><strong>Hai cơ chế đổi màn hình cùng tồn tại</strong>: <code>NavHost</code> cho trang chi tiết, <code>when</code> theo chỉ số cho hai tab</td><td>Dùng đúng cơ chế cho đúng việc</td><td>Cả hai đều hợp lý — nhưng phải biết chúng khác nhau</td></tr>
+			<tr><td>4</td><td>Đã dùng <code>popBackStack()</code> ở hai chỗ</td><td>N1 chưa dạy; <strong>N2</strong> dạy</td><td>Gặp thì biết đó là "đi lui một mục trong lịch sử", chờ N2</td></tr>
+		</tbody>
+	</table>
+	<p>Ba chỗ đáng nói thêm.</p>
+	<p><strong>Về #1 — không gọi chuỗi thô là "sai".</strong> Thư viện điều hướng trong project mẫu là bản <strong>2.7.2</strong> (năm 2023), và chuỗi là cách biểu diễn route bình thường của thời điểm đó. Thư viện đã đi tiếp từ đó; bài <strong>N2</strong> mang ghi chú phiên bản cập nhật cùng mô hình route mà khoá này khuyên dùng. Điều duy nhất cần rút ra ở đây: chuỗi thô có một cái giá đã nói ở mục 9 — gõ sai thì lỗi chỉ lộ ra lúc chạy.</p>
+	<p><strong>Về #2 — cái giá của cách rót controller xuống cả cây, kiểm được bằng mắt.</strong> <code>LocalNavigatorProvider</code> được khai với giá trị mặc định là <strong>ném lỗi</strong> (<code>error("No navigation provided")</code>, <code>MainActivity.kt</code> dòng 59–60). Nó chỉ có giá trị thật khi composable nằm bên dưới chỗ rót (dòng 81–83). Nhưng <code>ShowRecipeList</code> đọc <code>.current</code> ngay dòng đầu thân hàm (dòng 73). Hệ quả: <strong>composable đó không render được ở bất cứ đâu không nằm dưới chỗ rót — kể cả trong một <code>@Preview</code>.</strong> Đúng hai hàm preview có sẵn trong project chạm phải chuyện này: <code>ui/recipes/ShowRecipeList.kt</code> dòng 125–136 và <code>ui/recipes/RecipeList.kt</code> dòng 95–101 (gọi gián tiếp) — chúng báo lỗi "No navigation provided" thay vì vẽ giao diện.</p>
+	<p>So lại với bản ✅ ở mục 10: một <code>HomeScreen(onOpenDetails: () -&gt; Unit)</code> thì preview chỉ cần <code>onOpenDetails = &#123; &#125;</code>. Đó là ý nghĩa cụ thể của chữ "preview được" trong bảng bốn lý do — không phải một lời khen trừu tượng.</p>
+	<p><strong>Về #3 — hai cơ chế, và một hệ quả kiểm được.</strong> Ở <code>ui/MainScreen.kt</code>, hai tab dưới đáy được đổi bằng một biến chỉ số và một <code>when</code>:</p>
+	<Code code={khiTabCode} lang="kotlin" theme="github-dark" />
+	<p><em>(Hai mảnh cú pháp đọc qua là đủ: <code>when (x) &#123; 0 -> … 1 -> … &#125;</code> là cách viết gọn của một chuỗi "nếu x bằng 0 thì… , nếu bằng 1 thì…"; và <code>mutableIntStateOf</code> là biến thể dành cho số nguyên của <code>mutableStateOf</code> mà bạn đã dùng ở S2 — cùng ý nghĩa, đọc giá trị bằng <code>.intValue</code> thay vì <code>.value</code>.)</em></p>
+	<p>Đây chính là cách viết mà mục 1 nói "chạy được và không sai" — và ở đây nó <strong>đúng chỗ</strong>: hai tab là hai cách trình bày <em>bên trong một destination</em>, không phải hai chỗ đến. Nhưng hệ quả phải nhìn thấy: <strong>vì tab không nằm trong back stack, đang ở tab Groceries bấm Back sẽ không đưa bạn về tab Recipes.</strong> Đó là sự khác nhau giữa "đổi nội dung trong một màn hình" và "đi tới một destination khác" — và là cách phân biệt thực dụng nhất khi bạn tự thiết kế app.</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh 6.</strong>
+		<p>App của bạn có một trang danh sách và một trang chi tiết, người dùng cần bấm Back để quay từ chi tiết về danh sách. Dùng cơ chế nào?</p>
+		<ol>
+			<li>Một biến <code>selectedIndex</code> và <code>when</code>, như hai tab của project mẫu.</li>
+			<li>Hai destination trong <code>NavHost</code>, chuyển bằng <code>navigate(...)</code>.</li>
+		</ol>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p><strong>Đáp án: 2</strong> — vì yêu cầu có chữ "bấm Back". Muốn Back hoạt động thì phải có lịch sử điều hướng, và lịch sử đó do controller giữ. Với cách 1 bạn sẽ phải tự viết lại toàn bộ phần xử lý Back.</p>
+		</details>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p><strong>(a) "Tên nghe giống nhau thì là cùng một thứ."</strong> Điều hướng có ba cặp tên gần nhau, và lẫn cặp nào cũng làm mờ phần còn lại.</p>
+	<ul>
+		<li><em>Destination ≠ hàm composable.</em> Destination là <em>một ô trong bản đồ</em>; composable là <em>thứ được vẽ khi tới ô đó</em>. Project mẫu có <strong>ba</strong> destination nhưng chỉ <strong>hai</strong> hàm màn hình — đếm theo hàm là đếm sai (mục 2, 14.4).</li>
+		<li><em><code>@Composable</code> ≠ <code>composable(...)</code>.</em> Một cái là annotation cho trình biên dịch Compose, một cái là hàm của thư viện điều hướng để đăng ký destination. Khác nhau đúng một dấu <code>@</code> và một chữ hoa (mục 8).</li>
+		<li><em><code>NavController</code> ≠ <code>NavHost</code>.</em> Controller là <em>đối tượng</em> giữ trạng thái và nhận lệnh; host là <em>composable</em> khai đồ thị và hiển thị destination hiện hành. Bạn không gọi <code>navigate()</code> trên host, và không khai destination trên controller (mục 6).</li>
+	</ul>
+	<p><strong>(b) "Đổi màn hình chỉ là thay nội dung đang vẽ."</strong> Đây là niềm tin đứng sau hai lỗi khác nhau.</p>
+	<ul>
+		<li><em><code>navigate("details")</code> không phải một lời gọi hàm tới <code>DetailsScreen()</code>.</em> Nó là một <em>lệnh</em> kèm một <em>cái tên</em>: controller tra bản đồ, ghi thêm một mục vào lịch sử, rồi host mới vẽ. Hai hệ quả bạn sẽ gặp thật: route sai chỉ lộ lỗi lúc chạy, và <code>navigate</code> còn làm một việc mà lời gọi hàm không làm — ghi lịch sử (mục 9).</li>
+		<li><em>Tự thay màn hình bằng biến, mãi mãi.</em> Một <code>when</code> là đủ để đổi nội dung <em>trong</em> một màn hình — project mẫu làm đúng vậy cho hai tab. Nhưng dùng nó thay cho điều hướng thì bạn phải tự viết lại lịch sử, tự xử lý Back, tự lo khôi phục sau khi app bị dựng lại. Câu hỏi phân biệt gọn nhất: <em>"người dùng có cần bấm Back để quay lại chỗ vừa rồi không?"</em> Có → đó là hai destination (mục 1, 15).</li>
+	</ul>
+	<p><strong>(c) "Chỗ nào cần điều hướng thì chỗ đó phải có controller."</strong> Nghe hợp lý, và dẫn tới hai chỗ rò rỉ.</p>
+	<ul>
+		<li><em>Rót <code>NavController</code> xuống mọi composable lá.</em> Màn hình chỉ cần <em>báo ra</em> một sự kiện <code>() -&gt; Unit</code>; lệnh <code>navigate</code> thuộc chỗ khai đồ thị. Cái giá của việc làm ngược thì kiểm được bằng mắt: composable dính vào máy móc điều hướng sẽ không preview được, và không dùng lại được ở chỗ khác (mục 10, 15).</li>
+		<li><em>Đưa <code>NavController</code> vào ViewModel.</em> ViewModel giữ state và logic của màn hình, không giữ API giao diện. Hình dạng đúng: ViewModel đổi state → giao diện quan sát thấy → tầng giao diện gọi <code>navigate(...)</code> (mục 13).</li>
+	</ul>
+	<p>Câu để nhớ, và là câu nên mang ra khỏi cả bài:</p>
+	<div class="callout note">
+		<strong>Điều hướng là một <em>hành động của app</em>, không phải một <em>cách gọi hàm</em>.</strong> Màn hình phát ra sự kiện; controller giữ lịch sử và ra quyết định; host hiển thị. Ba vai đó tách nhau là lý do điều hướng mở rộng được.
+	</div>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+	<div class="callout journey">
+		<strong>Tóm tắt — năm điều cần giữ lại</strong>
+		<p>Năm điều cần giữ lại — nếu chỉ nhớ được năm dòng, hãy là năm dòng này:</p>
+		<ol>
+			<li><strong>Destination là một chỗ có thể đi tới; route là cái tên định danh chỗ đó.</strong> Cả hai là khái niệm của điều hướng, không phải của Compose — một destination <em>thường</em> vẽ ra một composable, nhưng chúng không phải một thứ.</li>
+			<li><strong><code>NavController</code> điều phối điều hướng và giữ lịch sử.</strong> Tạo nó bằng <code>rememberNavController()</code>, đặt ở chỗ cao, ngay cạnh <code>NavHost</code>.</li>
+			<li><strong><code>NavHost</code> khai đồ thị và là chỗ destination hiện hành được hiển thị.</strong> Bên trong nó, mỗi <code>composable("route") &#123; … &#125;</code> đăng ký một destination cùng nội dung của nó; <code>startDestination</code> là chỗ vào bình thường của đồ thị.</li>
+			<li><strong><code>navigate(route)</code> là một <em>lệnh</em>, và nó thường ghi thêm một mục vào lịch sử.</strong> Nhờ lịch sử đó mà nút Back của hệ thống có chỗ để quay về — bạn không phải tự viết.</li>
+			<li><strong>Ở biên màn hình, dùng callback thay vì rót <code>NavController</code> đi khắp nơi.</strong> Màn hình phát ra sự kiện, chỗ khai đồ thị gọi <code>navigate(...)</code>. Đây là chính khuôn luồng một chiều của S3, áp vào điều hướng.</li>
+		</ol>
+	</div>
+
+	<h2 id="luyen-tap">Luyện tập — đọc một app ba màn hình và chỉ ra từng mảnh</h2>
+	<p>Đây là toàn bộ phần điều hướng của một app ba màn hình, không có gì khác. Đọc rồi trả lời bảy câu bên dưới.</p>
+	<Code code={luyenTapCode} lang="kotlin" theme="github-dark" />
+	<ol>
+		<li>Controller được tạo ở đâu, và vì sao nó nằm ở đúng chỗ đó?</li>
+		<li>Host là mảnh nào? Nó khác controller ở chỗ nào?</li>
+		<li>Destination nào được dựng đầu tiên khi app mở?</li>
+		<li>App này có bao nhiêu destination, và bao nhiêu hàm màn hình?</li>
+		<li><code>HomeScreen</code> có biết <code>NavController</code> tồn tại không? Nó biết những gì?</li>
+		<li>Người dùng mở app → chạm "Thiết lập" → chạm Back. Vẽ lịch sử điều hướng sau mỗi bước.</li>
+		<li>Nếu ai đó sửa ⑦ thành <code>composable("detail")</code> mà giữ ⑥ nguyên, chuyện gì xảy ra và <strong>khi nào</strong>?</li>
+	</ol>
+	<details>
+		<summary>Xem lời giải</summary>
+		<ol>
+			<li><strong>②</strong>, dòng <code>val navController = rememberNavController()</code>. Nó nằm trong <code>AppNavigation</code> — cùng chỗ với <code>NavHost</code> và cao hơn mọi màn hình. Đó là chỗ đúng vì <code>navigate(...)</code> được gọi ở đây (⑥), còn các màn hình không cần controller (mục 5, 10).</li>
+			<li><strong>③</strong> — <code>NavHost</code> là host: một <strong>composable</strong>, khai đồ thị trong khối <code>&#123; … &#125;</code> và hiển thị destination hiện hành. Controller (②) là một <strong>đối tượng</strong>: giữ đang-ở-đâu và lịch sử, nhận lệnh <code>navigate(...)</code>. Dòng <code>navController = navController</code> là chỗ nối hai vai lại (mục 6).</li>
+			<li><code>"home"</code>, vì <strong>④</strong> <code>startDestination = "home"</code>. Nói cho đúng: đó là chỗ vào <em>bình thường</em> của đồ thị này, không phải một lời hứa vĩnh viễn (mục 7).</li>
+			<li><strong>Ba destination</strong> (<code>home</code> ⑤, <code>details</code> ⑦, <code>settings</code>) và <strong>ba hàm màn hình</strong>. Ở app này hai con số tình cờ bằng nhau — trong project mẫu của phần Mạng thì không (3 destination, 2 hàm). Đừng lấy con số này làm quy tắc (mục 2, 14.4).</li>
+			<li><strong>Không.</strong> <code>HomeScreen</code> (①) chỉ nhận hai tham số <code>() -&gt; Unit</code>. Nó biết "có hai việc người dùng có thể muốn làm", và không biết mỗi việc dẫn tới đâu. Đây là khuôn của mục 10 và là lý do nó preview được chỉ với <code>onOpenDetails = &#123; &#125;</code>.</li>
+			<li>Mở app: <code>home</code>. Chạm "Thiết lập" → ⑥ gọi <code>navigate("settings")</code> → lịch sử thành <code>home</code> · <code>settings</code> (settings ở trên cùng, đang hiện). Chạm Back → bỏ mục trên cùng → còn <code>home</code>, và Home hiện lại. Bấm Back lần nữa thì thường ra khỏi app, vì chỉ còn một mục (mục 11).</li>
+			<li>App <strong>vẫn biên dịch bình thường</strong> — với trình biên dịch, <code>"details"</code> ở ⑥ chỉ là một chuỗi, nó không kiểm tra xem route đó có tồn tại trong đồ thị hay không. Lỗi lộ ra <strong>lúc chạy</strong>, đúng lúc người dùng chạm "Xem chi tiết". Đây chính là cái giá của route dạng chuỗi mà mục 3, 9 và 15 nói tới, và là một trong những lý do có mô hình route type-safe ở bài <strong>N2</strong>.</li>
+		</ol>
+	</details>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<h3>Tài liệu chính thức Android (đọc bản <code>?hl=en</code>)</h3>
+	<ul>
+		<li><em>Navigation overview</em> (developer.android.com/guide/navigation) — các định nghĩa gốc của bài: Controller là "bộ điều phối trung tâm" quản lý điều hướng giữa các destination, xử lý deep link, quản lý back stack; Host là "UI element chứa destination hiện hành" — app hoán đổi destination vào/ra khỏi navigation host; Graph là "cấu trúc dữ liệu định nghĩa mọi destination và cách chúng nối nhau"; Destination là "node trong đồ thị"; Route "định danh duy nhất một destination cùng dữ liệu nó cần".</li>
+		<li><em>Create a navigation controller</em> (developer.android.com/guide/navigation/navcontroller) — "NavController là central navigation API: theo dõi các destination người dùng đã đến, cho phép di chuyển giữa chúng"; "mỗi <code>NavHost</code> có <code>NavController</code> tương ứng riêng"; tạo controller trong Compose bằng <code>rememberNavController()</code>; "nên tạo <code>NavController</code> cao trong cây composable, đủ cao để mọi composable cần tham chiếu đều với tới được" (kiểm lại ngày 2026-09-08 — còn nguyên văn hiện hành).</li>
+		<li><em>Navigate to a destination</em> (developer.android.com/guide/navigation/use-graph/navigate) — mục "Expose events from your composables", thẩm quyền cho mục 9–10: "không truyền tham chiếu <code>NavController</code> vào composable để nó tự gọi <code>navigate()</code>; theo UDF, composable nên phơi ra một sự kiện" — "cụ thể là một tham số kiểu <code>() -&gt; Unit</code>"; cảnh báo "chỉ gọi <code>navigate()</code> bên trong callback, không gọi trong thân composable, để tránh gọi <code>navigate()</code> ở mỗi lần recomposition" (kiểm lại ngày 2026-09-08 — còn nguyên văn hiện hành).</li>
+	</ul>
+	<h3>Code thật của project mẫu (nguyên văn, số dòng đã kiểm)</h3>
+	<ul>
+		<li><code>aaf-materials/08-networking/projects/final/app/src/main/java/com/kodeco/recipefinder/MainActivity.kt</code> — dòng 59–60 (<code>LocalNavigatorProvider</code> mặc định ném lỗi), 78 (<code>rememberNavController()</code>), 81–83 (<code>CompositionLocalProvider</code>), 84–106 (khối <code>NavHost</code> trích nguyên văn ở mục 14.2).</li>
+		<li><code>ui/recipes/ShowRecipeList.kt</code> — dòng 68–73 (khai hàm + <code>.current</code>), 114 (<code>navigate("details/&#36;&#123;item.id&#125;")</code>), 125–136 (hàm <code>@Preview</code> không render được); <code>ui/recipes/RecipeList.kt</code> dòng 95–101 (preview gọi gián tiếp).</li>
+		<li><code>ui/widgets/BookmarkCard.kt</code> — dòng 68 (<code>.current</code>), 75 và 108 (hai lời gọi <code>navigate</code>); <code>ui/RecipeDetails.kt</code> — dòng 83–84 (signature <code>RecipeDetails</code>), 92 (<code>.current</code>), 152–159 (<code>TitleRow</code> nhận <code>navController</code>), 167 và 190 (hai <code>popBackStack()</code> — chỉ nêu tên, N2 dạy).</li>
+		<li><code>ui/MainScreen.kt</code> — dòng 57–58 (<code>fun MainScreen()</code>), 59–61 + 89–92 (đổi tab bằng chỉ số + <code>when</code>); <code>gradle/libs.versions.toml</code> dòng 17 (<code>navigation="2.7.2"</code>) và dòng 54; <code>app/build.gradle.kts</code> dòng 69. Đã kiểm <code>starter</code> và <code>final</code> giống nhau từng byte ở mọi file điều hướng (2026-09-08).</li>
+	</ul>
+	<h3>Nội dung của chính khoá học</h3>
+	<ul>
+		<li>S2–S4 (<code>Ch06StateVaRecomposition.astro</code>, <code>Ch06StateHoistingVaUdf.astro</code>, <code>Ch06ViewModelVaUiState.astro</code>) — <code>remember</code>, state hoisting, callback, luồng dữ liệu một chiều, ViewModel; S5 (<code>KienTrucUiDataRepository.astro</code>) — biên giới trách nhiệm giữa các tầng.</li>
+		<li>Bài sau: <strong>N2</strong> (<code>NavigationBackStackTypeSafe.astro</code>) — back stack đầy đủ, truyền dữ liệu, route type-safe.</li>
+	</ul>
+	<h3>Ví dụ tối giản do khoá dựng</h3>
+	<ul>
+		<li>Toàn bộ code Home/Details/Settings trong bài (<code>HomeScreen</code> · <code>DetailsScreen</code> · <code>SettingsScreen</code> · <code>AppNavigation</code>) — dựng để dạy bộ khung, không trích <code>aaf-materials/</code>. Riêng khối mục 14.2, 14.3 và các bảng số dòng là trích nguyên văn từ project mẫu.</li>
+	</ul>
+</section>

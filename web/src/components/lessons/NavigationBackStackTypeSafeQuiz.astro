@@ -1,0 +1,134 @@
+---
+// Quiz cho N2 — Back stack & truyền dữ liệu type-safe. Bài NEW (Giai đoạn 4 — Điều hướng, bài 2/2).
+// Nguồn nội dung: docs/drafts/n2-navigation-backstack-typesafe.md (đã chấp nhận, đợt sửa N2B) — quiz mới theo bài.
+// Chuẩn quiz: 4 đáp án / 1 đúng, giải thích 100% (đúng + vì sao từng distractor sai),
+// vị trí & độ dài đáp án đúng phân tán (max share ≤ ~40%). Chấm bằng harness chung IMP-001.
+// Các myth bài đã bác bỏ (quay về bằng navigate · truyền cả object · popBackStack tạo màn hình mới ·
+// Back luôn thoát app · string route là mô hình hiện đại duy nhất · type-safe là vô địch) chỉ xuất hiện
+// ở vị trí đáp án SAI và bị đánh đổ trong giải thích — không bao giờ là đáp án đúng.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>1. Lịch sử đang là <code>Home · Details</code>. Một nút gọi <code>navController.popBackStack()</code>. Chuyện gì xảy ra?</legend>
+			<label><input type="radio" name="q1" value="a" /> Một mục Home <strong>mới</strong> được ghi lên đỉnh, thành <code>Home · Details · Home</code></label>
+			<label><input type="radio" name="q1" value="b" /> Một màn hình Details mới được dựng — pop là cách dựng lại màn hình</label>
+			<label><input type="radio" name="q1" value="c" /> Mục trên cùng bị bỏ khỏi lịch sử, và <code>Home</code> trở thành destination hiện hành</label>
+			<label><input type="radio" name="q1" value="d" /> Toàn bộ lịch sử bị xoá, app trở về màn hình đầu tiên như lúc mới cài</label>
+			<p class="explain" hidden>
+				<strong>(c) đúng</strong> — <code>popBackStack()</code> cố gắng bỏ destination hiện hành khỏi back stack và về destination trước đó (mục 2, 4): đi <em>lui</em> trên lịch sử đã có, không tạo gì mới. (a) mô tả đúng hành vi của <code>navigate("home")</code> — cái bẫy trung tâm của mục 3, ngược mô hình với pop; (b) đảo ngược vai: việc vẽ là việc của <code>NavHost</code>, pop chỉ đổi đỉnh lịch sử — nó không "tạo" màn hình nào; (d) bịa ra một hành vi xoá-sạch không có.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>2. Đang ở Details, một nút viết <code>navController.navigate("home")</code> với ý định "quay về Home". Sai ở đâu?</legend>
+			<label><input type="radio" name="q2" value="a" /> <code>navigate</code> ghi <em>thêm</em> mục Home mới lên đỉnh — Back sau đó rơi về Details lần nữa</label>
+			<label><input type="radio" name="q2" value="b" /> Sai vì <code>navigate</code> chỉ dùng được cho route không tham số, mà <code>home</code> là route có tham số ẩn</label>
+			<label><input type="radio" name="q2" value="c" /> Không sai gì — đây là cách chuẩn để quay về destination đã đi qua</label>
+			<label><input type="radio" name="q2" value="d" /> Sai vì route phân biệt hoa/thường: <code>navigate("Home")</code> mới là route đã đăng ký</label>
+			<p class="explain" hidden>
+				<strong>(a) đúng</strong> — cạm bẫy trung tâm của mục 3: <code>navigate</code> không tra lịch sử để "tìm lại" Home; nó ghi thêm mục mới, để lại rác trong lịch sử, và Back trở nên khó đoán. Muốn quay lại: bấm Back; muốn có <em>nút</em> quay lại: <code>popBackStack()</code>. Chỉ khi muốn <em>tới một nơi mới</em> mới dùng <code>navigate</code>. (b) bịa ra một hạn chế không tồn tại; (c) phủ nhận chính cái bẫy mà cả mục 3 dựng lên; (d) bịa ra quy tắc hoa/thường — vấn đề không nằm ở chính tả mà ở mô hình.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>3. Nút Back của <em>app</em> (mũi tên trên app bar) khác nút Back của <em>hệ thống</em> thế nào?</legend>
+			<label><input type="radio" name="q3" value="a" /> Không khác gì nhau — cả hai do hệ điều hành nối sẵn với pop</label>
+			<label><input type="radio" name="q3" value="b" /> Nút của app tự động nhận hành vi Back nếu bạn đặt tên hàm là <code>onBackPressed</code></label>
+			<label><input type="radio" name="q3" value="c" /> Nút của app phải gọi <code>navigate(...)</code> về màn hình trước; nút hệ thống mới dùng pop</label>
+			<label><input type="radio" name="q3" value="d" /> Nút của app phải viết tường minh — màn hình nhận <code>onBack</code>, chỗ khai đồ thị gọi <code>popBackStack()</code></label>
+			<p class="explain" hidden>
+				<strong>(d) đúng</strong> — mục 2: Back hệ thống bạn được miễn viết (controller giữ lịch sử, hệ thống đã nối sẵn); Back của app là một nút UI — không phép màu nào gắn sẵn. Cách viết đúng là khuôn callback của S3, và project mẫu làm ngược lại (truyền thẳng <code>navController</code> vào <code>TitleRow</code>, mục 15). (a) sai vì "miễn viết" chỉ đúng cho nút hệ thống; (b) bịa ra một cơ chế đặt-tên-là-chạy; (c) sai mô hình — "quay về" bằng <code>navigate</code> là chính lỗi của mục 3.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>4. <code>popBackStack()</code> trả về một Boolean. Với nút Back thông thường trong giai đoạn này, nên dùng nó thế nào?</legend>
+			<label><input type="radio" name="q4" value="a" /> Bọc <code>if (!popBackStack())</code> quanh mọi lời gọi — để không bao giờ kẹt</label>
+			<label><input type="radio" name="q4" value="b" /> Gọi và thôi — không cần xử lý giá trị trả về; chỉ cần biết nó có thể trả <code>false</code></label>
+			<label><input type="radio" name="q4" value="c" /> Bỏ qua hẳn — <code>popBackStack()</code> không bao giờ thất bại nên Boolean chỉ là trang trí</label>
+			<label><input type="radio" name="q4" value="d" /> Dùng Boolean làm điều kiện: pop xong thì luôn <code>navigate("home")</code> để chắc chắn về được Home</label>
+			<p class="explain" hidden>
+				<strong>(b) đúng</strong> — mục 2 và 4: Boolean nói "pop có thành công không"; có một trường hợp trả <code>false</code> (lịch sử gần rỗng, ví dụ đã tự pop mất <code>startDestination</code>). Với nút Back trên destination bình thường: gọi và thôi. (a) là thứ mà bài nói đừng làm ở mức này — bọc <code>if</code> quanh giá trị chưa hiểu; (c) sai — "không bao giờ thất bại" phủ định đúng ý nghĩa của Boolean; (d) vừa sai mô hình (tự tạo rác lịch sử — mục 3) vừa viết vô nghĩa logic.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>5. Route type-safe của Navigation Compose được khai báo thế nào cho destination có tham số?</legend>
+			<label><input type="radio" name="q5" value="a" /> Một hằng chuỗi trong object companion: <code>const val DETAILS = "details/&#123;recipeId&#125;"</code></label>
+			<label><input type="radio" name="q5" value="b" /> Một class thường với constructor nhận <code>recipeId: Int</code> — trình biên dịch tự suy route từ tên class</label>
+			<label><input type="radio" name="q5" value="c" /> Một <code>@Serializable data class</code> với thuộc tính <code>val recipeId: Int</code></label>
+			<label><input type="radio" name="q5" value="d" /> Một file XML khai route cùng kiểu dữ liệu, như đồ thị Fragment/View</label>
+			<p class="explain" hidden>
+				<strong>(c) đúng</strong> — mục 6: route type-safe là một kiểu Kotlin — data class (có tham số) hoặc object (không tham số) — bắt buộc <code>@Serializable</code> để hệ thống điều hướng mã hoá/giải mã giá trị route. (a) chỉ là cách tổ chức chuỗi — vẫn là route-dạng-chuỗi, không type-safe; (b) thiếu <code>@Serializable</code> và thiếu data class/object — không phải hình dạng của API; (d) là cách khai của điều hướng Fragment/View, khác hệ — khoá này dùng Navigation Compose, không có file XML nào.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>6. Trong <code>composable&lt;RecipeDetailsRoute&gt; &#123; backStackEntry -> … &#125;</code>, cách đọc tham số <code>recipeId</code> theo mô hình type-safe là gì?</legend>
+			<label><input type="radio" name="q6" value="a" /> <code>backStackEntry.toRoute&lt;RecipeDetailsRoute&gt;()</code> rồi đọc <code>route.recipeId</code></label>
+			<label><input type="radio" name="q6" value="b" /> <code>backStackEntry.arguments?.getInt("recipeId") ?: 0</code> — tra bằng tên chuỗi</label>
+			<label><input type="radio" name="q6" value="c" /> <code>backStackEntry.route.recipeId</code> — thuộc tính có sẵn của mục lịch sử</label>
+			<label><input type="radio" name="q6" value="d" /> Truyền <code>recipeId</code> qua biến toàn cục trước khi navigate</label>
+			<p class="explain" hidden>
+				<strong>(a) đúng</strong> — mục 8: <code>toRoute&lt;T&gt;()</code> (cần <code>import androidx.navigation.toRoute</code>) giải mã tham số của mục lịch sử về đúng giá trị route gốc; đọc thuộc tính như một data class bình thường — không chuỗi, không khoá tra cứu, không <code>?: 0</code>. (b) là cách của code 2023 — thứ mà mục 14 dạy để <em>đọc</em>, không phải mô hình type-safe; sai tên key thì <code>getInt</code> âm thầm trả <code>0</code>. (c) bịa ra một thuộc tính không tồn tại. (d) vừa lạc đề vừa sai — route chính là chỗ mang định danh, và biến toàn cục không phải cơ chế của điều hướng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>7. Điều gì xảy ra nếu dán khối <code>@Serializable object HomeRoute</code> vào project mẫu (Navigation 2.7.2) rồi biên dịch?</legend>
+			<label><input type="radio" name="q7" value="a" /> Chạy bình thường — API type-safe có từ rất sớm trong Navigation 2</label>
+			<label><input type="radio" name="q7" value="b" /> Chỉ hiện một cảnh báo — API có nhưng nên dùng thận trọng</label>
+			<label><input type="radio" name="q7" value="c" /> Lỗi lúc chạy — build xong, crash khi mở Home</label>
+			<label><input type="radio" name="q7" value="d" /> Lỗi biên dịch — Navigation 2.7.2 chưa có API type-safe</label>
+			<p class="explain" hidden>
+				<strong>(d) đúng</strong> — ghi chú phiên bản mục 9: route type-safe có từ Navigation 2.8.0; project mẫu dùng 2.7.2 (2023) nên các ví dụ <code>@Serializable</code>/<code>composable&lt;T&gt;()</code>/<code>toRoute&lt;T&gt;()</code> không compile được trên đó — và không được dán vào đó. Đây là ranh giới phiên bản, không phải lỗi gõ. Ngoài ra cần cả plugin serialization + <code>kotlinx-serialization-json</code> trong Gradle. (a) sai thực tế; (b) bịa ra "cảnh báo" — đây là lỗi biên dịch; (c) nhầm giai đoạn lộ lỗi.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>8. Chiều Details cần dữ liệu công thức. Hình dạng route nào đúng nguyên tắc kiến trúc của bài?</legend>
+			<label><input type="radio" name="q8" value="a" /> <code>RecipeDetailsRoute(recipe = wholeRecipeObject)</code> — "đỡ query lại", dữ liệu có sẵn ngay</label>
+			<label><input type="radio" name="q8" value="b" /> <code>RecipeDetailsRoute(recipeId = recipe.id)</code> — ID đi qua, destination tự hỏi repository</label>
+			<label><input type="radio" name="q8" value="c" /> <code>RecipeDetailsRoute(recipeList = allRecipes, selectedIndex = i)</code> — mang cả danh sách, trang chi tiết tự cắt</label>
+			<label><input type="radio" name="q8" value="d" /> Không truyền gì qua route — mọi dữ liệu phải nhét vào <code>UiState</code> trước khi navigate</label>
+			<p class="explain" hidden>
+				<strong>(b) đúng</strong> — quy tắc số một của mục 10: truyền <strong>định danh nhỏ</strong>, đừng truyền cả object. ID nhỏ, ổn định, dễ khôi phục; object thì lớn (mỗi mục lịch sử lôi theo một bản sao), có thể cũ (chụp tại thời điểm bấm nút), và biến back stack thành kho dữ liệu. Mạch dữ liệu đúng: ID → <code>toRoute</code> → ViewModel hỏi repository (S4/S5) → UI state. (a) và (c) là hai biến thể của cùng sai lầm — và (a) cũng không "đỡ query" gì: nó chỉ khoá dữ liệu vào bản cũ. (d) quá tuyệt đối hoá: route <em>đúng vai</em> mang định danh — điều sai là mang <em>dữ liệu</em>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>9. Chỗ nào <strong>không</strong> nên truyền qua tham số route?</legend>
+			<label><input type="radio" name="q9" value="a" /> <code>recipeId: Int</code> — định danh món công thức cần mở chi tiết</label>
+			<label><input type="radio" name="q9" value="b" /> Một cờ boolean "bản rút gọn" — biến thể hiển thị của destination</label>
+			<label><input type="radio" name="q9" value="c" /> Một <code>RecipeRepository</code> — để destination đích dùng chung biên giới</label>
+			<label><input type="radio" name="q9" value="d" /> Chuỗi tìm kiếm người dùng vừa gõ — một lựa chọn lọc đơn giản</label>
+			<p class="explain" hidden>
+				<strong>(c) đúng</strong> — bảng mục 11: repository là biên giới dữ liệu của <em>cả app</em> — mọi destination dùng chung một biên giới, không mang nó theo từng lần navigate; lộ nó qua route là phá tầng (S5). Cùng nhóm "không nên": object dữ liệu lớn, UI state, ViewModel, <code>Context</code>, <code>NavController</code>, đối tượng database/mạng. (a), (b), (d) đều là các ví dụ <em>nên</em> truyền: ID, biến thể nhỏ, lựa chọn lọc — đúng định nghĩa "thông tin tối thiểu để destination tự dựng lại trạng thái".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>10. Code cũ của project mẫu đọc <code>backStackEntry.arguments?.getInt("recipeId") ?: 0</code>. Điểm yếu thật của dòng này — nói theo tinh thần đọc phê phán của bài?</legend>
+			<label><input type="radio" name="q10" value="a" /> Hai đường lỗi im lặng: phải lấp <code>?: 0</code>, và tra sai tên key thì <code>getInt</code> trả <code>0</code></label>
+			<label><input type="radio" name="q10" value="b" /> Dòng này sai cú pháp — <code>arguments</code> không có phương thức <code>getInt</code> trong Navigation hiện hành</label>
+			<label><input type="radio" name="q10" value="c" /> Dòng này sai kiến trúc — nó truyền ID thay vì truyền cả object <code>Recipe</code></label>
+			<label><input type="radio" name="q10" value="d" /> Dòng này đắt hiệu năng — mỗi lần đọc phải quét toàn bộ back stack tìm tên key</label>
+			<p class="explain" hidden>
+				<strong>(a) đúng</strong> — mục 14: <code>?: 0</code> không phải phong cách mà là lá chắn phải có trước bộ tham số nullable; và tra sai tên key thì <code>getInt</code> không báo lỗi — âm thầm trả <code>0</code>. Kết quả: <code>recipeId = 0</code> — một món "không tồn tại" — chui vào luồng dữ liệu như một ID hợp lệ. Đây là cái giá của "hỏi bằng chữ, lỗi muộn" mà <code>toRoute</code> thay bằng "hỏi bằng kiểu". (b) sai — API đó hợp lệ và vẫn dùng được (đây là code 2023 đọc được, không phải code sai); (c) đảo ngược nhận định: code cũ <strong>đúng nguyên tắc truyền ID</strong> — sai ở cách biểu diễn route, không sai ở cái được truyền; (d) bịa ra một cơ chế chi phí không tồn tại.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	import { initQuiz } from "../../scripts/quiz.ts";
+	initQuiz();
+</script>

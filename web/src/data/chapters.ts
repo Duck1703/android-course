@@ -489,6 +489,35 @@ export const SECTIONS: SectionInfo[] = [
         hasProject: true,
         stageId: "network",
       },
+      // Giai đoạn 4 (Điều hướng) — batch Stage 4: N1/N2 là hai bài NEW, không thuộc
+      // chương sách nào (number = 0, label = N1/N2, như F1/F2). aafFolder rỗng vì
+      // code điều hướng của project mẫu chỉ được ĐỌC trong bài (trích nguyên văn),
+      // còn toàn bộ code ví dụ do khoá dựng. Old slug không tồn tại → không redirect,
+      // không SPLIT_MAP, không legacy credit (no-fabricate).
+      {
+        number: 0,
+        subNumber: 1,
+        slug: "navigation-destination-nav-host",
+        label: "N1",
+        title: "Điều hướng: nhiều màn hình trong một app",
+        parentTitle: "Điều hướng",
+        summaryVi: "Vì sao cần thư viện điều hướng, destination · route · đồ thị, NavController vs NavHost, startDestination, composable(...), navigate(...) trong callback, và bức tranh đầu tiên về back stack.",
+        aafFolder: "",
+        hasProject: false,
+        stageId: "navigation",
+      },
+      {
+        number: 0,
+        subNumber: 2,
+        slug: "navigation-back-stack-type-safe",
+        label: "N2",
+        title: "Back stack & truyền dữ liệu type-safe",
+        parentTitle: "Điều hướng",
+        summaryVi: "Back/popBackStack ≠ navigate, nút Back của app qua callback, route type-safe (@Serializable + composable<T> + toRoute<T>), truyền ID đừng truyền object, và đọc code route-dạng-chuỗi 2023 của project mẫu.",
+        aafFolder: "",
+        hasProject: false,
+        stageId: "navigation",
+      },
     ],
   },
   {
