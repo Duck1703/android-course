@@ -1,0 +1,1403 @@
+---
+// Chương 6.3 — ViewModel & UI state (tách từ monolith Ch06AdvancedJetpackCompose.astro, batch Stage 3 IMP-035).
+// Registry: S4 — slug ch06-viewmodel-va-ui-state · stageId state · bài 4/5 Giai đoạn 3.
+// Sở hữu nội dung (mốc S4 START/END của monolith): vì sao ViewModel · ranh giới process death · UiState ·
+// MutableStateFlow→StateFlow · cập nhật state · collectAsStateWithLifecycle · stateIn · chuỗi cú chạm→UI ·
+// đọc state chết · luyện tập JumpToBottom. KHÔNG chứa tầng kiến trúc/repository (S5), KHÔNG chứa chiều sâu coroutine/Flow (W1).
+// Code const giữ nguyên provenance: aaf-materials/06-advanced-jetpack-compose — mọi số dòng trích dẫn đã mở file thật để kiểm tại monolith.
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/06-advanced-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat";
+const STARTER = "aaf-materials/06-advanced-jetpack-compose/projects/starter/app/src/main/java/com/kodeco/chat";
+const FINAL_ROOT = "aaf-materials/06-advanced-jetpack-compose/projects/final";
+const BOOK = "content/book/ch06-advanced-jetpack-compose.md";
+
+const emptyViewModelCode = `class MainViewModel : ViewModel() {
+}`;
+
+const realViewModelHeadCode = `class MainViewModel : ViewModel() {
+  /**
+   * hard coding the userID here
+   * ideally you would generate this on first app launch, then store it for future use
+   * see chapter 8 to see how you would store a value like this in Data Store
+   * for example
+   * \`userID = userPreferencesRepository.fetchInitialPreferences().currentUserId\`
+   */
+  private val userId = UUID.randomUUID().toString()
+  var currentUserId = MutableStateFlow(userId)`;
+
+const finalSendFunctionsCode = `fun onCreateNewMessageClick(messageText: String, photoUri: Uri?) {
+  val currentMoment: Instant = Clock.System.now()
+  val message = Message(
+    UUID.randomUUID().toString(),
+    currentMoment,
+    currentRoom.value.id,
+    messageText,
+    userId,
+    photoUri
+  )
+
+  if (message.photoUri == null) {
+    viewModelScope.launch(Dispatchers.Default) {
+      createMessageForRoom(message, currentRoom.value)
+    }
+  }
+}
+
+suspend fun createMessageForRoom(message: Message, chatRoom: ChatRoom) {
+  val user = User(userId)
+  val messageUIModel = MessageUiModel(message, user)
+  // Add to the beginning of the list
+  _messages.add(0, messageUIModel)
+  _messagesFlow.emit(_messages)
+}`;
+
+const finalUiStateCode = `class ConversationUiState(
+  val channelName: String,
+  initialMessages: List<MessageUiModel>,
+  val viewModel: MainViewModel
+) {
+  private val _messages: MutableList<MessageUiModel> = initialMessages.toMutableStateList()
+
+  val messages: List<MessageUiModel> = _messages
+
+  //author ID is set to the user ID - it's used to tell if the message is sent from this user (self) when rendering the UI
+  val authorId: MutableStateFlow<String> = viewModel.currentUserId
+
+  fun addMessage(msg: String, photoUri: Uri?) {
+    viewModel.onCreateNewMessageClick(msg, photoUri)
+  }
+}`;
+
+const finalMainActivityCode = `class MainActivity : ComponentActivity() {
+
+  private val viewModel: MainViewModel by viewModels()
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContent {
+      val messagesWithUsers by viewModel.messages.collectAsStateWithLifecycle()
+      val currentUiState =
+        ConversationUiState(
+          channelName = "Android Apprentice",
+          initialMessages = messagesWithUsers,
+          viewModel = viewModel
+        )
+
+      KodecochatTheme {
+        ConversationContent(
+          currentUiState,
+        )
+      }
+    }
+  }
+}`;
+
+const versionCatalogCode = `[versions]
+lifecycle-runtime-compose = "2.6.2"
+lifecycle-runtime-ktx = "2.6.2"
+
+[libraries]
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle-runtime-compose" }`;
+
+const moduleGradleCode = `dependencies {
+  val composeBom = platform(libs.androidx.compose.bom)
+
+  implementation(composeBom)
+  implementation(libs.bundles.androidx)
+  implementation(libs.bundles.compose)
+
+  // compose lifecycle
+  implementation(libs.androidx.lifecycle.runtime.compose)`;
+
+const finalConversationContentCode = `@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConversationContent(
+  uiState: ConversationUiState,
+) {
+
+  val scrollState = rememberLazyListState()
+  val scope = rememberCoroutineScope()
+  val topBarState = rememberTopAppBarState()
+  val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topBarState)
+  val authorId = uiState.authorId.collectAsStateWithLifecycle()
+
+  LaunchedEffect(key1 = uiState.messages) {
+    scope.launch {
+      scrollState.scrollToItem(0)
+    }
+  }
+
+  Surface() {
+    Box(modifier = Modifier.fillMaxSize()) {
+      Column(
+        Modifier
+          .fillMaxSize()
+          .nestedScroll(scrollBehavior.nestedScrollConnection)
+      ) {
+        Messages(
+          messages = uiState.messages,
+          authorId = authorId.value,
+          scrollState = scrollState,
+          modifier = Modifier.weight(1f),
+        )
+        UserInput(
+          onMessageSent = { content ->
+            uiState.addMessage(content, null)
+          },
+          resetScroll = {
+            scope.launch {
+              scrollState.scrollToItem(0)
+            }
+          },
+          // Use navigationBarsPadding() imePadding() and , to move the input panel above both the
+          // navigation bar, and on-screen keyboard (IME)
+          modifier = Modifier
+            .navigationBarsPadding()
+            .imePadding(),
+        )
+      }
+      // Channel name bar floats above the messages
+      ChannelNameBar(
+        channelName = uiState.channelName,
+        scrollBehavior = scrollBehavior
+      )
+    }
+  }
+}`;
+
+const starterMessageUiCode = `val isUserMe = userId == "me" // hard coded for now, next chapter will be = authorId == userId`;
+
+const finalMessageUiCode = `@Composable
+fun MessageUi(
+  onAuthorClick: (String) -> Unit,
+  msg: MessageUiModel,
+  authorId: String,
+  userId: String,
+  isFirstMessageByAuthor: Boolean,
+  isLastMessageByAuthor: Boolean,
+) {
+  val isUserMe = authorId == userId
+  val borderColor = if (isUserMe) {
+    MaterialTheme.colorScheme.primary
+  } else {
+    MaterialTheme.colorScheme.tertiary
+  }
+
+  val authorImageId: Int =
+    if (isUserMe) R.drawable.profile_photo_android_developer else R.drawable.someone_else`;
+
+const finalMessagesCode = `@Composable
+fun Messages(
+  messages: List<MessageUiModel>,
+  authorId: String,
+  scrollState: LazyListState,
+  modifier: Modifier = Modifier,
+) {
+  val scope = rememberCoroutineScope()
+  Box(modifier = modifier) {
+    LazyColumn(
+      reverseLayout = true,
+      state = scrollState,
+      // Add content padding so that the content can be scrolled (y-axis)
+      // below the status bar + app bar
+      contentPadding =
+      WindowInsets.statusBars.add(WindowInsets(top = 90.dp)).asPaddingValues(),
+      modifier = Modifier
+        .fillMaxSize()
+    ) {
+      itemsIndexed(
+        items = messages,
+        key = { _, message -> message.id }
+      ) { index, content ->
+        val prevAuthor = messages.getOrNull(index - 1)?.message?.userId
+        val nextAuthor = messages.getOrNull(index + 1)?.message?.userId
+        val userId = messages.getOrNull(index)?.message?.userId
+        val isFirstMessageByAuthor = prevAuthor != content.message.userId
+        val isLastMessageByAuthor = nextAuthor != content.message.userId
+        MessageUi(
+          onAuthorClick = { },
+          msg = content,
+          authorId = authorId,
+          userId = userId ?: "",
+          isFirstMessageByAuthor = isFirstMessageByAuthor,
+          isLastMessageByAuthor = isLastMessageByAuthor,
+        )
+      }
+    }
+    // Jump to bottom button shows up when user scrolls past a threshold.
+    // Convert to pixels:
+    val jumpThreshold = with(LocalDensity.current) {
+      JumpToBottomThreshold.toPx()
+    }
+
+    // Show the button if the first visible item is not the first one or if the offset is
+    // greater than the threshold.
+    val jumpToBottomButtonEnabled by remember {
+      derivedStateOf {
+        scrollState.firstVisibleItemIndex != 0 ||
+            scrollState.firstVisibleItemScrollOffset > jumpThreshold
+      }
+    }
+
+    JumpToBottom(
+      // Only show if the scroller is not at the bottom
+      enabled = jumpToBottomButtonEnabled,
+      onClicked = {
+        scope.launch {
+          scrollState.animateScrollToItem(0)
+        }
+      },
+      modifier = Modifier.align(Alignment.BottomCenter)
+    )
+  }
+}`;
+
+const thresholdCode = `private val JumpToBottomThreshold = 56.dp`;
+
+const jumpBottomStringCode = `<string name="jumpBottom">Jump to bottom</string>`;
+
+const jumpToBottomFullCode = `private enum class Visibility {
+  VISIBLE,
+  GONE
+}
+
+/**
+ * Shows a button that lets the user scroll to the bottom.
+ */
+@Composable
+fun JumpToBottom(
+  enabled: Boolean,
+  onClicked: () -> Unit,
+  modifier: Modifier = Modifier
+) {
+  // Show Jump to Bottom button
+  val transition = updateTransition(
+    if (enabled) Visibility.VISIBLE else Visibility.GONE,
+    label = "JumpToBottom visibility animation"
+  )
+  val bottomOffset by transition.animateDp(label = "JumpToBottom offset animation") {
+    if (it == Visibility.GONE) {
+      (-32).dp
+    } else {
+      32.dp
+    }
+  }
+  if (bottomOffset > 0.dp) {
+    ExtendedFloatingActionButton(
+      icon = {
+        Icon(
+          imageVector = Icons.Filled.ArrowDownward,
+          modifier = Modifier.height(18.dp),
+          contentDescription = null
+        )
+      },
+      text = {
+        Text(text = stringResource(id = R.string.jumpBottom))
+      },
+      onClick = onClicked,
+      containerColor = MaterialTheme.colorScheme.surface,
+      contentColor = MaterialTheme.colorScheme.primary,
+      modifier = modifier
+        .offset(x = 0.dp, y = -bottomOffset)
+        .height(36.dp)
+    )
+  }
+}`;
+
+const fakeDataFinalCode = `val initialMessages = listOf(
+  MessageUiModel(message = sampleMessageTexts[2], user = otherUser, id = "2"),
+  MessageUiModel(message = sampleMessageTexts[1], user = meUser, id = "1"),
+  MessageUiModel(message = sampleMessageTexts[0], user = otherUser, id = "0")
+)
+
+//val exampleUiState = ConversationUiState(
+//    initialMessages = initialMessages,
+//    channelName = "#Android Apprentice",
+//)`;
+
+const fakeDataStarterCode = `private val initialMessages = listOf(
+  MessageUiModel(message = sampleMessageTexts[0], user = otherUser, id = "0"),
+  MessageUiModel(message = sampleMessageTexts[1], user = meUser, id = "1"),
+  MessageUiModel(message = sampleMessageTexts[2], user = otherUser, id = "2")
+)
+
+val exampleUiState = ConversationUiState(
+  initialMessages = initialMessages,
+  channelName = "#Android Apprentice",
+)`;
+
+const deadCodeViewModelCode = `//  private val allMessagesForRoom: MutableStateFlow<List<Message>> by lazy {
+//    MutableStateFlow(emptyList())
+//  }
+// ...
+//  fun setCurrentChatRoom(newChatChatRoom: ChatRoom) {
+//    _currentChatRoom.value = newChatChatRoom
+//  }
+
+//  init {
+//    currentUserId.value = userId
+//  }`;
+
+const recursiveBugCode = `fun String.toInstant(): kotlinx.datetime.Instant {
+  return this.toInstant()
+}`;
+
+const authorImageCode = `@Immutable
+data class Message(
+  val _id: String = UUID.randomUUID().toString(),
+  val createdOn: Instant? = Clock.System.now(),
+  val roomId: String = "public", // "public" is the roomID for the default public chat room
+  val text: String = "test",
+  val userId: String = UUID.randomUUID().toString(),
+  val photoUri: Uri? = null,
+  val authorImage: Int = if (userId == "me") R.drawable.profile_photo_android_developer else R.drawable.someone_else
+)`;
+
+const photoDroppedCode = `SelectorExpanded(
+  onCloseRequested = dismissKeyboard,
+  onTextAdded = { textState = textState.addText(it) },
+  onImageAdded = {
+    if (it != null) {
+      photoUri = it
+    }
+    handleKeyboardInputText()
+  },
+  currentSelector = currentInputSelector
+)`;
+
+const coilCommentedCode = `//                if (photoUri != null) {
+//                    //Use Coil to display the selected image
+//                    val painter = rememberAsyncImagePainter(
+//                        ImageRequest
+//                            .Builder(LocalContext.current)
+//                            .data(data = photoUri)
+//                            .build()
+//                    )
+//
+//                    Image(
+//                        painter = painter,
+//                        contentDescription = null
+//                    )
+//                }`;
+
+const addEndCode = `_messages.add(messageUIModel)`;
+
+const addStartCode = `// Add to the beginning of the list
+_messages.add(0, messageUIModel)`;
+
+// ---------------------------------------------------------------------------
+// Ví dụ tối giản do khoá học dựng (KHÔNG trích aaf-materials) — dùng cho phần
+// dạy khái niệm trước khi vào code thật của project.
+// ---------------------------------------------------------------------------
+
+const chatUiStateCode = `data class ChatUiState(
+  val messages: List<MessageUiModel> = emptyList(),
+  val currentUserId: String = "",
+  val isSending: Boolean = false
+)`;
+
+const uiStateFlowPairCode = `class ChatViewModel : ViewModel() {
+
+  private val _uiState = MutableStateFlow(ChatUiState())
+  val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+}`;
+
+const uiStateUpdateCode = `fun onMessageSent(text: String) {
+  _uiState.value = _uiState.value.copy(isSending = true)
+
+  viewModelScope.launch {
+    val sent = sendMessage(text)          // hàm suspend
+    _uiState.value = _uiState.value.copy(
+      messages = _uiState.value.messages + sent,
+      isSending = false
+    )
+  }
+}`;
+
+const uiStateUpdateBlockCode = `_uiState.update { current ->
+  current.copy(isSending = true)
+}`;
+
+const collectLifecycleCode = `@Composable
+fun ChatScreen(viewModel: ChatViewModel) {
+  val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+  MessageList(messages = uiState.messages)
+}`;
+
+const stateInCode = `class ChatViewModel : ViewModel() {
+
+  // messageSource: Flow<List<MessageUiModel>> — chỗ dữ liệu đến từ đâu là bài S5
+  val uiState: StateFlow<ChatUiState> =
+    messageSource
+      .map { list -> ChatUiState(messages = list) }
+      .stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = ChatUiState()
+      )
+}`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>ViewModel &amp; UI state. Học xong bài này bạn sẽ</strong>
+		<ul>
+			<li>Giải thích được vì sao state của <strong>cả màn hình</strong> cần một chủ sở hữu nằm ngoài UI, và
+				<strong>ViewModel sống qua cái gì — không sống qua cái gì</strong>.</li>
+			<li>Gom được state màn hình thành một <strong>UiState</strong> và nói được vì sao một ảnh chụp gọn hơn nhiều biến rời.</li>
+			<li>Đọc và viết được cặp <strong><code>MutableStateFlow</code> private + <code>StateFlow</code> public</strong>, và
+				nói đúng <code>StateFlow</code> <em>không</em> biết vòng đời Android.</li>
+			<li>Dùng được <strong><code>collectAsStateWithLifecycle()</code></strong> ở phía Compose và giải thích được nó là cây
+				cầu biết vòng đời.</li>
+			<li>Đọc được <strong><code>stateIn(...)</code></strong> và biết khi nào dùng nó thay cho <code>MutableStateFlow</code>.</li>
+			<li>Kể lại được <strong>toàn bộ chuỗi</strong> từ cú chạm của người dùng tới lúc giao diện đổi.</li>
+			<li>Tự trả lời được câu <em>"state này có thật sự tác động tới giao diện không?"</em> khi đọc code lạ.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Vì sao bài này quan trọng.</strong> Bài trước kết thúc ở một hàng bảng chưa giải quyết: danh sách tin nhắn cần
+		nhiều chỗ đọc, cần sống qua xoay màn hình, nên chủ của nó phải nằm <em>ngoài</em> UI. Bài này là chỗ đó. Đây cũng là
+		nơi mọi thứ bạn học từ đầu giai đoạn gặp nhau: coroutine và <code>StateFlow</code> từ S1, <code>data class</code> và
+		<code>by</code> từ F2, hoisting từ bài trước, recomposition từ bài State trong Compose — tất cả nằm trong một chuỗi
+		duy nhất ở mục 17.
+	</p>
+	<div class="callout">
+		<strong>Cần biết trước.</strong> Hai bài trước của giai đoạn này · <strong>S1</strong>: coroutine không phải thread,
+		<code>suspend</code> không chọn dispatcher, <strong>scope = chủ sở hữu công việc</strong>, <code>viewModelScope</code>,
+		<code>Flow</code> = giá trị theo thời gian, <strong><code>StateFlow</code> = trạng thái hiện tại + cập nhật</strong> ·
+		<strong>F2</strong>: <code>data class</code> + <code>copy(...)</code>, đọc generic, <code>by</code>.
+	</div>
+	<p class="notice">
+		<strong>Chưa thuộc bài này:</strong> dữ liệu <em>đến từ đâu</em> (tầng dữ liệu, repository) là bài <strong>S5</strong>
+		ngay sau đây; chiều sâu Flow (các toán tử, cold/hot, huỷ) là bài <strong>W1</strong>. Ở đây, chỗ nào cần một nguồn dữ
+		liệu thì bài dùng một hàm/nguồn giả và nói rõ nó sẽ được thay ở S5.
+	</p>
+
+	<h2 id="viewmodel-vi-sao">9. Vì sao state màn hình cần một chủ nằm ngoài UI</h2>
+	<p>
+		Bài trước kết thúc ở một hàng chưa xử lý: danh sách tin nhắn cần nhiều chỗ đọc <em>và</em> phải sống qua xoay màn hình.
+		Nửa sau của yêu cầu đó là chỗ mọi state nằm trong UI đều thất bại — lý do nằm ở vòng đời của Activity mà bạn đã học ở
+		Chương 3. Lập luận gồm bốn bước, bỏ bước nào thì phần sau mất nghĩa:
+	</p>
+	<ol class="chain">
+		<li>
+			Mỗi lần có <strong>configuration change</strong> (đổi cấu hình thiết bị — xoay màn hình, đổi ngôn ngữ, đổi cỡ chữ hệ
+			thống), Android <em>kích hoạt lại</em> các lifecycle event của Activity.
+		</li>
+		<li>
+			Một việc <em>vô hại</em> như xoay máy khiến Activity <strong>bị tạo lại từ đầu</strong>. Không phải "được thông báo
+			là màn hình đã xoay" — mà là <em>chết đi và sinh ra một object mới</em>.
+		</li>
+		<li>
+			Nếu state của bạn <strong>gắn chặt vào UI</strong>, nó chết cùng Activity cũ. Danh sách tin nhắn của app chat đang
+			nằm trong một object được tạo <em>bên trong</em> <code>setContent &#123; ... &#125;</code>, tức là bên trong
+			Activity. Xoay máy → mất.
+		</li>
+		<li>
+			Vậy state màn hình cần một chủ sở hữu <strong>nằm ngoài</strong> vòng đời của UI. Android có sẵn đúng một thứ cho
+			việc đó: <strong>ViewModel</strong>.
+		</li>
+	</ol>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: ViewModel là cái tủ đặt ngoài phòng</strong>
+		<p>
+			Activity là một căn phòng bị đập đi xây lại mỗi lần bạn xoay máy. Mọi thứ để <em>trong</em> phòng thì mất. ViewModel là
+			cái tủ đặt <em>ngoài</em> phòng, do hệ thống giữ hộ: phòng mới xây xong vẫn mở đúng cái tủ cũ ra và thấy nguyên đồ bên
+			trong.
+		</p>
+		<p>
+			Thứ làm hệ thống "biết đây vẫn là cùng một phòng" là một kho ViewModel gắn với Activity, được giữ lại qua
+			configuration change và chỉ xoá thật khi Activity bị đóng hẳn (người dùng bấm Back hoặc gạt app khỏi danh sách gần
+			đây).
+		</p>
+	</div>
+	<p>Đây là toàn bộ điều kiện để một class trở thành ViewModel — không annotation, không đăng ký ở đâu:</p>
+	<Code code={emptyViewModelCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 59)</p>
+	<p>
+		Một app có thể có <strong>nhiều ViewModel</strong> — thường mỗi màn hình một cái. App chat này chỉ cần một.
+	</p>
+	<p class="notice">
+		<strong>Và đây là chỗ nối lại S1, vì rất dễ hiểu sai.</strong> Mỗi ViewModel có sẵn một scope tên
+		<code>viewModelScope</code>: mọi coroutine khởi động trong đó <strong>tự động bị huỷ</strong> khi ViewModel bị dọn đi.
+		Đó là lý do bạn không phải viết dòng dọn dẹp nào, và cũng là cách chặn một lỗi kinh điển của Android đời cũ: công việc
+		vẫn chạy tiếp sau khi màn hình đã đóng, giữ tham chiếu tới thứ không còn ai dùng. Nhưng như S1 đã nói rõ:
+		<strong><code>viewModelScope</code> không có nghĩa "thread nền"</strong> — coroutine trong đó mặc định bắt đầu chạy
+		trên main thread. Nó nói về <em>ai làm chủ công việc</em>, không nói về <em>chạy ở đâu</em>.
+	</p>
+
+	<h2 id="process-death">10. ViewModel sống qua cái gì — và không sống qua cái gì</h2>
+	<p>
+		Ranh giới này phải nói ngay, vì đặt kỳ vọng sai ở đây dẫn tới những bug rất khó hiểu về sau.
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Tình huống</th><th>State trong ViewModel</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Recomposition (giao diện vẽ lại)</td>
+				<td><strong>Còn</strong> — chuyện này còn không liên quan tới ViewModel</td>
+			</tr>
+			<tr>
+				<td>Configuration change: xoay màn hình, đổi cỡ chữ hệ thống, đổi theme sáng/tối</td>
+				<td><strong>Còn</strong> — đây chính là việc ViewModel làm</td>
+			</tr>
+			<tr>
+				<td>Người dùng chuyển sang app khác rồi quay lại</td>
+				<td><strong>Còn</strong>, nếu hệ thống chưa dọn process của app</td>
+			</tr>
+			<tr>
+				<td>Hệ thống dọn process app để lấy lại bộ nhớ (<em>process death</em>)</td>
+				<td><strong>MẤT</strong></td>
+			</tr>
+			<tr>
+				<td>Người dùng tắt app rồi mở lại</td>
+				<td><strong>MẤT</strong></td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Nói cách khác, ViewModel <strong>không</strong> phải nơi lưu dữ liệu. Nó là <em>chủ sở hữu state của một màn hình đang
+		sống</em>. Ba cách đọc sai cần loại bỏ ngay: ViewModel không phải kho lưu trữ, không phải tầng dữ liệu, và không phải
+		"chỗ để chạy việc nền".
+	</p>
+	<p>
+		Hệ quả thực tế với app chat: mọi tin nhắn bạn gõ ở bài này vẫn biến mất khi tắt app. Muốn lưu thật thì cần tới
+		giai đoạn <strong>Dữ liệu cục bộ</strong> của khoá. Chính code mẫu cũng để lại dấu vết của việc đó — một comment ghi
+		"lý tưởng thì sinh ID người dùng ở lần mở app đầu tiên rồi lưu lại", kèm cả dòng code tương lai.
+	</p>
+	<p class="hint">
+		<strong>Còn nếu tôi cần state sống qua cả process death?</strong> Có một công cụ riêng cho việc đó
+		(<code>SavedStateHandle</code>) — ở đây chỉ cần <em>biết nó tồn tại</em>. Nó dành cho vài giá trị nhỏ định danh được
+		trạng thái màn hình, không phải dữ liệu của app; dữ liệu thật thuộc giai đoạn Dữ liệu cục bộ.
+	</p>
+
+	<h2 id="ui-state">11. UI state: một ảnh chụp của cả màn hình</h2>
+	<p>
+		ViewModel giờ là chủ sở hữu state màn hình. Câu hỏi tiếp: <em>state đó nên có hình dạng gì?</em>
+	</p>
+	<p>
+		Cách làm đầu tiên ai cũng nghĩ tới là mỗi thứ một biến: một biến danh sách tin nhắn, một biến "đang gửi hay không", một
+		biến thông báo lỗi. Chạy được, nhưng có một vấn đề thật: <strong>giao diện có thể đọc được một tổ hợp nửa vời</strong> —
+		danh sách đã cập nhật xong mà cờ "đang gửi" vẫn chưa tắt, hoặc ngược lại. Càng nhiều biến rời, càng nhiều tổ hợp vô
+		nghĩa.
+	</p>
+	<p>Cách gọn hơn là gom cả màn hình vào <strong>một giá trị duy nhất</strong>, dùng đúng <code>data class</code> của F2:</p>
+	<Code code={chatUiStateCode} lang="kotlin" theme="github-dark" />
+	<div class="callout mental">
+		<strong>Mô hình trực quan: UiState là một ảnh chụp</strong>
+		<p>
+			Một <code>ChatUiState</code> là <em>ảnh chụp toàn bộ những gì màn hình cần biết ở một thời điểm</em>. Giao diện đọc
+			đúng một giá trị và vẽ ra; nó không phải tự ghép ba biến rời rồi tự đoán chúng có khớp nhau hay không.
+		</p>
+		<p>
+			Và vì đây là <code>data class</code> với thuộc tính <code>val</code>, cách "đổi state" là <strong>tạo một ảnh chụp
+			mới</strong> bằng <code>copy(...)</code> — chính xác cái F2 đã dạy: <em>đổi = tạo bản mới</em>, không sửa bản cũ tại
+			chỗ.
+		</p>
+	</div>
+	<p>
+		Giá trị mặc định cho từng thuộc tính (F1 — tham số mặc định) làm việc tạo state khởi đầu gọn lại thành
+		<code>ChatUiState()</code>: danh sách rỗng, chưa gửi gì, chưa có lỗi.
+	</p>
+	<p class="hint">
+		<strong>Data class hay sealed state?</strong> F2 dạy cả hai. Dùng <code>data class</code> khi các mẩu thông tin
+		<em>cùng tồn tại</em> (màn hình luôn có một danh sách, và cũng có thể đang gửi). Dùng họ sealed khi màn hình chỉ ở
+		<em>một</em> trong vài tình huống loại trừ nhau (đang tải · có dữ liệu · lỗi) — bạn sẽ gặp đúng hình đó ở giai đoạn
+		Mạng. Màn hình chat này thuộc loại thứ nhất, nên đừng ép nó vào sealed chỉ vì sealed nghe "kiến trúc" hơn.
+	</p>
+	<p class="notice">
+		<strong>Code mẫu của chương này chưa gom UiState.</strong> Nó phơi ra hai flow rời (<code>messages</code> và
+		<code>currentUserId</code>) thay vì một <code>StateFlow&lt;ChatUiState&gt;</code>. Cách gom một ảnh chụp là hướng được
+		khuyến nghị hiện nay, và nó là bước tiến <em>tự nhiên</em> từ chính mô hình mà chương này dạy — không phủ định gì. Từ
+		mục 12 trở đi, các mục sẽ chỉ rõ chỗ nào là code mẫu và chỗ nào là khuôn nên viết hôm nay.
+	</p>
+
+	<h2 id="stateflow-pair">12. <code>MutableStateFlow</code> → <code>StateFlow</code>: ai được ghi, ai được đọc</h2>
+	<p>
+		S1 đã cho bạn nghĩa của <code>StateFlow</code>: <em>trạng thái hiện tại + các cập nhật sau đó</em>. Giờ là khuôn dùng nó
+		trong ViewModel — khuôn bạn sẽ gặp lại ở mọi bài còn lại của khoá:
+	</p>
+	<Code code={uiStateFlowPairCode} lang="kotlin" theme="github-dark" />
+	<table class="api">
+		<thead>
+			<tr><th>Thành phần</th><th>Ai dùng</th><th>Làm được gì</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>_uiState</code> — <code>MutableStateFlow</code>, <strong>private</strong></td>
+				<td>Chỉ code bên trong ViewModel</td>
+				<td><strong>Đọc và ghi.</strong> Đây là nơi duy nhất state được đổi.</td>
+			</tr>
+			<tr>
+				<td><code>uiState</code> — <code>StateFlow</code>, public</td>
+				<td>Giao diện</td>
+				<td><strong>Chỉ đọc</strong>: giá trị hiện tại + các cập nhật. Không có hàm nào để ghi.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		<code>asStateFlow()</code> tạo ra "cùng một dòng dữ liệu, nhìn từ ngoài chỉ đọc được". Hai biến, một sự thật — không
+		phải hai bản copy.
+	</p>
+	<p>
+		Vì sao phải tách? Vì đây chính là <strong>luồng một chiều của bài trước, nhưng được ép ở mức kiểu dữ liệu</strong>. Nếu
+		phơi thẳng <code>MutableStateFlow</code> ra ngoài, bất kỳ composable nào cũng tự đổi state được, và bạn mất khả năng
+		biết ai đổi dữ liệu ở đâu. Tách private/public thì giao diện <em>không có cách nào</em> ghi — muốn đổi state, nó buộc
+		phải gọi một hàm public của ViewModel. Quy tắc "chỉ một nguồn được đổi state" không còn dựa vào việc mọi người tự nhớ.
+	</p>
+	<div class="callout diff">
+		<strong>Một câu rất phổ biến nhưng SAI: "<code>StateFlow</code> là <code>Flow</code> có sẵn lifecycle awareness".</strong>
+		<p>
+			<code>StateFlow</code> <strong>không biết gì về vòng đời Android.</strong> Nó là một kiểu của Kotlin, không phải một
+			thành phần Android — nó không biết Activity của bạn đang hiển thị hay đã xuống nền, và nó <em>không</em> tự dừng khi
+			màn hình bị ẩn.
+		</p>
+		<p>
+			Điều <code>StateFlow</code> thật sự thêm so với một <code>Flow</code> thường, đúng như S1 đã dạy: <strong>luôn có một
+			giá trị hiện tại</strong> (nên bắt buộc có giá trị khởi đầu), và <strong>ai vừa bắt đầu lắng nghe cũng nhận ngay giá
+			trị hiện tại</strong> rồi nhận tiếp các cập nhật.
+		</p>
+		<p>
+			Việc "lắng nghe theo vòng đời" là chuyện của <strong>phía giao diện</strong>, bằng một API riêng — mục 14. Giữ hai thứ
+			tách bạch, vì trộn chúng lại sinh ra cả một lớp bug: bạn tưởng <code>StateFlow</code> tự lo, nên không dùng công cụ
+			thật sự lo việc đó.
+		</p>
+	</div>
+	<h3>12.1 Khuôn đó trong code mẫu</h3>
+	<Code code={realViewModelHeadCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 59–68)</p>
+	<p>Đối chiếu từng dòng với khuôn vừa học:</p>
+	<ul>
+		<li>
+			<code>_messagesFlow</code> private + <code>val messages = _messagesFlow.asStateFlow()</code> — <strong>đúng
+			khuôn</strong>. Chỉ khác là ở đây state là một danh sách trần, chưa gom thành UiState.
+		</li>
+		<li>
+			<code>var currentUserId = MutableStateFlow(userId)</code> — <strong>lệch khuôn</strong>: vừa public, vừa
+			<code>MutableStateFlow</code>, vừa <code>var</code>. Nghĩa là bất kỳ ai giữ được ViewModel này đều ghi được vào nó.
+			Đây là chỗ để tự đặt câu hỏi khi đọc code lạ, không phải khuôn để bắt chước — mục 18 quay lại nó.
+		</li>
+		<li>
+			Comment ngay đầu file nói thẳng giới hạn của mục 10: ID người dùng đang được sinh lại mỗi lần chạy, và "lý tưởng thì
+			nên lưu lại". Nghĩa là mỗi lần mở app, bạn là một người khác.
+		</li>
+	</ul>
+
+	<h2 id="cap-nhat-state">13. Cập nhật UI state</h2>
+	<p>
+		State đã có chủ và có khuôn phơi ra. Giờ tới phần đổi nó. Vì UiState là một <code>data class</code> bất biến, đổi state
+		nghĩa là <strong>gán một ảnh chụp mới</strong> vào <code>.value</code>:
+	</p>
+	<Code code={uiStateUpdateCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc theo thứ tự, và để ý mỗi mảnh đến từ bài nào:</p>
+	<ol class="chain">
+		<li>
+			<code>_uiState.value = _uiState.value.copy(isSending = true)</code> — <code>copy(...)</code> của <strong>F2</strong>:
+			lấy ảnh chụp hiện tại, tạo ảnh chụp mới chỉ khác đúng chỗ bạn truyền. Gán vào <code>.value</code> là lúc
+			<code>StateFlow</code> phát trạng thái mới cho người đang lắng nghe.
+		</li>
+		<li>
+			<code>viewModelScope.launch &#123; ... &#125;</code> — <strong>S1</strong>: khởi động một coroutine mà <em>ViewModel làm
+			chủ</em>. Người dùng rời màn hình thì việc này bị huỷ, không chạy tiếp vô ích.
+		</li>
+		<li>
+			<code>sendMessage(text)</code> là hàm <code>suspend</code> — nó có thể tạm dừng để chờ mà không chặn thread. Ở đây nó
+			là một hàm giả cho ví dụ; <strong>dữ liệu thật đến từ đâu là bài S5</strong>.
+		</li>
+		<li>
+			Sau khi có kết quả, một ảnh chụp mới nữa được gán vào — lần này cập nhật danh sách và tắt cờ "đang gửi"
+			<em>cùng một lúc</em>. Đó chính là lợi ích của việc gom UiState ở mục 11: giao diện không bao giờ thấy trạng thái
+			nửa vời.
+		</li>
+	</ol>
+	<p class="hint">
+		<strong>Một dạng viết gọn hơn bạn sẽ gặp: <code>update &#123; &#125;</code>.</strong> Nó nhận một khối biến trạng thái hiện tại
+		thành trạng thái mới, thay vì bạn tự đọc <code>.value</code> rồi tự gán lại. Ngoài việc gọn hơn, nó còn an toàn hơn khi
+		có nhiều chỗ cùng cập nhật — lý do chi tiết thuộc <strong>W1</strong>. Ở đây chỉ cần <em>đọc được</em> cả hai dạng:
+	</p>
+	<Code code={uiStateUpdateBlockCode} lang="kotlin" theme="github-dark" />
+	<h3>13.1 Code mẫu dùng một dạng thứ ba — và nó có một cái bẫy thật</h3>
+	<Code code={finalSendFunctionsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 103–127)</p>
+	<p class="notice">
+		<strong>Dòng cuối phát ra <em>chính cái danh sách đang giữ</em>, không phải một bản mới.</strong> S1 đã dạy một tính
+		chất của dòng trạng thái: gán lại đúng giá trị đang có thì người lắng nghe không nhận thêm thông báo. Ở đây code vẫn
+		chạy, nhưng vì một lý do khác — danh sách đó là một loại danh sách mà Compose tự theo dõi được từng thay đổi phần tử.
+		Tức là <em>hai cơ chế phản ứng chồng lên nhau</em>, và đó là lý do đoạn code này hoạt động nhưng khó giải thích. Cách
+		viết an toàn: phát ra một bản mới (<code>emit(_messages.toList())</code>), hoặc gom vào UiState rồi
+		<code>copy</code> như mục 11.
+	</p>
+	<p>Ba điểm nữa trong đoạn code thật này, mỗi điểm là một kỹ năng đọc:</p>
+	<ul>
+		<li>
+			<code>viewModelScope.launch(Dispatchers.Default)</code> — S1 đã cho quy tắc: chọn dispatcher theo <em>bản chất công
+			việc</em>. Việc ở đây là thêm một phần tử vào danh sách, không tính toán nặng, nên tham số này
+			<strong>không cần thiết</strong>. Nó là thói quen chuẩn bị cho lúc hàm này gọi mạng thật, nhưng đặt sẵn kiểu đó dễ
+			thành sao chép vô thức.
+		</li>
+		<li>
+			<code>if (message.photoUri == null)</code> — đọc kỹ điều kiện: nếu tin nhắn <em>có</em> ảnh thì khối <code>if</code>
+			không chạy, hàm tạo tin nhắn không được gọi, và <strong>tin nhắn biến mất hoàn toàn, kể cả phần chữ</strong>. Không
+			có <code>else</code>, không có thông báo lỗi. Mục 18 cho thấy vì sao code ở đây bị bỏ dở.
+		</li>
+		<li>
+			<code>suspend fun createMessageForRoom(...)</code> — hàm này là <code>suspend</code> vì nó được gọi từ trong
+			coroutine, <em>không</em> phải vì nó "chạy nền" (S1).
+		</li>
+	</ul>
+
+	<h2 id="collect-lifecycle">14. <code>collectAsStateWithLifecycle()</code>: cây cầu biết vòng đời</h2>
+	<p>
+		ViewModel đã phơi ra một <code>StateFlow</code>. Phía Compose cần đọc nó — và đây là cách nên dùng:
+	</p>
+	<Code code={collectLifecycleCode} lang="kotlin" theme="github-dark" />
+	<p>Một dòng, bốn tầng. Tách ra thì không còn gì bí ẩn:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Mảnh</th><th>Thuộc về</th><th>Nhiệm vụ</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>viewModel.uiState</code></td>
+				<td>ViewModel (mục 12)</td>
+				<td>Một <code>StateFlow</code> chỉ đọc: trạng thái hiện tại + các cập nhật.</td>
+			</tr>
+			<tr>
+				<td><code>.collectAsStateWithLifecycle()</code></td>
+				<td><strong>Cầu nối Compose ↔ vòng đời Android</strong></td>
+				<td>
+					Lắng nghe dòng trạng thái đó <em>theo vòng đời của màn hình</em>: tạm dừng khi màn hình không còn hiển thị, tự
+					lắng nghe lại khi quay vào. Trả về một <code>State</code> của Compose.
+				</td>
+			</tr>
+			<tr>
+				<td>Giá trị trả về là <code>State</code> của Compose</td>
+				<td>Compose (bài State trong Compose)</td>
+				<td>
+				Chính là loại state Compose quan sát được. Composable nào đọc nó thì được chạy lại khi giá trị đổi — đúng cơ chế
+				recomposition của bài State trong Compose, mục 4.
+				</td>
+			</tr>
+			<tr>
+				<td><code>by</code></td>
+				<td>Kotlin (F2)</td>
+				<td>Uỷ quyền đọc, để bạn viết <code>uiState.messages</code> chứ không phải <code>uiState.value.messages</code>.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Nối lại mục 12 cho rõ trách nhiệm: <strong><code>StateFlow</code> không biết vòng đời; hàm này chính là chỗ biết vòng
+		đời.</strong> Đây là câu trả lời cho "vậy ai lo việc dừng khi màn hình ẩn?" — và nó nằm ở phía giao diện, không nằm ở
+		ViewModel.
+	</p>
+	<p>
+		Vì sao lại cần dừng? Vì lắng nghe trong lúc không ai xem là <em>làm việc vô ích</em>. Với app chat thì nó tốn pin; với
+		một dòng dữ liệu gọi mạng thì tốn cả dữ liệu di động; và nếu mỗi giá trị mới lại kích hoạt thêm việc khác thì bạn có một
+		app âm thầm chạy khi người dùng đã chuyển sang app khác.
+	</p>
+	<p class="notice">
+		<strong>Bạn cũng sẽ gặp <code>collectAsState()</code> — không có <code>WithLifecycle</code>.</strong> Nó chỉ ngừng lắng
+		nghe khi composable rời khỏi giao diện, nên khi app xuống nền mà màn hình vẫn còn trong composition thì nó
+		<em>vẫn tiếp tục lắng nghe</em>. Vì vậy: trên Android, <strong>hãy dùng bản có
+		<code>WithLifecycle</code></strong>; coi <code>collectAsState()</code> là thứ để <em>nhận ra</em> khi đọc code cũ, không
+		phải mặc định để chọn.
+	</p>
+	<h3>14.1 Một dependency phải thêm, nếu không hàm này không tồn tại</h3>
+	<p>
+		<code>collectAsStateWithLifecycle</code> <strong>không</strong> nằm trong Compose. Nó đến từ một artifact riêng của thư
+		viện lifecycle. Khai báo trong version catalog (đúng cách bạn đã học ở phần Gradle):
+	</p>
+	<Code code={versionCatalogCode} lang="toml" theme="github-dark" />
+	<p>Rồi thêm vào file Gradle cấp module, và Sync lại:</p>
+	<Code code={moduleGradleCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL_ROOT}/gradle/libs.versions.toml</code> (dòng 14, 33) · <code>{FINAL_ROOT}/app/build.gradle.kts</code> (dòng 88–95)</p>
+	<p class="hint">
+		<strong>Vì sao có <em>hai</em> thư viện lifecycle tên gần giống nhau.</strong> Project đã có phần lifecycle lõi từ trước
+		(nơi có <code>viewModelScope</code>); giờ thêm phần <em>cầu nối sang Compose</em> — nó chỉ chứa vài hàm, trong đó có
+		đúng hàm bạn vừa học. Đây là ví dụ rất sát cho việc "một thư viện lớn được chia thành nhiều artifact nhỏ để app chỉ tải
+		phần mình dùng". Bảng số phiên bản cụ thể nằm ở phần tra cứu của khoá.
+	</p>
+	<h3>14.2 Trong code mẫu</h3>
+	<Code code={finalMainActivityCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/MainActivity.kt</code> (dòng 55–75)</p>
+	<ol class="chain">
+		<li>
+			<code>private val viewModel: MainViewModel by viewModels()</code> — cách lấy ViewModel từ trong một Activity. Đây là
+			một <em>property delegate</em> của Kotlin (<code>by</code> — F2) do thư viện Android cung cấp; điểm quan trọng là nó
+			<strong>không tạo mới mỗi lần</strong> — có sẵn thì trả về cái cũ. Đó chính là cơ chế làm state sống qua xoay màn
+			hình ở mục 9.
+		</li>
+		<li>
+			<code>val messagesWithUsers by viewModel.messages.collectAsStateWithLifecycle()</code> — đúng khuôn vừa học, áp lên
+			flow danh sách tin nhắn.
+		</li>
+		<li>
+			Tên phòng chat bị viết cứng vì app hiện chỉ có một phòng. Và vì dòng trạng thái được khởi tạo bằng danh sách rỗng,
+			<strong>ba tin nhắn mẫu chỉ xuất hiện sau khi bạn gửi tin nhắn đầu tiên</strong> — không phải bug của bạn.
+		</li>
+	</ol>
+
+	<h2 id="state-in">15. <code>stateIn</code>: khi bạn đã có một Flow</h2>
+	<p>
+		Mục 12 và 13 giải quyết trường hợp <em>ViewModel tự tạo và tự đổi state</em>. Nhưng có một trường hợp rất phổ biến khác:
+		<strong>state của bạn vốn đã là một dòng giá trị đến từ nơi khác</strong> — một dòng dữ liệu thay đổi theo thời gian.
+		Lúc đó bạn không muốn tự copy từng giá trị sang một <code>MutableStateFlow</code>; bạn muốn nói: "lấy dòng này, phơi ra
+		cho giao diện dưới dạng trạng thái".
+	</p>
+	<p>Đó là việc của <code>stateIn</code>. S1 đã hẹn bạn ở đúng đây:</p>
+	<p style="text-align:center"><code>Flow&lt;T&gt;</code> → <code>stateIn(...)</code> → <code>StateFlow&lt;T&gt;</code></p>
+	<Code code={stateInCode} lang="kotlin" theme="github-dark" />
+	<p>Ba tham số, và chỉ cần hiểu đúng ba câu:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Tham số</th><th>Trả lời câu hỏi</th><th>Ở đây nghĩa là</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>scope</code></td>
+				<td><strong>Ai làm chủ</strong> cái <code>StateFlow</code> sinh ra?</td>
+				<td><code>viewModelScope</code> — ViewModel làm chủ, đúng khái niệm scope của S1.</td>
+			</tr>
+			<tr>
+				<td><code>started</code></td>
+				<td><strong>Khi nào</strong> thì thật sự lắng nghe dòng nguồn?</td>
+				<td>
+					<code>WhileSubscribed(5_000)</code> — lắng nghe khi có người đang đọc, và giữ thêm 5 giây sau khi người cuối cùng
+					rời đi.
+				</td>
+			</tr>
+			<tr>
+				<td><code>initialValue</code></td>
+				<td>Trạng thái hiện tại là gì <strong>trước khi</strong> có giá trị đầu tiên từ nguồn?</td>
+				<td>
+					<code>ChatUiState()</code> — ảnh chụp rỗng. Bắt buộc phải có, vì S1 đã dạy: một dòng trạng thái luôn phải có giá
+					trị hiện tại.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Về con số 5 giây: nó có một lý do rất cụ thể — <strong>xoay màn hình</strong>. Lúc đó giao diện rời đi rồi quay lại gần
+		như ngay; nếu ngừng lắng nghe tức thì thì bạn vừa dựng lại toàn bộ công việc một cách vô ích. Cửa sổ vài giây giúp vượt
+		qua khoảng gián đoạn đó. Đừng đọc <code>5_000</code> như một con số thần kỳ phải sao chép mọi nơi — nó là một lựa chọn,
+		và bạn nên biết nó đang mua cái gì.
+	</p>
+	<p class="notice">
+		<strong>Trong ví dụ trên, dòng nguồn đến từ đâu?</strong> Từ một chỗ bài này <em>chưa</em> dạy — và đó là chủ ý. Việc
+		"dữ liệu của app đến từ đâu, ai chịu trách nhiệm cung cấp nó" là nội dung bài <strong>S5</strong> ngay sau đây. Ở đây bạn
+		chỉ cần đọc được hình dạng: có một <code>Flow</code>, biến nó thành trạng thái cho giao diện.
+	</p>
+	<p class="hint">
+		<strong>Cố tình không dạy ở mục này:</strong> các biến thể khác của <code>SharingStarted</code>, cơ chế chia sẻ bên
+		trong, cold ↔ hot, và họ toán tử Flow (ở ví dụ trên <code>map</code> chỉ cần đọc là "biến mỗi giá trị của dòng thành một
+		ảnh chụp UiState"). Toàn bộ chiều sâu đó thuộc bài <strong>W1</strong>.
+	</p>
+
+	<h2 id="state-in-hay-mutable">16. <code>stateIn</code> hay <code>MutableStateFlow</code>?</h2>
+	<p>Hai khuôn, hai tình huống. Không có khuôn nào tốt hơn khuôn nào:</p>
+	<table class="api">
+		<thead>
+			<tr><th></th><th><code>MutableStateFlow</code> (mục 12–13)</th><th><code>stateIn</code> (mục 15)</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Dùng khi</td>
+				<td>ViewModel <strong>tự</strong> giữ và tự đổi state</td>
+				<td>ViewModel <strong>đã có</strong> một <code>Flow</code> và muốn phơi nó ra dạng trạng thái</td>
+			</tr>
+			<tr>
+				<td>Ai đổi state</td>
+				<td>Các hàm trong ViewModel gán <code>.value</code></td>
+				<td>Dòng nguồn phát giá trị mới; ViewModel không gán tay</td>
+			</tr>
+			<tr>
+				<td>Ví dụ điển hình</td>
+				<td>Cờ "đang gửi", ô nhập đã hoisted lên màn hình, kết quả một lần bấm</td>
+				<td>Dữ liệu thay đổi liên tục từ một nguồn (bạn sẽ gặp ở giai đoạn Mạng và Dữ liệu cục bộ)</td>
+			</tr>
+			<tr>
+				<td>Trong một ViewModel thật</td>
+				<td colspan="2">Rất thường dùng <strong>cả hai</strong>: phần đến từ nguồn thì <code>stateIn</code>, phần do
+					người dùng thao tác thì <code>MutableStateFlow</code>.</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<h2 id="chuoi-day-du">17. Toàn bộ chuỗi: từ cú chạm tới giao diện đổi</h2>
+	<p>
+		Đây là chỗ mọi thứ gặp nhau. Người dùng gõ tin nhắn rồi bấm gửi — chuyện gì xảy ra, theo thứ tự, và mỗi bước thuộc bài
+		nào:
+	</p>
+	<ol class="chain">
+		<li>
+			<strong>Người dùng bấm nút.</strong> Composable nút không tự làm gì cả — nó gọi lambda được truyền vào
+			(<code>() -&gt; Unit</code>). <em>Bài State hoisting &amp; UDF, mục 8.</em>
+		</li>
+		<li>
+			<strong>Sự kiện đi lên tới ViewModel.</strong> Lambda đó gọi một hàm public của ViewModel. Đây là "sự kiện đi lên" của
+			luồng một chiều, chỉ khác là chủ sở hữu giờ nằm ngoài UI. <em>Bài State hoisting &amp; UDF, mục 5.</em>
+		</li>
+		<li>
+			<strong>ViewModel khởi động công việc nếu cần.</strong> <code>viewModelScope.launch &#123; ... &#125;</code> — coroutine do
+			ViewModel làm chủ; bên trong gọi được hàm <code>suspend</code> mà không chặn thread. <em>S1 + mục 9.</em>
+		</li>
+		<li>
+			<strong>ViewModel đổi state.</strong> Một ảnh chụp UiState mới được tạo bằng <code>copy(...)</code> và gán vào
+			<code>.value</code> của <code>MutableStateFlow</code> private. <em>Mục 13 + F2.</em>
+		</li>
+		<li>
+			<strong><code>StateFlow</code> phát trạng thái mới.</strong> Ai đang lắng nghe đều nhận được — và trạng thái đó là
+			"hiện giờ màn hình thế nào", không phải một sự kiện rời. <em>S1 + mục 12.</em>
+		</li>
+		<li>
+			<strong>Phía Compose nhận qua cây cầu biết vòng đời.</strong>
+			<code>collectAsStateWithLifecycle()</code> biến giá trị mới nhất thành một <code>State</code> của Compose.
+			<em>Mục 14.</em>
+		</li>
+		<li>
+			<strong>Composable nào đã đọc state đó thì được chạy lại.</strong> Không phải cả màn hình, chỉ phần liên quan — và
+			giao diện mới xuất hiện. <em>Bài State trong Compose, mục 2 và 4.</em>
+		</li>
+	</ol>
+	<p>
+		Đọc lại danh sách trên và để ý một điều: <strong>không có bước nào "ra lệnh cho giao diện cập nhật"</strong>. Chỉ có
+		state đổi, và giao diện là hàm của state — đúng quan hệ ở bài State trong Compose, mục 1. Đây là toàn bộ nội dung của Giai đoạn 3 gói trong bảy
+		bước.
+	</p>
+	<h3>17.1 Cùng chuỗi đó trong code mẫu: sửa lỗi "tin nhắn của tôi hiện như của người khác"</h3>
+	<p>
+		Code mẫu có một lỗi rất hay để lần theo, vì nó đi đúng cả chuỗi trên. Hiện tượng: bạn gửi tin nhắn, nhưng giao diện vẽ nó
+		như thể đến từ người khác — sai avatar, sai màu bong bóng, sai bên. Nguyên nhân nằm ở một dòng:
+	</p>
+	<Code code={starterMessageUiCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{STARTER}/conversation/Conversation.kt</code> (dòng 194)</p>
+	<p>
+		<code>authorId</code> bị viết cứng thành chuỗi <code>"me"</code>. Đây không chỉ là lỗi hiển thị: ViewModel theo dõi danh
+		tính người dùng bằng một ID riêng, nên nếu giữ cách cũ thì <strong>mọi người trên mọi thiết bị đều là "me"</strong> —
+		không có cách nào phân biệt ai với ai.
+	</p>
+	<p>Chuỗi sửa gồm năm bước, mỗi bước ở một tầng — và nó chính là "giá trị đi xuống" của bài trước, xuất phát từ ViewModel:</p>
+	<table class="api">
+		<thead>
+			<tr><th>#</th><th>Ở đâu</th><th>Việc làm</th><th>Vai trong chuỗi</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>1</td>
+				<td>ViewModel</td>
+				<td>Phơi danh tính người dùng ra dưới dạng một dòng trạng thái</td>
+				<td>Chủ sở hữu công bố giá trị</td>
+			</tr>
+			<tr>
+				<td>2</td>
+				<td>Lớp UI state trung gian</td>
+				<td>Chuyển tiếp dòng đó ra tầng giao diện</td>
+				<td>Giá trị đi xuống một chặng</td>
+			</tr>
+			<tr>
+				<td>3</td>
+				<td>Composable khung</td>
+				<td><code>collectAsStateWithLifecycle()</code> để lấy giá trị hiện tại</td>
+				<td>Cây cầu của mục 14</td>
+			</tr>
+			<tr>
+				<td>4</td>
+				<td>Composable danh sách</td>
+				<td>Nhận thêm tham số <code>authorId: String</code> và truyền xuống</td>
+				<td>Vẫn <strong>stateless</strong> — nó <em>nhận</em>, không tự đi lấy (bài State hoisting &amp; UDF)</td>
+			</tr>
+			<tr>
+				<td>5</td>
+				<td>Composable một dòng tin nhắn</td>
+				<td>Đổi <code>userId == "me"</code> thành <code>authorId == userId</code></td>
+				<td>So <em>hai giá trị thật</em> thay vì so với chuỗi cứng</td>
+			</tr>
+		</tbody>
+	</table>
+	<Code code={finalMessageUiCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 222–239)</p>
+	<p>
+		Từ một <code>Boolean</code> duy nhất, ba thứ trên giao diện được quyết định: màu viền avatar, ảnh avatar nào, và ở các
+		composable con là màu bong bóng cùng vị trí trái/phải. Một giá trị state điều khiển toàn bộ "cảm giác đây là tin của
+		tôi".
+	</p>
+	<p class="hint">
+		<strong>Hai tham số dễ lẫn tên, đọc thân hàm mới rõ.</strong> Trong composable một dòng tin nhắn:
+		<code>authorId</code> = <em>tôi</em> (người đang dùng máy), <code>userId</code> = <em>người gửi tin này</em>. Thân hàm
+		so hai cái: <code>val isUserMe = authorId == userId</code>. Nếu truyền sai một trong hai — ví dụ đưa người gửi vào cả
+		hai chỗ — thì <strong>mọi</strong> tin nhắn đều hiện như của bạn, kể cả tin của người khác. Đây là kiểu bug mà trình
+		biên dịch không thể cứu: hai tham số cùng kiểu <code>String</code>, đổi chỗ vẫn compile.
+	</p>
+	<Code code={finalConversationContentCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 101–154)</p>
+	<p>Ba chỗ đáng chỉ ra trong composable khung này:</p>
+	<ul>
+		<li>
+			<code>uiState.addMessage(content, null)</code> — tham số thứ hai là <strong><code>null</code> cứng</strong>. Đây là
+			mắt xích làm tính năng ảnh không hoạt động; mục 18 nối đủ ba mắt xích.
+		</li>
+		<li>
+			<code>resetScroll</code> và <code>.navigationBarsPadding().imePadding()</code> — khi ô nhập được focus thì danh sách
+			cuộn về tin mới nhất, và khu vực nhập liệu được đẩy lên trên bàn phím ảo. Không có chúng thì bàn phím che mất ô nhập.
+		</li>
+		<li>
+			<code>LaunchedEffect(key1 = uiState.messages)</code> — khối tự cuộn tới tin nhắn mới mỗi khi danh sách đổi. Đúng chỗ
+			dành cho việc phụ, như Chương 5 và S1 đã nói: key đổi thì việc cũ bị huỷ và việc mới bắt đầu. Đặt lời gọi cuộn thẳng
+			vào thân composable thì nó chạy lại theo mỗi lần vẽ lại — sai.
+		</li>
+	</ul>
+
+	<h2 id="doc-state-chet">18. Đọc state thật: state này có tác dụng gì không?</h2>
+	<p>
+		Đây là kỹ năng bạn sẽ dùng nhiều hơn mọi API trong bài: mở một codebase lạ, gặp một biến state, và phải trả lời
+		<em>"cái này có thật sự ảnh hưởng tới giao diện không?"</em>. Có một quy trình bốn bước, và nó luôn theo thứ tự này:
+	</p>
+	<div class="callout mental">
+		<strong>Bốn bước lần theo một state</strong>
+		<ol>
+			<li><strong>Khai báo</strong> — nó là loại state gì, ai sở hữu, phạm vi tới đâu?</li>
+			<li><strong>Chỗ đọc</strong> — có composable nào <em>đọc</em> nó không? Nếu không có chỗ đọc nào, nó không thể tác động
+				tới giao diện, dù được ghi bao nhiêu lần.</li>
+			<li><strong>Chỗ ghi</strong> — có chỗ nào <em>đổi</em> nó không? Nếu không có, nó là hằng số trá hình.</li>
+			<li><strong>Tác động lên giao diện</strong> — giá trị đó cuối cùng quyết định điều gì trên màn hình?</li>
+		</ol>
+		<p>
+			Thiếu bước 2 thì state là code chết. Thiếu bước 3 thì nó là hằng số. Có cả hai mà không dẫn tới bước 4 thì nó là công
+			việc vô ích.
+		</p>
+	</div>
+	<p>
+		Project mẫu của chương này có bốn ca đáng lần theo. Đây <em>không</em> phải chuyện "code mẫu sai" — nó là một codebase
+		đang chuyển đổi giữa hai cách làm, và đó là tình huống bạn sẽ gặp ở mọi project thật.
+	</p>
+	<h3>18.1 Một tính năng đứt ở ba mắt xích: đính kèm ảnh</h3>
+	<p><strong>Bước 1–3 đầy đủ:</strong> giao diện <em>có</em> giữ ảnh, và ảnh <em>có</em> được gán giá trị thật khi người dùng chọn:</p>
+	<Code code={photoDroppedCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> (dòng 197–206)</p>
+	<p><strong>Nhưng bước 4 đứt, ở ba chỗ liên tiếp:</strong></p>
+	<ol class="chain">
+		<li>Giá trị ảnh không bao giờ ra khỏi khu vực nhập liệu — tầng gọi truyền <code>null</code> cứng (mục 17).</li>
+		<li>Và nếu bằng cách nào đó nó tới được ViewModel, điều kiện <code>if (message.photoUri == null)</code> chặn lại (mục 13).</li>
+		<li>Khối code hiển thị ảnh thì <strong>bị comment toàn bộ</strong>, dù các import cho nó đã được thêm vào:</li>
+	</ol>
+	<Code code={coilCommentedCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> (dòng 413–425)</p>
+	<p class="notice">
+		<strong>Và thư viện tải ảnh thì đã được khai báo, tải về thật.</strong> Nghĩa là app đang đóng gói một thư viện
+		<em>hoàn toàn không dùng đến</em>. Không sai về mặt chạy, nhưng đúng là loại dependency thừa mà phần Gradle của khoá đã
+		nói tới. Nếu bạn muốn tự hoàn thiện tính năng ảnh: truyền giá trị ảnh ra khỏi khu vực nhập liệu, bỏ điều kiện
+		<code>if</code> trong ViewModel, bỏ comment khối hiển thị.
+	</p>
+	<h3>18.2 Một state public mà không nên public</h3>
+	<p>
+		Quay lại <code>var currentUserId = MutableStateFlow(userId)</code> ở mục 12.1. Lần theo bốn bước: nó
+		<em>có</em> chỗ đọc (giao diện dùng để biết tin nào là của mình), <em>có</em> tác động giao diện. Nhưng bước 1 sai khuôn:
+		vì nó là <code>MutableStateFlow</code> public, <strong>giao diện có thể ghi vào nó</strong>. Không ai làm vậy trong
+		project — nhưng "không ai làm" là một lời hứa, còn <code>StateFlow</code> chỉ-đọc là một <em>bảo đảm</em>. Đây đúng là
+		lý do tồn tại của khuôn private/public ở mục 12.
+	</p>
+	<h3>18.3 Cùng một danh sách tồn tại ở hai nơi</h3>
+	<Code code={finalUiStateCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/ConversationUiState.kt</code> (dòng 48–63)</p>
+	<p>
+		Class này giờ không còn <em>giữ</em> state theo nghĩa thật — nó chỉ <strong>chuyển tiếp</strong>: nhận danh sách từ ngoài
+		vào, chuyển lời gọi "thêm tin nhắn" xuống ViewModel, chuyển danh tính người dùng từ ViewModel ra. Giữ một lớp trung gian
+		như vậy có lợi ích thật: các composable bên dưới không cần biết ViewModel tồn tại, nên vẫn test được mà không phải dựng
+		ViewModel — đúng tinh thần stateless của bài trước.
+	</p>
+	<p class="notice">
+		<strong>Nhưng nó để lại một property "chết một nửa".</strong> Bên trong class vẫn còn một danh sách tin nhắn riêng, được
+		tạo lại mỗi lần composable khung chạy lại. Nghĩa là danh sách <strong>tồn tại ở hai nơi</strong>: một trong ViewModel
+		(nguồn thật) và một bản trong lớp trung gian. Nó chạy đúng vì bản kia liên tục được làm mới — nhưng đây chính là tình
+		huống "hai chỗ giữ cùng một sự thật" mà bài trước dạy bạn tránh. Dấu vết của code đang chuyển đổi, không phải thiết kế để
+		bắt chước.
+	</p>
+	<h3>18.4 Ba khối bị comment trong ViewModel</h3>
+	<Code code={deadCodeViewModelCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 70–100)</p>
+	<p>
+		Mỗi khối cho biết một điều khác nhau, và cả ba đều đọc được bằng bốn bước ở trên: khối thứ nhất là chuẩn bị cho việc lấy
+		tin nhắn theo từng phòng (thuộc giai đoạn Mạng); khối thứ hai là hàm đổi phòng — vì nó bị comment, state phòng hiện tại
+		<strong>không có chỗ ghi nào</strong>, tức là một hằng số trá hình; khối thứ ba không cần thiết vì giá trị đã được khởi
+		tạo ngay tại dòng khai báo.
+	</p>
+	<h3>18.5 Hai ca "sai nhưng không ai dùng"</h3>
+	<Code code={recursiveBugCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/data/model/DateExtensions.kt</code> (dòng 40–42)</p>
+	<p>
+		Đọc kỹ: hàm này gọi lại <strong>chính nó</strong>, nên gọi một lần là đệ quy vô hạn tới khi app crash. Nó không gây hại
+		<em>hiện tại</em> vì <strong>không có chỗ nào trong project gọi nó</strong>. Cách app thật hiển thị "8 phút trước" đi qua
+		một hàm khác hoàn toàn, có <code>try/catch</code> đàng hoàng.
+	</p>
+	<Code code={authorImageCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/ConversationUiState.kt</code> (dòng 66–74)</p>
+	<p>
+		Property này chọn ảnh dựa trên <code>userId == "me"</code> — đúng cái cách viết cứng mà mục 17 vừa đi sửa. Vì
+		<code>userId</code> giờ là một ID random, điều kiện gần như luôn sai. May là nó vô hại: composable một dòng tin nhắn
+		<em>không đọc</em> property này, nó tự tính từ <code>isUserMe</code>. Dấu vết còn lại của cách làm cũ — sửa ở nơi dùng mà
+		quên dọn nơi khai báo.
+	</p>
+	<p class="hint">
+		<strong>Bài học chuyển được sang mọi codebase:</strong> <em>một hàm sai hoặc một state sai nằm trong codebase không nhất
+		thiết là hàm/state đang được dùng.</em> Luôn tìm chỗ đọc và chỗ ghi trước khi kết luận — và cũng đừng vội "sửa" một thứ
+		mà bạn chưa biết ai dùng.
+	</p>
+
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Bạn xoay màn hình sau khi đã gửi 5 tin nhắn: tin nhắn còn không? Còn nếu bạn tắt app rồi mở lại? Và trong ViewModel, vì
+			sao cần <em>hai</em> biến (<code>_uiState</code> private + <code>uiState</code> public) thay vì một?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>Xoay màn hình:</strong> còn. Đó chính là việc ViewModel làm — nó không bị tạo lại cùng Activity (mục 9).
+				<strong>Tắt app rồi mở lại:</strong> mất. ViewModel không phải nơi lưu dữ liệu (mục 10); muốn lưu thật thì cần tới
+				giai đoạn Dữ liệu cục bộ.
+			</p>
+			<p>
+				<strong>Hai biến:</strong> để quyền ghi và quyền đọc khác nhau. Nếu chỉ để một biến public
+				<code>MutableStateFlow</code>, giao diện tự đổi state được và bạn mất khả năng biết ai đổi ở đâu — luồng một chiều
+				sụp ở đúng chỗ nó quan trọng nhất (mục 12). Với cặp private/public, giao diện <em>không có hàm nào</em> để ghi.
+			</p>
+		</details>
+	</div>
+
+	<h2 id="luyen-tap">19. Luyện tập: nút "Jump to bottom"</h2>
+	<p>
+		Bài luyện tập của bài này không giới thiệu khái niệm mới — nó bắt bạn <em>dùng</em> mọi thứ vừa học trên một tính năng
+		thật: một nút trượt vào khi bạn đã cuộn xa khỏi tin nhắn mới nhất, bấm vào thì cuộn về đáy.
+	</p>
+	<p>File nút này chỉ tồn tại trong bản <code>final</code> của project — bạn copy nguyên nó vào đúng vị trí:</p>
+	<Code code={jumpToBottomFullCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/JumpToBottom.kt</code> (dòng 55–102) — không có trong <code>starter</code></p>
+	<p>Đọc file này ở mức <em>nhận diện</em> là đủ, nhưng ba chi tiết đáng chỉ ra:</p>
+	<ul>
+		<li>
+			<code>private enum class Visibility &#123; VISIBLE, GONE &#125;</code> — <code>enum class</code> là cách khai một
+			<em>tập giá trị hữu hạn có tên</em> (ở đây: hiện, ẩn). Dùng nó thay <code>Boolean</code> để phần animation có nhãn rõ
+			ràng khi debug.
+		</li>
+		<li>
+			<code>updateTransition(...)</code> + <code>animateDp</code> — nút không "biến mất" mà <em>trượt</em> ra/vào theo một giá
+			trị được animate. Cơ chế animation của Compose không thuộc bài này; chỉ cần thấy nó là một giá trị đổi dần theo thời
+			gian.
+		</li>
+		<li>
+			<code>if (bottomOffset &gt; 0.dp)</code> — chỉ khi đã trượt ra khỏi vùng ẩn thì mới thật sự tạo composable, để không
+			giữ một thành phần vô hình trong giao diện.
+		</li>
+	</ul>
+	<p>Chữ trên nút lấy từ resource, nên phải thêm một dòng vào file chuỗi <strong>trước khi</strong> copy file nút:</p>
+	<Code code={jumpBottomStringCode} lang="xml" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL_ROOT}/app/src/main/res/values/strings.xml</code> (dòng 46) — dòng <em>duy nhất</em> khác giữa <code>starter</code> và <code>final</code></p>
+	<h3>19.1 Phía danh sách: đọc và tự chú thích</h3>
+	<Code code={finalMessagesCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/Conversation.kt</code> (dòng 156–220)</p>
+	<ol class="chain">
+		<li>
+			<code>rememberCoroutineScope()</code> — S1 đã cho bạn nhận diện nó: một scope gắn với vị trí này trong giao diện. Cần
+			nó vì việc cuộn có animation là một hàm <code>suspend</code>, không gọi được trực tiếp từ một lambda
+			<code>onClick</code> thường.
+		</li>
+		<li>
+			<strong><code>reverseLayout = true</code></strong> — đảo thứ tự hiển thị của danh sách. Quan trọng vì cách "nhảy về
+			đáy" được cài đặt là <em>nhảy về phần tử đầu tiên</em>, và với layout đảo ngược thì phần tử đầu tiên nằm ở
+			<strong>dưới cùng</strong> màn hình.
+		</li>
+		<li>
+			Ngưỡng hiện nút được tính bằng pixel: <code>dp</code> là đơn vị độc lập mật độ, còn trạng thái cuộn báo cáo bằng pixel
+			thật của thiết bị, nên bắt buộc phải quy đổi.
+		</li>
+		<li>Nút hiện nếu phần tử đầu tiên đang thấy không phải phần tử số 0, <em>hoặc</em> độ lệch cuộn lớn hơn ngưỡng.</li>
+		<li>Kết quả tính được truyền xuống cho nút tự quyết định trượt vào hay trượt ra — đúng "giá trị đi xuống" của bài trước.</li>
+	</ol>
+	<div class="callout mental">
+		<strong>Điểm đáng học nhất của đoạn này: <code>derivedStateOf</code></strong>
+		<p>
+			Trạng thái cuộn đổi <em>liên tục</em> khi bạn cuộn — hàng chục lần mỗi giây. Nếu composable danh sách đọc thẳng giá trị
+			cuộn, nó sẽ được chạy lại hàng chục lần mỗi giây, dù thứ ta cần chỉ là một <code>Boolean</code> "có hiện nút hay
+			không".
+		</p>
+		<p>
+			<code>derivedStateOf</code> tính ra một giá trị <em>dẫn xuất</em> và chỉ báo cho Compose khi <strong>kết quả</strong>
+			đổi — tức 2 lần cho một lần cuộn dài, không phải 50 lần. Quy tắc để nhớ: <em>khi nhiều state đổi nhanh nhưng thứ bạn
+			cần chỉ đổi chậm, hãy bọc nó trong <code>derivedStateOf</code></em>. Cặp
+			<code>by remember &#123; derivedStateOf &#123; ... &#125; &#125;</code> gần như luôn đi cùng nhau — và để ý
+			<code>remember</code> ở đây làm đúng việc của bài State trong Compose, mục 3.
+		</p>
+	</div>
+	<h3>19.2 Ba thay đổi phải đi cùng nhau — chỗ dễ sai nhất</h3>
+	<p>Thêm một dòng vào cuối file danh sách:</p>
+	<Code code={thresholdCode} lang="kotlin" theme="github-dark" />
+	<p>Và sửa hàm tạo tin nhắn trong ViewModel để tin mới được thêm vào <em>đầu</em> danh sách:</p>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">Trước — thêm vào cuối</div>
+			<Code code={addEndCode} lang="kotlin" theme="github-dark" />
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">Sau — thêm vào đầu</div>
+			<Code code={addStartCode} lang="kotlin" theme="github-dark" />
+		</div>
+	</div>
+	<p class="src">Nguồn: <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 125)</p>
+	<p>Và thứ tự dữ liệu mẫu cũng bị đảo giữa hai bản project:</p>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">starter — thứ tự [0, 1, 2]</div>
+			<Code code={fakeDataStarterCode} lang="kotlin" theme="github-dark" />
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">final — thứ tự [2, 1, 0]</div>
+			<Code code={fakeDataFinalCode} lang="kotlin" theme="github-dark" />
+		</div>
+	</div>
+	<p class="src">Nguồn: <code>{STARTER}/data/FakeData.kt</code> và <code>{FINAL}/data/FakeData.kt</code> (dòng 66–74)</p>
+	<div class="callout diff">
+		<strong>Ba thay đổi này là MỘT thay đổi được chia làm ba chỗ.</strong>
+		<p>Làm thiếu một chỗ thì giao diện sai theo cách khó đoán:</p>
+		<ul>
+			<li>Có <code>reverseLayout</code> nhưng vẫn thêm vào cuối → tin nhắn mới hiện ở <strong>trên đỉnh</strong>.</li>
+			<li>Có thêm-vào-đầu nhưng không <code>reverseLayout</code> → tin mới cũng hiện ở trên đỉnh, và nút "Jump to bottom" nhảy
+				về <em>đầu</em> đoạn chat thay vì cuối.</li>
+			<li>Đúng cả hai nhưng không đảo thứ tự dữ liệu mẫu → tin nhắn bạn gửi thì đúng chỗ, còn ba tin mẫu hiện sai thứ tự thời
+				gian.</li>
+		</ul>
+		<p>
+			Cách nhớ gọn: sau khi đảo layout, <strong>"vị trí 0 của dữ liệu" = "dưới cùng của màn hình"</strong>. Mọi thứ khác suy ra
+			từ đó.
+		</p>
+	</div>
+	<div class="callout note">
+		<strong>Việc của bạn</strong>
+		<ol>
+			<li>Chạy app, gửi tin nhắn tới khi danh sách dài hơn màn hình, cuộn lên — nút trượt vào. Bấm vào, danh sách cuộn về tin
+				mới nhất.</li>
+			<li>Thử <strong>bỏ</strong> <code>derivedStateOf</code> (dùng biểu thức thường). App vẫn chạy đúng. Hỏi: cái gì tệ đi, và
+				tệ đi ở đâu?</li>
+			<li>Thử đặt <code>reverseLayout = false</code> mà giữ nguyên thêm-vào-đầu. Ghi lại chính xác giao diện sai thế nào, rồi
+				đối chiếu với khối cảnh báo ở trên.</li>
+		</ol>
+		<details>
+			<summary>Gợi ý cho câu 2</summary>
+			<p>
+				App vẫn <em>đúng</em>, chỉ <em>tốn</em>: composable danh sách được chạy lại theo mỗi bước cuộn thay vì chỉ khi giá trị
+				<code>Boolean</code> đổi. Đây là ví dụ rất sát cho bài State trong Compose, mục 4: recomposition không miễn phí, nên "đúng" và "hợp lý" là hai
+				câu hỏi khác nhau.
+			</p>
+		</details>
+	</div>
+
+	<div class="callout journey">
+		<strong>Tóm tắt</strong>
+		<ol>
+			<li><strong>ViewModel</strong> là chủ sở hữu state của <em>cả màn hình</em>, sống ngoài vòng đời UI. Nó sống qua
+				configuration change; nó <strong>không</strong> phải nơi lưu dữ liệu, không phải tầng dữ liệu, không phải "chỗ chạy
+				việc nền".</li>
+			<li><strong>UiState</strong> gom state màn hình thành một <em>ảnh chụp</em> (<code>data class</code>), nên giao diện
+				không bao giờ đọc được một tổ hợp nửa vời. Đổi state = <code>copy(...)</code> tạo ảnh chụp mới.</li>
+			<li><strong>Cặp <code>MutableStateFlow</code> private + <code>StateFlow</code> public</strong> ép luồng một chiều ở mức
+				kiểu dữ liệu: giao diện không có hàm nào để ghi.</li>
+			<li><strong><code>StateFlow</code> KHÔNG biết vòng đời Android.</strong> Nó cho bạn trạng thái hiện tại + cập nhật.
+				Việc lắng nghe theo vòng đời nằm ở phía giao diện, bằng
+				<strong><code>collectAsStateWithLifecycle()</code></strong>.</li>
+			<li><strong><code>stateIn(scope, started, initialValue)</code></strong> biến một <code>Flow</code> có sẵn thành
+				<code>StateFlow</code>: ai làm chủ · khi nào lắng nghe nguồn · trạng thái trước giá trị đầu tiên. Dùng nó khi state
+				vốn đã là một dòng; dùng <code>MutableStateFlow</code> khi ViewModel tự đổi state.</li>
+			<li><strong>Chuỗi đầy đủ</strong>: cú chạm → callback → hàm ViewModel → (<code>viewModelScope</code> nếu cần) → đổi
+				UiState → <code>StateFlow</code> phát → <code>collectAsStateWithLifecycle</code> → phần liên quan của giao diện
+				chạy lại. Không có bước nào "ra lệnh cập nhật giao diện".</li>
+			<li>Khi đọc code lạ, lần theo bốn bước: <strong>khai báo → chỗ đọc → chỗ ghi → tác động giao diện</strong>. Thiếu chỗ
+				đọc = code chết; thiếu chỗ ghi = hằng số trá hình.</li>
+		</ol>
+	</div>
+	<p class="notice">
+		<strong>Bước tiếp theo của giai đoạn này.</strong> Còn một câu hỏi bài này cố tình chưa trả lời: <em>dữ liệu đến từ
+		đâu?</em> Ở đây mọi nguồn đều là dữ liệu mẫu hoặc hàm giả. Bài <strong>S5</strong> ngay sau đây dựng tầng dữ liệu và
+		giải thích ai chịu trách nhiệm cung cấp dữ liệu cho ViewModel — rồi giai đoạn Mạng và Dữ liệu cục bộ thay dữ liệu mẫu
+		bằng dữ liệu thật.
+	</p>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía trên.
+	</p>
+	<h3>ViewModel &amp; UI state</h3>
+	<ul>
+		<li>
+			<strong>"<code>StateFlow</code> là <code>Flow</code> có sẵn lifecycle awareness" — SAI.</strong> <code>StateFlow</code>
+			không biết gì về vòng đời Android. Nó cho bạn trạng thái hiện tại + cập nhật. Lắng nghe theo vòng đời là việc của
+			<code>collectAsStateWithLifecycle()</code> ở phía giao diện (mục 12, 14).
+		</li>
+		<li>
+			<strong>Coi ViewModel là nơi lưu dữ liệu.</strong> Nó sống qua configuration change, <em>không</em> sống qua process
+			death và không sống qua tắt app. Nó cũng không phải tầng dữ liệu, và <code>viewModelScope</code>
+			<strong>không</strong> nghĩa là "thread nền" (mục 9–10).
+		</li>
+		<li>
+			<strong>Phơi <code>MutableStateFlow</code> ra public.</strong> Lúc đó giao diện ghi được vào state, và bạn mất khả năng
+			biết ai đổi ở đâu. Code mẫu có đúng một chỗ như vậy — đọc nó như một câu hỏi, không như khuôn mẫu (mục 12.1, 18.2).
+		</li>
+		<li>
+			<strong>Dùng <code>collectAsState()</code> làm mặc định trên Android.</strong> Nó không dừng khi app xuống nền. Hãy dùng
+			bản có <code>WithLifecycle</code>; bản không có chỉ để nhận ra khi đọc code cũ (mục 14).
+		</li>
+		<li>
+			<strong>Phát ra chính object đang giữ thay vì một bản mới.</strong> Dòng trạng thái không thông báo khi giá trị mới bằng
+			giá trị cũ. Code mẫu chạy đúng nhờ một cơ chế khác chồng lên — đó là chỗ khó giải thích, không phải chỗ nên bắt chước
+			(mục 13.1).
+		</li>
+		<li>
+			<strong>Chọn dispatcher theo tên việc.</strong> <code>launch(Dispatchers.Default)</code> cho một lời gọi thêm phần tử vào
+			danh sách là không cần thiết. Chọn theo <em>bản chất công việc</em>, đúng quy tắc của S1 (mục 13.1).
+		</li>
+		<li>
+			<strong>Sao chép <code>5_000</code> như một con số thần kỳ.</strong> Cửa sổ vài giây của
+			<code>WhileSubscribed</code> có mục đích cụ thể (vượt qua configuration change) — biết nó mua gì rồi hãy dùng (mục 15).
+		</li>
+		<li>
+			<strong>Kết luận một state/hàm "sai" trước khi tìm chỗ dùng.</strong> Trong project mẫu có một hàm đệ quy vô hạn và một
+			property tính sai — cả hai vô hại vì không ai gọi. Lần theo bốn bước trước khi sửa (mục 18).
+		</li>
+	</ul>
+	<h3>Tài liệu lỗi thời — nơi tra</h3>
+	<p>
+		Nhóm state/hoisting/UDF/ViewModel/StateFlow của bài này là <strong>kiến thức bền</strong>: nó không lỗi thời theo phiên
+		bản. Những chỗ <em>tên gọi</em> và <em>số phiên bản</em> đã đổi (tên nhóm thư viện kiến trúc, một tham số bàn phím bị đổi
+		tên, số phiên bản artifact lifecycle, đường chuyển của thư viện thời gian, và bảng so từng file giữa hai bản project) đã
+		được gom vào phần tra cứu phiên bản của khoá để không chiếm chỗ của nội dung chính. Riêng một điểm cần biết ngay khi đọc
+		code mẫu: project này dùng <em>hai file chỉ có trong bản <code>final</code></em> mà phần hướng dẫn không nói tới — thiếu
+		chúng thì không compile được; phần tra cứu ghi rõ tên file và cách tối giản.
+	</p>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li><strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 91–157 (ViewModel · state của ViewModel · hàm gửi tin
+			nhắn), dòng 170–194 (Flow · StateFlow), dòng 293–299 (dependency lifecycle-compose), dòng 334–389 (sửa danh tính người
+			gửi), dòng 398–488 (Jump to bottom), dòng 497–511 (tổng kết + hướng đọc thêm).</li>
+		<li><strong>Code thật:</strong> <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 59–68, 70–100, 103–127) ·
+			<code>{FINAL}/MainActivity.kt</code> (dòng 55–75) ·
+			<code>{FINAL}/conversation/ConversationUiState.kt</code> (dòng 48–63, 66–74) ·
+			<code>{FINAL}/conversation/Conversation.kt</code> (dòng 101–154, 156–220, 222–239) ·
+			<code>{FINAL}/conversation/JumpToBottom.kt</code> (dòng 55–102) ·
+			<code>{FINAL}/conversation/UserInput.kt</code> (dòng 197–206, 413–425) ·
+			<code>{FINAL}/data/model/DateExtensions.kt</code> (dòng 40–42) ·
+			<code>{STARTER}/conversation/Conversation.kt</code> (dòng 194) ·
+			<code>{STARTER}/data/FakeData.kt</code> và <code>{FINAL}/data/FakeData.kt</code> (dòng 66–74) ·
+			<code>{FINAL_ROOT}/gradle/libs.versions.toml</code> (dòng 14, 33) ·
+			<code>{FINAL_ROOT}/app/build.gradle.kts</code> (dòng 88–95).</li>
+		<li><strong>Ví dụ tối giản do khoá dựng:</strong> <code>ChatUiState</code>, cặp
+			<code>MutableStateFlow</code>/<code>StateFlow</code>, hàm cập nhật state, lời gọi
+			<code>collectAsStateWithLifecycle()</code>, và ví dụ <code>stateIn</code> ở mục 15 — dựng để dạy khuôn hiện hành, không
+			trích project mẫu.</li>
+		<li><strong>Tài liệu chính thức:</strong> hướng dẫn về StateFlow/SharedFlow, về ViewModel &amp; coroutine
+			(<code>viewModelScope</code>), và về thu thập luồng dữ liệu theo vòng đời trên Android — dùng để đối chiếu khuôn được
+			khuyến nghị hiện nay.</li>
+	</ul>
+</section>

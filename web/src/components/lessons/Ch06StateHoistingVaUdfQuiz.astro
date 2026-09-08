@@ -1,0 +1,158 @@
+---
+// Quiz cho chương 6.2 — State hoisting & UDF (S3). Tách từ monolith Ch06Quiz.astro (batch Stage 3, IMP-035).
+// Phân bổ theo ownership: S3 sở hữu stateful/stateless, khuôn hoisting value+callback, tổ tiên chung thấp nhất, UDF ≠ Flow.
+// Hai câu kế thừa ý cũ (chữ signature hoisting; callback đi đổi thẳng), tám câu mới bám mục 5–8.
+// Chuẩn quiz §10/§13: 4 đáp án / 1 đúng, giải thích 100% (đúng + vì sao distractor sai),
+// vị trí & độ dài đáp án đúng phân tán, câu bám đúng mục tiêu bài. Chấm bằng harness chung IMP-001.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. Composable nào là <strong>stateless</strong>?</legend>
+			<label><input type="radio" name="q1" value="a" /> <code>fun A() &#123; var open by remember &#123; mutableStateOf(false) &#125; ... &#125;</code></label>
+			<label><input type="radio" name="q1" value="b" /> <code>fun B(label: String, onClick: () -&gt; Unit) &#123; ... &#125;</code></label>
+			<label><input type="radio" name="q1" value="c" /> <code>fun C() &#123; val items = remember &#123; loadData() &#125; ... &#125;</code></label>
+			<label><input type="radio" name="q1" value="d" /> Mọi composable đều stateless — khác nhau chỉ ở tham số</label>
+			<p class="explain" hidden>
+				Stateless = không tự giữ state nào cả, mọi thứ cần đều đến từ tham số — đúng chữ ký của b. a và c đều gọi
+				<code>remember</code> để tạo và giữ state bên trong, tức stateful. Đáp án d phủ nhận luôn phân loại mà bài này
+				dựa vào để quyết định "ai giữ gì".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. "State hoisting" là phép biến đổi từ stateful sang stateless — nó thay state nội bộ bằng cái gì?</legend>
+			<label><input type="radio" name="q2" value="a" /> Một <code>MutableState</code> truyền xuống từ cha để con tự ghi</label>
+			<label><input type="radio" name="q2" value="b" /> Một ViewModel để con gọi trực tiếp</label>
+			<label><input type="radio" name="q2" value="c" /> Một <em>giá trị</em> để hiển thị và một <em>sự kiện</em> để báo muốn đổi — đúng cặp <code>value: T</code> + <code>onValueChange: (T) -&gt; Unit</code></label>
+			<label><input type="radio" name="q2" value="d" /> Một bản sao của state nội bộ, cập nhật định kỳ</label>
+			<p class="explain" hidden>
+				Khuôn hoisting đúng là hai tham số: giá trị hiện tại (chỉ đọc) + callback sự kiện ("xin đổi"). Con <em>xin</em> đổi,
+				không <em>tự</em> đổi — phép gán nằm ở chủ sở hữu. Đáp án a là chính cái cửa hoisting vừa đóng: đưa thứ ghi được
+				xuống con thì con lại tự đổi được state. ViewModel là chuyện của bài sau, không phải khuôn hoisting ở mức UI.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. Đâu là chữ ký đúng của một composable đã được state hoisting?</legend>
+			<label><input type="radio" name="q3" value="a" /> <code>fun Field(value: String, onValueChange: (String) -&gt; Unit)</code></label>
+			<label><input type="radio" name="q3" value="b" /> <code>fun Field(value: String, state: MutableState&lt;String&gt;)</code></label>
+			<label><input type="radio" name="q3" value="c" /> <code>fun Field(viewModel: MainViewModel)</code></label>
+			<label><input type="radio" name="q3" value="d" /> <code>fun Field(): String</code> — composable tự đọc và tự trả giá trị mới</label>
+			<p class="explain" hidden>
+				Khuôn chuẩn: một tham số giá trị đi xuống + một callback báo thay đổi đi lên. Đáp án b vẫn đưa đối tượng
+				<em>ghi được</em> vào trong nên composable con sửa trực tiếp được — mất tính một chiều. Đáp án c làm composable
+				phụ thuộc hẳn vào ViewModel, không tái sử dụng và không test riêng được. Đáp án d vừa tự giữ vừa tự trả giá trị —
+				stateful trá hình.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>4. Trong <code>UserInputText</code> của project mẫu có <code>focusState: Boolean</code> + <code>onTextFieldFocused: (Boolean) -&gt; Unit</code>. Điều này cho thấy gì về khuôn hoisting?</legend>
+			<label><input type="radio" name="q4" value="a" /> Đây là lệch khuôn — một composable chỉ được hoist đúng một cặp giá trị/sự kiện</label>
+			<label><input type="radio" name="q4" value="b" /> Boolean không thể hoist vì nó là kiểu cơ bản</label>
+			<label><input type="radio" name="q4" value="c" /> Đây là khuôn riêng cho focus, không liên quan hoisting</label>
+			<label><input type="radio" name="q4" value="d" /> Khuôn lặp lại được: đây là cặp hoisted thứ hai trong cùng composable, với T = Boolean — bên cạnh cặp TextFieldValue</label>
+			<p class="explain" hidden>
+				Trong code thật, <code>UserInputText</code> có <code>textFieldValue</code>/<code>onTextChanged</code> (T =
+				<code>TextFieldValue</code>) <em>và</em> <code>focusState</code>/<code>onTextFieldFocused</code> (T =
+				<code>Boolean</code>) — hai cặp giá trị/sự kiện song song. Khuôn <code>value: T</code> +
+				<code>onValueChange: (T) -&gt; Unit</code> không giới hạn số lần lặp hay kiểu T.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>5. Vì sao "hai chỗ cùng giữ một sự thật" là công thức của bug lệch giá trị?</legend>
+			<label><input type="radio" name="q5" value="a" /> Vì Kotlin không cho phép hai biến cùng kiểu cùng giá trị</label>
+			<label><input type="radio" name="q5" value="b" /> Vì mỗi lần chỉ một bên được cập nhật là màn hình hiện hai giá trị khác nhau cho cùng một thứ — mà code ở cả hai chỗ đọc riêng thì đều trông đúng</label>
+			<label><input type="radio" name="q5" value="c" /> Vì Compose sẽ vẽ hai lần và hiển thị hai bản khác nhau cạnh nhau</label>
+			<label><input type="radio" name="q5" value="d" /> Vì hai biến cùng giữ một giá trị sẽ tự động đồng bộ nhau, làm CPU tăng</label>
+			<p class="explain" hidden>
+				Tình huống gốc của bài: ô nhập tự giữ tên, màn hình ngoài cũng giữ một bản tên để hiện lời chào. Chỉ cần một nơi
+				cập nhật mà quên nơi kia là hai chỗ hiển thị lệch nhau — và loại bug này khó tìm vì mỗi file đọc riêng đều đúng,
+				không có exception nào. Cách chữa không phải "đồng bộ cho giỏi" mà là bỏ hẳn tình huống hai chủ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>6. "Luồng dữ liệu một chiều" ở mức UI nghĩa là gì?</legend>
+			<label><input type="radio" name="q6" value="a" /> Một kiểu dữ liệu của Kotlin để truyền giá trị giữa các composable</label>
+			<label><input type="radio" name="q6" value="b" /> Dữ liệu chỉ được đi xuống, không có đường nào đi lên</label>
+			<label><input type="radio" name="q6" value="c" /> Giá trị đi xuống, sự kiện đi lên, chủ sở hữu đổi state rồi giá trị mới lại đi xuống — và chỉ có đúng một đường để state bị đổi</label>
+			<label><input type="radio" name="q6" value="d" /> Mỗi composable con giữ state của mình rồi báo kết quả xuống dưới</label>
+			<p class="explain" hidden>
+				Vòng lặp khép: chủ sở hữu truyền giá trị xuống → con báo sự kiện lên → chủ sở hữu đổi state → giá trị mới đi xuống.
+				"Một chiều" nói về <strong>quyền đổi state</strong>: chỉ một đường để state bị đổi, không phải ai cũng chạm vào
+				được. Đáp án a nhầm với <code>Flow</code> — hai thứ khác nhau, trùng chữ (câu 9).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>7. Một ô tìm kiếm tự giữ từ khoá bằng <code>remember</code>; danh sách kết quả nằm cạnh nó cần từ khoá đó để lọc. State nên chuyển lên đâu?</legend>
+			<label><input type="radio" name="q7" value="a" /> Lên tổ tiên chung thấp nhất của ô tìm kiếm và danh sách — không cao hơn</label>
+			<label><input type="radio" name="q7" value="b" /> Lên tận gốc app "cho chắc", mọi state đều nên ở trên cùng</label>
+			<label><input type="radio" name="q7" value="c" /> Giữ nguyên ở ô tìm kiếm, danh sách tự giữ thêm một bản từ khoá</label>
+			<label><input type="radio" name="q7" value="d" /> Lên tổ tiên chung thấp nhất, và đồng thời xóa luôn mọi state cục bộ của các composable khác trên màn hình</label>
+			<p class="explain" hidden>
+				Quy tắc là <strong>tổ tiên chung thấp nhất</strong> của mọi chỗ cần đọc/đổi/phối hợp — không thấp hơn (sẽ có chỗ
+				không đọc được), không cao hơn (thừa). Đáp án b là cách hiểu sai phổ biến nhất: đẩy quá cao thì mọi thay đổi nhỏ đi
+				qua đỉnh, các composable trung gian phải truyền tiếp tham số chúng không dùng. Đáp án c tái tạo đúng bug hai chủ.
+				Đáp án d mở rộng quy tắc thành một lệnh xoá state cục bộ — state của riêng một khu vực (tooltip, animation) thì
+				vẫn giữ cục bộ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>8. State nào dưới đây <strong>nên</strong> giữ cục bộ, không hoist lên cao?</legend>
+			<label><input type="radio" name="q8" value="a" /> Mục đang được chọn mà hai phần khác nhau của màn hình đều dùng</label>
+			<label><input type="radio" name="q8" value="b" /> Danh sách tin nhắn — nhiều chỗ đọc và phải sống qua xoay máy</label>
+			<label><input type="radio" name="q8" value="c" /> Nội dung đang gõ mà nút Send cũng cần đọc lúc gửi</label>
+			<label><input type="radio" name="q8" value="d" /> Tiến trình của một animation chỉ khu vực đó quan tâm</label>
+			<p class="explain" hidden>
+				Tiến trình animation, tooltip đang hiện, mục đang mở rộng tạm thời — chỉ khu vực đó cần biết, nên giữ cục bộ (đúng
+				danh sách ví dụ ngay sau bảng "hoist tới đâu là đủ"). a cần bởi hai nơi khác nhau → lên tổ tiên chung. b phải lên cao hơn UI và
+				sống qua xoay máy → ViewModel. c cần bởi hai nơi trong cùng khu vực nhập liệu → giữ ở khu vực nhập liệu, nhưng vẫn
+				là mức "chủ hợp lý", không phải cục bộ của một composable lá.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>9. Callback có nghĩa là đã có luồng dữ liệu một chiều?</legend>
+			<label><input type="radio" name="q9" value="a" /> Có — bất kỳ composable nào nhận callback đều đang sống đúng UDF</label>
+			<label><input type="radio" name="q9" value="b" /> Chỉ khi quyền sở hữu được sắp đúng: con báo lên, chủ sở hữu đổi state, giá trị mới đi xuống — nếu callback tự tay đi đổi một thứ ở tận đâu thì vẫn là nhiều nơi đổi được cùng một thứ</label>
+			<label><input type="radio" name="q9" value="c" /> Không — callback và UDF là hai cơ chế loại trừ nhau</label>
+			<label><input type="radio" name="q9" value="d" /> Có, nhưng chỉ với callback không tham số <code>() -&gt; Unit</code></label>
+			<p class="explain" hidden>
+				Một callback chỉ <em>tham gia</em> mô hình này khi sở hữu được sắp đúng. Câu hỏi kiểm tra: <em>"sau khi callback
+				này chạy, ai là người đổi state?"</em> — nếu nó tự đi đổi một biến toàn cục hay state của màn hình khác, bạn vẫn
+				đang có "nhiều nơi đổi được cùng một thứ". Loại callback (có/không tham số) không quyết định điều đó.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>10. "Luồng dữ liệu một chiều" và <code>Flow</code> của Kotlin — quan hệ là gì?</legend>
+			<label><input type="radio" name="q10" value="a" /> Một thứ — UDF là tên khác của <code>Flow</code></label>
+			<label><input type="radio" name="q10" value="b" /> UDF cần <code>Flow</code> bắt buộc: không có <code>Flow</code> thì không làm được UDF</label>
+			<label><input type="radio" name="q10" value="c" /> Hai thứ khác nhau: UDF là quy tắc về quyền đổi state (không cần API nào), <code>Flow</code> là kiểu dữ liệu — bạn có thể có cái này mà không có cái kia</label>
+			<label><input type="radio" name="q10" value="d" /> <code>Flow</code> là phiên bản UDF cho dữ liệu mạng; ở mức UI không dùng được</label>
+			<p class="explain" hidden>
+				Trong bài này bạn thực hiện UDF chỉ bằng tham số + lambda — không cần <code>Flow</code> nào cả. Và ngược lại, một
+				app dùng <code>Flow</code> khắp nơi vẫn có thể viết ra state hỗn loạn. Bài ViewModel sẽ dùng
+				<code>StateFlow</code> để <em>thực hiện</em> luồng một chiều ở tầng cao hơn, nhưng quy tắc và kiểu dữ liệu vẫn là
+				hai chuyện.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	import { initQuiz } from "../../scripts/quiz.ts";
+	initQuiz();
+</script>

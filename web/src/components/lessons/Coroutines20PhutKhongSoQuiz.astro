@@ -1,0 +1,133 @@
+---
+// Quiz mới cho bài S1 — Coroutines: đủ để không sợ (bài NEW, Giai đoạn 3 — State & kiến trúc, bài 1/5).
+// Chuẩn quiz: 4 đáp án / 1 đúng, giải thích 100% (đúng + vì sao từng distractor sai),
+// cân vị trí + rank độ dài của đáp án đúng; câu bám đúng 10 trục của bài. Các myth bài đã bác bỏ
+// (suspend = chạy nền, viewModelScope = thread nền, StateFlow tự biết vòng đời, collect luôn chạy mãi)
+// chỉ xuất hiện ở vị trí đáp án SAI và bị đánh đổ trong giải thích — không bao giờ là đáp án đúng
+// hay được giải thích xác nhận. Chấm bằng harness chung IMP-001.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>1. Ở mức người mới, coroutine là gì?</legend>
+			<label><input type="radio" name="q1" value="a" /> Một thread nhẹ, "mini-thread" do Kotlin tự tạo cho mỗi hàm bất đồng bộ</label>
+			<label><input type="radio" name="q1" value="b" /> Một chỗ chạy do hệ điều hành/runtime cấp — có nó thì code mới chạy được</label>
+			<label><input type="radio" name="q1" value="c" /> Một công việc có thể tạm dừng ở những điểm cho phép, rồi tiếp tục sau</label>
+			<label><input type="radio" name="q1" value="d" /> Một cơ chế để hàm chạy song song với phần còn lại của app mà không cần khai báo hay quản lý gì thêm</label>
+			<p class="explain" hidden>
+				<strong>(c) đúng</strong> — đọc chậm mô hình của bài: <em>một công việc</em> (không phải một chỗ chạy, không phải một thread) · <em>tạm dừng ở những điểm cho phép</em> (không phải dừng bất kỳ chỗ nào — chỉ tại chỗ code có đánh dấu) · <em>rồi tiếp tục sau</em>. (a) là cách gọi "thread nhẹ"/"mini-thread" cần tránh: nghe tiện nhưng dẫn tới đúng câu hỏi sai — "nó chạy trên thread nào, có phải thread nền không?" — thay vì hai câu hỏi đúng: <em>ai làm chủ công việc này</em> và <em>việc được xếp chạy ở đâu</em>. (b) là định nghĩa của <strong>thread</strong>, không phải coroutine — lẫn "chỗ chạy" với "công việc" là chính chỗ nhiều người mới hiểu lệch: một thread chạy được nhiều coroutine, và một coroutine không bị gắn cứng vào thread nào. (d) là một hứa hẹn rỗng: chạy song song "miễn khai báo" chính là điều không được — mọi coroutine cần một scope làm chủ (mục 5–6) và việc khởi động phải được viết ra.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>2. <code>suspend fun loadProfile(): Profile</code> — dòng chữ ký này hứa gì?</legend>
+			<label><input type="radio" name="q2" value="a" /> Hàm này chạy ở thread nền, nên không lo chạm giao diện</label>
+			<label><input type="radio" name="q2" value="b" /> Hàm này được phép tạm dừng ở các điểm cho phép, rồi tiếp tục sau</label>
+			<label><input type="radio" name="q2" value="c" /> Hàm này tự chọn dispatcher phù hợp với phần việc của mình, không cần bạn chỉ</label>
+			<label><input type="radio" name="q2" value="d" /> Hàm này chỉ gọi được từ main thread, để bảo đảm an toàn cho giao diện đang hiển thị</label>
+			<p class="explain" hidden>
+				<strong>(b) đúng</strong> — đó là toàn bộ ý nghĩa của từ khoá: <code>suspend</code> nói về <em>khả năng tạm dừng</em>, không nói về thời gian hay chỗ chạy. Hai điều nó <strong>không</strong> làm: không tự chọn thread/dispatcher — hàm chạy trong <strong>ngữ cảnh coroutine mà nó được gọi từ đó</strong>, trừ khi chính nó hoặc một API nó gọi bên trong chủ động đổi ngữ cảnh (thường bằng <code>withContext</code>) — nên (a) và (c) sai. Và không có nghĩa "chậm": một hàm <code>suspend</code> có thể trả về ngay lập tức. Nói đúng hơn thì ngược với (d): rất nhiều hàm <code>suspend</code> của thư viện <em>gọi được an toàn từ</em> main thread — đó là chuyện tốt.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>3. Hai dòng dưới đây khác nhau ở điểm nào?<br /><code>viewModelScope.launch &#123; loadMessages() &#125;</code> và <code>withContext(Dispatchers.IO) &#123; ... &#125;</code></legend>
+			<label><input type="radio" name="q3" value="a" /> Cả hai đều là cách đổi dispatcher — chỉ khác cú pháp</label>
+			<label><input type="radio" name="q3" value="b" /> Dòng thứ hai tự huỷ coroutine khi xong việc, dòng thứ nhất thì không</label>
+			<label><input type="radio" name="q3" value="c" /> Dòng thứ nhất khởi động một coroutine mà <em>ViewModel làm chủ</em> (bị huỷ khi ViewModel bị dọn đi); dòng thứ hai <em>không khởi động coroutine mới</em> — nó tạm đổi chỗ chạy của coroutine đang chạy rồi trả về ngữ cảnh cũ</label>
+			<label><input type="radio" name="q3" value="d" /> Dòng thứ nhất chỉ dùng được trong Activity, dòng thứ hai chỉ dùng được trong ViewModel</label>
+			<p class="explain" hidden>
+				<strong>(c) đúng</strong> — hai dòng trả lời hai câu hỏi khác nhau của bài. <code>viewModelScope.launch</code> khởi động một công việc mới và trả lời "ai làm chủ": ViewModel sở hữu, nên khi ViewModel bị dọn đi coroutine tự động bị huỷ. <code>withContext</code> không tạo người chủ mới — nó tạm chuyển chỗ chạy cho khối theo dispatcher truyền vào, và khi khối xong, việc chạy tiếp trở về ngữ cảnh của người gọi (mục 8). (a) sai vì <code>launch</code> không đổi dispatcher của việc nào; (b) bịa ra hành vi huỷ của <code>withContext</code>; (d) gán ranh giới không tồn tại — cả hai dùng được trong cùng một ViewModel, và code mẫu của khoá có cả hai trong một class. Chú ý: <code>viewModelScope</code> <strong>không</strong> có nghĩa "thread nền" — trên Android coroutine của nó mặc định bắt đầu chạy trên main thread.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>4. Một hàm Kotlin thường (không phải <code>suspend</code>) gọi thẳng <code>loadProfile()</code> trong thân nó — chuyện gì xảy ra?</legend>
+			<label><input type="radio" name="q4" value="a" /> Không compile — hàm thường không có khả năng tạm dừng</label>
+			<label><input type="radio" name="q4" value="b" /> Compile được, và lời gọi tự động chuyển sang chạy trên một thread nền cho an toàn — Kotlin làm hộ toàn bộ việc bất đồng bộ mà không cần khai báo gì thêm</label>
+			<label><input type="radio" name="q4" value="c" /> Compile được với một cảnh báo, vì Kotlin tự bọc lời gọi vào một coroutine hộ bạn</label>
+			<label><input type="radio" name="q4" value="d" /> Compile được; lời gọi chạy bình thường, chỉ chậm hơn một chút do phải chuẩn bị tạm dừng</label>
+			<p class="explain" hidden>
+				<strong>(a) đúng</strong> — quy tắc ngôn ngữ rất gọn: <strong>một hàm <code>suspend</code> chỉ gọi được từ một chỗ đã có khả năng tạm dừng</strong>, và có đúng hai chỗ như vậy: từ một hàm <code>suspend</code> khác, hoặc từ thân một coroutine (khối <code>&#123; &#125;</code> bạn đưa cho một hàm khởi động coroutine). Vì thế <code>suspend</code> <strong>lan lên trên</strong> theo chuỗi lời gọi — A gọi B mà B là <code>suspend</code> thì A cũng phải <code>suspend</code>… cho tới khi ai đó <strong>mở một coroutine</strong> (trong khoá: <code>launch</code>) để chặn chuỗi lại. Đây là lý do trong code thật các lời gọi <code>suspend</code> luôn nằm trong <code>launch &#123; &#125;</code> hay <code>LaunchedEffect &#123; &#125;</code>. Lỗi gọi sai là lỗi <em>biên dịch</em>, không phải cảnh báo (c) hay chuyện chạy chậm (d), và cũng chẳng có thread nền nào tự xuất hiện (b).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>5. <code>delay(1000)</code> khác <code>Thread.sleep(1000)</code> ở chỗ nào?</legend>
+			<label><input type="radio" name="q5" value="a" /> Không khác gì nhau — cả hai đều chặn thread đúng 1 giây</label>
+			<label><input type="radio" name="q5" value="b" /> <code>delay</code> tạm dừng <strong>coroutine</strong> mà không chặn thread; <code>Thread.sleep</code> chặn <strong>thread</strong></label>
+			<label><input type="radio" name="q5" value="c" /> <code>delay</code> chặn thread còn <code>Thread.sleep</code> thì không — nên Sleep an toàn hơn cho giao diện</label>
+			<label><input type="radio" name="q5" value="d" /> <code>delay</code> chỉ dùng được trong hàm thường, còn <code>Thread.sleep</code> dùng được cả trong coroutine</label>
+			<p class="explain" hidden>
+				<strong>(b) đúng</strong> — cùng là "chờ 1 giây", khác nhau ở chỗ căn bản nhất: <strong>ai bị giữ lại</strong>. <code>delay</code> dừng <em>coroutine</em> tại một điểm cho phép — thread <strong>không bị chặn</strong>, runtime được tự do dùng thread cho việc khác; <code>Thread.sleep</code> chặn <em>thread</em> — thread bị chiếm và không làm gì cả, dù việc nó đang chờ chẳng cần CPU. Nên (a) sai, và (c) sai ngược dấu. Hệ quả đáng sợ nhất: đặt <code>Thread.sleep</code> vào một coroutine đang ở main thread là chặn đúng thread vẽ giao diện — tạo ra hiện tượng treo mà cả bài tìm cách tránh; trong coroutine luôn chọn <code>delay</code>. (d) đảo ngược đúng chỗ dùng: <code>delay</code> là hàm <code>suspend</code> nên chỉ gọi được trong coroutine/hàm <code>suspend</code>, còn <code>Thread.sleep</code> là API của Java — gọi được ở <em>đâu cũng được</em>, kể cả chỗ không nên (đó chính là vấn đề).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>6. <code>withContext(Dispatchers.IO) &#123; blockingFileRead() &#125;</code> — đọc đúng là gì?</legend>
+			<label><input type="radio" name="q6" value="a" /> Nó mở một coroutine mới rồi bỏ rơi việc cũ</label>
+			<label><input type="radio" name="q6" value="b" /> Nó chuyển cả coroutine sang IO vĩnh viễn — kể cả những khối code phía sau, cho tới khi coroutine kết thúc</label>
+			<label><input type="radio" name="q6" value="c" /> Nó tạm chuyển chỗ chạy cho khối, rồi khi khối xong việc trở về ngữ cảnh của người gọi</label>
+			<label><input type="radio" name="q6" value="d" /> Nó chỉ ghi nhận trong log là khối đang chạy trên IO, còn bản thân việc vẫn chạy ở chỗ cũ nguyên xi</label>
+			<p class="explain" hidden>
+				<strong>(c) đúng</strong> — coroutine của bạn vẫn là <strong>một mạch liên tục</strong>: <code>withContext</code> tạm chuyển chỗ chạy cho khối <code>&#123; &#125;</code>, khối được xếp chạy bằng dispatcher bạn truyền vào (ở đây <code>IO</code>), và khi khối xong, dòng sau <code>withContext</code> lại ở <strong>ngữ cảnh của người gọi</strong> — bạn không phải tự "quay về". (b) sai vì chỉ riêng khối được chuyển, không phải cả coroutine. (a) mô tả đúng lỗi trộn <code>suspend</code> với <code>launch</code>: người gọi tưởng chờ được kết quả trong khi hàm đã trả về ngay sau khi phóng việc đi. (d) vô nghĩa — việc thật sự được xếp chạy lại. Thêm một chi tiết đọc code: <code>withContext(...)</code> <strong>trả về giá trị</strong> của dòng cuối trong khối, nên hàm viết được bằng expression body trả thẳng <code>String</code> ra ngoài.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>7. Khi nào mới cần bọc <code>withContext(Dispatchers.IO)</code> quanh một lời gọi?</legend>
+			<label><input type="radio" name="q7" value="a" /> Lúc nào cũng nên bọc quanh lời gọi mạng — mạng luôn là việc IO, bọc cho chắc</label>
+			<label><input type="radio" name="q7" value="b" /> Khi muốn hàm trả về nhanh hơn, dù không đổi chỗ chạy</label>
+			<label><input type="radio" name="q7" value="c" /> Khi lời gọi là một hàm suspend của thư viện — để khỏi phụ thuộc cách cài đặt của thư viện</label>
+			<label><input type="radio" name="q7" value="d" /> Chỉ khi việc thật sự chặn thread hoặc tính toán nặng — và chỉ khi thư viện chưa tự lo phần đổi ngữ cảnh bên trong</label>
+			<p class="explain" hidden>
+				<strong>(d) đúng</strong> — quy tắc main-safety: trước khi chuyển việc sang <code>IO</code>/<code>Default</code>, hỏi đúng hai câu. (1) Việc này có <strong>thật sự</strong> chặn thread, hoặc thật sự tính toán nặng không? Nếu không → không cần chuyển gì cả. (2) Thư viện đang gọi đã tự lo chưa? Nếu hàm của nó là <code>suspend</code> và tài liệu nói gọi được từ main thread → <strong>đừng bọc thêm <code>IO</code></strong> — ví dụ Retrofit khi bạn khai <code>suspend fun</code> tự đưa việc gửi request sang nhóm thread riêng của nó (học ở W2). Nên (c) sai chính ở nửa sau, và (a) là thói quen bị phê phán trực tiếp: <code>withContext(Dispatchers.IO)</code> là đoạn code bị sao chép nhiều nhất trong lịch sử Android — dán khắp nơi quanh những hàm đã main-safe thì không giúp gì, mà còn che mất chỗ <em>thật sự</em> cần chú ý và tạo thói quen chọn dispatcher theo cảm giác. (b) sai vì <code>withContext</code> không làm gì nhanh hơn. Với code <em>bạn</em> viết thì ngược lại: lớp nào làm việc chặn bên trong hàm <code>suspend</code> thì chính lớp đó tự chuyển bằng <code>withContext</code>, để hàm gọi được an toàn từ main thread.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>8. Ba việc: nén một bức ảnh 12 megapixel · ghi một file log bằng một hàm chặn thread · cập nhật dòng chữ "Đã lưu" mà giao diện đang hiển thị. Dispatcher nào cho từng việc?</legend>
+			<label><input type="radio" name="q8" value="a" /> Tất cả dùng <code>Dispatchers.Default</code> — Default là lựa chọn mặc định chung cho mọi việc bên ngoài giao diện</label>
+			<label><input type="radio" name="q8" value="b" /> <code>Default</code> cho nén ảnh, <code>IO</code> cho ghi file, <code>Main</code> cho cập nhật dòng chữ</label>
+			<label><input type="radio" name="q8" value="c" /> Tất cả dùng <code>Dispatchers.IO</code> — ba việc trên đều thuộc loại chờ vào/ra nên cùng một nhóm</label>
+			<label><input type="radio" name="q8" value="d" /> Chọn theo tên việc: "ghi file" thì <code>IO</code>, mọi việc còn lại đều <code>Main</code> cho đồng bộ</label>
+			<p class="explain" hidden>
+				<strong>(b) đúng</strong> — chọn dispatcher theo <strong>bản chất của việc</strong>, không theo tên việc: <code>Main</code> cho việc của giao diện (cập nhật state mà giao diện đang đọc), <code>IO</code> cho việc <em>chặn thread để chờ</em> vào/ra, <code>Default</code> cho việc <em>tính toán tốn CPU</em> (nén ảnh là xử lý ảnh thật — đúng ví dụ của bài). (a) và (c) đều trộn ba bản chất khác nhau vào một dispatcher. Phân biệt <code>IO</code> ↔ <code>Default</code> không phải thẩm mỹ: <code>Default</code> có ít thread, đủ cho các core làm việc thật — đặt việc <em>nằm chờ</em> vào đó thì thread bị chiếm trong lúc không làm gì cả, các việc tính thật phải xếp hàng sau; <code>IO</code> được mở nhiều thread hơn vì biết phần lớn thời gian chúng chỉ đang chờ. Và nhớ: "gọi mạng" không tự động nghĩa là <code>IO</code> — câu hỏi đúng là "đoạn code này có thật sự chặn thread hay không".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>9. <code>messages.collect &#123; message -&gt; println(message) &#125;</code> — vì sao dòng này phải nằm bên trong <code>launch &#123; &#125;</code> hoặc <code>LaunchedEffect &#123; &#125;</code>?</legend>
+			<label><input type="radio" name="q9" value="a" /> Vì <code>collect</code> là một hàm suspend — nó chỉ chạy được trong một coroutine</label>
+			<label><input type="radio" name="q9" value="b" /> Vì <code>collect</code> cần một thread nền riêng, và chỉ <code>launch</code> mới cấp được thread đó</label>
+			<label><input type="radio" name="q9" value="c" /> Vì <code>collect</code> là hàm của Compose, chỉ gọi được trong thân composable</label>
+			<label><input type="radio" name="q9" value="d" /> Vì <code>collect</code> mở một coroutine mới cho mỗi giá trị đến</label>
+			<p class="explain" hidden>
+				<strong>(a) đúng</strong> — <code>collect</code> nhận một lambda (F1) và gọi lambda đó cho mỗi giá trị mà Flow phát ra, và bản thân nó là <strong>hàm <code>suspend</code></strong>: theo đúng quy tắc ở câu 4, nó chỉ gọi được từ một hàm <code>suspend</code> khác hoặc từ thân một coroutine. Vì vậy trong code thật bạn luôn thấy <code>collect</code> nằm bên trong <code>launch &#123; &#125;</code> hoặc <code>LaunchedEffect &#123; &#125;</code>, không bao giờ đứng trơ trong một hàm thường. (b) sai vì lý do không phải "cần thread nền" — nó cần <em>khả năng tạm dừng</em>; (c) sai vì <code>collect</code> của Kotlin Flow không phải API của Compose; (d) sai vì <code>collect</code> chạy trong <em>chính</em> coroutine chứa nó, không mở coroutine mới cho từng giá trị. Nhớ thêm cho đúng: <code>collect</code> không phải cứ chạy là chạy mãi — một Flow có thể phát vài giá trị rồi kết thúc, lúc đó <code>collect</code> xong việc và code sau nó chạy bình thường; "chạy tới khi nào" là tính chất của <em>dòng giá trị</em>, không phải của chữ <code>collect</code>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>10. <code>StateFlow&lt;UiState&gt;</code> thêm gì so với một <code>Flow</code> thường — và nó có tự dừng khi màn hình bị ẩn không?</legend>
+			<label><input type="radio" name="q10" value="a" /> Thêm lifecycle awareness: tự dừng khi màn hình ẩn và tự chạy lại khi người dùng quay vào</label>
+			<label><input type="radio" name="q10" value="b" /> Không thêm gì về mặt hành vi — chỉ là tên khác của <code>Flow</code> cho dễ đọc</label>
+			<label><input type="radio" name="q10" value="c" /> Thêm trạng thái hiện tại + các cập nhật sau đó (người mới lắng nghe nhận ngay giá trị hiện tại); còn tự biết vòng đời thì <strong>không</strong> — việc đó thuộc công cụ phía giao diện</label>
+			<label><input type="radio" name="q10" value="d" /> Thêm khả năng phát nhiều loại dữ liệu khác nhau cùng lúc</label>
+			<p class="explain" hidden>
+				<strong>(c) đúng</strong> — so sánh đúng một dòng mỗi bên: <code>Flow</code> = <strong>các giá trị theo thời gian</strong>; <code>StateFlow</code> = <strong>trạng thái hiện tại + các cập nhật theo thời gian</strong>. Hai điều StateFlow thêm: luôn có một giá trị hiện tại (nên khi tạo ra bắt buộc phải có giá trị khởi đầu), và ai vừa bắt đầu lắng nghe cũng nhận ngay giá trị đó rồi nhận tiếp các cập nhật. Nhưng <strong>StateFlow không tự "biết vòng đời" của màn hình</strong> — nó không tự dừng khi màn hình bị ẩn; việc lắng nghe <em>theo vòng đời</em> là một công cụ riêng phía giao diện (nội dung bài S4) — nên (a) sai, đó là câu folklore hay gặp nhất cần bỏ lại. (b) sai vì hai hành vi thêm nêu trên là thật. (d) sai vì kiểu giá trị vẫn là một — <code>UiState</code> (sealed state của F2). Cũng vì là dòng <em>trạng thái</em> nên nó không có điểm kết thúc tự nhiên: <code>collect</code> trên StateFlow không tự xong — đó là tính chất của dòng trạng thái, không phải của chữ <code>collect</code>; cần lắng nghe hai dòng trạng thái thì mở hai coroutine, đừng nối tiếp hai <code>collect</code>.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	import { initQuiz } from "../../scripts/quiz.ts";
+	initQuiz();
+</script>

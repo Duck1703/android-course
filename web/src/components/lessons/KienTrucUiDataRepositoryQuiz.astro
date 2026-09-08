@@ -1,0 +1,133 @@
+---
+// Quiz cho S5 — Kiến trúc app: tầng UI, tầng dữ liệu, và repository. Bài NEW (Giai đoạn 3, bài 5/5).
+// Nguồn nội dung: docs/drafts/s5-app-architecture-repository.md (đã chấp nhận) — quiz mới theo bài.
+// Chuẩn quiz: 4 đáp án / 1 đúng, giải thích 100% (đúng + vì sao distractor sai),
+// vị trí & độ dài đáp án đúng phân tán. Chấm bằng harness chung IMP-001.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>1. Trong bốn thứ dưới đây, cái nào <strong>không</strong> thuộc tầng UI?</legend>
+			<label><input type="radio" name="q1" value="a" /> <code>ChatUiState</code> với field <code>isSending</code></label>
+			<label><input type="radio" name="q1" value="b" /> Quyết định "khi chưa có tin nhắn nào thì hiện dòng chữ 'Chưa có tin nhắn'"</label>
+			<label><input type="radio" name="q1" value="c" /> Quyết định "nếu bộ nhớ đã có dữ liệu thì không đi lấy lại"</label>
+			<label><input type="radio" name="q1" value="d" /> Hàm <code>onMessageSent(text)</code> của ViewModel</label>
+			<p class="explain" hidden>
+				"Không đi lấy lại nếu đã có" là một quyết định về <strong>cách lấy dữ liệu</strong> — thuộc tầng dữ liệu, cụ thể là repository. Ba cái còn lại đều là chuyện của màn hình: 1 và 4 nằm trong ViewModel/UiState, 2 là một lựa chọn trình bày dựa trên state.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>2. Đoạn code "cố tình sai" mở đầu bài để ViewModel tự gọi <code>memoryCache</code>, <code>localStore</code>, <code>httpClient</code> — nó <em>chạy được</em>. Vấn đề thật là gì?</legend>
+			<label><input type="radio" name="q2" value="a" /> Nó không compile vì ba class đó không có trong thư viện Android</label>
+			<label><input type="radio" name="q2" value="b" /> ViewModel không được phép gọi nhiều nguồn trong cùng một hàm <code>refresh()</code></label>
+			<label><input type="radio" name="q2" value="c" /> Nó gộp hai việc chẳng liên quan vào cùng một file — mỗi lần <em>cách lấy dữ liệu</em> đổi, bạn phải sửa file đang giữ logic của màn hình</label>
+			<label><input type="radio" name="q2" value="d" /> Ba lời gọi đó phải chuyển xuống composable, không phải để trong ViewModel</label>
+			<p class="explain" hidden>
+				Vấn đề không nằm ở chỗ nó chạy hay không. Nó <strong>gộp hai việc vào cùng một file</strong> — "màn hình chat trông thế nào" và "dữ liệu của app được lấy ra bằng cách nào" — nên thêm một lớp cache, đổi từ mạng sang máy, ghép hai nguồn: việc nào cũng buộc chạm vào <code>ChatViewModel</code>, chỗ đang chịu trách nhiệm cho những thứ hoàn toàn khác. Sửa một chuyện, rủi ro làm hỏng chuyện kia. Thay vì vậy, cần một biên giới: repository (mục 5).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. Repository là gì, nói cho đúng?</legend>
+			<label><input type="radio" name="q3" value="a" /> Biên giới — tập hợp hàm có tên rõ ràng mà phần còn lại của app đi qua để hỏi tầng dữ liệu; "bằng cách nào" là chuyện bên trong</label>
+			<label><input type="radio" name="q3" value="b" /> Một class database, quản lý mọi câu truy vấn của app</label>
+			<label><input type="radio" name="q3" value="c" /> Một thành phần của Android, có vòng đời và annotation bắt buộc riêng</label>
+			<label><input type="radio" name="q3" value="d" /> Một lớp bắt buộc phải có trong mọi app Android, thiếu là sai kiến trúc</label>
+			<p class="explain" hidden>
+				Đây là định nghĩa của mục 5: phía trên gọi hàm theo <em>nhu cầu</em> ("cho tôi danh sách tin nhắn"), và "bằng cách nào" nằm bên trong. Phương án b lấy <em>một trường hợp thường gặp</em> (repository bọc database) làm <em>định nghĩa</em> — repository trong bài này giữ dữ liệu trong bộ nhớ và vẫn là repository đúng nghĩa (cạm bẫy (a)). Phương án c sai vì repository là một class Kotlin thường: không annotation, không vòng đời, không đăng ký ở đâu. Phương án d sai vì không có luật nào như thế — thêm class chỉ để "đúng kiến trúc" là cạm bẫy (c).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>4. Câu nào phát biểu <strong>đúng</strong> về repository?</legend>
+			<label><input type="radio" name="q4" value="a" /> Nó tự động là "nguồn đáng tin duy nhất" của mọi dữ liệu trong app</label>
+			<label><input type="radio" name="q4" value="b" /> Định nghĩa của nó là "một lớp bọc mỏng quanh một API lưu trữ"</label>
+			<label><input type="radio" name="q4" value="c" /> Có repository trong app nghĩa là dữ liệu đã được lưu bền trên máy</label>
+			<label><input type="radio" name="q4" value="d" /> Nó là một class Kotlin thường, tồn tại vì <em>bạn</em> quyết định đặt biên giới ở đó — không phải một món đồ của framework</label>
+			<p class="explain" hidden>
+				Theo "Ghi chú quan trọng — repository KHÔNG phải là gì" (mục 5): repository <strong>không tự động</strong> là nguồn đáng tin duy nhất (mục 6 nói riêng về chuyện này); "bọc mỏng" chỉ là <em>hình dạng thường thấy</em>, không phải <em>định nghĩa</em>; và repository ≠ storage — một repository giữ dữ liệu trong bộ nhớ là hoàn toàn hợp lệ (mục 6). Cách nhớ theo trách nhiệm: repository là một biên giới trong code của bạn, không phải một món đồ của framework.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>5. "Repository là single source of truth của app" — nói lại cho đúng thì phải là:</legend>
+			<label><input type="radio" name="q5" value="a" /> Repository luôn giữ bản dữ liệu chuẩn của app</label>
+			<label><input type="radio" name="q5" value="b" /> Mỗi repository <em>xác định</em> nguồn đáng tin cho loại dữ liệu nó phụ trách và kiểm soát đường vào; nguồn có thể là data source hoặc bộ nhớ tạm</label>
+			<label><input type="radio" name="q5" value="c" /> Nguồn đáng tin luôn là database — repository chỉ đứng bọc ngoài database</label>
+			<label><input type="radio" name="q5" value="d" /> Mọi repository trong một app phải dùng cùng một loại nguồn đáng tin</label>
+			<p class="explain" hidden>
+				Mục 6: repository thường là chỗ <strong>kiểm soát đường vào</strong> nguồn đáng tin, chứ không tự động <em>là</em> nguồn đó; nguồn có thể là một data source (ví dụ database) <strong>hoặc một bộ nhớ tạm</strong> mà repository đang cầm; và hai repository khác nhau trong cùng một app <em>có thể</em> có nguồn đáng tin khác nhau. Phương án a nói sai địa chỉ; c là bẫy "nguồn đáng tin luôn là database"; d bị phản bởi chính ví dụ của Kiểm tra nhanh 3 — <code>SettingsRepository</code> giữ trong bộ nhớ, <code>MessageRepository</code> đọc từ mạng, app vẫn hợp lệ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>6. Quy tắc chiều phụ thuộc — "ai được biết về ai"?</legend>
+			<label><input type="radio" name="q6" value="a" /> Data source được biết repository nào đang dùng nó, để tối ưu cách trả dữ liệu</label>
+			<label><input type="radio" name="q6" value="b" /> Repository được biết ViewModel nào đang gọi nó, để trả lời nhanh hơn cho màn hình đó</label>
+			<label><input type="radio" name="q6" value="c" /> Tầng dưới không bao giờ với tay lên tầng trên: repository không biết ViewModel nào gọi nó, data source không biết repository nào dùng nó</label>
+			<label><input type="radio" name="q6" value="d" /> Chiều phụ thuộc đi từ dưới lên: data source phụ thuộc ViewModel, ViewModel phụ thuộc composable</label>
+			<p class="explain" hidden>
+				Mục 8 — phần <em>bất biến</em> của kiến trúc. Mũi tên nghĩa là "phụ thuộc vào": composable phụ thuộc ViewModel, ViewModel phụ thuộc repository, repository phụ thuộc data source — nên tầng dưới không được biết gì về tầng trên (bảng "được phép biết về / không được biết về": data source chỉ biết chỗ dữ liệu nằm; repository không biết ViewModel · UI). Phương án d đảo ngược chiều. Cách kiểm bằng mắt khi đọc code: ViewModel thấy import thư viện lưu trữ/mạng, hay file tầng dữ liệu thấy import composable/<code>Modifier</code>/màu — biên giới đã bị phá (mục 3).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>7. Cùng một màn hình chat qua ba mốc: tin nhắn lấy từ bộ nhớ, rồi từ mạng, rồi thêm bản giữ tạm. Trong kiến trúc của bài này, bạn sửa file nào ở mỗi mốc?</legend>
+			<label><input type="radio" name="q7" value="a" /> Trong <code>ChatViewModel</code> — vì nó là nơi gọi lấy dữ liệu</label>
+			<label><input type="radio" name="q7" value="b" /> Trong file composable của màn hình — vì nó hiển thị dữ liệu lấy về</label>
+			<label><input type="radio" name="q7" value="c" /> Không phải sửa file nào — Android tự chuyển nguồn dữ liệu</label>
+			<label><input type="radio" name="q7" value="d" /> Bên trong <code>MessageRepository</code> — <code>ChatViewModel</code> không đổi một dòng qua cả ba mốc</label>
+			<p class="explain" hidden>
+				Kịch bản ba mốc ở mục 9 ("Cách B"): mốc 2 repository nhận vào một data source thay vì tự giữ danh sách, mốc 3 thêm chỗ giữ tạm bên trong repository — trong khi file <code>ChatViewModel</code> không đổi một dòng. Phương án a là "Cách A": mỗi thay đổi của cơ chế lấy dữ liệu lại chạm vào file đang giữ state của màn hình — đúng thứ biên giới sinh ra để tránh. Lưu ý cho đỡ kỳ vọng quá: hợp đồng <em>vẫn có thể</em> phải đổi khi <strong>nhu cầu của màn hình</strong> đổi (ví dụ màn hình cần biết "đang tải" để hiện vòng xoay) — nhưng khi đó nó đổi vì nhu cầu màn hình, không phải vì cơ chế lấy dữ liệu.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>8. <code>ChatUiState</code> gồm <code>messages</code>, <code>currentUserId</code>, <code>isSending</code>. Field nào do ViewModel <em>tự quyết</em>, không phải dữ liệu do nguồn nào trả về?</legend>
+			<label><input type="radio" name="q8" value="a" /> <code>messages</code> — ViewModel tự sinh danh sách tin nhắn</label>
+			<label><input type="radio" name="q8" value="b" /> <code>isSending</code> — nó là một quyết định về màn hình ("đang gửi thì vô hiệu hoá nút gửi")</label>
+			<label><input type="radio" name="q8" value="c" /> Không field nào — tất cả đều đến từ repository</label>
+			<label><input type="radio" name="q8" value="d" /> Nên chuyển <code>isSending</code> sang repository để các màn hình khác dùng chung</label>
+			<p class="explain" hidden>
+				Mục 10: hai field nằm cạnh nhau trong cùng một <code>data class</code>, nhưng đến từ hai nơi hoàn toàn khác nhau — <code>messages</code> từ tầng dữ liệu, <code>isSending</code> do ViewModel tự quyết. Đó là công việc riêng của ViewModel và là lý do nó tồn tại: <strong>repository cung cấp DỮ LIỆU, ViewModel biến dữ liệu đó thành UI STATE</strong>. Chuyển <code>isSending</code> sang repository là lấn tầng (mục 11): cùng một sự thật về dữ liệu, hai màn hình khác nhau có thể trình bày hai kiểu.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>9. Một <code>interface</code> chỉ có duy nhất một bản cài đặt, không có bản thứ hai trong tầm nhìn. Việc tách hợp đồng đã mua được gì?</legend>
+			<label><input type="radio" name="q9" value="a" /> Mua được biên giới — biên giới sinh ra từ từ khoá <code>interface</code></label>
+			<label><input type="radio" name="q9" value="b" /> Bắt buộc phải có: Kotlin không cho phép ViewModel phụ thuộc vào một class cụ thể</label>
+			<label><input type="radio" name="q9" value="c" /> Chưa mua được gì — nó thêm một file và một lớp gián tiếp; biên giới thật đến từ việc <em>ai phụ thuộc vào ai</em>, tách hợp đồng khi thật sự thấy bản cài đặt thứ hai</label>
+			<label><input type="radio" name="q9" value="d" /> Mua được hiệu năng — app chạy nhanh hơn nhờ Kotlin tối ưu lời gọi qua <code>interface</code></label>
+			<p class="explain" hidden>
+				Mục 13, nói thẳng để bạn không cargo-cult: biên giới đã tồn tại ngay từ lúc <code>ChatViewModel</code> chỉ biết <code>MessageRepository</code> ở mục 7 — nó đến từ quan hệ phụ thuộc, không đến từ từ khoá <code>interface</code>. Quy tắc thực dụng: tách hợp đồng khi bạn <em>thật sự</em> thấy có bản cài đặt thứ hai (một bản giả để thử màn hình, một nguồn dữ liệu khác đang tới), đừng tách chỉ vì "kiến trúc nói thế". Kotlin vẫn cho phụ thuộc class cụ thể, và chuyện này không liên quan hiệu năng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>10. Hợp đồng repository khai <code>suspend fun loadMessages(): List&lt;Message&gt;</code>. Phát biểu nào đúng về <code>suspend</code> ở đây?</legend>
+			<label><input type="radio" name="q10" value="a" /> Nó bảo Android chạy hàm này ở một thread nền do repository tự chọn</label>
+			<label><input type="radio" name="q10" value="b" /> Nó nghĩa là hàm này chắc chắn chậm, nên người gọi phải bọc <code>withContext(Dispatchers.IO)</code> quanh mỗi lời gọi</label>
+			<label><input type="radio" name="q10" value="c" /> Nó nghĩa là hàm này chỉ được gọi từ bên trong composable</label>
+			<label><input type="radio" name="q10" value="d" /> Nó chỉ nói "việc này <em>có thể</em> phải tạm dừng chờ, rồi tiếp tục" — không tự chọn thread; nếu bản cài đặt chặn thread thì chính nó mới <code>withContext(...)</code></label>
+			<p class="explain" hidden>
+				Mục 15, đúng mô hình của S1: <code>suspend</code> ở biên giới dữ liệu là lời khai chính xác cho "chờ" — chuyện thường xuyên ở tầng dữ liệu (chờ mạng, chờ đọc từ máy) — và <strong>hết</strong>. Nó không chọn thread, không chọn dispatcher; một hàm <code>suspend</code> có thể trả về ngay, như <code>InMemoryMessageRepository</code> ở mục 13. Vì bản cài đặt trong bài đọc một danh sách có sẵn trong bộ nhớ — thứ không chặn thread — <code>refresh()</code> không cần <code>Dispatchers.IO</code>; bọc thêm là một dòng không mua được gì và dạy sai rằng "gọi repository thì phải bọc IO". Nếu bạn gọi một hàm <code>suspend</code> của thư viện mà tài liệu nói main-safe thì cũng đừng bọc thêm.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	// IMP-001: chấm bài + "Câu x/N" + retry ẩn→hiện→ẩn do harness chung phụ trách.
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>

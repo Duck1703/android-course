@@ -1,0 +1,524 @@
+---
+// Chương 6.1 — State trong Compose (tách từ monolith Ch06AdvancedJetpackCompose.astro, batch Stage 3 IMP-035).
+// Registry: S2 — slug ch06-state-va-recomposition · stageId state · bài 2/5 Giai đoạn 3.
+// Sở hữu nội dung (mốc S2 START/END của monolith): mental model state · mutableStateOf · remember · by payoff ·
+// recomposition · vòng đời state ở mức Compose · rememberSaveable (nhận diện). KHÔNG chứa ViewModel, KHÔNG chứa hoisting/UDF.
+// Code const giữ nguyên provenance: aaf-materials/06-advanced-jetpack-compose — mọi số dòng trích dẫn đã mở file thật để kiểm tại monolith.
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/06-advanced-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat";
+const STARTER = "aaf-materials/06-advanced-jetpack-compose/projects/starter/app/src/main/java/com/kodeco/chat";
+const FINAL_ROOT = "aaf-materials/06-advanced-jetpack-compose/projects/final";
+const BOOK = "content/book/ch06-advanced-jetpack-compose.md";
+
+const basicTextFieldRealCode = `BasicTextField(
+  value = textFieldValue,
+  onValueChange = { onTextChanged(it) },
+  modifier = Modifier
+      .fillMaxWidth()
+      .padding(start = 32.dp)
+      .align(Alignment.CenterStart)
+      .onFocusChanged { state ->
+          if (lastFocusState != state.isFocused) {
+              onTextFieldFocused(state.isFocused)
+          }
+          lastFocusState = state.isFocused
+      },
+  keyboardOptions = KeyboardOptions(
+    keyboardType = keyboardType,
+    autoCorrect = true,
+    imeAction = ImeAction.Send
+  ),
+  keyboardActions = KeyboardActions(
+    onSend = onMessageSent
+  ),
+  maxLines = 1,
+  cursorBrush = SolidColor(LocalContentColor.current),
+  textStyle = LocalTextStyle.current.copy(color = LocalContentColor.current)
+)`;
+
+const rememberStateCode = `var chatInputText by remember { mutableStateOf("") }`;
+
+const userInputStatefulCode = `@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun UserInput(
+  onMessageSent: (String) -> Unit,
+  modifier: Modifier = Modifier,
+  resetScroll: () -> Unit = {},
+) {
+  var currentInputSelector by rememberSaveable { mutableStateOf(InputSelector.NONE) }
+  val dismissKeyboard = { currentInputSelector = InputSelector.NONE }
+
+  // Intercept back navigation if there's a InputSelector visible
+  if (currentInputSelector != InputSelector.NONE) {
+    // TODO
+//        BackPressHandler(onBackPressed = dismissKeyboard)
+  }
+
+  var textState by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+    mutableStateOf(TextFieldValue())
+  }
+
+  var photoUri: Uri? by remember { mutableStateOf(null) }
+
+  // Used to decide if the keyboard should be shown
+  var textFieldFocusState by remember { mutableStateOf(false) }`;
+
+// ---------------------------------------------------------------------------
+// Ví dụ tối giản do khoá học dựng (KHÔNG trích aaf-materials) — dùng cho phần
+// dạy khái niệm trước khi vào code thật của project.
+// ---------------------------------------------------------------------------
+
+const plainVarCode = `@Composable
+fun Counter() {
+  var count = 0                       // biến Kotlin thường
+
+  Button(onClick = { count++ }) {
+    Text(text = "Đã bấm $count lần")
+  }
+}`;
+
+const stateVarCode = `@Composable
+fun Counter() {
+  var count by remember { mutableStateOf(0) }
+
+  Button(onClick = { count++ }) {
+    Text(text = "Đã bấm $count lần")
+  }
+}`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>State trong Compose. Học xong bài này bạn sẽ</strong>
+		<ul>
+			<li>Nói được <strong>state là gì</strong> ở mức dùng được: thông tin có thể đổi, và giá trị hiện tại của nó
+				quyết định giao diện trông thế nào.</li>
+			<li>Giải thích được vì sao <strong>một biến Kotlin thường không đủ</strong> để Compose tự cập nhật giao diện, và
+				<code>mutableStateOf</code> thêm điều gì.</li>
+			<li>Nói đúng <code>remember</code> giữ giá trị <em>qua cái gì</em> — và ba thứ nó <strong>không</strong> làm.</li>
+			<li>Giải thích được <strong>recomposition</strong> mà không phóng đại: Compose chạy lại phần code liên quan, chứ
+				không tạo lại Activity và không phải lúc nào cũng chạy lại mọi thứ.</li>
+			<li>Chỉ ra được <strong>bốn mức vòng đời</strong> của một giá trị (biến thường · <code>remember</code> ·
+				<code>rememberSaveable</code> · nơi lưu lâu dài) và không lẫn chúng với nhau.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Vì sao bài này quan trọng.</strong> Chương 5 cho bạn dựng được một màn hình <em>đứng yên</em>: mọi thứ hiện
+		ra đúng, nhưng không có gì đổi được. Mọi app thật thì ngược lại — người dùng gõ chữ, mở/đóng một mục, chọn tab, và
+		giao diện phải theo. Bài này là chỗ Compose trở nên "sống": bạn học cách nói với Compose *"giá trị này có thể
+		đổi"*, và Compose lo phần vẽ lại. Không có nó, mọi thứ ở hai bài sau (state để ở đâu, ViewModel giữ state màn
+		hình) đều không có nền.
+	</p>
+	<div class="callout">
+		<strong>Cần biết trước.</strong> <strong>Chương 5</strong> — composable, <code>Modifier</code>, danh sách,
+		<code>MaterialTheme</code>, <code>@Preview</code>; đặc biệt là ý "thân hàm composable là <em>câu trả lời</em> cho câu
+		hỏi <em>giao diện nên trông thế nào</em>, không phải một hành động". <strong>Nền tảng Kotlin F1–F2</strong> — lambda,
+		lambda đuôi, kiểu hàm <code>() -&gt; Unit</code>, <code>data class</code>, và <strong><code>by</code> (uỷ quyền
+		thuộc tính)</strong>. Bài này dùng lại chúng như công cụ, không dạy lại.
+	</div>
+
+	<h2 id="state-la-gi">1. Màn hình không đứng yên: state là gì</h2>
+	<p>
+		Mở app chat của Chương 5 ra và để ý những thứ <em>có thể khác đi</em> trong khi màn hình vẫn đang hiển thị: nội dung
+		bạn đang gõ trong ô nhập, danh sách tin nhắn, bảng emoji đang mở hay đóng, vị trí cuộn của danh sách. Mỗi thứ đó là
+		một mẩu thông tin, và mỗi thứ đó <strong>đổi thì giao diện phải đổi theo</strong>.
+	</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: giao diện là hàm của state</strong>
+		<p>
+			<strong>State</strong> = thông tin có thể thay đổi, mà <em>giá trị hiện tại của nó</em> quyết định giao diện trông
+			thế nào. Viết thành một quan hệ để nhớ:
+		</p>
+		<p style="text-align:center"><strong>giao diện = f(state)</strong></p>
+		<p>
+			Đọc quan hệ đó theo cả hai chiều, vì cả hai chiều đều có ích. Xuôi: <em>cùng một state thì luôn cho ra cùng một
+			giao diện</em> — bạn không phải nhớ "màn hình đang ở tình trạng nào" nữa. Ngược: <em>muốn giao diện khác đi thì
+			phải đổi state</em>, không có đường tắt nào khác.
+		</p>
+	</div>
+	<p>
+		Câu hỏi thực dụng để phân biệt state với dữ liệu thường: <strong>"giá trị này có thể khác đi trong khi màn hình vẫn
+		đang hiển thị hay không?"</strong> Nếu có, nó là state và giao diện phải theo dõi nó. Nếu không (tên app, màu cố định
+		trong theme, ảnh avatar mặc định), nó chỉ là dữ liệu tĩnh.
+	</p>
+	<p>
+		Và đây là nghĩa vụ đi kèm, cũng là loại lỗi mà Compose được thiết kế để làm cho khó xảy ra: <strong>khi state đổi,
+		giao diện bắt buộc phải phản ánh state mới.</strong> Nếu danh sách tin nhắn trong bộ nhớ đã có 4 phần tử mà màn hình
+		vẫn hiện 3, app của bạn đang sai — dù không có exception nào được ném ra. Loại lỗi này gọi là <em>out of sync</em>
+		(lệch pha giữa dữ liệu và giao diện).
+	</p>
+	<p>
+		Ở bài này bạn chỉ làm việc với <strong>state cục bộ của một composable</strong> — thứ chỉ khu vực đó cần biết.
+		Câu hỏi "state nên để ở đâu" là nội dung bài sau (state hoisting &amp; UDF), và "state của cả màn hình thì ai giữ"
+		là bài ViewModel &amp; UI state.
+	</p>
+
+	<p class="notice">
+		<strong>Về project mẫu dùng trong cả ba bài của giai đoạn này.</strong> Code thật ở đây tiếp tục là app chat của Chương 5. Trạng thái
+		hiện tại của nó: giao diện đã dựng xong (danh sách tin nhắn, avatar, bong bóng chat, app bar, ô nhập liệu), nhưng dữ
+		liệu đến từ một file dữ liệu giả và <strong>chưa gửi được tin nhắn nào</strong> — hàm
+		<code>ConversationUiState.addMessage()</code> chỉ có một dòng <code>// TODO</code>. Ba bài của giai đoạn này lần lượt
+		lấp chỗ đó: hiểu state (bài này), quyết định state ở đâu (bài sau), rồi đưa state của màn hình ra khỏi UI vào
+		ViewModel để nút gửi hoạt động thật (bài ViewModel &amp; UI state). Vẫn chưa có mạng (giai đoạn Mạng) và chưa lưu được gì giữa hai lần mở
+		app (giai đoạn Dữ liệu cục bộ).
+	</p>
+
+	<h2 id="mutable-state-of">2. Vì sao biến Kotlin thường không đủ: <code>mutableStateOf</code></h2>
+	<p>Thử viết một bộ đếm bằng đúng những gì bạn đã biết từ F1 và Chương 5:</p>
+	<Code code={plainVarCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đoạn này compile được, và <code>count++</code> <em>thật sự</em> chạy. Nhưng chạy app thì con số trên nút không bao giờ
+		đổi. Vì sao?
+	</p>
+	<p>
+		Vì Compose không có cách nào biết chuyện gì vừa xảy ra. <code>count</code> chỉ là một ô nhớ Kotlin bình thường; không
+		ai báo cho Compose rằng giá trị vừa đổi, nên Compose không có lý do gì để hỏi lại câu <em>"giao diện nên trông thế
+		nào?"</em>. Chưa kể một vấn đề thứ hai sẽ nói ở mục 3: mỗi lần Compose chạy lại thân hàm, dòng
+		<code>var count = 0</code> lại chạy lại và đặt nó về 0.
+	</p>
+	<p>Chỗ thiếu là một loại giá trị mà Compose <em>quan sát được</em>. Đó là việc của <code>mutableStateOf</code>:</p>
+	<Code code={stateVarCode} lang="kotlin" theme="github-dark" />
+	<div class="callout mental">
+		<strong>Mô hình trực quan: state Compose là giá trị có thông báo</strong>
+		<p>
+			<code>mutableStateOf(0)</code> tạo ra một <em>ô nhớ mà Compose theo dõi được</em>. Hai nửa cơ chế, và cả hai đều
+			cần:
+		</p>
+		<ul>
+			<li><strong>Khi code trong một composable <em>đọc</em> giá trị đó</strong>, Compose ghi nhận: "phần giao diện này
+				phụ thuộc vào ô nhớ kia."</li>
+			<li><strong>Khi giá trị trong ô nhớ <em>đổi</em></strong>, Compose biết những phần nào đã đọc nó, và xếp lịch chạy
+				lại đúng những phần đó.</li>
+		</ul>
+		<p>
+			Nói ngắn: <strong>Compose không theo dõi mọi biến — nó theo dõi những state nó thấy composable của bạn đọc.</strong>
+			Đó là lý do phải khai báo state bằng một API riêng thay vì một <code>var</code> thường.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Hai cách nói sai rất phổ biến, tránh ngay từ đầu.</strong> Thứ nhất: <em>"đổi <code>mutableStateOf</code> là vẽ
+		lại cả màn hình"</em> — không đúng; Compose xếp lịch chạy lại <em>những phần đã đọc state đó</em>, và nó còn được phép
+		bỏ qua phần nào không cần (mục 3). Thứ hai: <em>"Compose tự theo dõi mọi biến trong composable"</em> — cũng không đúng,
+		và nếu tin điều đó thì bạn sẽ không hiểu vì sao đoạn code đầu mục này không chạy.
+	</p>
+
+	<h2 id="remember">3. <code>remember</code>: giữ giá trị qua các lần vẽ lại</h2>
+	<p>
+		Đoạn code ở mục 2 có <code>remember</code> mà chưa được giải thích. Đây là lúc tách nó ra, vì nó trả lời một câu hỏi
+		khác hẳn <code>mutableStateOf</code>.
+	</p>
+	<p>
+		<code>mutableStateOf</code> trả lời <em>"làm sao Compose biết giá trị đổi?"</em>. Còn <code>remember</code> trả lời
+		<em>"làm sao ô nhớ đó không bị tạo lại từ đầu?"</em>. Nhớ lại Chương 5: thân hàm composable được gọi lại mỗi khi cần
+		vẽ lại. Nếu bạn viết <code>var count = mutableStateOf(0)</code> mà không có <code>remember</code>, thì mỗi lần vẽ lại
+		là một ô nhớ <em>mới</em> với giá trị 0 — bạn bấm nút, số nhảy lên 1, rồi lập tức về 0.
+	</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: <code>remember</code> là cái ngăn gắn với chỗ này trong giao diện</strong>
+		<p>
+			<code>remember &#123; ... &#125;</code> chạy khối trong ngoặc <strong>đúng một lần</strong>, rồi cất kết quả vào một cái ngăn
+			gắn với <em>vị trí đó</em> trong giao diện. Những lần vẽ lại sau, nó không chạy khối nữa — nó mở ngăn ra và trả lại
+			giá trị cũ.
+		</p>
+		<p>
+			Ngăn đó tồn tại <strong>trong bao lâu?</strong> Chừng nào vị trí đó còn nằm trong giao diện. Composable rời khỏi
+			giao diện (màn hình bị thay, item bị cuộn ra khỏi danh sách) thì ngăn bị dọn — quay lại là một ngăn mới.
+		</p>
+	</div>
+	<p>Và đây là ba điều <code>remember</code> <strong>không</strong> làm, nói ra để bạn không kỳ vọng sai:</p>
+	<ul>
+		<li><strong>Không</strong> lưu ra đĩa. Không có file nào, không có database nào.</li>
+		<li><strong>Không</strong> sống qua việc Activity bị tạo lại (xoay màn hình) — chuyện này thuộc
+			<code>rememberSaveable</code> ngay dưới đây.</li>
+		<li><strong>Không</strong> sống qua việc app bị hệ thống dọn khỏi bộ nhớ hay bị tắt rồi mở lại. Muốn *lưu thật* thì
+			cần nơi lưu lâu dài — giai đoạn Dữ liệu cục bộ của khoá.</li>
+	</ul>
+	<h3>3.1 <code>by</code> ở đây là Kotlin, không phải Compose</h3>
+	<p>Đọc lại đúng dòng bạn đã gặp từ Chương 3 và Chương 5, lần này tách bạch hai tầng:</p>
+	<Code code={rememberStateCode} lang="kotlin" theme="github-dark" />
+	<table class="api">
+		<thead>
+			<tr><th>Mảnh</th><th>Thuộc về</th><th>Nhiệm vụ</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>var</code></td>
+				<td><strong>Kotlin</strong></td>
+				<td>Cho phép gán lại — cần <code>var</code> vì code sẽ gán giá trị mới khi người dùng gõ.</td>
+			</tr>
+			<tr>
+				<td><code>by</code></td>
+				<td><strong>Kotlin</strong> (F2)</td>
+				<td>
+					Uỷ quyền việc đọc/ghi thuộc tính cho object bên phải. Nhờ nó bạn viết <code>chatInputText = "abc"</code> chứ
+					không phải <code>chatInputText.value = "abc"</code>. <code>by</code> không phải từ khoá của Compose.
+				</td>
+			</tr>
+			<tr>
+				<td><code>remember &#123; ... &#125;</code></td>
+				<td><strong>Compose</strong></td>
+				<td>Chạy khối một lần và giữ kết quả qua các lần vẽ lại.</td>
+			</tr>
+			<tr>
+				<td><code>mutableStateOf("")</code></td>
+				<td><strong>Compose</strong></td>
+				<td>Tạo ô nhớ mà Compose quan sát được.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Câu để nhớ: <strong>Compose cung cấp ô nhớ có thông báo; Kotlin <code>by</code> chỉ là đường ống giúp bạn đọc/ghi nó
+		như một biến thường.</strong> Hành vi "báo cho Compose biết" nằm ở ô nhớ, không nằm ở chữ <code>by</code>.
+	</p>
+
+	<h3>3.2 Trong code thật: một composable giữ bốn state cùng lúc</h3>
+	<p>
+		Khu vực nhập liệu của app chat là composable giữ nhiều state nhất — và mỗi state ở đây đều là *state cục bộ* theo đúng
+		nghĩa: chỉ khu vực đó cần biết.
+	</p>
+	<Code code={userInputStatefulCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> (dòng 132–155)</p>
+	<ul>
+		<li><code>currentInputSelector</code> — đang mở bảng emoji, bảng chọn ảnh, hay không mở gì. Chuyện nội bộ của khu vực
+			nhập liệu; phần còn lại của màn hình không cần biết.</li>
+		<li><code>textState</code> — nội dung đang gõ. Kiểu <code>TextFieldValue</code> chứ không phải <code>String</code>, vì
+			nó còn chứa <em>vị trí con trỏ</em> và <em>vùng đang chọn</em>.</li>
+		<li><code>photoUri</code> — ảnh người dùng vừa chọn. Ghi nhớ biến này; bài ViewModel &amp; UI state sẽ quay lại nó.</li>
+		<li><code>textFieldFocusState</code> — ô nhập có đang được focus không, dùng để quyết định hiện bàn phím.</li>
+	</ul>
+	<p>
+		Để ý ba trong bốn state dùng <code>remember</code>, nhưng <code>textState</code> dùng
+		<strong><code>rememberSaveable</code></strong>. Khác biệt đó là chủ đề tiếp theo.
+	</p>
+	<h3>3.3 <code>rememberSaveable</code> và bốn mức vòng đời của một giá trị</h3>
+	<p>
+		<code>rememberSaveable</code> làm mọi việc <code>remember</code> làm, <strong>cộng thêm một điều</strong>: nó gửi giá
+		trị vào cơ chế <em>saved instance state</em> của Android, nên giá trị có thể được <em>phục hồi</em> khi Activity bị tạo
+		lại — trường hợp thường gặp nhất là xoay màn hình. Đổi lại, nó chỉ nhận được các kiểu giá trị có cách lưu: kiểu cơ bản
+		thì tự động, kiểu phức tạp thì phải đưa cho nó một "người phiên dịch" (đó là vế
+		<code>stateSaver = TextFieldValue.Saver</code> trong đoạn code trên).
+	</p>
+	<p class="notice">
+		<strong>Đừng đọc <code>rememberSaveable</code> thành "lưu lâu dài".</strong> Nó <em>không</em> phải nơi lưu dữ liệu.
+		Cơ chế phục hồi này gắn với việc hệ thống dựng lại giao diện, không phải một kho lưu trữ — nó không có gì để phục hồi
+		sau khi bạn tắt app rồi mở lại vào ngày mai.
+	</p>
+	<p>
+		Bốn mức dưới đây là cùng một câu hỏi — <em>"giá trị này sống được bao lâu?"</em> — trả lời ở bốn tầng. Lẫn chúng với
+		nhau là nguồn của rất nhiều kỳ vọng sai:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Cách giữ giá trị</th><th>Sống qua lần vẽ lại?</th><th>Sống qua Activity bị tạo lại?</th><th>Sống qua tắt app?</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Biến thường trong thân composable</td>
+				<td><strong>Không</strong> — chạy lại thân hàm là tạo lại</td>
+				<td>Không</td>
+				<td>Không</td>
+			</tr>
+			<tr>
+				<td><code>remember &#123; ... &#125;</code></td>
+				<td><strong>Có</strong>, chừng nào vị trí đó còn trong giao diện</td>
+				<td>Không</td>
+				<td>Không</td>
+			</tr>
+			<tr>
+				<td><code>rememberSaveable &#123; ... &#125;</code></td>
+				<td>Có</td>
+				<td><strong>Có</strong> (với giá trị lưu được)</td>
+				<td>Không</td>
+			</tr>
+			<tr>
+				<td><strong>ViewModel</strong> — bài ViewModel &amp; UI state</td>
+				<td>Có</td>
+				<td><strong>Có</strong> — và giữ state của cả màn hình, không chỉ một ô</td>
+				<td>Không</td>
+			</tr>
+			<tr>
+				<td>Nơi lưu lâu dài (giai đoạn Dữ liệu cục bộ)</td>
+				<td>Có</td>
+				<td>Có</td>
+				<td><strong>Có</strong></td>
+			</tr>
+		</tbody>
+	</table>
+	<p class="hint">
+		<strong>Một lựa chọn không đồng nhất trong chính project mẫu, đáng nhìn thấy.</strong> <code>textState</code> dùng
+		<code>rememberSaveable</code> (mất chữ đang gõ khi xoay máy thì người dùng rất khó chịu), nhưng <code>photoUri</code>
+		chỉ dùng <code>remember</code> — nghĩa là xoay máy sẽ mất ảnh vừa chọn. Không có lý do kỹ thuật nào bắt phải khác nhau
+		như vậy; đây là chỗ code thật chưa được rà lại.
+	</p>
+
+	<h2 id="recomposition">4. Recomposition: Compose chạy lại phần liên quan</h2>
+	<p>
+		Compose là <em>declarative</em> (khai báo): bạn không ra lệnh "hãy đổi chữ trong ô này", bạn mô tả "với state này thì
+		giao diện trông thế nào". Vậy khi state đổi, cách duy nhất để giao diện khác đi là <strong>Compose chạy lại đoạn code
+		mô tả đó</strong>. Một lượt chạy lại như vậy gọi là <strong>recomposition</strong>.
+	</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: mô tả lại, không ra lệnh sửa</strong>
+		<p>
+			Ở cách làm cũ (giao diện bằng XML), UI là một cây object: bạn giữ tham chiếu tới object rồi <em>ra lệnh</em> cho nó
+			đổi (<code>textView.setText("abc")</code>). Ở Compose không có object nào để bạn giữ. Bạn <em>mô tả</em>, và khi state
+			đổi Compose gọi lại hàm mô tả. Cùng một state luôn cho ra cùng một giao diện.
+		</p>
+		<p>
+			Đây là lý do bạn sẽ không tìm thấy hàm nào kiểu <code>capNhatDanhSachTinNhan()</code> trong app này — không có chỗ
+			nào "ra lệnh cập nhật", chỉ có state đổi.
+		</p>
+	</div>
+	<p>
+		Bây giờ phần dễ nói quá lên, nên nói chính xác ngay. Recomposition <strong>không</strong> phải những điều sau:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Cách hiểu sai</th><th>Thực tế</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>"Activity bị tạo lại"</td>
+				<td>Không liên quan gì tới lifecycle của Activity. Recomposition xảy ra <em>bên trong</em> một Activity đang sống
+					bình thường, hàng chục lần mỗi giây nếu cần.</td>
+			</tr>
+			<tr>
+				<td>"Cả giao diện chạy lại từ đầu"</td>
+				<td>Compose chạy lại <em>phần đã đọc state vừa đổi</em>, và còn được phép <strong>bỏ qua</strong> những phần nó
+					xác định là không cần chạy lại.</td>
+			</tr>
+			<tr>
+				<td>"Mọi composable đều chạy lại"</td>
+				<td>Không. Một composable không đọc state đó thì không có lý do gì phải chạy lại.</td>
+			</tr>
+			<tr>
+				<td>"Recompose là vẽ pixel ngay lập tức"</td>
+				<td>Chạy lại code mô tả và vẽ ra pixel là hai việc khác nhau. Recomposition là việc thứ nhất.</td>
+			</tr>
+			<tr>
+				<td>"Recomposition giống các callback lifecycle"</td>
+				<td>Lifecycle có thứ tự và số lần đoán được; recomposition thì <strong>không</strong> — bạn không kiểm soát nó chạy
+					bao nhiêu lần. Chính vì vậy mới có mục 4.2.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Cơ chế bên dưới việc "biết phần nào cần chạy lại" và "bỏ qua được phần nào" là chuyện của trình biên dịch Compose —
+		không cần cho việc đọc và viết code đúng.
+	</p>
+	<h3>4.1 Bạn đã tạo recomposition từ Chương 5 mà chưa biết</h3>
+	<p>
+		Ô nhập tin nhắn là ví dụ sẵn có. Đây là code thật, đầy đủ:
+	</p>
+	<Code code={basicTextFieldRealCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> (dòng 427–451)</p>
+	<p>
+		Đọc dòng <code>onValueChange = &#123; onTextChanged(it) &#125;</code>: khi bạn gõ một ký tự,
+		<code>BasicTextField</code> <strong>không tự sửa nội dung của chính nó</strong>. Nó chỉ <em>báo</em> "người dùng vừa
+		muốn giá trị mới là cái này". Nơi giữ state nhận tin, cập nhật giá trị, và vì giá trị đó đã được đọc ở đây, Compose
+		chạy lại phần này với giá trị mới. Nghĩa là <strong>mỗi ký tự bạn gõ là một lượt recomposition</strong> — và cả file
+		này không có dòng nào tự gán lại <code>textFieldValue</code>.
+	</p>
+	<p>Hai chi tiết nhỏ trong đoạn trên, nhân lúc đang đọc:</p>
+	<ul>
+		<li><code>keyboardActions = KeyboardActions(onSend = onMessageSent)</code> — đây là lý do bấm biểu tượng máy bay giấy
+			trên bàn phím cũng gửi được tin nhắn, không chỉ nút Send trong app.</li>
+		<li><code>maxLines = 1</code> — ô nhập chỉ một dòng, nên tin nhắn dài vẫn không làm ô nhập cao lên.</li>
+	</ul>
+
+	<h3>4.2 Vì sao "việc phụ" không được đặt bừa vào thân composable</h3>
+	<p>
+		Chương 5 đã cho bạn quy tắc: thân hàm composable là <em>câu trả lời</em> cho câu hỏi "giao diện nên trông thế nào",
+		không phải chỗ đặt <em>hành động</em>. Đến đây bạn có <strong>lý do</strong> cho quy tắc đó, không chỉ là lời khuyên:
+		vì thân hàm được chạy lại theo số lần Compose thấy cần, và <em>bạn không kiểm soát con số đó</em>.
+	</p>
+	<p>
+		Đặt một lời ghi log vào thân hàm thì log đầy rác. Đặt một lời gọi mạng vào đó thì app tự gọi mạng liên tục. Đó là lý
+		do Compose có <strong>chỗ riêng</strong> cho loại việc này — <code>LaunchedEffect</code> mà bạn đã gặp ở Chương 5, và
+		S1 đã cho bạn biết khối trong đó là một coroutine do Compose làm chủ. Bài này không mở lại chủ đề đó; chỉ cần thấy
+		nó nối vào đâu.
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Một composable hiện một bộ đếm. Người viết khai <code>var count = mutableStateOf(0)</code> (không có
+			<code>remember</code>), rồi bấm nút thì <code>count.value++</code>. Chạy thử: số nhảy lên 1 rồi lập tức về 0. Hỏi:
+			<strong>(a)</strong> Compose có biết giá trị vừa đổi không? <strong>(b)</strong> Vì sao nó về 0? <strong>(c)</strong>
+			Sửa thế nào?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>(a) Có.</strong> <code>mutableStateOf</code> tạo state Compose quan sát được, và composable này có đọc nó,
+				nên Compose xếp lịch chạy lại phần liên quan. Bước "thông báo" hoạt động đúng.
+			</p>
+			<p>
+				<strong>(b)</strong> Chính lượt chạy lại đó là vấn đề: thân hàm chạy lại từ đầu, dòng
+				<code>var count = mutableStateOf(0)</code> chạy lại và tạo một ô nhớ <em>mới</em> mang giá trị 0. Giá trị 1 nằm ở
+				ô nhớ cũ, vừa bị bỏ đi.
+			</p>
+			<p>
+				<strong>(c)</strong> Bọc trong <code>remember</code>: <code>var count by remember &#123; mutableStateOf(0) &#125;</code>.
+				Hai API trả lời hai câu hỏi khác nhau — <em>Compose có biết không</em> (<code>mutableStateOf</code>) và
+				<em>ô nhớ có bị tạo lại không</em> (<code>remember</code>) — nên gần như luôn cần cả hai.
+			</p>
+		</details>
+	</div>
+
+	<div class="callout journey">
+		<strong>Tóm tắt</strong>
+		<ol>
+			<li><strong>State</strong> = thông tin có thể đổi mà giá trị hiện tại của nó quyết định giao diện. Quan hệ để nhớ:
+				<em>giao diện = f(state)</em>; muốn giao diện khác thì phải đổi state.</li>
+			<li><code>mutableStateOf</code> tạo state <strong>Compose quan sát được</strong>: Compose ghi nhận phần nào đã đọc
+				nó, và khi giá trị đổi thì xếp lịch chạy lại đúng những phần đó. Compose <em>không</em> theo dõi mọi biến.</li>
+			<li><code>remember</code> giữ giá trị <strong>qua các lần vẽ lại</strong>, chừng nào vị trí đó còn trong giao diện.
+				Nó không lưu ra đĩa, không sống qua việc Activity bị tạo lại, không sống qua tắt app.</li>
+			<li><code>rememberSaveable</code> thêm khả năng <strong>phục hồi</strong> giá trị (lưu được) khi Activity bị tạo lại
+				— vẫn không phải nơi lưu lâu dài.</li>
+			<li><strong>Recomposition</strong> = Compose chạy lại đoạn code mô tả phần liên quan. Không phải tạo lại Activity,
+				không phải "cả app vẽ lại", và không đoán được số lần — nên việc phụ phải đặt đúng chỗ dành cho nó.</li>
+			<li>Trong <code>var x by remember &#123; mutableStateOf(...) &#125;</code>: <code>var</code> và <code>by</code> là
+				<strong>Kotlin</strong>; <code>remember</code> và <code>mutableStateOf</code> là <strong>Compose</strong>.</li>
+		</ol>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía trên.
+	</p>
+	<h3>State trong Compose</h3>
+	<ul>
+		<li>
+			<strong>Tưởng một <code>var</code> thường là state Compose.</strong> Compose chỉ theo dõi state nó thấy composable đọc.
+			Một biến Kotlin thường đổi giá trị thì không có thông báo nào, và còn bị tạo lại mỗi lần thân hàm chạy lại (mục 2–3).
+		</li>
+		<li>
+			<strong>Tưởng <code>remember</code> là "lưu lại".</strong> Nó giữ giá trị qua các lần vẽ lại, chừng nào vị trí đó còn
+			trong giao diện — không ra đĩa, không qua Activity bị tạo lại, không qua tắt app. <code>rememberSaveable</code> thêm
+			khả năng <em>phục hồi</em> khi Activity bị tạo lại, vẫn <strong>không</strong> phải nơi lưu lâu dài (mục 3).
+		</li>
+		<li>
+			<strong>Tưởng đổi một state là vẽ lại cả app.</strong> Compose chạy lại phần đã đọc state đó, và còn được phép bỏ qua
+			phần không cần. Recomposition cũng <em>không</em> phải Activity bị tạo lại, và không phải "vẽ pixel ngay" (mục 4).
+		</li>
+		<li>
+			<strong>Đặt việc phụ thẳng vào thân composable.</strong> Ghi log, gọi mạng, lưu file trong thân hàm sẽ bị lặp theo số
+			lần vẽ lại — con số bạn không kiểm soát. Việc phụ có chỗ riêng (mục 4.2).
+		</li>
+		<li>
+			<strong>Hai chỗ giữ cùng một sự thật.</strong> Bắt đầu là chuyện của bài này (state cục bộ), nhưng cách chữa nằm ở
+			bài sau (state hoisting &amp; UDF).
+		</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li><strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 15–54 (State · Recomposition · <code>remember</code> +
+			<code>mutableStateOf</code> · stateful ↔ stateless).</li>
+		<li><strong>Code thật:</strong> <code>{FINAL}/conversation/UserInput.kt</code> (dòng 132–155 — bốn state cục bộ; dòng
+			427–451 — ô nhập và <code>onValueChange</code>).</li>
+		<li><strong>Ví dụ tối giản do khoá dựng:</strong> bộ đếm ở mục 2 (không trích project mẫu).</li>
+	</ul>
+</section>

@@ -1,0 +1,412 @@
+---
+// Chương 6.2 — State hoisting & UDF (tách từ monolith Ch06AdvancedJetpackCompose.astro, batch Stage 3 IMP-035).
+// Registry: S3 — slug ch06-state-hoisting-va-udf · stageId state · bài 3/5 Giai đoạn 3.
+// Sở hữu nội dung (mốc S3 START/END của monolith): stateful ↔ stateless · một sự thật một chủ · value down / event up ·
+// UDF ở mức UI · hoist tới đâu · callback là sự kiện. KHÔNG chứa ViewModel (bài 6.3), KHÔNG chứa tầng kiến trúc (S5).
+// Code const giữ nguyên provenance: aaf-materials/06-advanced-jetpack-compose — mọi số dòng trích dẫn đã mở file thật để kiểm tại monolith.
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/06-advanced-jetpack-compose/projects/final/app/src/main/java/com/kodeco/chat";
+const STARTER = "aaf-materials/06-advanced-jetpack-compose/projects/starter/app/src/main/java/com/kodeco/chat";
+const FINAL_ROOT = "aaf-materials/06-advanced-jetpack-compose/projects/final";
+const BOOK = "content/book/ch06-advanced-jetpack-compose.md";
+
+// ---------------------------------------------------------------------------
+// Ví dụ tối giản do khoá học dựng (KHÔNG trích aaf-materials) — dùng cho phần
+// dạy khái niệm trước khi vào code thật của project.
+// ---------------------------------------------------------------------------
+
+const nameFieldStatefulCode = `@Composable
+fun NameField() {
+  var name by remember { mutableStateOf("") }
+
+  TextField(
+    value = name,
+    onValueChange = { name = it }
+  )
+}`;
+
+const nameFieldHoistedCode = `@Composable
+fun NameField(
+  name: String,
+  onNameChange: (String) -> Unit
+) {
+  TextField(
+    value = name,
+    onValueChange = onNameChange
+  )
+}`;
+
+const nameFieldOwnerCode = `@Composable
+fun SignUpForm() {
+  var name by remember { mutableStateOf("") }
+
+  Column {
+    NameField(
+      name = name,
+      onNameChange = { name = it }
+    )
+    Text(text = "Xin chào, $name")
+  }
+}`;
+
+const hoistedCallCode = `UserInputText(
+  textFieldValue = textState,
+  onTextChanged = { textState = it },
+  // Only show the keyboard if there's no input selector and text field has focus
+  keyboardShown = currentInputSelector == InputSelector.NONE && textFieldFocusState,
+  // Close extended selector if text field receives focus
+  onTextFieldFocused = { focused ->
+    if (focused) {
+      currentInputSelector = InputSelector.NONE
+      resetScroll()
+    }
+    textFieldFocusState = focused
+  },
+  focusState = textFieldFocusState,
+  onMessageSent = {
+    handleKeyboardInputText()
+  },
+  photoUri = photoUri
+)`;
+---
+
+<section class="lesson">
+	<div class="callout goals">
+		<strong>State hoisting &amp; luồng dữ liệu một chiều. Học xong bài này bạn sẽ</strong>
+		<ul>
+			<li>Phân biệt được composable <strong>stateful</strong> và <strong>stateless</strong>, và nói được cái giá của mỗi
+				loại.</li>
+			<li>Thực hiện được phép biến đổi <strong>state hoisting</strong>: bỏ state nội bộ, thay bằng một <em>giá trị</em> và
+				một <em>sự kiện</em>.</li>
+			<li>Trả lời được câu <strong>"state nên để ở đâu"</strong> bằng quy tắc <em>tổ tiên chung thấp nhất</em> — chứ không
+				phải "đẩy hết lên trên cùng".</li>
+			<li>Giải thích được <strong>luồng dữ liệu một chiều</strong>: giá trị đi xuống, sự kiện đi lên, chủ sở hữu đổi state.</li>
+			<li>Không lẫn "luồng" của UDF với <code>Flow</code> của Kotlin — hai thứ khác nhau, trùng chữ.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Vì sao bài này quan trọng.</strong> Bài trước cho bạn <em>tạo</em> state. Nhưng ngay khi màn hình có nhiều
+		hơn một mảnh, câu hỏi khó hơn xuất hiện: <em>mảnh nào được giữ state, mảnh nào chỉ hiển thị?</em> Trả lời sai thì hai
+		chỗ cùng giữ một sự thật, và bạn có một lớp bug rất khó tìm: hai chỗ hiển thị hai giá trị khác nhau cho cùng một thứ.
+		Bài này là quy tắc để không rơi vào đó — và nó cũng là bước chuẩn bị trực tiếp cho ViewModel ở bài ViewModel &amp; UI state.
+	</p>
+	<div class="callout">
+		<strong>Cần biết trước.</strong> Bài trước (state, <code>remember</code>, recomposition) · <strong>F1</strong>: lambda,
+		lambda đuôi, và <strong>kiểu hàm</strong> <code>(String) -&gt; Unit</code> — bài này dùng kiểu hàm liên tục nên hãy
+		chắc bạn đọc được nó.
+	</div>
+
+	<h2 id="mot-chieu">5. Một sự thật, một chủ sở hữu: luồng dữ liệu một chiều</h2>
+	<p>
+		Bắt đầu từ một tình huống rất bình thường. Bạn viết một ô nhập tên, và theo bài trước nó tự giữ state của mình:
+	</p>
+	<Code code={nameFieldStatefulCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Chạy tốt. Rồi yêu cầu đổi một chút: màn hình cần hiện lời chào <em>"Xin chào, &lt;tên&gt;"</em> ở ngay bên dưới ô nhập.
+		Lời chào đó không nằm trong <code>NameField</code> — nó nằm ở màn hình bao ngoài. Nhưng cái tên thì đang bị
+		<em>khoá bên trong</em> <code>NameField</code>: không ai bên ngoài đọc được.
+	</p>
+	<p>
+		Cách xử lý sai mà rất nhiều người thử đầu tiên: cho màn hình ngoài giữ thêm một biến tên nữa, rồi tìm cách đồng bộ hai
+		bên. Lúc đó bạn có <strong>hai chỗ cùng giữ một sự thật</strong> — và mỗi lần chỉ một bên được cập nhật là màn hình
+		hiện hai giá trị khác nhau cho cùng một thứ. Đây là loại bug rất khó tìm, vì code ở cả hai chỗ đọc riêng thì đều đúng.
+	</p>
+	<div class="callout mental">
+		<strong>Mô hình trực quan: giá trị đi xuống, sự kiện đi lên</strong>
+		<p>
+			Cách chữa không phải là "đồng bộ cho giỏi", mà là bỏ hẳn tình huống hai chủ: <strong>một mẩu state nên có đúng một
+			chủ sở hữu</strong>. Chủ sở hữu giữ giá trị và là nơi <em>duy nhất</em> đổi nó; những chỗ khác chỉ
+			<em>hiển thị</em> giá trị và <em>báo lên</em> khi người dùng muốn đổi.
+		</p>
+		<table class="api">
+			<thead>
+				<tr><th>Chiều</th><th>Đi cái gì</th><th>Từ đâu tới đâu</th></tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><strong>Xuống</strong></td>
+					<td><em>Giá trị</em> để hiển thị (chỉ đọc)</td>
+					<td>Chủ sở hữu → các composable con</td>
+				</tr>
+				<tr>
+					<td><strong>Lên</strong></td>
+					<td><em>Sự kiện</em>: "người dùng vừa muốn giá trị mới là cái này"</td>
+					<td>Composable con → chủ sở hữu</td>
+				</tr>
+				<tr>
+					<td><strong>Rồi xuống</strong></td>
+					<td>Chủ sở hữu đổi state → giá trị mới lại đi xuống → giao diện đổi</td>
+					<td>Vòng lặp khép lại</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			Vòng lặp <em>giá trị xuống → sự kiện lên → chủ sở hữu đổi state → giá trị mới xuống</em> gọi là <strong>luồng dữ
+			liệu một chiều</strong> (unidirectional data flow). "Một chiều" ở đây nghĩa là: <strong>chỉ có một đường để state bị
+			đổi</strong>, không phải ai cũng chạm vào được.
+		</p>
+	</div>
+	<p>
+		Vì sao điều đó đáng giá? Hãy hình dung cách làm ngược lại. Ở app kiểu cũ, một ô hiển thị số tin nhắn chưa đọc có thể bị
+		sửa từ bốn nơi: lúc mở màn hình, một callback khi mạng trả về, một chỗ nhận thông báo đẩy, và một listener khi người
+		dùng bấm "đánh dấu đã đọc". Bốn nơi, bốn thời điểm không đoán trước. Khi con số hiển thị sai, bạn phải đọc cả bốn để
+		tìm ai ghi sau cùng — và nếu lỗi chỉ xảy ra khi hai sự kiện đến gần nhau thì bạn còn không tái tạo được nó. Luồng một
+		chiều loại bỏ loại bug đó <strong>bằng cấu trúc</strong>, không bằng sự cẩn thận.
+	</p>
+	<p class="notice">
+		<strong>"Luồng" ở đây KHÔNG phải <code>Flow</code> của Kotlin.</strong> Bạn vừa học <code>Flow</code> ở S1 (dòng giá trị
+		đến theo thời gian), nên chỗ này rất dễ lẫn. Hai thứ khác nhau hoàn toàn: <em>luồng dữ liệu một chiều</em> là một
+		<strong>quy tắc về ai được đổi state</strong> — nó không cần API nào cả, và trong bài này bạn thực hiện nó chỉ bằng
+		tham số + lambda. <code>Flow</code> là một <strong>kiểu dữ liệu</strong> của Kotlin. Bài ViewModel &amp; UI state sẽ dùng
+		<code>StateFlow</code> để <em>thực hiện</em> luồng một chiều ở tầng ViewModel — nhưng bạn có thể có luồng một chiều mà
+		không có <code>Flow</code>, và có <code>Flow</code> mà vẫn viết ra state hỗn loạn.
+	</p>
+	<p>
+		Vòng lặp này chưa dừng ở tầng UI. Khi state của cả màn hình được đưa ra ViewModel (bài ViewModel &amp; UI state), đúng
+		vòng lặp trên được nối dài thêm một chặng — xem bài ViewModel &amp; UI state để thấy nó đi trọn từ cú chạm tới pixel.
+	</p>
+
+	<h2 id="state-hoisting">6. Khuôn hoisting: từ stateful sang stateless</h2>
+	<p>
+		Giờ làm phép biến đổi cụ thể. Hai tên gọi trước đã: composable <strong>stateful</strong> là composable tự giữ state bên
+		trong (dùng <code>remember</code>); composable <strong>stateless</strong> là composable không giữ state nào cả.
+		<strong>State hoisting</strong> ("đẩy state lên trên") là phép biến đổi từ loại thứ nhất sang loại thứ hai: bỏ state
+		nội bộ, thay bằng <em>một giá trị</em> và <em>một sự kiện</em> nhận từ bên ngoài.
+	</p>
+	<p>Đây là <code>NameField</code> sau khi hoist:</p>
+	<Code code={nameFieldHoistedCode} lang="kotlin" theme="github-dark" />
+	<p>Và đây là chủ sở hữu — nơi state thật sự sống, và nơi lời chào đọc được nó:</p>
+	<Code code={nameFieldOwnerCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Đọc dòng <code>onNameChange = &#123; name = it &#125;</code>: việc <em>gán</em> giá trị mới xảy ra ở
+		<code>SignUpForm</code>, không xảy ra trong <code>NameField</code>. <code>NameField</code> chỉ biết "có ai đó cần được
+		báo khi người dùng gõ" — nó không biết ai, không biết state được lưu ở đâu, không biết có được lưu hay không. Và vì
+		<code>name</code> giờ có đúng một chủ, lời chào không thể lệch với ô nhập.
+	</p>
+	<p>Khuôn chung của phép biến đổi này là đúng hai tham số:</p>
+	<table class="api">
+		<thead>
+			<tr><th>Tham số</th><th>Vai trò</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>value: T</code></td>
+				<td>Giá trị hiện tại để <em>hiển thị</em>. Composable chỉ đọc, không sửa.</td>
+			</tr>
+			<tr>
+				<td><code>onValueChange: (T) -&gt; Unit</code></td>
+				<td>
+					Một <em>sự kiện</em> xin đổi giá trị, trong đó <code>(T)</code> là giá trị mới được cung cấp. Composable
+					<em>xin</em> đổi, không <em>tự</em> đổi. Đây đúng là <strong>kiểu hàm</strong> của F1.
+				</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		<code>T</code> là kiểu của dữ liệu bạn đang hiển thị (F2 — đọc generic ở mức nhận diện). Trong app chat, ô nhập tin
+		nhắn dùng đúng khuôn đó với <code>T</code> = <code>TextFieldValue</code>:
+	</p>
+	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> (dòng 381–392) — chữ ký của <code>UserInputText</code></p>
+	<ul>
+		<li><code>textFieldValue: TextFieldValue</code> → đúng vai <code>value: T</code>.</li>
+		<li><code>onTextChanged: (TextFieldValue) -&gt; Unit</code> → đúng vai <code>onValueChange: (T) -&gt; Unit</code>.</li>
+		<li><code>focusState: Boolean</code> + <code>onTextFieldFocused: (Boolean) -&gt; Unit</code> → <em>một cặp hoisted thứ
+			hai</em> trong cùng một composable, lần này <code>T</code> là <code>Boolean</code>. Khuôn này lặp lại được bao nhiêu
+			lần cũng được.</li>
+		<li><code>onMessageSent: KeyboardActionScope.() -&gt; Unit</code> → một sự kiện thuần, không mang giá trị nào đi kèm.</li>
+	</ul>
+	<p>Còn đây là phía chủ sở hữu trong code thật — nơi giữ state và nối dây:</p>
+	<Code code={hoistedCallCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> (dòng 170–188)</p>
+	<p>
+		Cùng một hình dạng với ví dụ tối giản ở trên: <code>onTextChanged = &#123; textState = it &#125;</code> — phép gán nằm
+		ở chủ sở hữu.
+	</p>
+	<p>
+		Cái giá và cái được của hai loại composable, nói thẳng: composable <strong>stateful</strong> tiện khi state đó thật sự
+		là chuyện riêng của nó; composable <strong>stateless</strong> thì dễ test hơn, ít bug hơn và tái dùng được nhiều hơn.
+		Ba lợi ích đó không phải khẩu hiệu, chúng có lý do cụ thể:
+	</p>
+	<ol class="chain">
+		<li>
+			<strong>Dễ test:</strong> muốn test <code>UserInputText</code> ở trạng thái "đã có chữ, đang focus", bạn chỉ cần gọi
+			nó với <code>textFieldValue = TextFieldValue("hello")</code> và <code>focusState = true</code>. Không cần dựng
+			ViewModel, không cần bàn phím thật, không cần mô phỏng thao tác gõ.
+		</li>
+		<li>
+			<strong>Ít bug:</strong> composable không thể tự đổi state, nên không thể có hai chỗ cùng đổi một giá trị theo hai
+			cách khác nhau. Loại bug "giá trị bị ghi đè bởi chỗ tôi không ngờ tới" bị loại bỏ về mặt cấu trúc.
+		</li>
+		<li>
+			<strong>Tái dùng được:</strong> vì nó không giả định state đến từ đâu, bạn dùng lại nó ở màn hình khác — với state
+			từ ViewModel khác — mà không phải sửa một dòng nào bên trong.
+		</li>
+	</ol>
+	<h2 id="hoist-toi-dau">7. Hoist tới đâu là đủ?</h2>
+	<p>
+		Đây là câu hỏi bạn sẽ gặp ngay khi tự viết code, và có một cách trả lời sai rất phổ biến: <em>"cứ đẩy hết state lên trên
+		cùng cho chắc"</em>. Đừng làm vậy. Đẩy quá cao thì mọi thay đổi nhỏ đều đi qua đỉnh, các composable trung gian phải nhận
+		và truyền tiếp những tham số chúng không dùng, và bạn mất luôn cái lợi "phần này là chuyện riêng của nó".
+	</p>
+	<div class="callout mental">
+		<strong>Quy tắc: hoist tới <em>tổ tiên chung thấp nhất</em></strong>
+		<p>
+			Đẩy state lên đúng composable thấp nhất mà <strong>tất cả</strong> những chỗ cần nó đều nằm bên dưới — "cần" nghĩa là
+			cần <em>đọc</em>, cần <em>đổi</em>, hoặc cần <em>phối hợp</em> nó với thứ khác. Không thấp hơn (sẽ có chỗ không đọc
+			được), không cao hơn (thừa).
+		</p>
+	</div>
+	<p>Áp vào màn hình chat thì rất cụ thể:</p>
+	<table class="api">
+		<thead>
+			<tr><th>State</th><th>Ai cần nó</th><th>Chủ hợp lý</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Bảng emoji đang mở hay đóng</td>
+				<td>Chỉ khu vực nhập liệu</td>
+				<td><strong>Cục bộ</strong> trong khu vực nhập liệu — không cần đi đâu cả</td>
+			</tr>
+			<tr>
+				<td>Nội dung đang gõ</td>
+				<td>Ô nhập (hiển thị) + nút Send (đọc lúc gửi) — cả hai nằm trong khu vực nhập liệu</td>
+				<td><strong>Khu vực nhập liệu</strong>; đẩy lên tận Activity là thừa</td>
+			</tr>
+			<tr>
+				<td>Danh sách tin nhắn</td>
+				<td>Phần hiển thị danh sách <em>và</em> luồng gửi tin (thêm phần tử)</td>
+				<td>Phải lên cao hơn UI — và còn phải sống qua xoay màn hình ⇒ <strong>ViewModel</strong> (bài ViewModel &amp; UI state)</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Nhìn hàng cuối: đó chính là lúc "hoist" vượt ra ngoài phạm vi UI. Câu hỏi <em>"ai giữ state của cả màn hình"</em> là
+		nội dung bài ViewModel &amp; UI state — nhưng để ý rằng nó không phải một khái niệm mới, chỉ là <strong>cùng quy tắc
+		này áp ở tầng cao hơn</strong>.
+	</p>
+	<p>
+		Ví dụ state <strong>nên</strong> giữ cục bộ: một tooltip đang hiện, một mục đang mở rộng tạm thời, tiến trình của một
+		animation. Ví dụ state <strong>cần</strong> chủ cao hơn: mục đang được chọn mà hai phần khác nhau của màn hình đều dùng,
+		một đoạn chữ điều khiển nội dung ở chỗ khác.
+	</p>
+	<p class="hint">
+		<strong>Luyện mắt trên chính màn hình chat này.</strong> Phần hiển thị danh sách, một dòng tin nhắn, nút "Jump to
+		bottom", app bar tên phòng — <strong>stateless</strong>: mọi thứ chúng cần đều đến từ tham số. Khu vực nhập liệu và
+		composable khung của cả màn hình — <strong>stateful</strong>: chúng gọi <code>remember...</code> để tạo và giữ state.
+		Mẫu chung dễ nhớ: composable ở <em>lá</em> thì stateless, composable <em>khung</em> ở gần gốc thì stateful.
+	</p>
+
+	<h2 id="callback-su-kien">8. Callback là sự kiện, không phải phép thuật</h2>
+	<p>
+		Cả bài này dựa vào một thứ bạn đã có từ F1: <strong>kiểu hàm</strong>. Đọc lại hai kiểu quen mặt, lần này với đúng
+		vai của chúng:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Kiểu</th><th>Đọc là</th><th>Vai trong luồng một chiều</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>onClick: () -&gt; Unit</code></td>
+				<td>"nhận không tham số, không trả kết quả"</td>
+				<td>Một sự kiện <em>không mang dữ liệu</em>: "người dùng vừa bấm".</td>
+			</tr>
+			<tr>
+				<td><code>onNameChange: (String) -&gt; Unit</code></td>
+				<td>"nhận một String, không trả kết quả"</td>
+				<td>Một sự kiện <em>mang dữ liệu</em>: "người dùng muốn giá trị mới là chuỗi này".</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Điểm cần thấy: nhờ hai kiểu này, một composable con <strong>báo được ý muốn mà không cần sở hữu state</strong>. Nó
+		không biết ai sẽ xử lý, không biết state nằm ở đâu, không biết có ai lưu lại hay không. Toàn bộ "phép thuật" chỉ là:
+		chủ sở hữu truyền xuống một khối code, con gọi khối đó khi có chuyện xảy ra.
+	</p>
+	<p class="notice">
+		<strong>Nhưng đừng đọc thành "có callback là có luồng một chiều".</strong> Một callback chỉ <em>tham gia</em> mô hình
+		này khi quyền sở hữu được sắp đúng: con báo lên, chủ sở hữu đổi state, giá trị mới đi xuống. Nếu callback tự tay đi đổi
+		một thứ ở tận đâu — một biến toàn cục, một state của màn hình khác — thì bạn vẫn đang có "nhiều nơi đổi được cùng một
+		thứ", đúng cái mô hình này sinh ra để tránh. Câu hỏi kiểm tra: <em>"sau khi callback này chạy, ai là người đổi
+		state?"</em>
+	</p>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Một màn hình có ô tìm kiếm và một danh sách kết quả nằm cạnh nhau. Ô tìm kiếm hiện đang tự giữ từ khoá bằng
+			<code>remember</code>; danh sách cần từ khoá đó để lọc. Hỏi: <strong>(a)</strong> vì sao để nguyên là sai?
+			<strong>(b)</strong> state nên chuyển lên đâu? <strong>(c)</strong> ô tìm kiếm nhận thêm tham số gì?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>(a)</strong> Danh sách không có cách nào đọc được từ khoá đang bị khoá trong ô tìm kiếm. Nếu cho danh sách
+				giữ thêm một bản của từ khoá thì có hai chỗ giữ cùng một sự thật — hai bên sẽ lệch nhau.
+			</p>
+			<p>
+				<strong>(b)</strong> Lên <em>tổ tiên chung thấp nhất</em> của hai composable đó — tức composable màn hình bao ngoài
+				cả hai. Không cần lên cao hơn; và nếu từ khoá chỉ dùng trong màn hình này thì chưa cần tới ViewModel.
+			</p>
+			<p>
+				<strong>(c)</strong> Đúng cặp của khuôn hoisting: <code>query: String</code> và
+				<code>onQueryChange: (String) -&gt; Unit</code>. Danh sách nhận <code>query</code> (chỉ đọc). Phép gán nằm ở màn
+				hình bao ngoài.
+			</p>
+		</details>
+	</div>
+
+	<div class="callout journey">
+		<strong>Tóm tắt</strong>
+		<ol>
+			<li><strong>Một mẩu state nên có đúng một chủ sở hữu.</strong> Hai chỗ cùng giữ một sự thật là công thức của bug lệch
+				giá trị.</li>
+			<li><strong>Luồng dữ liệu một chiều</strong>: giá trị đi xuống, sự kiện đi lên, chủ sở hữu đổi state, giá trị mới lại
+				đi xuống. "Một chiều" nghĩa là chỉ có một đường để state bị đổi.</li>
+			<li><strong>State hoisting</strong> = bỏ state nội bộ, thay bằng <code>value: T</code> +
+				<code>onValueChange: (T) -&gt; Unit</code>. Composable <em>xin</em> đổi, không <em>tự</em> đổi.</li>
+			<li><strong>Hoist tới tổ tiên chung thấp nhất</strong> của mọi chỗ cần đọc/đổi/phối hợp state đó — không phải "luôn
+				đẩy lên trên cùng". State tạm thời của riêng một khu vực thì giữ cục bộ.</li>
+			<li>Composable <em>lá</em> thường stateless, composable <em>khung</em> thường stateful.</li>
+			<li><strong>UDF ≠ <code>Flow</code>.</strong> Một cái là quy tắc về quyền đổi state, một cái là kiểu dữ liệu của
+				Kotlin.</li>
+		</ol>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía trên.
+	</p>
+	<h3>State hoisting &amp; UDF</h3>
+	<ul>
+		<li>
+			<strong>Cha và con cùng giữ một sự thật.</strong> Hai bản của cùng một giá trị sẽ lệch nhau, và code ở mỗi chỗ đọc riêng
+			thì đều trông đúng. Một mẩu state, một chủ sở hữu (mục 5).
+		</li>
+		<li>
+			<strong>Hoist mọi thứ lên trên cùng "cho chắc".</strong> Quy tắc là <em>tổ tiên chung thấp nhất</em>, không phải cao
+			nhất. Đẩy quá cao thì các composable trung gian phải nhận và truyền tiếp tham số chúng không dùng (mục 7).
+		</li>
+		<li>
+			<strong>Truyền cả object state xuống thay vì giá trị + sự kiện.</strong> Đưa một thứ ghi được xuống cho con là mở lại
+			đúng cánh cửa mà hoisting vừa đóng: con lại đổi được state. Khuôn đúng là <code>value</code> +
+			<code>onValueChange</code> (mục 6).
+		</li>
+		<li>
+			<strong>Callback đi đổi thẳng một thứ ở tận đâu.</strong> Có callback không tự động nghĩa là có luồng một chiều. Câu hỏi
+			kiểm tra: <em>sau khi callback này chạy, ai là người đổi state?</em> (mục 8).
+		</li>
+		<li>
+			<strong>Lẫn "luồng" của UDF với <code>Flow</code> của Kotlin.</strong> Một cái là quy tắc về quyền đổi state (không cần
+			API nào), một cái là kiểu dữ liệu. Bạn có thể có cái này mà không có cái kia (mục 5).
+		</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li><strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 56–87 (State Hoisting · Unidirectional Data Flow).</li>
+		<li><strong>Code thật:</strong> <code>{FINAL}/conversation/UserInput.kt</code> (dòng 381–392 — chữ ký hoisted; dòng
+			170–188 — phía chủ sở hữu).</li>
+		<li><strong>Ví dụ tối giản do khoá dựng:</strong> <code>NameField</code> ở mục 6 (stateful → hoisted → chủ sở hữu).</li>
+	</ul>
+</section>
