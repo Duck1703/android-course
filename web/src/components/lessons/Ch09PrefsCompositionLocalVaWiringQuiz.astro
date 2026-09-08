@@ -1,0 +1,167 @@
+---
+// Quiz cho D2 — "Prefs trong app: CompositionLocal & ViewModel wiring"
+// (slug: ch09-prefs-composition-local-va-wiring).
+// Tách từ monolith Ch09Quiz.astro (batch Stage 6). Phân bổ theo ownership:
+// D2 sở hữu bài toán nối dây, Application ownership, CompositionLocal (cơ chế + ranh giới),
+// viewModelFactory + closure, trace từ khoá (joinToString/init), bug dấu phẩy (escaping),
+// trace tab (LaunchedEffect vs rememberCoroutineScope), rememberSaveable ≠ persistence,
+// bảng trách nhiệm.
+// Tám câu kế thừa ý của monolith (câu 11/12/13/15/16/17/18/19), hai câu mới bám mục 15
+// (runBlocking vs closure) và mục 18 (bốn cơ chế giữ state).
+// Chuẩn quiz §13 + quy tắc Stage 5: 4 đáp án / 1 đúng NGỮ NGHĨA, giải thích 100% không trỏ
+// theo chữ cái (thứ tự HIỂN THỊ đã xáo), phân bố GIÁ TRỊ data-answer (3/2/3/2), VỊ TRÍ HIỂN
+// THỊ (2/1/4/3) và ĐỘ DÀI đáp án đúng (rank 1..4 = 0/3/4/3) đều tách bạch. Chấm bằng harness IMP-001.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>1. Vì sao <code>DataStore</code> phải thêm bằng thư viện, còn <code>SharedPreferences</code> thì không?</legend>
+			<label><input type="radio" name="q1" value="d" /> Vì DataStore chỉ chạy trên Android 12 trở lên</label>
+			<label><input type="radio" name="q1" value="a" /> Vì DataStore là sản phẩm của một công ty khác, không phải Google</label>
+			<label><input type="radio" name="q1" value="c" /> Vì <code>SharedPreferences</code> thuộc Android SDK, DataStore là thư viện Jetpack</label>
+			<label><input type="radio" name="q1" value="b" /> Vì DataStore cần thêm quyền bộ nhớ trong manifest</label>
+			<p class="explain" hidden>
+				<code>SharedPreferences</code> là API của chính hệ điều hành (<code>android.content</code>) — có sẵn, không cần khai.
+				DataStore thuộc <strong>Jetpack</strong>: thư viện Google phát hành tách rời SDK, cập nhật theo nhịp riêng và chạy được
+				trên cả bản Android cũ (D1 mục 3, mục 4). Cái giá là bạn phải tự thêm dependency; cái được là bạn không phải chờ
+				người dùng lên hệ điều hành mới để dùng tính năng mới.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>2. Trong project <code>final</code>, <code>preferencesDataStore</code> được khai ở đâu?</legend>
+			<label><input type="radio" name="q2" value="a" /> Ở top-level của file <code>Prefs.kt</code>, ngoài class</label>
+			<label><input type="radio" name="q2" value="d" /> Trong <code>MainActivity.kt</code>, cạnh <code>LocalPrefsProvider</code></label>
+			<label><input type="radio" name="q2" value="c" /> Trong <code>RecipeApp.kt</code></label>
+			<label><input type="radio" name="q2" value="b" /> Là một <code>private val</code> <em>bên trong</em> class <code>Prefs</code></label>
+			<p class="explain" hidden>
+				Project đặt delegate <strong>bên trong</strong> class (<code>Prefs.kt</code> dòng 13, D1 mục 5), còn tài liệu chính thức
+				đặt nó ở <strong>top-level</strong>. Khác biệt không phải chuyện thẩm mỹ: delegate ở top-level thì mỗi file chỉ có một
+				<code>dataStore</code> và trình biên dịch tự bảo đảm "chỉ một instance". Đặt trong class thì mỗi
+				<code>Prefs</code> mới sinh ra một instance mới — cảnh báo "Important" trở thành thứ <em>bạn phải tự nhớ</em>.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>3. File DataStore trong project này tên gì?</legend>
+			<label><input type="radio" name="q3" value="a" /> <code>recipes</code></label>
+			<label><input type="radio" name="q3" value="c" /> <code>prefs</code></label>
+			<label><input type="radio" name="q3" value="d" /> <code>settings</code></label>
+			<label><input type="radio" name="q3" value="b" /> <code>MyPreferences</code></label>
+			<p class="explain" hidden>
+				<code>preferencesDataStore(name = "recipes")</code> — <code>Prefs.kt</code> dòng 13 (D1 mục 5). Đừng lẫn với ví dụ minh hoạ
+				trong tài liệu dùng <code>"settings"</code>, hay ví dụ <code>SharedPreferences</code> dùng
+				<code>"MyPreferences"</code>. Tên này chính là tên file thật trên máy, nên nếu bạn đổi nó ở bản cập nhật
+				sau thì mọi dữ liệu người dùng đã lưu sẽ "biến mất" — thực ra là app đang đọc một file khác.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>4. Vì sao <code>val prefs = LocalPrefsProvider.current</code> phải đặt <em>trước</em> khối <code>viewModelFactory &#123; ... &#125;</code>?</legend>
+			<label><input type="radio" name="q4" value="a" /> Vì <code>LocalPrefsProvider.current</code> là hàm <code>suspend</code></label>
+			<label><input type="radio" name="q4" value="d" /> Vì lambda đó là code thường chạy sau — lấy giá trị ra ngoài trước, lambda mới bắt được</label>
+			<label><input type="radio" name="q4" value="b" /> Vì <code>viewModelFactory</code> yêu cầu tham số phải khai trước</label>
+			<label><input type="radio" name="q4" value="c" /> Chỉ là quy ước cho dễ đọc — đảo hai dòng cũng chạy như nhau</label>
+			<p class="explain" hidden>
+				Lambda truyền cho <code>viewModelFactory</code> sẽ được hệ thống ViewModel gọi <em>sau</em>, ở ngoài vùng Composable —
+				nên <code>LocalPrefsProvider.current</code> không dùng được ở trong đó (mục 15). Cách làm đúng (và <code>final</code> làm đúng ở
+				<code>RecipeDetails.kt</code> dòng 53 rồi 55): đọc giá trị ra một biến trước, lambda sẽ "bắt" biến đó theo closure.
+				Đảo hai dòng này là lỗi biên dịch — và là lỗi rất thường gặp khi mới học Compose.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>5. Danh sách từ khoá đã tìm được lưu xuống DataStore dưới dạng gì?</legend>
+			<label><input type="radio" name="q5" value="c" /> Một <code>String</code> nối bằng <code>joinToString(",")</code></label>
+			<label><input type="radio" name="q5" value="a" /> Một <code>Set&lt;String&gt;</code></label>
+			<label><input type="radio" name="q5" value="b" /> Nhiều key riêng: <code>search_0</code>, <code>search_1</code>, ...</label>
+			<label><input type="radio" name="q5" value="d" /> Một chuỗi JSON, mã hoá bằng Moshi</label>
+			<p class="explain" hidden>
+				<code>savePreviousSearches()</code> (mục 16) gọi <code>previousSearches.joinToString(",")</code> rồi lưu chuỗi đó. Đọc lên thì
+				<code>split(",")</code> ở khối <code>init</code>. Đây là cách xoay quanh giới hạn 5 kiểu nguyên thuỷ của D1 — đơn giản và chạy
+				được, nhưng có đúng một cái bẫy (xem câu 7). JSON là <em>hướng sửa</em> được nêu ở mục 17, không phải cách project đang làm.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>6. Người dùng gõ tìm <code>chicken, rice</code>. Mở lại app, menu gợi ý hiện gì?</legend>
+			<label><input type="radio" name="q6" value="c" /> <code>chickenrice</code> — dấu phẩy bị loại bỏ</label>
+			<label><input type="radio" name="q6" value="d" /> <code>chicken, rice</code> — đúng như đã gõ</label>
+			<label><input type="radio" name="q6" value="b" /> Không hiện gì — chuỗi có dấu phẩy bị từ chối lưu</label>
+			<label><input type="radio" name="q6" value="a" /> <strong>Hai</strong> mục: <code>chicken</code> và <code>&nbsp;rice</code> (dư một dấu cách)</label>
+			<p class="explain" hidden>
+				Đây là <strong>bug thật</strong> trong project mẫu (mục 17). Dấu phẩy vừa là <em>dấu phân tách</em> vừa có thể là
+				<em>dữ liệu</em>, mà không có cách phân biệt: <code>split(",")</code> cắt luôn ở giữa từ khoá của người dùng.
+				Tên của lớp lỗi này là <strong>thiếu escaping</strong> — cùng họ với lỗi làm vỡ file CSV. Cách sửa đúng đắn nhất:
+				lưu bằng JSON, vì JSON tự escaping — và project <em>đã có</em> Moshi.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>7. Tab đang chọn được đọc lại bằng <code>LaunchedEffect(Unit)</code> chứ không phải viết thẳng trong thân Composable. Nếu viết thẳng thì sao?</legend>
+			<label><input type="radio" name="q7" value="a" /> Chạy đúng như nhau — <code>LaunchedEffect</code> chỉ để code gọn hơn</label>
+			<label><input type="radio" name="q7" value="d" /> Chỉ chạy khi xoay máy</label>
+			<label><input type="radio" name="q7" value="b" /> Nó chạy lại mỗi lần vẽ lại — đọc file hàng chục lần, tab bị "nhảy về"</label>
+			<label><input type="radio" name="q7" value="c" /> Lỗi biên dịch, vì <code>getInt</code> là <code>suspend</code></label>
+			<p class="explain" hidden>
+				Thân một Composable chạy lại <em>mỗi lần recomposition</em> (mục 18). Đặt việc đọc file ở đó là vừa tốn kém vừa sai logic:
+				mỗi lần vẽ lại nó lại nạp giá trị cũ và ghi đè lựa chọn người dùng vừa bấm — tab sẽ như bị "nhảy về". Đáp án "lỗi biên dịch"
+				sai vì lỗi biên dịch là <em>hệ quả phụ</em> (bọc <code>runBlocking</code> sẽ "chữa" được nó — bằng cách đổi thành bug chặn luồng UI).
+				<code>LaunchedEffect(Unit)</code> nghĩa là "chỉ làm một lần khi vào màn hình".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>8. Giả sử bạn đọc <code>LocalPrefsProvider.current</code> <em>trong</em> lambda <code>viewModelFactory</code> thay vì ngoài nó, và dùng cách bọc <code>runBlocking</code> để "vượt qua" lỗi. Cách này sai ở đâu?</legend>
+			<label><input type="radio" name="q8" value="b" /> Sai vì <code>runBlocking</code> tạo một <code>Prefs</code> mới, vi phạm quy tắc một instance</label>
+			<label><input type="radio" name="q8" value="c" /> Không sai — tài liệu khuyến nghị cách này</label>
+			<label><input type="radio" name="q8" value="a" /> Sai vì <code>runBlocking</code> chỉ chạy được trong coroutine, không chạy được trong lambda thường</label>
+			<label><input type="radio" name="q8" value="d" /> Đọc giá trị ra biến <em>trước</em> lambda; còn <code>runBlocking</code> chặn luồng đang gọi</label>
+			<p class="explain" hidden>
+				Hai vấn đề tách bạch. <strong>Vấn đề Compose</strong>: lambda factory là code thường chạy sau, không đọc được CompositionLocal —
+				cách sửa là lấy giá trị ra biến trước (mục 15). <strong>Vấn đề concurrency</strong>: <code>runBlocking</code> chặn luồng đang gọi tới khi
+				đọc xong; trên luồng UI là app đứng — đúng cái bẫy <code>commit()</code> mà DataStore được thiết kế để bạn không thể bước vào
+				(D1 mục 2). Nó nguy hiểm vì trình biên dịch im lặng, và trên máy nhanh với dữ liệu nhỏ thì bạn cũng không thấy gì khi tự test.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>9. Vì sao tab đang chọn lưu bằng DataStore chứ không phải <code>rememberSaveable</code>?</legend>
+			<label><input type="radio" name="q9" value="d" /> Vì <code>rememberSaveable</code> không sống qua xoay máy — mới là vấn đề cần giải quyết ở đây</label>
+			<label><input type="radio" name="q9" value="b" /> Vì <code>rememberSaveable</code> chỉ dùng được cho <code>String</code>, còn tab là <code>Int</code></label>
+			<label><input type="radio" name="q9" value="a" /> Vì yêu cầu là "lần mở app sau vào đúng tab"; <code>rememberSaveable</code> không ghi đĩa</label>
+			<label><input type="radio" name="q9" value="c" /> Vì <code>rememberSaveable</code> bị giới hạn dung lượng nhỏ</label>
+			<p class="explain" hidden>
+				<code>rememberSaveable</code> (S2) chống được việc Activity được tạo lại do thay đổi cấu hình (xoay máy) — nhưng chết khi tắt app /
+				hệ thống thu hồi process, và <strong>không bao giờ ghi đĩa</strong> (mục 18, bảng bốn cơ chế). Hai công cụ giải hai bài toán khác nhau;
+				dùng <code>rememberSaveable</code> cho bài toán persistence là nhầm loại. Dung lượng không phải lý do — và đáp án "không sống qua xoay máy"
+				gán ngược đúng điểm mạnh của nó.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>10. Trong bảng trách nhiệm của chương, CompositionLocal <strong>không</strong> được giao việc nào?</legend>
+			<label><input type="radio" name="q10" value="b" /> Vận chuyển dependency đã tạo tới mọi composable trong cây con</label>
+			<label><input type="radio" name="q10" value="a" /> Cấp giá trị theo phạm vi cây con của provider, đọc qua <code>.current</code> mà không phải truyền tham số qua từng tầng</label>
+			<label><input type="radio" name="q10" value="c" /> Tạo object; lưu dữ liệu; thay tham số tường minh cho dữ liệu của màn hình</label>
+			<label><input type="radio" name="q10" value="d" /> Cho các composable trong cây con cùng đọc được một dependency cấp từ provider ở gốc app</label>
+			<p class="explain" hidden>
+				Bảng trách nhiệm (mục 20): CompositionLocal <em>vận chuyển</em> dependency đã được tạo ở <code>RecipeApp</code> — nó không tạo object,
+				không lưu gì (persistence là việc của DataStore), và không thay tham số tường minh cho dữ liệu/sự kiện của màn hình (đó là con đường
+				mặc định theo S3). Hai lẫn lộn hay gặp nhất: nhầm nó với persistence, và nhầm nó với kho state.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	import { initQuiz } from "../../scripts/quiz.ts";
+	initQuiz();
+</script>

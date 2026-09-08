@@ -16,9 +16,9 @@ import { defineConfig } from "astro/config";
 // redirect. Danh sách 8 slug chết dự kiến nằm ở registry §6 — không khai báo
 // tại đây trước khi batch tương ứng chạy.
 //
-// Hiện tại: 5 redirect thật (pilot R1 + Stage-1 ch03-2 + Stage-2 ch05 + Stage-3
-// ch06 + Stage-5 ch08). Source phải là URL công khai THẬT đã nghỉ — route bài
-// học nằm dưới /chapters/<slug>/, nên source key cũng dùng cùng dạng
+// Hiện tại: 6 redirect thật (pilot R1 + Stage-1 ch03-2 + Stage-2 ch05 + Stage-3
+// ch06 + Stage-5 ch08 + Stage-6 ch09). Source phải là URL công khai THẬT đã nghỉ —
+// route bài học nằm dưới /chapters/<slug>/, nên source key cũng dùng cùng dạng
 // "chapters/<slug>" (Astro sinh trang redirect đúng vị trí đó).
 const COURSE_REDIRECTS = {
   // IMP-020 (pilot): old R1 slug chết tại batch này → redirect 1 đích sang R1.
@@ -39,6 +39,10 @@ const COURSE_REDIRECTS = {
   // (registry §6 row 5: redirectTarget = ch08-coroutines-va-flow). W2/W3 đến
   // được qua sidebar/bài tiếp theo. KHÔNG có bài NEW trong batch W.
   "chapters/ch08-networking": "/chapters/ch08-coroutines-va-flow/",
+  // Stage 6: old Ch09 monolith chết tại batch này → redirect 1 đích sang D1
+  // (registry §6 row 6: redirectTarget = ch09-data-store-va-sharedpreferences).
+  // D2 đến được qua sidebar/bài tiếp theo. KHÔNG có bài NEW trong batch D.
+  "chapters/ch09-data-store": "/chapters/ch09-data-store-va-sharedpreferences/",
 };
 
 export default defineConfig({

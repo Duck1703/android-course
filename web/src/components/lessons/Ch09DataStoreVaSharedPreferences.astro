@@ -1,0 +1,835 @@
+---
+// D1 — "DataStore & SharedPreferences: lưu key/value đúng cách" (slug: ch09-data-store-va-sharedpreferences).
+// Tách từ monolith Ch09DataStore.astro (batch Stage 6 — Giai đoạn 6: Dữ liệu cục bộ, bài 1/6).
+// Registry: D1 — stageId data · theo TARGET_REGISTRY_v5 §3 (mốc D1 START/END, mục 1–10).
+//
+// SỞ HỮU: ranh giới công cụ theo hình dạng dữ liệu · SharedPreferences ở mức ĐỌC code cũ (không
+// dựng kiến trúc mới trên nó; trạng thái CHÍNH XÁC: không @Deprecated, không còn là lựa chọn
+// khuyến nghị cho code mới) · vì sao DataStore (suspend-first, Flow, edit nguyên khối) · khai
+// store bằng `by preferencesDataStore` (trả nợ F2 Phần 9) · key có kiểu · đọc `data.first()` ·
+// ghi `edit { }` · key-chưa-có ≠ giá trị mặc định · class Prefs như một data source.
+// KHÔNG dạy: Room (R1–R4) · map/trên Flow (W1) · IOException handling (project không dùng) ·
+// Proto DataStore (chỉ 2 câu giải thích tên) · wiring app (D2 mục 11–21).
+//
+// TIỀN QUYẾT (đã có trong khoá, không dạy lại): F1 (joinToString; map/filter) · F2 (`by` delegate,
+// riêng "Cùng cơ chế, delegate khác: by preferencesDataStore" ở Phần 9 của F2 — mục 5 là phần trả
+// nợ trực tiếp) · S1 (suspend = cho phép tạm dừng, không chọn thread · viewModelScope · Flow = giá
+// trị theo thời gian) · S4 (ViewModel sở hữu UI state) · S2 (remember/rememberSaveable) ·
+// A14 (version catalog) · Chương 1 (sandbox bảo mật).
+//
+// GIỌI VĂN: mọi khẳng định kỹ thuật tự đứng (không "sách nói X"); các điểm lệch giữa văn bản gốc
+// và project mẫu được dạy trung tính tại chỗ có giá trị sư phạm, phần lịch sử/tra cứu nằm ở AP3.
+// Code thật lấy từ aaf-materials/09-data-store/projects/{starter,final}/; mọi số dòng trích dẫn
+// đã mở file thật để kiểm (phiên 2026-09-06, kiểm lại 2026-09-09). Ví dụ tối giản do khoá dựng
+// được đánh dấu trong thân bài.
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/09-data-store/projects/final/app/src/main/java/com/kodeco/recipefinder";
+const FINAL_ROOT = "aaf-materials/09-data-store/projects/final";
+const BOOK = "content/book/ch09-data-store.md";
+
+const sharedPrefsExampleCode = `// 1
+val sharedPreferences = getSharedPreferences("MyPreferences", Context.MODE_PRIVATE)
+// 2
+if (sharedPreferences.contains("MyKey")) {
+  // 3
+  val myValue = sharedPreferences.getString("MyKey", "MyDefault")
+  Timber.d("My Value is \$myValue")
+}`;
+
+const dataStoreInterfaceCode = `interface DataStore<T> {
+  val data: Flow<T>
+  suspend fun updateData(transform: suspend (t: T) -> T): T
+}`;
+
+const dataStoreDelegateCode = `val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")`;
+
+const prefKeyReadCode = `// Bước 1: bọc chuỗi key thô thành một key CÓ KIỂU
+val prefKey = stringPreferencesKey("MyKey")
+
+// Bước 2: đọc giá trị ra
+context.dataStore.data.first()[prefKey]`;
+
+const versionCatalogCode = `[versions]
+# ... các version có sẵn từ chapter trước ...
+prefsVersion = "1.0.0"
+
+[libraries]
+# ... các thư viện có sẵn từ chapter trước ...
+# Preferences
+prefs = {module = "androidx.datastore:datastore-preferences", version.ref = "prefsVersion" }`;
+
+const buildGradleCode = `  ksp(libs.moshiCodeGen)
+  implementation(libs.prefs)
+
+  implementation(libs.timber)`;
+
+const topLevelDelegateCode = `// Cách project mẫu làm — delegate là MEMBER của class Prefs:
+class Prefs(val context: Context) {
+  private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "recipes")
+  // ...
+}
+
+// Cách tài liệu chính thức của DataStore hướng dẫn — delegate ở TOP-LEVEL của file:
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "recipes")
+
+class Prefs(val context: Context) {
+  // ...
+}`;
+
+const prefsFullCode = `class Prefs(val context: Context) {
+  private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "recipes")
+
+  suspend fun saveString(key: String, value: String) {
+    val prefKey = stringPreferencesKey(key)
+    context.dataStore.edit { prefs ->
+      prefs[prefKey] = value
+    }
+  }
+
+  suspend fun getString(key: String): String? {
+    val prefKey = stringPreferencesKey(key)
+    return context.dataStore.data.first()[prefKey]
+  }
+
+  suspend fun saveInt(key: String, value: Int) {
+    val prefKey = intPreferencesKey(key)
+    context.dataStore.edit { prefs ->
+      prefs[prefKey] = value
+    }
+  }
+
+  suspend fun getInt(key: String): Int? {
+    val prefKey = intPreferencesKey(key)
+    return context.dataStore.data.first()[prefKey]
+  }
+
+  suspend fun hasKey(key: String): Boolean {
+    val prefKey = stringPreferencesKey(key)
+    return context.dataStore.data.first().contains(prefKey)
+  }
+}`;
+
+const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
+  // 1
+  val prefKey = stringPreferencesKey(key)
+  // 2
+  context.dataStore.edit { prefs ->
+      // 3
+      prefs[prefKey] = value
+  }
+}`;
+---
+
+<section class="lesson">
+	<div class="callout journey">
+		<strong>Vẫn là Recipe Finder — giờ app phải "nhớ".</strong> Từ Chương 8, app đã tìm và hiện được
+		công thức nấu ăn từ internet. Chương này thêm một năng lực khác hẳn: <strong>nhớ vài lựa chọn nhỏ của
+		người dùng qua các lần mở lại app</strong> — cụ thể là hai thứ: (1) danh sách từ khoá đã tìm, hiện lại
+		trong menu ba dấu chấm của thanh search; (2) tab đang chọn ở bottom bar (Recipes / Groceries). Nói trước
+		cho khỏi chờ: các hàm bookmark trong <code>RecipeViewModel</code> vẫn còn thân rỗng kèm
+		<code>// TODO</code> — bookmark thật sự cần một database, là việc của Chương 10 (Room).
+	</div>
+
+	<h2 id="mo-dau">Bài này giải quyết vấn đề gì</h2>
+	<p>
+		Mọi thứ app biết cho tới giờ đều sống <em>trong bộ nhớ của một lần chạy</em>: tắt app là mất hết. Muốn nhớ
+		qua các lần mở lại, dữ liệu phải được ghi xuống bộ nhớ trong của thiết bị. Việc đó tách thành hai vấn đề
+		khác loại nhau, và chúng là lý do chương này được tách thành hai bài học:
+	</p>
+	<ul>
+		<li>
+			<strong>Lưu <em>bằng gì</em></strong> — chọn công cụ lưu trữ đúng cho dữ liệu nhỏ dạng key/value, biết
+			vì sao DataStore là lựa chọn hiện đại cho việc đó (và nó <em>không</em> phải cái gì), rồi đọc-ghi được
+			một giá trị thật. <em>→ Bài này (D1).</em>
+		</li>
+		<li>
+			<strong>Lưu <em>ở đâu trong app</em></strong> — một class lưu trữ chỉ nên được tạo <strong>một lần</strong>
+			trong cả app; vậy ai tạo, và mọi màn hình + ViewModel lấy nó từ đâu mà không phải tự dựng? <em>→ Bài D2</em>
+			(CompositionLocal + ViewModel wiring).
+		</li>
+	</ul>
+
+	<h2 id="getting-started">Chạy project mẫu trước khi sửa gì</h2>
+	<p>
+		Mở project <code>starter</code> của chương này trong Android Studio và <strong>chạy ngay</strong>. App giống
+		hệt bản cuối Chương 8 — vì nó <em>là</em> bản đó: <code>starter</code> của chương 9 chỉ là app chương 8 kèm
+		<strong>11 file còn dấu <code>// TODO: Add Prefs</code></strong> rải khắp nơi, và project <code>final</code>
+		chỉ thêm đúng <strong>một file mới</strong> (<code>data/Prefs.kt</code>), phần còn lại là sửa vài dòng để
+		"nối dây".
+	</p>
+	<p>
+		Thử hai tình huống: gõ tìm "chicken" rồi bấm menu ba dấu chấm — chưa có gợi ý nào được nhớ; bấm sang tab
+		<em>Groceries</em>, tắt app, mở lại — app luôn mở ở tab <em>Recipes</em>. Hết chương này, cả hai tình huống
+		đó sẽ hoạt động.
+	</p>
+
+	<div class="callout goals">
+		<strong>Học xong bài này bạn sẽ</strong>
+		<ul>
+			<li>Chọn đúng công cụ lưu trữ cho từng <strong>hình dạng dữ liệu</strong>: vài giá trị rời → key/value;
+				nhiều bản ghi cần truy vấn → database (Chương 10); file/định dạng riêng → một bài toán khác.</li>
+			<li>Đọc được code <code>SharedPreferences</code> cũ — <code>getXXX()</code>, <code>edit()</code>,
+				<code>apply()</code>/<code>commit()</code> — và nói đúng trạng thái của nó (còn dùng được, không phải
+				"đã xoá khỏi Android", nhưng không còn là lựa chọn khuyến nghị cho code mới).</li>
+			<li>Giải thích được vì sao <code>DataStore</code> sinh ra: mọi phép đọc-ghi đều <code>suspend</code>, đọc qua
+				<code>Flow</code>, ghi <strong>nguyên khối</strong> — và vì sao nó <em>không</em> phải database hay "tự lưu
+				mọi object".</li>
+			<li>Tự viết được class <code>Prefs</code> 5 hàm: khai store bằng <code>by preferencesDataStore</code>, tạo
+				key có kiểu, đọc bằng <code>data.first()</code>, ghi bằng <code>edit { }</code>.</li>
+			<li>Phân biệt <strong>key chưa hề được lưu</strong> với <strong>giá trị đã lưu</strong>, và quyết định giá trị
+				mặc định một cách có chủ ý.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Vì sao bài này quan trọng.</strong> Hầu như app nào cũng có vài lựa chọn nhỏ cần nhớ: tab đang xem,
+		chế độ tối, đã xem onboarding chưa, từ khoá đã tìm. Đây là loại dữ liệu xuất hiện <em>trước</em> mọi bài toán
+		lưu trữ lớn hơn (database, file người dùng). Nắm được ranh giới "key/value vs database vs file" từ đầu, bạn
+		không nhồi dữ liệu vào sai công cụ — và hiểu vì sao Chương 10 phải tồn tại.
+	</p>
+	<div class="callout">
+		<strong>Cần biết trước.</strong> <strong>F1</strong> — <code>joinToString</code> (ghép danh sách thành chuỗi).
+		<strong>F2</strong> — <code>by</code> delegate, riêng Phần 9 đã nhìn qua
+		<code>by preferencesDataStore(...)</code>; mục 5 của bài này sẽ trả nợ đúng ví dụ đó. <strong>S1</strong> —
+		<code>suspend</code> cho phép tạm dừng chứ không chọn thread, <code>viewModelScope</code>, Flow = giá trị
+		theo thời gian. <strong>S4</strong> — ViewModel sở hữu UI state. <strong>A14</strong> — version catalog
+		Gradle. <strong>Chương 1</strong> — sandbox: app của bạn chỉ được đụng thư mục của chính nó.
+	</div>
+
+	<h2 id="luu-gi-vao-dau">1. Lưu thứ gì, vào đâu: chọn công cụ theo hình dạng dữ liệu</h2>
+	<p>
+		Có ba hướng chính để lưu dữ liệu xuống thiết bị. Điểm quan trọng không phải danh sách — mà là <em>loại dữ
+		liệu nào hợp với hướng nào</em>:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Hướng</th><th>Làm gì</th><th>Phù hợp khi</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>1. Ghi dữ liệu có định dạng (như JSON) vào file</strong></td>
+				<td>Tự đọc/ghi file, tự lo đúng định dạng và thứ tự</td>
+				<td>Bạn cần toàn quyền với file: export/import, cache một response, file cấu hình</td>
+			</tr>
+			<tr>
+				<td><strong>2. Thư viện key/value vào một chỗ chung</strong></td>
+				<td><strong>Chủ đề của chương này</strong> (SharedPreferences cũ · DataStore mới)</td>
+				<td>Dữ liệu nhỏ, rời rạc, dạng "một cái tên → một giá trị"</td>
+			</tr>
+			<tr>
+				<td><strong>3. Database (SQLite)</strong></td>
+				<td>Lưu nhiều bản ghi có cấu trúc, truy vấn/lọc/sắp xếp được</td>
+				<td>Nhiều bản ghi cùng kiểu + cần tìm kiếm. <strong>Room — Chương 10.</strong></td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="callout mental">
+		<strong>Mental model: nhìn hình dạng, không nhìn kích thước</strong>
+		<p>
+			Người mới thường nghĩ "dữ liệu ít thì dùng cách nhẹ, dữ liệu nhiều thì dùng database". Cách nghĩ chính xác
+			hơn là nhìn <strong>hình dạng</strong>:
+		</p>
+		<ul>
+			<li>
+				Vài giá trị rời nhau, mỗi giá trị có một cái tên riêng ("tab đang chọn", "đã xem onboarding chưa", "user
+				id") → <strong>hướng 2</strong>. Bạn luôn biết chính xác mình cần lấy giá trị nào.
+			</li>
+			<li>
+				Nhiều bản ghi cùng kiểu ("100 công thức, mỗi cái có id, tên, ảnh, nguyên liệu") và bạn cần <em>tìm
+				kiếm</em> trong đó → <strong>hướng 3</strong>. Với hướng 2 bạn không thể hỏi "cho tôi mọi công thức có chữ
+				chicken" — bạn chỉ hỏi được đúng một key.
+			</li>
+		</ul>
+		<p>
+			Và một cảnh báo đi kèm từ Chương 1: dữ liệu key/value này nằm trong thư mục của app, <strong>mất khi người
+			dùng xoá app</strong> hoặc xoá dữ liệu app. Tab đang chọn mất thì không ai để ý; danh sách bookmark cả năm
+			mất thì người dùng mất thật — đừng để nó là bản duy nhất của thứ gì người dùng tiếng.
+		</p>
+	</div>
+	<p>
+		Hai mục tiêu cụ thể của chương, đúng theo ranh giới trên: <strong>(1)</strong> menu các từ khoá đã tìm — một
+		<em>danh sách</em> bị nhét vào chỗ chỉ chứa giá trị đơn (vì sao và cái giá, ở mục 7 và D2 mục 17);
+		<strong>(2)</strong> tab đang chọn — một <code>Int</code>, đúng sở trường của key/value.
+	</p>
+
+	<h2 id="sharedpreferences">2. SharedPreferences: cách cũ, và vì sao vẫn phải đọc được nó</h2>
+	<p>
+		Trước DataStore, Android có sẵn một interface tên <code>SharedPreferences</code> (thuộc
+		<code>android.content</code> — của chính hệ điều hành, không cần khai thư viện). Nó tồn tại ở mọi phiên bản
+		Android, lấy được từ bất kỳ <code>Context</code> nào, và vẫn có mặt trong rất nhiều codebase có tuổi — nên
+		cần phải <em>đọc được</em>, dù khoá này không dựng gì mới trên nó.
+	</p>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head good">Đọc — gọi trực tiếp</div>
+			<ul>
+				<li><code>getXXX()</code> — lấy dữ liệu theo <em>đúng kiểu</em> đó (<code>getString</code>, <code>getInt</code>…).</li>
+				<li><code>contains()</code> — kiểm tra key có tồn tại không.</li>
+				<li><code>edit()</code> — trả về một class editor để bắt đầu thay đổi.</li>
+			</ul>
+		</div>
+		<div class="ba-col">
+			<div class="ba-head">Ghi — qua editor lấy từ <code>edit()</code></div>
+			<ul>
+				<li><code>putXXX()</code> — lưu dữ liệu theo đúng kiểu đó.</li>
+				<li><code>clear()</code> — xoá <strong>toàn bộ</strong> dữ liệu đã lưu.</li>
+				<li><code>remove()</code> — xoá <em>một</em> giá trị cụ thể.</li>
+				<li><code>apply()</code> hoặc <code>commit()</code> — <strong>lưu lại</strong> các thay đổi.</li>
+			</ul>
+		</div>
+	</div>
+	<p>
+		Mọi hàm trên đều dùng <em>key</em> để truy cập một mục — trừ <code>clear()</code>, cái này xoá tất cả nên
+		không cần key. Cặp <code>apply()</code>/<code>commit()</code> đáng dừng lại vì nó là <strong>lý do tồn tại của
+		DataStore</strong>:
+	</p>
+	<div class="callout note">
+		<strong><code>apply()</code> hay <code>commit()</code>? — một câu hỏi về hiệu năng</strong>
+		<ul>
+			<li>
+				<code>apply()</code> ghi vào bộ nhớ ngay rồi <em>đẩy việc ghi xuống đĩa sang luồng khác</em>. Hàm trả về
+				ngay, giao diện không bị đứng. Đổi lại bạn <em>không</em> biết việc ghi đã xong chưa và không nhận được lỗi.
+			</li>
+			<li>
+				<code>commit()</code> ghi xuống đĩa <strong>xong mới trả về</strong>, và trả về <code>Boolean</code> cho biết
+				thành công hay không. Gọi trên luồng chính là <strong>chặn giao diện</strong>.
+			</li>
+		</ul>
+		<p>
+			Cái giá của "biết chắc đã ghi xong" là nguy cơ treo UI — và API cho phép bạn tự bắn vào chân mình. DataStore
+			sẽ xử lý đúng nhức nhối này bằng cách <em>buộc</em> mọi phép ghi là <code>suspend</code> (mục 3).
+		</p>
+	</div>
+	<p><strong>Một ví dụ đọc code cũ, từng dòng:</strong></p>
+	<Code code={sharedPrefsExampleCode} lang="kotlin" theme="github-dark" />
+	<ol class="chain">
+		<li>
+			Lấy một instance <code>SharedPreferences</code> với tên file <code>"MyPreferences"</code> và chế độ
+			<code>MODE_PRIVATE</code> (riêng tư — app khác không đọc được). Nối trực tiếp với security sandbox ở
+			Chương 1: app chỉ được đụng thư mục của chính nó.
+		</li>
+		<li>Kiểm tra trước cho chắc là key có tồn tại.</li>
+		<li>
+			Lấy giá trị chuỗi với key <code>"MyKey"</code>, và giá trị mặc định <code>"MyDefault"</code> nếu key đó chưa
+			có.
+		</li>
+	</ol>
+	<p class="hint">
+		<strong>Để ý mâu thuẫn nhỏ ngay trong ví dụ:</strong> code đã gọi <code>contains("MyKey")</code> ở bước 2 rồi,
+		nên nhánh bên trong <em>chắc chắn</em> có key — giá trị mặc định <code>"MyDefault"</code> ở bước 3 sẽ không bao
+		giờ được dùng tới. Đây là ví dụ minh hoạ <em>cả hai</em> cơ chế cùng lúc nên hơi dư. Trong code thật bạn chọn
+		một trong hai: hoặc <code>contains()</code> rồi đọc, hoặc đọc luôn kèm giá trị mặc định. Cách thứ hai gọn hơn
+		và chỉ đọc file một lần — DataStore ở mục 9 chọn cách thứ hai.
+	</p>
+	<p>
+		Cuối cùng, giới hạn quan trọng nhất của cả cơ chế — chỉ lưu được <strong>5 kiểu nguyên thuỷ</strong>:
+	</p>
+	<pre class="tree">String   Boolean   Int   Long   Float</pre>
+	<p>
+		Class — kể cả <code>data class</code> — <em>không</em> lưu được, trừ khi tự tách ra lưu từng phần. Giới hạn này
+		quyết định một phần của chương: muốn lưu <em>danh sách</em> từ khoá (mục tiêu 1), bạn phải tự mã hoá nó thành
+		một <code>String</code> — và ở D2 mục 17 sẽ thấy cái giá của phép mã hoá đó.
+	</p>
+	<p class="notice">
+		<strong>Chữ "deprecated" cần nói cho chính xác.</strong> Một số tài liệu — kể cả giáo trình gốc mà khoá này
+		đối chiếu — gọi <code>SharedPreferences</code> là <em>deprecated</em>. Tài liệu chính thức của Android hiện
+		nay <strong>không đánh dấu class này <code>@Deprecated</code></strong>: nó vẫn chạy, vẫn có trong SDK. Điều
+		Google khuyến nghị là <strong>dùng DataStore cho code mới</strong>. Vậy tư thế của khoá: mọi cấu trúc lưu trữ
+		mới đều dựng trên DataStore; SharedPreferences chỉ cần <em>đọc được</em> khi gặp trong code cũ. (Bảng đối chiếu
+		tài liệu nằm ở phần tra cứu phiên bản — AP3.)
+	</p>
+
+	<h2 id="vi-sao-datastore">3. Vì sao DataStore tồn tại — và nó <em>không</em> phải cái gì</h2>
+	<p>
+		Câu hỏi tự nhiên: "vậy tại sao không sửa <code>SharedPreferences</code> cho tốt lên?". Vì nó nằm
+		<em>trong</em> hệ điều hành: muốn sửa, Google phải ra một bản Android mới rồi chờ nhà sản xuất và người dùng
+		cập nhật — chuyện mất nhiều năm và rất nhiều máy không bao giờ nhận được. Thay vào đó, Google tạo một
+		<strong>thư viện</strong> tên <code>DataStore</code>: được khai trong <code>build.gradle.kts</code>, đóng gói
+		<em>vào trong app</em> của bạn, cập nhật theo nhịp riêng. Đây chính là mô hình Jetpack/AndroidX mà bạn đã gặp
+		từ A14 và S4 — Chương 9 là chỗ nhìn thấy <em>lý do</em> của nó.
+	</p>
+	<p>Định nghĩa thật của interface chỉ có hai thành phần — đáng đọc vì cả chương xoay quanh hai dòng này:</p>
+	<Code code={dataStoreInterfaceCode} lang="kotlin" theme="github-dark" />
+	<table class="api">
+		<thead>
+			<tr><th>Thành phần</th><th>Đọc thế nào</th><th>Khác SharedPreferences ở đâu</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>val data: Flow&lt;T&gt;</code></td>
+				<td>Dữ liệu <strong>không</strong> là một giá trị tĩnh — nó là một <code>Flow</code>, một <em>dòng giá trị
+					chảy theo thời gian</em> (S1).</td>
+				<td><code>getString()</code> trả về giá trị <em>tại lúc gọi</em>. <code>Flow</code> có thể <strong>phát lại</strong>
+					mỗi khi dữ liệu đổi — bạn không cần hỏi lại.</td>
+			</tr>
+			<tr>
+				<td><code>suspend fun updateData(...)</code></td>
+				<td>Từ khoá <code>suspend</code> nghĩa là hàm này <strong>chỉ gọi được từ trong coroutine</strong> (S1).</td>
+				<td>Trả lời đúng nhức nhối <code>apply()</code>/<code>commit()</code> ở mục 2: DataStore <strong>không cho</strong>
+					bạn chặn luồng chính — trình biên dịch chặn từ đầu.</td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="callout note">
+		<strong><code>suspend</code> ở đây không phải chi tiết cú pháp — nó là tính năng</strong>
+		<p>
+			Cả 5 hàm bạn sắp viết trong <code>Prefs</code> đều là <code>suspend fun</code>, và điều đó lan ra <em>khắp</em>
+			code còn lại: <code>RecipeViewModel</code> phải bọc trong <code>viewModelScope.launch</code>,
+			<code>MainScreen</code> phải bọc trong <code>LaunchedEffect</code>/<code>rememberCoroutineScope</code>. Nếu
+			tự hỏi "sao chỗ nào cũng thấy <code>launch</code>?" — câu trả lời nằm ở đúng chữ <code>suspend</code> trong
+			interface 4 dòng này. SharedPreferences chỉ <em>khuyên</em> bạn đừng chặn luồng chính (và cho
+			<code>commit()</code> để tự bắn vào chân mình); DataStore <strong>bắt buộc</strong> bằng kiểu dữ liệu.
+		</p>
+	</div>
+	<p class="notice">
+		<strong>Hai điều DataStore <em>không</em> phải, để không rút ra quy tắc sai:</strong> (1) nó <strong>không phải
+		database</strong> — không truy vấn, không quan hệ, không "cho tôi mọi bản ghi có chữ X"; nó là một kho key/value
+		có kiểu, và database là Chương 10. (2) nó <strong>không tự lưu mọi object</strong> — như mục 2 đã chốt, chỉ 5
+		kiểu nguyên thuỷ (ở biến thể Preferences), mọi thứ phức tạp hơn phải tự mã hoá.
+	</p>
+
+	<h2 id="them-thu-vien">4. Thêm thư viện — hai file, hai lần Gradle sync</h2>
+	<p><strong>Bước 1 — <code>gradle/libs.versions.toml</code>:</strong> thêm version, rồi thêm thư viện.</p>
+	<Code code={versionCatalogCode} lang="properties" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL_ROOT}/gradle/libs.versions.toml</code> — <code>prefsVersion = "1.0.0"</code> ở
+		<strong>dòng 22</strong>, dòng <code>prefs = ...</code> ở <strong>dòng 75</strong>.
+	</p>
+	<p class="hint">
+		Đây là <strong>Version Catalog</strong> của A14: số phiên bản tập trung ở <code>[versions]</code>, khai báo thư
+		viện ở <code>[libraries]</code> và trỏ về version bằng <code>version.ref</code>. Nhờ vậy nâng phiên bản chỉ sửa
+		<em>một</em> chỗ. Tên <code>prefs</code> bạn tự đặt — nó sẽ thành <code>libs.prefs</code> ở bước sau.
+	</p>
+	<p><strong>Bước 2 — <code>app/build.gradle.kts</code>:</strong></p>
+	<Code code={buildGradleCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL_ROOT}/app/build.gradle.kts</code> — <code>implementation(libs.prefs)</code> ở
+		<strong>dòng 80</strong>, <code>implementation(libs.timber)</code> ở <strong>dòng 82</strong>.
+	</p>
+	<p>
+		Sau mỗi file cần <strong>một lần Gradle sync</strong>. Lần đầu để Android Studio <em>biết</em> có một entry tên
+		<code>prefs</code> trong catalog — chưa sync thì khi gõ <code>libs.prefs</code>, IDE sẽ gạch đỏ vì chưa biết cái
+		tên đó tồn tại.
+	</p>
+	<p class="hint">
+		<strong>Đọc tên thư viện cho kỹ:</strong> <code>androidx.datastore:datastore-preferences</code> — phần cuối là
+		<strong>preferences</strong>. DataStore có hai biến thể: <strong>Preferences DataStore</strong> (dùng ở đây) lưu
+		key-value không cần định nghĩa schema, gần nhất với <code>SharedPreferences</code>; <strong>Proto
+		DataStore</strong> lưu object có kiểu rõ ràng qua Protocol Buffers — an toàn kiểu hơn nhưng phải học thêm một
+		công cụ, ngoài phạm vi khoá. Tên biến thể giải thích luôn câu hỏi "tại sao vẫn không lưu được data class?": bản
+		Preferences thì không, bản Proto thì được.
+	</p>
+
+	<h2 id="khai-store">5. Khai store đúng một lần: <code>by preferencesDataStore</code></h2>
+	<p>Ba dòng code đủ để có một store. Dòng đầu là khai báo:</p>
+	<Code code={dataStoreDelegateCode} lang="kotlin" theme="github-dark" />
+	<p>Đọc dòng này bằng <strong>hai tầng</strong>, tách bạch rõ:</p>
+	<ul>
+		<li>
+			<strong>Tầng Kotlin — <code>by</code> delegate (F2 đã dạy).</strong> Đây là một
+			<em>extension property</em> trên <code>Context</code> (JIT: cú pháp này cho phép thêm một thuộc tính vào class
+			bạn không sửa được — ở đây là <code>Context</code> của Android) uỷ quyền việc tạo-giữ giá trị cho
+			<code>preferencesDataStore</code>. Nếu viết <code>val Context.dataStore = preferencesDataStore(...)</code>
+			không có <code>by</code>, mỗi lần đọc thuộc tính sẽ tạo lại một instance mới; với <code>by</code>, instance
+			được tạo <strong>một lần</strong> ở lần truy cập đầu tiên rồi giữ lại. Cú pháp này <em>chính là</em> cơ chế
+			đảm bảo "chỉ một instance".
+		</li>
+		<li>
+			<strong>Tầng DataStore — một store gắn với Context, có tên.</strong> Tham số <code>name = "settings"</code>
+			đặt tên file preference; trong project thật tên là <code>"recipes"</code> (mục 10). Một cái tên = một file =
+			một store: <strong>không được tạo nhiều hơn một instance DataStore trỏ vào cùng một file</strong> — tài liệu
+			chính thức in cảnh báo này bằng chữ "Important". Hai instance giữ cache riêng và tự ghi file; chúng ghi đè
+			lẫn nhau hoặc trả giá trị cũ, và lỗi <em>không đều</em> — chạy 10 lần đúng 9 lần — nên rất khó lần ra.
+		</li>
+	</ul>
+	<div class="callout note">
+		<strong>Đặt delegate ở đâu? — hai vị trí, hai mức đảm bảo</strong>
+		<Code code={topLevelDelegateCode} lang="kotlin" theme="github-dark" />
+		<p class="src">
+			Cách trên: <code>{FINAL}/data/Prefs.kt</code> dòng 12–13 (code thật). Cách dưới: khuôn tài liệu chính thức của
+			DataStore hướng dẫn.
+		</p>
+		<table class="api">
+			<thead>
+				<tr><th></th><th>Delegate là member của class (project làm)</th><th>Delegate ở top-level (tài liệu khuyên)</th></tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>"Một lần" được đảm bảo trong</td>
+					<td>Mỗi <strong>instance <code>Prefs</code></strong></td>
+					<td>Toàn bộ <strong>file / process</strong></td>
+				</tr>
+				<tr>
+					<td>Tạo 2 <code>Prefs</code> thì</td>
+					<td><strong>2 instance DataStore</strong> cùng trỏ vào file <code>recipes</code> → đúng tình huống cảnh báo cấm</td>
+					<td>Vẫn <strong>1 instance</strong> duy nhất được chia sẻ</td>
+				</tr>
+				<tr>
+					<td>An toàn khi</td>
+					<td>Bạn <em>tự đảm bảo</em> chỉ có một <code>Prefs</code> trong cả app</td>
+					<td>Luôn luôn</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			Project mẫu <em>thoát</em> được vì nó tạo <code>Prefs</code> đúng một lần trong <code>RecipeApp.onCreate()</code>
+			(bài D2, mục 12) rồi phát đi khắp app. Cấu trúc này hoạt động — nhưng phụ thuộc vào việc không ai bao giờ
+			gõ <code>Prefs(context)</code> lần thứ hai. <strong>Khi tự dựng app, hãy đặt delegate ở top-level</strong>:
+			nó biến "chỉ một instance" từ quy ước bạn phải nhớ thành điều trình biên dịch tự bảo đảm. Trong khoá, giữ
+			theo project để code đối chiếu được; những chỗ dựng thêm <code>Prefs</code> gây rủi ro này được ghi ở
+			D2 mục 19 và AP3.
+		</p>
+	</div>
+
+	<h2 id="keys">6. Key có kiểu: kiểu nằm trong key, không nằm trong tên hàm</h2>
+	<p>
+		Để đọc/ghi một giá trị, chuỗi key thô phải được bọc thành một <strong>key có kiểu</strong> trước:
+	</p>
+	<Code code={prefKeyReadCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Vẫn là một string key như hệ cũ — nhưng <code>stringPreferencesKey("MyKey")</code> trả về một object có kiểu
+		<code>Preferences.Key&lt;String&gt;</code>, và kiểu đó quyết định mọi thứ phía sau:
+	</p>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">SharedPreferences — kiểu nằm ở tên hàm</div>
+			<pre class="tree">prefs.getString("count", "")
+prefs.getInt("count", 0)</pre>
+			<p>
+				Cùng một key <code>"count"</code> đọc được bằng cả hai hàm. Gõ sai hàm thì lỗi <em>lúc chạy</em>, và thường
+				là một <code>ClassCastException</code> khó hiểu.
+			</p>
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">DataStore — kiểu nằm trong chính key</div>
+			<pre class="tree">val k = stringPreferencesKey("count")
+context.dataStore.data.first()[k]</pre>
+			<p>
+				<code>k</code> có kiểu <code>Preferences.Key&lt;String&gt;</code>. Tra nó ra thì <em>chắc chắn</em> được
+				<code>String?</code>. Dùng sai kiểu là <strong>lỗi lúc biên dịch</strong> — bạn biết ngay khi gõ.
+			</p>
+		</div>
+	</div>
+	<p>
+		Trong project, hai key thật được khai cạnh chỗ dùng của mỗi chủ sở hữu:
+		<code>PREVIOUS_SEARCH_KEY</code> — một <code>String</code> trong <code>RecipeViewModel</code> (D2 mục 16), và
+		<code>CURRENT_INDEX_KEY</code> — một <code>Int</code> trong <code>MainScreen</code> (D2 mục 18). Quy ước của
+		chương: kiểu của key phải khớp với kiểu của dữ liệu bạn định lưu; nếu tương lai cần <code>Boolean</code> thì
+		dùng <code>booleanPreferencesKey</code> — khoá này không catalogue hết các biến thể, chỉ dùng đúng loại project
+		cần.
+	</p>
+
+	<h2 id="doc-first">7. Đọc: <code>data</code> là một Flow — và <code>first()</code> là một lựa chọn</h2>
+	<p>
+		Mô hình đọc của DataStore: <code>dataStore.data</code> là một <code>Flow&lt;Preferences&gt;</code> — dòng giá
+		trị theo thời gian mà S1 đã dạy. Mỗi lần file preference thay đổi (mọi lần <code>edit</code> xong), dòng đó
+		phát ra một snapshot mới của toàn bộ các cặp key/value.
+	</p>
+	<p class="hint">
+		<strong>JIT — <code>first()</code>:</strong> một hàm trên Flow <em>hứng đúng giá trị đầu tiên rồi dừng</em> —
+		sau đó code phía sau chạy tiếp bình thường. Đó là cách "rút một giá trị ra khỏi dòng chảy" mà không phải
+		collect vô hạn. Toán tử Flow đầy đủ sẽ học ở W1.
+	</p>
+	<p>
+		Project chọn cách đọc một lần: <code>context.dataStore.data.first()[prefKey]</code> — lấy snapshot đầu tiên,
+		tra giá trị theo key (tra key không có thì được <code>null</code>, xử lý ở mục 9). Cách này hợp lý cho một
+		class tiện ích đơn giản, nhưng cần hiểu rõ <strong>cái đã bị bỏ lại</strong>:
+	</p>
+	<div class="callout note">
+		<strong>Đánh đổi của <code>first()</code> — đọc một lần, không theo dòng chảy</strong>
+		<ul>
+			<li>
+				Với <code>first()</code>, bạn dùng DataStore <em>y như</em> <code>SharedPreferences</code>: hỏi một lần, nhận
+				một giá trị, xong. Nếu preference đổi <em>sau</em> đó, chỗ đang giữ giá trị cũ <strong>không tự biết</strong>.
+			</li>
+			<li>
+				Cái DataStore thật sự hơn ở mô hình <code>data</code>-là-Flow: UI có thể <em>tự cập nhật</em> khi preference
+				đổi. Muốn vậy, thay vì <code>first()</code>, giữ nguyên Flow và <code>collect</code> nó ở ViewModel — rồi
+				state màn hình tự theo kịp. Nâng cấp này là một trong ba việc nên tự làm ở cuối bài D2 (mục 21), và là
+				việc làm tự nhiên sau khi học W1.
+			</li>
+			<li>
+				Chuyện đọc file là việc chậm vẫn đúng: <code>first()</code> là hàm <code>suspend</code>, phải gọi trong
+				coroutine — không có lối tắt đồng bộ nào.
+			</li>
+		</ul>
+	</div>
+	<p>
+		Chốt mô hình cho đúng: DataStore <strong>không phải</strong> "biến toàn cục đọc một lần rồi quên" — nó là một
+		dòng dữ liệu sống, và project đang chủ động lấy một giá trị từ dòng đó tại thời điểm cần. Khi dữ liệu của màn
+		hình <em>phụ thuộc liên tục</em> vào một preference, hãy chuyển sang collect (D2 mục 21).
+	</p>
+
+	<h2 id="ghi-edit">8. Ghi: <code>edit { }</code> — suspend, nguyên khối, không cần chốt</h2>
+	<p>Hàm ghi đầu tiên của class <code>Prefs</code>, đọc theo ba số:</p>
+	<Code code={prefsUsageCode} lang="kotlin" theme="github-dark" />
+	<ol class="chain">
+		<li>Bọc chuỗi key thô thành key có kiểu — đúng như mục 6.</li>
+		<li>
+			<code>context.dataStore.edit &#123; ... &#125;</code> mở một khối chỉnh sửa. Lambda nhận vào snapshot
+			hiện tại của preference (đặt tên <code>prefs</code>).
+		</li>
+		<li>Gán giá trị cho key: <code>prefs[prefKey] = value</code> — cú pháp tra-ghi như Map.</li>
+	</ol>
+	<div class="callout note">
+		<strong>Ba tính chất của <code>edit</code> mà không nhìn kỹ sẽ bỏ lỡ</strong>
+		<ul>
+			<li>
+				<code>edit</code> là <strong>hàm <code>suspend</code></strong>. Đó là lý do <code>saveString</code> buộc phải
+				là <code>suspend fun</code> — bạn không thể gọi hàm suspend từ hàm thường. Ai gọi
+				<code>prefs.saveString(...)</code> cũng phải đang ở trong một coroutine (S1).
+			</li>
+			<li>
+				Nó <strong>nguyên khối</strong> (transactional): đọc dữ liệu hiện có, cho bạn sửa, rồi ghi <em>toàn bộ</em>
+				xuống một lần. Không có trạng thái nửa vời kiểu "apply() chưa kịp xong" của <code>SharedPreferences</code>.
+			</li>
+			<li>
+				<strong>Không cần gọi thêm gì để "chốt"</strong>. Khối <code>edit</code> kết thúc là dữ liệu đã ghi xong — và
+				vì hàm là <code>suspend</code>, khi nó trả về bạn <em>biết chắc</em> việc ghi đã hoàn tất. Đúng cái được của
+				<code>commit()</code> mà <strong>không</strong> phải trả giá chặn luồng chính.
+			</li>
+		</ul>
+		<p>
+			Và một điều <em>không cần</em> làm: không bọc <code>Dispatchers.IO</code> quanh lời gọi. S1 đã dạy dispatcher
+			cho code tự bạn viết mà nó chặn thread; DataStore tự lo việc chuyển ngữ cảnh cho các thao tác file của nó —
+			thêm <code>withContext(IO)</code> chỉ là lớp dư. (Bản Chương 8 đã phê đúng kiểu lỗi này cho Retrofit; DataStore
+			cũng vậy.)
+		</p>
+	</div>
+
+	<h2 id="mac-dinh">9. Key chưa có ≠ giá trị mặc định: <code>null</code> là tín hiệu, mặc định là quyết định</h2>
+	<p>
+		Cả hai hàm đọc của project trả về kiểu nullable: <code>getString()</code> → <code>String?</code>,
+		<code>getInt()</code> → <code>Int?</code>. Chỗ nào <code>null</code>? Chính xác là <strong>chưa bao giờ có ai
+		ghi key đó</strong> — app mới cài, hoặc preference đó chưa từng được lưu. Đây không phải lỗi; đó là trạng thái
+		"hỏng có dữ liệu" cần được xử lý tường minh:
+	</p>
+	<ul>
+		<li>
+			<code>MainScreen</code> (D2 mục 18): <code>if (currentIndex != null) &#123; ... &#125;</code> — chưa từng lưu tab
+			thì để nguyên tab mặc định <code>0</code> của <code>remember</code>.
+		</li>
+		<li>
+			<code>RecipeViewModel</code> (D2 mục 16): <code>if (!previousSearchString.isNullOrEmpty())</code> — chưa có gì
+			lưu thì không tạo danh sách rỗng giả.
+		</li>
+	</ul>
+	<div class="callout note">
+		<strong>"Giá trị mặc định" là quyết định của app, không phải của thư viện</strong>
+		<p>
+			<code>SharedPreferences</code> nhét mặc định vào từng lời gọi: <code>getString("tab", "0")</code> — quy tắc
+			"không có thì lấy gì" nằm rải rác ở mọi chỗ đọc. DataStore Preferences thì <em>không</em> có mặc định ngầm:
+			tra key chưa có, bạn nhận <code>null</code>, và app quyết định lấy gì thay. Tách bạch hai cái này tránh lỗi
+			"sự thật do tai nạn": tưởng rằng <code>0</code> là giá trị hợp lệ đã lưu, trong khi thật ra key chưa từng
+			được ghi. Quy tắc: <strong>mặc định nằm ở tầng app (ViewModel/UI), rõ ràng, một chỗ</strong>.
+		</p>
+	</div>
+
+	<h2 id="prefs-class">10. Class <code>Prefs</code>: một cửa ra vào cho DataStore</h2>
+	<p>
+		Ghép các mảnh trên vào một file duy nhất — <code>data/Prefs.kt</code>, file <em>mới duy nhất</em> mà chương này
+		thêm vào project (43 dòng):
+	</p>
+	<Code code={prefsFullCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/data/Prefs.kt</code> (dòng 12–43, đã lược phần <code>package</code> + import). Delegate
+		ở dòng <strong>13</strong>, <code>saveString</code> <strong>15–20</strong>, <code>getString</code>
+		<strong>22–25</strong>, <code>saveInt</code> <strong>27–32</strong>, <code>getInt</code> <strong>34–37</strong>,
+		<code>hasKey</code> <strong>39–42</strong>.
+	</p>
+	<p>
+		Vì sao bọc một class thay vì cho cả app gọi DataStore trực tiếp? Ba lợi ích thật, đúng theo tinh thần S5
+		(kiến trúc quản lý trách nhiệm, không phải đếm class):
+	</p>
+	<ol>
+		<li>
+			<strong>Che cơ chế lưu trữ.</strong> Không có nó, mỗi chỗ muốn lưu đều phải biết
+			<code>stringPreferencesKey</code>, <code>edit</code>, <code>data.first()</code>. Có nó, chúng chỉ cần gọi
+			<code>prefs.saveString("key", "value")</code>.
+		</li>
+		<li>
+			<strong>Giữ đúng một điểm khai báo <code>dataStore</code></strong> — nối với cảnh báo "một instance" ở mục 5.
+		</li>
+		<li>
+			<strong>Đổi nền tảng lưu trữ mà không sửa cả app.</strong> Muốn chuyển sang Proto DataStore hay lưu mã hoá,
+			chỉ sửa trong <code>Prefs.kt</code>; chữ ký 5 hàm giữ nguyên.
+		</li>
+	</ol>
+	<p>
+		Gọi đúng tên nó: <code>Prefs</code> là một <strong>data source</strong> — "một chỗ dữ liệu thực sự nằm, và cách
+		nói chuyện với chỗ đó" theo ngôn ngữ của S5 — chuyên cho thiết lập nhỏ của app. Nó <em>không cần</em> một lớp
+		repository bọc ngoài: một data source nhỏ, một trách nhiệm, một file. (Repository như một biên giới đa nguồn
+		là nội dung của S5/R3 — không gán nhãn cho có.)
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Hàm</th><th>Việc nó làm</th><th>Được dùng ở đâu trong app</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>saveString</code></td>
+				<td>Lưu một chuỗi</td>
+				<td><code>RecipeViewModel.kt</code> dòng 88 — lưu danh sách từ khoá đã nối bằng dấu phẩy (D2 mục 16)</td>
+			</tr>
+			<tr>
+				<td><code>getString</code></td>
+				<td>Đọc một chuỗi, trả <code>null</code> nếu chưa có</td>
+				<td><code>RecipeViewModel.kt</code> dòng 59 — đọc lại danh sách trong <code>init</code> (D2 mục 16)</td>
+			</tr>
+			<tr>
+				<td><code>saveInt</code></td>
+				<td>Lưu một số nguyên</td>
+				<td><code>ui/MainScreen.kt</code> dòng 48 và 58 — lưu tab đang chọn (D2 mục 18)</td>
+			</tr>
+			<tr>
+				<td><code>getInt</code></td>
+				<td>Đọc một số nguyên</td>
+				<td><code>ui/MainScreen.kt</code> dòng 33 — đọc tab lúc mở app (D2 mục 18)</td>
+			</tr>
+			<tr>
+				<td><code>hasKey</code></td>
+				<td>Kiểm tra key có tồn tại</td>
+				<td><strong>Không nơi nào</strong> — đã soát toàn bộ <code>final</code>: chỉ có định nghĩa, không có lời gọi</td>
+			</tr>
+		</tbody>
+	</table>
+	<div class="callout diff">
+		<strong>Đọc code mẫu phê phán: <code>hasKey</code> là code chết, và còn có một hố nhỏ</strong>
+		<p>
+			<code>hasKey</code> tồn tại như bản tương ứng của <code>contains()</code> trong <code>SharedPreferences</code>
+			(mục 2) — viết cho đủ bộ, nhưng app không gọi tới. Bạn không cần nó: <code>getString()</code> đã trả về
+			<code>String?</code>, kiểm tra <code>null</code> là biết key có tồn tại không — và chỉ đọc file
+			<strong>một</strong> lần thay vì hai.
+		</p>
+		<p>
+			Hố nhỏ đáng học hơn: <code>hasKey</code> luôn tạo key bằng <code>stringPreferencesKey</code>, nên nó
+			<strong>không</strong> tìm được key kiểu <code>Int</code> — gọi <code>hasKey(CURRENT_INDEX_KEY)</code> sẽ luôn
+			trả <code>false</code> dù giá trị đã được lưu, vì <code>stringPreferencesKey("X")</code> và
+			<code>intPreferencesKey("X")</code> là hai key khác nhau với DataStore. Đây là hệ quả trực tiếp của "kiểu nằm
+			trong key" ở mục 6.
+		</p>
+	</div>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Đồng nghiệp viết: <code>fun loadName(context: Context): String = context.dataStore.data.first()[NAME_KEY] ?: ""</code>
+			và gọi nó trong <code>onClick</code> của một nút. Chỉ ra <strong>(a)</strong> dòng này không biên dịch được vì
+			sao, <strong>(b)</strong> hai chỗ thiếu so với khuôn của <code>Prefs</code> (một về khai báo, một về việc gọi
+			hàm), và <strong>(c)</strong> nếu <code>NAME_KEY</code> khai bằng <code>intPreferencesKey</code> thì phép tra
+			<code>[NAME_KEY]</code> để lấy <code>String</code> sẽ ra sao? Nói ở tầng kiểu.
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>(a)</strong> <code>first()</code> là hàm <code>suspend</code> (mục 7), nên hàm bọc nó phải là
+				<code>suspend fun</code>; còn gọi trong <code>onClick</code> thì cần một coroutine scope
+				(<code>rememberCoroutineScope</code>/<code>LaunchedEffect</code>).
+			</p>
+			<p>
+				<strong>(b)</strong> Thiếu khai báo <code>private val Context.dataStore by preferencesDataStore(name = ...)</code>
+				— không có delegate thì <code>context.dataStore</code> không tồn tại (mục 5). Và hàm nên nằm trong class
+				<code>Prefs</code> để giữ đúng một điểm khai báo + che cơ chế (mục 10).
+			</p>
+			<p>
+				<strong>(c)</strong> Không compile. <code>intPreferencesKey("X")</code> có kiểu
+				<code>Preferences.Key&lt;Int&gt;</code>, không phải index của <code>Preferences</code> trả về
+				<code>String?</code> theo cách tra đó — đây là lỗi <em>lúc biên dịch</em>, đúng thiết kế "kiểu nằm trong key"
+				(mục 6).
+			</p>
+		</details>
+	</div>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+	<div class="callout journey">
+		<ol>
+			<li>Chọn công cụ theo <strong>hình dạng dữ liệu</strong>: vài giá trị rời → key/value (DataStore); tập hợp bản
+				ghi cần truy vấn → database (Chương 10); file định dạng riêng → bài toán khác.</li>
+			<li><code>SharedPreferences</code>: đọc trực tiếp (<code>getXXX</code>/<code>contains</code>), ghi qua editor +
+				<code>apply()</code>/<code>commit()</code>; chỉ 5 kiểu; <code>commit()</code> có thể chặn UI. Chưa bị đánh dấu
+				deprecated — nhưng không còn là lựa chọn cho code mới.</li>
+			<li>DataStore = <code>data: Flow&lt;T&gt;</code> + <code>suspend updateData</code>: mọi phép đọc-ghi là
+				<code>suspend</code>, ghi <strong>nguyên khối</strong>. Không phải database, không tự lưu object.</li>
+			<li><code>by preferencesDataStore(name = ...)</code>: delegate tạo đúng một instance per store; đặt top-level thì
+				trình biên dịch tự bảo đảm.</li>
+			<li>Key có kiểu — sai kiểu là lỗi biên dịch. Đọc: <code>data.first()</code> (một giá trị, không theo dòng
+				chảy). Ghi: <code>edit &#123; &#125;</code>, xong là chắc.</li>
+			<li>Key chưa có → <code>null</code> → mặc định là <strong>quyết định của app</strong>, đặt một chỗ rõ ràng.</li>
+			<li><code>Prefs</code> = data source 43 dòng cho thiết lập nhỏ: che cơ chế, giữ một điểm khai báo, đổi nền
+				tảng được.</li>
+		</ol>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng
+		phía trên. Bảng lệch phiên bản và bảng đối chiếu "văn bản gốc ↔ project" đầy đủ nằm ở phần tra cứu phiên bản
+		của khoá (AP3, mục Ch09).
+	</p>
+	<ul>
+		<li>
+			<strong>Gọi <code>SharedPreferences</code> là "deprecated".</strong> Tài liệu chính thức không đánh dấu class
+			này <code>@Deprecated</code> — nó vẫn chạy và vẫn có trong SDK. Đúng: Google khuyến nghị DataStore cho code
+			mới (mục 2). Sai gốc rễ này sẽ khiến bạn "sửa" code cũ không cần sửa.
+		</li>
+		<li>
+			<strong>Tưởng DataStore là database, hoặc là "tự lưu mọi object".</strong> Không truy vấn, không quan hệ, không
+			lưu class — chỉ 5 kiểu giá trị đơn ở biến thể Preferences (mục 3). Tập hợp bản ghi có cấu trúc → Room,
+			Chương 10.
+		</li>
+		<li>
+			<strong>Tưởng <code>rememberSaveable</code> là persistence.</strong> Nó sống qua xoay máy, chết khi tắt app, và
+			không bao giờ ghi đĩa (bảng bốn cơ chế ở D2 mục 18). Preference thật → DataStore.
+		</li>
+		<li>
+			<strong>Đọc DataStore với mental model chặn.</strong> Mọi phép đọc là <code>suspend</code> + trả qua Flow —
+			không có lối tắt đồng bộ; và <code>first()</code> nghĩa là "một giá trị, không theo dòng chảy", không phải "đọc
+			ra giữ nguyên vĩnh viễn" (mục 7).
+		</li>
+		<li>
+			<strong>Nhầm <code>null</code> (key chưa có) với giá trị đã lưu.</strong> Mặc định là quyết định của app, đặt
+			một chỗ rõ ràng — đừng để "sự thật do tai nạn" kiểu 0/false ngầm (mục 9).
+		</li>
+		<li>
+			<strong>Rải preference khắp code UI.</strong> Tự dựng <code>Prefs(context)</code> mỗi nơi = nhiều instance
+			DataStore + Context sống lâu cầm Context ngắn hạn. Một chủ sở hữu, một điểm khai báo (mục 5, 10; bài toán
+			nối dây được giải ở D2 mục 12).
+		</li>
+		<li>
+			<strong>Bọc thêm <code>Dispatchers.IO</code> quanh DataStore.</strong> Các API DataStore tự lo chuyển ngữ cảnh
+			của việc file; thêm IO là lớp dư (mục 8).
+		</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — ba cách lưu dữ liệu (dòng 17–23), ví dụ đáng lưu (dòng
+			27), hai mục tiêu chương (dòng 31), SharedPreferences + ghi chú "deprecated" của giáo trình (dòng 38–40), các
+			nhóm hàm đọc/ghi (dòng 44–57), ví dụ SharedPreferences (dòng 61–70), 5 kiểu (dòng 78–84), vì sao thư viện riêng
+			+ interface DataStore (dòng 88–95), khai store (dòng 100), key/đọc/<code>first()</code> + cảnh báo "Important"
+			một instance (dòng 108–119), thêm thư viện (dòng 121–142), bộ khung <code>Prefs</code> + 5 TODO (dòng 151–167,
+			173, 179–194, 205, 222, 231), Key Points (dòng 385–389), link DataStore chính thức (dòng 391–399).
+		</li>
+		<li>
+			<strong>Code thật:</strong> <code>{FINAL}/data/Prefs.kt</code> (dòng 12–43 — toàn bộ class; delegate dòng 13),
+			<code>{FINAL_ROOT}/gradle/libs.versions.toml</code> (dòng 22, 75),
+			<code>{FINAL_ROOT}/app/build.gradle.kts</code> (dòng 80, 82).
+		</li>
+		<li>
+			<strong>Đối chiếu nền tảng:</strong> <code>docs/drafts/f2-kotlin-foundation.md</code> (Phần 9 —
+			<code>by preferencesDataStore</code> ở mức delegate, trả nợ ở mục 5) · <code>docs/drafts/f1-kotlin-foundation.md</code>
+			(<code>joinToString</code>) · <code>docs/drafts/s1-coroutine-foundation.md</code> (suspend/scope/Flow) ·
+			<code>docs/drafts/s5-app-architecture-repository.md</code> (định nghĩa data source — mục 10) · A14 (version
+			catalog) · Chương 1 (sandbox, <code>MODE_PRIVATE</code>).
+		</li>
+		<li>
+			<strong>Ví dụ tối giản do khoá dựng:</strong> bảng "hình dạng dữ liệu" (mục 1 — viết lại từ danh sách ba cách
+			của giáo trình), khuôn kiểm tra nhanh.
+		</li>
+	</ul>
+	<p class="hint">
+		<strong>Tra cứu phiên bản:</strong> bảng lệch phiên bản DataStore (1.0.0 → 1.2.x) và bảng đối chiếu "văn bản
+		gốc ↔ project" của chương này (7 điểm lệch + chuyện preview) nằm ở <code>docs/drafts/ap3-version-drift.md</code>,
+		mục Ch09 — không lặp lại ở đây.
+	</p>
+</section>

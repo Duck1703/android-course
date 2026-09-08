@@ -1,0 +1,167 @@
+---
+// Quiz cho D1 — "DataStore & SharedPreferences: lưu key/value đúng cách"
+// (slug: ch09-data-store-va-sharedpreferences).
+// Tách từ monolith Ch09Quiz.astro (batch Stage 6). Phân bổ theo ownership:
+// D1 sở hữu ranh giới công cụ theo hình dạng dữ liệu, SharedPreferences đọc-code-cũ + trạng thái
+// chính xác (không @Deprecated), interface DataStore, key có kiểu, data.first() vs collect,
+// edit { }, null = key-chưa-có, một-instance, Prefs như data source.
+// Tám câu kế thừa ý của monolith (câu 1/2/4/5/6/7/9/10), hai câu mới bám mục 3 (trạng thái
+// "deprecated") và mục 9 (null = key chưa có).
+// Chuẩn quiz §13 + quy tắc Stage 5: 4 đáp án / 1 đúng NGỮ NGHĨA, giải thích 100% không trỏ
+// theo chữ cái (thứ tự HIỂN THỊ đã xáo), phân bố GIÁ TRỊ data-answer (2/2/3/3), VỊ TRÍ HIỂN
+// THỊ (2/3/3/2) và ĐỘ DÀI đáp án đúng (rank 1..4 = 3/2/2/3) đều tách bạch. Chấm bằng harness IMP-001.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>1. Dữ liệu lưu bằng SharedPreferences / DataStore biến mất khi nào?</legend>
+			<label><input type="radio" name="q1" value="d" /> Không bao giờ mất — dữ liệu được sao lưu lên Google account</label>
+			<label><input type="radio" name="q1" value="a" /> Khi tắt app (thoát khỏi màn hình gần đây)</label>
+			<label><input type="radio" name="q1" value="b" /> Khi người dùng xoá app hoặc xoá dữ liệu app</label>
+			<label><input type="radio" name="q1" value="c" /> Khi khởi động lại máy</label>
+			<p class="explain" hidden>
+				Dữ liệu key/value nằm trong thư mục của app trên bộ nhớ trong: nó tồn tại qua các lần mở lại app, qua tắt app
+				và khởi động lại máy — nhưng <strong>mất khi app bị xoá</strong> hoặc xoá dữ liệu app (mục 1, nối với sandbox
+				của Chương 1). Đây là ranh giới quan trọng: đừng để đây là bản duy nhất của thứ người dùng tiếc khi mất.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>2. Trong <code>SharedPreferences</code>, muốn <strong>ghi</strong> một giá trị thì phải đi qua đâu?</legend>
+			<label><input type="radio" name="q2" value="c" /> Gọi trực tiếp <code>setString()</code> trên đối tượng SharedPreferences</label>
+			<label><input type="radio" name="q2" value="d" /> Qua một <code>Editor</code>: lấy bằng <code>edit()</code>, đặt giá trị bằng <code>putXXX()</code>, chốt bằng <code>apply()</code>/<code>commit()</code></label>
+			<label><input type="radio" name="q2" value="b" /> Qua <code>ContentResolver</code></label>
+			<label><input type="radio" name="q2" value="a" /> Ghi ra file XML bằng tay rồi gọi <code>reload()</code></label>
+			<p class="explain" hidden>
+				Đối tượng <code>SharedPreferences</code> chỉ cho <strong>đọc</strong> (<code>getXXX</code>, <code>contains</code>).
+				Muốn ghi thì gọi <code>edit()</code> để lấy một <code>Editor</code>, đặt giá trị bằng <code>putXXX()</code>,
+				rồi phải <strong>chốt lại</strong> bằng <code>apply()</code> hoặc <code>commit()</code> (mục 2).
+				Quên bước chốt là lỗi kinh điển: code không báo lỗi gì, chỉ đơn giản là dữ liệu không được lưu.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>3. Trạng thái đúng của <code>SharedPreferences</code> hiện nay là gì?</legend>
+			<label><input type="radio" name="q3" value="c" /> Chưa bị đánh dấu deprecated — nhưng Google khuyến nghị DataStore cho code mới</label>
+			<label><input type="radio" name="q3" value="a" /> Đã bị đánh dấu <code>@Deprecated</code> chính thức: trình biên dịch cảnh báo ngay khi bạn gọi class này, nhưng nó vẫn biên dịch được</label>
+			<label><input type="radio" name="q3" value="d" /> Vẫn là lựa chọn số một được Google khuyến nghị cho dữ liệu nhỏ dạng key/value</label>
+			<label><input type="radio" name="q3" value="b" /> Đã bị xoá khỏi Android SDK từ lâu, chỉ còn tồn tại trong các codebase cũ</label>
+			<p class="explain" hidden>
+				Tài liệu chính thức của Android <strong>không</strong> đánh dấu class này <code>@Deprecated</code>: nó vẫn chạy,
+				vẫn có trong SDK, và vẫn có mặt trong rất nhiều codebase có tuổi (mục 2). Điều Google làm là
+				<strong>khuyến nghị DataStore cho code mới</strong> — khác hẳn với "bị xoá" hay "bị chính thức bỏ". Sai gốc rễ
+				này sẽ khiến bạn "sửa" code cũ không cần sửa.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>4. Khác nhau cốt lõi giữa <code>apply()</code> và <code>commit()</code> là gì?</legend>
+			<label><input type="radio" name="q4" value="b" /> Không khác gì nhau — chỉ là hai tên gọi khác nhau của cùng một hàm ghi</label>
+			<label><input type="radio" name="q4" value="d" /> <code>apply()</code> chỉ dùng được cho String, còn <code>commit()</code> dùng được cho mọi kiểu dữ liệu</label>
+			<label><input type="radio" name="q4" value="a" /> <code>apply()</code> ghi bất đồng bộ; <code>commit()</code> ghi đồng bộ và chặn luồng đang gọi</label>
+			<label><input type="radio" name="q4" value="c" /> <code>apply()</code> chỉ ghi vào RAM rồi thôi, còn <code>commit()</code> ghi xuống đĩa luôn lúc gọi</label>
+			<p class="explain" hidden>
+				<code>apply()</code> trả về ngay và ghi xuống đĩa ở luồng nền — nhưng bạn không biết khi nào xong và không nhận
+				lỗi. <code>commit()</code> <strong>chờ ghi xong mới trả về</strong> và trả một <code>Boolean</code>; gọi trên
+				luồng UI là chặn giao diện (mục 2). Đây chính là vấn đề mà DataStore giải quyết bằng cách khiến mọi phép ghi
+				đều là <code>suspend</code> — bạn <em>không thể</em> vô tình chặn luồng UI nữa.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>5. SharedPreferences (và DataStore Preferences) lưu được những kiểu nào?</legend>
+			<label><input type="radio" name="q5" value="b" /> Chỉ có mỗi String</label>
+			<label><input type="radio" name="q5" value="c" /> String, Boolean, Int, Long, Float — đúng 5 kiểu này</label>
+			<label><input type="radio" name="q5" value="a" /> Mọi kiểu Kotlin đều lưu được, kể cả data class và List&lt;String&gt;</label>
+			<label><input type="radio" name="q5" value="d" /> String, Int và List&lt;String&gt;</label>
+			<p class="explain" hidden>
+				Đúng 5 kiểu nguyên thuỷ (mục 2). Để ý những gì <strong>không</strong> có trong danh sách:
+				<code>Double</code>, <code>List</code>, và mọi object của bạn. Đó là lý do chương phải ép
+				<code>List&lt;String&gt;</code> thành một chuỗi nối bằng dấu phẩy trước khi lưu — và cũng là nguồn gốc của bug
+				dấu phẩy ở bài D2 (mục 17).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>6. Interface <code>DataStore&lt;T&gt;</code> có những thành phần nào?</legend>
+			<label><input type="radio" name="q6" value="c" /> <code>read()</code> và <code>write()</code>, cả hai đều là hàm suspend và trả về Boolean</label>
+			<label><input type="radio" name="q6" value="b" /> Một hàm <code>edit()</code> duy nhất</label>
+			<label><input type="radio" name="q6" value="a" /> <code>getString()</code>, <code>saveString()</code>, <code>hasKey()</code> — ba hàm tiện ích có sẵn</label>
+			<label><input type="radio" name="q6" value="d" /> Đúng 2 thành phần: <code>val data: Flow&lt;T&gt;</code> (đọc) và <code>suspend fun updateData(...)</code> (ghi)</label>
+			<p class="explain" hidden>
+				Interface thật chỉ có 2 dòng (mục 3). Mọi thứ khác bạn gặp
+				(<code>edit &#123;&#125;</code>, <code>stringPreferencesKey</code>, <code>preferencesDataStore</code>) đều là
+				<em>tiện ích xây quanh</em> hai thành phần này. Hiểu điều đó giúp bạn không bị ngợp: bản chất DataStore rất nhỏ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>7. Vì sao không thể dùng thẳng một chuỗi làm key trong DataStore Preferences?</legend>
+			<label><input type="radio" name="q7" value="c" /> Vì chuỗi có thể chứa dấu cách</label>
+			<label><input type="radio" name="q7" value="d" /> Được dùng thẳng chuỗi — tài liệu chỉ khuyến nghị bọc lại thành key có kiểu cho gọn, không bắt buộc</label>
+			<label><input type="radio" name="q7" value="b" /> Vì key phải <em>có kiểu</em> — <code>stringPreferencesKey("k")</code> và <code>intPreferencesKey("k")</code> là hai key khác nhau với DataStore</label>
+			<label><input type="radio" name="q7" value="a" /> Vì DataStore mã hoá key trước khi lưu</label>
+			<p class="explain" hidden>
+				Đây là cải tiến quan trọng nhất so với <code>SharedPreferences</code>. Ở API cũ,
+				<code>getString("count", "")</code> cho một key từng lưu bằng <code>putInt</code> chỉ vỡ <em>khi chạy</em>.
+				Ở DataStore, key mang theo kiểu (<code>Preferences.Key&lt;String&gt;</code> vs <code>Preferences.Key&lt;Int&gt;</code>),
+				nên gán sai kiểu là <strong>lỗi biên dịch</strong> (mục 6) — bạn biết ngay thay vì biết lúc app đã ra tay người dùng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>8. Trong project, <code>getString()</code> của class <code>Prefs</code> trả về <code>String?</code>. Giá trị <code>null</code> đó nghĩa là gì?</legend>
+			<label><input type="radio" name="q8" value="d" /> Chưa bao giờ có ai ghi key đó</label>
+			<label><input type="radio" name="q8" value="b" /> DataStore trả <code>null</code> cho mọi key trong mọi trường hợp — đây là hành vi mặc định của thư viện</label>
+			<label><input type="radio" name="q8" value="a" /> File preference bị hỏng — cần tạo lại store</label>
+			<label><input type="radio" name="q8" value="c" /> Giá trị đã lưu là chuỗi rỗng, thư viện đổi thành <code>null</code></label>
+			<p class="explain" hidden>
+				Chưa ai ghi key đó — app mới cài, hoặc preference đó chưa từng được lưu (mục 9). DataStore Preferences
+				<strong>không có mặc định ngầm</strong>: tra key chưa có, bạn nhận <code>null</code>, và app
+				quyết định lấy gì thay. Khác với <code>SharedPreferences</code> nhét mặc định vào từng lời gọi — quy tắc
+				"không có thì lấy gì" nằm rải rác ở mọi chỗ đọc. Quy tắc của khoá: mặc định nằm ở tầng app (ViewModel/UI), rõ
+				ràng, một chỗ — để không có "sự thật do tai nạn" kiểu 0/false ngầm.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>9. Cảnh báo "Important" của tài liệu DataStore về instance nói gì?</legend>
+			<label><input type="radio" name="q9" value="b" /> Không được đặt tên file DataStore trùng với tên package của app</label>
+			<label><input type="radio" name="q9" value="a" /> Không được tạo nhiều hơn một instance trỏ vào cùng một file</label>
+			<label><input type="radio" name="q9" value="c" /> Phải tạo một instance mới riêng cho mỗi Activity</label>
+			<label><input type="radio" name="q9" value="d" /> Phải tạo lại instance trong <code>onResume()</code> mỗi lần màn hình hiện</label>
+			<p class="explain" hidden>
+				Một cái tên = một file = một store (mục 5). Lý do: mỗi instance DataStore tự quản lý bộ đệm và thứ tự ghi của
+				riêng nó. Hai instance cùng trỏ một file thì chúng không biết về nhau — ghi đè lẫn nhau, dữ liệu đọc ra có thể
+				cũ, và lỗi <em>không đều</em> (chạy 10 lần đúng 9 lần) nên rất khó lần ra. Đây là lý do project tạo
+				<code>Prefs</code> đúng một lần trong <code>RecipeApp.onCreate()</code> rồi phát đi bằng CompositionLocal (bài D2).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>10. Project đọc preference bằng <code>context.dataStore.data.first()[prefKey]</code>. Cái đã bị <strong>bỏ lại</strong> khi chọn <code>first()</code> là gì?</legend>
+			<label><input type="radio" name="q10" value="b" /> Khả năng ghi — <code>first()</code> chỉ dùng được cho store chỉ đọc</label>
+			<label><input type="radio" name="q10" value="d" /> Không bỏ lại gì — <code>first()</code> theo dõi dòng chảy và phát lại giá trị mới</label>
+			<label><input type="radio" name="q10" value="a" /> Type-safety — <code>first()</code> trả về <code>Any?</code> thay vì kiểu của key</label>
+			<label><input type="radio" name="q10" value="c" /> Khả năng tự cập nhật khi preference đổi sau đó</label>
+			<p class="explain" hidden>
+				<code>first()</code> hứng đúng giá trị đầu tiên của Flow rồi dừng (mục 7): hỏi một lần, nhận một giá trị, xong —
+				dùng DataStore <em>y như</em> <code>SharedPreferences</code>. Nếu preference đổi sau đó, chỗ giữ giá trị cũ không
+				tự biết. Muốn UI tự theo kịp thì giữ nguyên Flow và <code>collect</code> ở ViewModel — việc làm tự nhiên sau
+				khi học W1. Kiểu dữ liệu không hề mất: <code>[prefKey]</code> vẫn tra ra đúng <code>String?</code> nhờ key có kiểu.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	import { initQuiz } from "../../scripts/quiz.ts";
+	initQuiz();
+</script>

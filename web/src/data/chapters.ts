@@ -552,11 +552,29 @@ export const SECTIONS: SectionInfo[] = [
   {
     title: "Section III: Data Management",
     chapters: [
+      // Giai đoạn 6 (Dữ liệu cục bộ) — batch Stage 6: Ch09 monolith tách thành 2 bài (D1–D2) theo
+      // mốc D1/D2 START/END của monolith (mục 1–10 · 11–21). Mỗi bài có quiz riêng.
+      // Old slug ch09-data-store chết trong batch này → redirect 1 đích sang D1
+      // (astro.config.mjs) + SPLIT_MAP replace (progress.ts). D1/D2 là tách nội dung
+      // kế nhiệm trực tiếp — credit chia đủ hai theo mapping (registry §7 entry 7).
       {
         number: 9,
-        slug: "ch09-data-store",
-        title: "Data Store",
-        summaryVi: "Lưu dữ liệu đơn giản bằng SharedPreferences.",
+        subNumber: 1,
+        slug: "ch09-data-store-va-sharedpreferences",
+        title: "DataStore & SharedPreferences: lưu key/value đúng cách",
+        parentTitle: "Data Store",
+        summaryVi: "Chọn công cụ theo hình dạng dữ liệu, SharedPreferences ở mức đọc code cũ (không @Deprecated), vì sao DataStore (suspend/Flow/edit nguyên khối), by preferencesDataStore và một-instance, key có kiểu, data.first(), edit {}, null = key chưa có, và class Prefs.",
+        aafFolder: "09-data-store",
+        hasProject: true,
+        stageId: "data",
+      },
+      {
+        number: 9,
+        subNumber: 2,
+        slug: "ch09-prefs-composition-local-va-wiring",
+        title: "Prefs trong app: CompositionLocal & ViewModel wiring",
+        parentTitle: "Data Store",
+        summaryVi: "Bài toán nối dây dependency, Application làm chủ sở hữu, DI tay ở mức nguyên lý (Hilt chỉ seam note), cơ chế CompositionLocal (declare/provides/current) và ranh giới của nó, viewModelFactory + closure, hai trace từ khoá & tab, bug dấu phẩy (escaping), bảng trách nhiệm.",
         aafFolder: "09-data-store",
         hasProject: true,
         stageId: "data",

@@ -65,8 +65,10 @@ import Ch08RetrofitMoshiJson from "../components/lessons/Ch08RetrofitMoshiJson.a
 import Ch08RetrofitMoshiJsonQuiz from "../components/lessons/Ch08RetrofitMoshiJsonQuiz.astro";
 import Ch08TrangThaiMangApiKey from "../components/lessons/Ch08TrangThaiMangApiKey.astro";
 import Ch08TrangThaiMangApiKeyQuiz from "../components/lessons/Ch08TrangThaiMangApiKeyQuiz.astro";
-import Ch09DataStore from "../components/lessons/Ch09DataStore.astro";
-import Ch09Quiz from "../components/lessons/Ch09Quiz.astro";
+import Ch09DataStoreVaSharedPreferences from "../components/lessons/Ch09DataStoreVaSharedPreferences.astro";
+import Ch09DataStoreVaSharedPreferencesQuiz from "../components/lessons/Ch09DataStoreVaSharedPreferencesQuiz.astro";
+import Ch09PrefsCompositionLocalVaWiring from "../components/lessons/Ch09PrefsCompositionLocalVaWiring.astro";
+import Ch09PrefsCompositionLocalVaWiringQuiz from "../components/lessons/Ch09PrefsCompositionLocalVaWiringQuiz.astro";
 import Ch10_1RoomLaGi from "../components/lessons/Ch10_1RoomLaGi.astro";
 import Ch10_1Quiz from "../components/lessons/Ch10_1Quiz.astro";
 import Ch10_2EntityDaoDatabase from "../components/lessons/Ch10_2EntityDaoDatabase.astro";
@@ -167,7 +169,18 @@ export const LESSONS: Partial<Record<string, LessonEntry>> = {
     Lesson: Ch08TrangThaiMangApiKey,
     Quiz: Ch08TrangThaiMangApiKeyQuiz,
   },
-  "ch09-data-store": { Lesson: Ch09DataStore, Quiz: Ch09Quiz },
+  // Giai đoạn 6 (batch Stage 6): Ch09 monolith tách thành D1–D2 theo mốc D1/D2 START/END
+  // (mục 1–10 · 11–21). Old slug ch09-data-store chết trong batch này → redirect 1 đích sang
+  // D1 (astro.config.mjs) + SPLIT_MAP replace (progress.ts). Credit ch09 cũ chia cho cả hai
+  // bài kế nhiệm trực tiếp (registry §7 entry 7). KHÔNG có bài NEW trong batch này.
+  "ch09-data-store-va-sharedpreferences": {
+    Lesson: Ch09DataStoreVaSharedPreferences,
+    Quiz: Ch09DataStoreVaSharedPreferencesQuiz,
+  },
+  "ch09-prefs-composition-local-va-wiring": {
+    Lesson: Ch09PrefsCompositionLocalVaWiring,
+    Quiz: Ch09PrefsCompositionLocalVaWiringQuiz,
+  },
   // Chương 10 đã tách thành 4 chương nhỏ — mỗi chương nhỏ có quiz riêng ngay sau nội dung.
   "ch10-room-la-gi-va-sqlite": { Lesson: Ch10_1RoomLaGi, Quiz: Ch10_1Quiz },
   "ch10-2-entity-dao-database": { Lesson: Ch10_2EntityDaoDatabase, Quiz: Ch10_2Quiz },

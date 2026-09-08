@@ -1,0 +1,1097 @@
+---
+// D2 — "Prefs trong app: CompositionLocal & ViewModel wiring" (slug: ch09-prefs-composition-local-va-wiring).
+// Tách từ monolith Ch09DataStore.astro (batch Stage 6 — Giai đoạn 6: Dữ liệu cục bộ, bài 2/6).
+// Registry: D2 — stageId data · theo TARGET_REGISTRY_v5 §3 (mốc D2 START/END, mục 11–21; Hilt seam note).
+//
+// SỞ HỮU: bài toán nối dây · Application ownership + DI tay (Hilt CHỈ seam note 1–2 câu ở mục 12) ·
+// cơ chế CompositionLocal (declare/provider/current — trả nợ ghi nhận của C3) · ranh giới "không phải
+// service locator" · viewModelFactory · trace từ khoá (ghi + đọc init) · bug dấu phẩy (critical
+// reading) · trace tab (LaunchedEffect vs rememberCoroutineScope; rememberSaveable ≠ persistence) ·
+// bài toán @Preview · bảng trách nhiệm.
+// KHÔNG dạy lại: D1 (suspend/Flow/edit/keys) · S3 UDF · S4 ViewModel · internals recomposition của
+// CompositionLocal · Hilt annotations (@HiltAndroidApp/@Inject/modules — KHÔNG có trong bài này).
+//
+// Code thật lấy từ aaf-materials/09-data-store/projects/{starter,final}/; mọi số dòng trích dẫn
+// đã mở file thật để kiểm (phiên 2026-09-06, kiểm lại 2026-09-09). Ví dụ tối giản do khoá dựng
+// được đánh dấu trong thân bài.
+import { Code } from "astro:components";
+
+const FINAL = "aaf-materials/09-data-store/projects/final/app/src/main/java/com/kodeco/recipefinder";
+const STARTER = "aaf-materials/09-data-store/projects/starter/app/src/main/java/com/kodeco/recipefinder";
+const FINAL_ROOT = "aaf-materials/09-data-store/projects/final";
+const BOOK = "content/book/ch09-data-store.md";
+
+const recipeAppStarterCode = `class RecipeApp : Application() {
+  // TODO: Add Prefs
+
+  override fun onCreate() {
+    super.onCreate()
+    // Install a Timber tree.
+    if (BuildConfig.DEBUG) {
+      plant(Timber.DebugTree())
+    }
+
+    // TODO: Add Prefs
+  }
+}`;
+
+const recipeAppFinalCode = `class RecipeApp : Application() {
+  lateinit var prefs: Prefs
+
+  override fun onCreate() {
+    super.onCreate()
+    // Install a Timber tree.
+    if (BuildConfig.DEBUG) {
+      plant(Timber.DebugTree())
+    }
+
+    prefs = Prefs(this)
+  }
+}`;
+
+const manifestCode = `<application
+  android:allowBackup="true"
+  android:dataExtractionRules="@xml/data_extraction_rules"
+  android:fullBackupContent="@xml/backup_rules"
+  android:icon="@mipmap/ic_launcher"
+  android:label="@string/app_name"
+  android:name=".RecipeApp"
+  android:roundIcon="@mipmap/ic_launcher_round"
+  android:supportsRtl="true"`;
+
+const localPrefsDeclareCode = `val LocalNavigatorProvider =
+  compositionLocalOf<NavHostController> { error("No navigation provided") }
+
+// TODO: Add Repository Provider
+
+val LocalPrefsProvider =
+  compositionLocalOf<Prefs> { error("No prefs provided") }`;
+
+const compositionProviderCode = `          val navController = rememberNavController()
+          CompositionLocalProvider(
+            LocalNavigatorProvider provides navController,
+            LocalPrefsProvider provides (application as RecipeApp).prefs,
+            // TODO: Add Repository
+          ) {
+            NavHost(navController = navController, startDestination = "main") {`;
+
+const viewModelCtorCode = `class RecipeViewModel(private val prefs: Prefs) : ViewModel() {
+  companion object {
+    const val PREVIOUS_SEARCH_KEY = "PREVIOUS_SEARCH_KEY"
+  }`;
+
+const viewModelFactoryCode = `/**
+ * Provide a way to pass variables to view models
+ */
+inline fun <VM : ViewModel> viewModelFactory(crossinline f: () -> VM) =
+  object : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T = f() as T
+  }`;
+
+const recipeDetailsCode = `@Composable
+fun RecipeDetails(recipeId: Int? = null, databaseRecipeId: Int? = null) {
+  val scope = rememberCoroutineScope()
+  val prefs = LocalPrefsProvider.current
+  val viewModel: RecipeViewModel = viewModel(factory = viewModelFactory {
+    RecipeViewModel(prefs)
+  })
+  val recipeState = remember { mutableStateOf<SpoonacularRecipe?>(null) }
+  val navController = LocalNavigatorProvider.current
+  // TODO: Add Repository`;
+
+const searchRecipesCode = `fun searchRecipes(searchString: String, viewModel: RecipeViewModel) {
+  if (searchString.isNotEmpty()) {
+    viewModel.addPreviousSearch(searchString)
+    viewModel.queryRecipies(searchString, viewModel.queryState.value.offset)
+  } else {
+    viewModel.setSearching(false)
+  }
+}`;
+
+const savePreviousSearchesCode = `private fun savePreviousSearches() {
+  viewModelScope.launch {
+    val searchString = _uiState.value.previousSearches.joinToString(",")
+    prefs.saveString(PREVIOUS_SEARCH_KEY, searchString)
+  }
+}`;
+
+const addPreviousSearchCode = `fun addPreviousSearch(searchString: String) {
+  if (!_uiState.value.previousSearches.contains(searchString)) {
+    val updatedSearches = mutableListOf<String>()
+    // 2
+    updatedSearches.addAll(uiState.value.previousSearches)
+    updatedSearches.add(searchString)
+    // 3
+    _uiState.value = _uiState.value.copy(previousSearches = updatedSearches)
+    // 4
+    savePreviousSearches()
+  }
+}`;
+
+const dropdownCode = `    Box {
+      // 3 vertical dots icon
+      IconButton(onClick = {
+        expanded = true
+      }) {
+        Icon(
+          imageVector = Icons.Default.MoreVert,
+          contentDescription = "Open Options"
+        )
+      }
+      DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = { expanded = false }
+      ) {
+        uiState.previousSearches.forEach {
+          DropdownMenuItem(
+            text = { Text(it) },
+            onClick = {
+              expanded = false
+              searchText = it
+            }
+          )
+        }
+      }
+    }`;
+
+const initLoadCode = `init {
+  viewModelScope.launch {
+    val previousSearchString = prefs.getString(PREVIOUS_SEARCH_KEY)
+    if (!previousSearchString.isNullOrEmpty()) {
+      val storedList = previousSearchString.split(",")
+      _uiState.value = _uiState.value.copy(previousSearches = storedList.toMutableList())
+    }
+  }
+}`;
+
+const commaBugCode = `// Người dùng tìm: chicken, rice
+previousSearches = ["chicken, rice"]
+
+// Lưu xuống máy (joinToString(","))
+"chicken, rice"
+
+// Mở lại app, đọc lên (split(","))
+["chicken", " rice"]   // <- 1 mục biến thành 2, mục thứ hai còn dư dấu cách`;
+
+const mainScreenStarterCode = `const val CURRENT_INDEX_KEY = "CURRENT_INDEX_KEY"
+
+@Composable
+fun MainScreen() {
+  val selectedIndex = remember {
+    mutableIntStateOf(0)
+  }
+  // TODO: Add Prefs
+  val scope = rememberCoroutineScope()
+  LaunchedEffect(Unit) {
+    scope.launch {
+      // TODO: Get screen position from prefs
+    }
+  }
+  CreateScaffold(
+    bottomBarList = listOf(
+      BottomItem(selected = selectedIndex.intValue == 0, icon = IconInfo(
+        icon = ImageVector.vectorResource(
+          R.drawable.icon_recipe
+        ), contextText = "Recipes"
+      ), onclick = {
+        selectedIndex.intValue = 0
+        // TODO: Save screen position to prefs
+      }),`;
+
+const mainScreenFinalCode = `const val CURRENT_INDEX_KEY = "CURRENT_INDEX_KEY"
+
+@Composable
+fun MainScreen() {
+  val selectedIndex = remember {
+    mutableIntStateOf(0)
+  }
+  val prefs = LocalPrefsProvider.current
+  val scope = rememberCoroutineScope()
+  LaunchedEffect(Unit) {
+    scope.launch {
+      val currentIndex = prefs.getInt(CURRENT_INDEX_KEY)
+      if (currentIndex != null) {
+        selectedIndex.intValue = currentIndex
+      }
+    }
+  }
+  CreateScaffold(
+    bottomBarList = listOf(
+      BottomItem(selected = selectedIndex.intValue == 0, icon = IconInfo(
+        icon = ImageVector.vectorResource(
+          R.drawable.icon_recipe
+        ), contextText = "Recipes"
+      ), onclick = {
+        selectedIndex.intValue = 0
+        scope.launch {
+          prefs.saveInt(CURRENT_INDEX_KEY, 0)
+        }
+      }),
+      BottomItem(selected = selectedIndex.intValue == 1, icon = IconInfo(
+        icon = ImageVector.vectorResource(
+          R.drawable.shopping_cart
+        ), contextText = "Groceries"
+      ), onclick = {
+        selectedIndex.intValue = 1
+        scope.launch {
+          prefs.saveInt(CURRENT_INDEX_KEY, 1)
+        }
+      }),`;
+
+const exerciseStarterCode = `// starter/.../ui/groceries/GroceryList.kt
+@Composable
+fun GroceryList() {
+  // TODO: Add Prefs
+  // TODO: Update RecipeModel
+  val recipeViewModel: RecipeViewModel = viewModel(factory = viewModelFactory {
+    RecipeViewModel()
+  })`;
+
+const exerciseFinalCode = `// final/.../ui/groceries/GroceryList.kt
+@Composable
+fun GroceryList() {
+  val prefs = LocalPrefsProvider.current
+  val recipeViewModel: RecipeViewModel = viewModel(factory = viewModelFactory {
+    RecipeViewModel(prefs)
+  })`;
+
+const previewChipRowCode = `@Preview
+@Composable
+fun PreviewChipRow() {
+  val context = LocalContext.current   // <- khai báo rồi KHÔNG dùng
+  val prefs = LocalPrefsProvider.current
+  Surface {
+    Column {
+      ChipRow(RecipeViewModel(prefs))
+    }
+  }
+}`;
+
+const previewBookWayCode = `@Preview
+@Composable
+fun PreviewChipRow() {
+  val context = LocalContext.current
+  Surface {
+    Column {
+      ChipRow(RecipeViewModel(Prefs(context)))
+    }
+  }
+}`;
+---
+
+<section class="lesson">
+	<div class="callout journey">
+		<strong>Đã có kho lưu trữ — giờ phải nối nó vào app.</strong> Bài trước (D1) dựng class
+		<code>Prefs</code>: một cửa ra vào cho DataStore, đọc-ghi đúng cách. Nhưng class nằm trong file
+		<code>Prefs.kt</code> thì mọi màn hình lấy nó ở đâu? Bài này giải nốt nửa còn lại của chương: một
+		dependency chỉ nên được tạo <strong>một lần</strong> trong cả app — vậy ai tạo, cấp đi thế nào, và
+		ViewModel/Composable tiêu thụ ra sao. Hai tính năng đích: menu từ khoá đã tìm (danh sách) và tab
+		đang chọn (số) hoạt động trọn vẹn qua các lần mở lại app.
+	</div>
+
+	<div class="callout goals">
+		<strong>Học xong bài này bạn sẽ</strong>
+		<ul>
+			<li>Nêu được vì sao <strong>không cho mỗi màn hình tự dựng <code>Prefs</code></strong> — và nêu được ba việc
+				cần làm: tạo ở một chủ sở hữu hợp lý, <em>cấp</em> xuống, <em>tiêu thụ</em> ở nơi cần.</li>
+			<li>Trace được toàn mạch của một preference thật: <code>Application</code> tạo → provider cấp → ViewModel/
+				Composable đọc <code>.current</code> → ghi vào DataStore → mở lại app đọc lại → UI hiện đúng.</li>
+			<li>Giải thích được <strong>cơ chế CompositionLocal</strong> ở mức project dùng: khai local có giá trị mặc định
+				<code>error(...)</code>, <code>CompositionLocalProvider ... provides</code>, đọc bằng <code>.current</code>,
+				phạm vi là cây con — và vì sao nó <em>không</em> phải biến toàn cục cũng <em>không</em> tự tạo object.</li>
+			<li>Đưa một dependency vào ViewModel qua <code>viewModelFactory</code>, và giải thích vì sao phải đặt
+				<code>.current</code> <em>trước</em> lambda factory.</li>
+			<li>Phân biệt rõ: <strong>recomposition</strong>, <strong>configuration change</strong>, <strong>tắt/mở
+				app</strong>, <strong>lưu trữ bền</strong> — và nói đúng <code>remember</code>/<code>rememberSaveable</code>
+				không phải persistence.</li>
+			<li>Trình bày <strong>bảng trách nhiệm</strong> DataStore / Prefs / CompositionLocal / ViewModel / Composable
+				không lẫn cái nào.</li>
+		</ul>
+	</div>
+	<p>
+		<strong>Vì sao bài này quan trọng.</strong> D1 cho bạn một class lưu trữ đúng. Nhưng class nằm trong file
+		<code>Prefs.kt</code> thì mọi màn hình lấy nó ở đâu? Câu hỏi "một dependency sống ở đâu trong app và được
+		phát đi thế nào" là bài toán kiến trúc thật — cùng bản chất với những gì S5 gọi là nối tầng dữ liệu vào tầng
+		UI. Giải quyết nó một lần với một dependency nhỏ, sau này thêm dependency mới (repository ở R3) bạn đã có khuôn.
+	</p>
+	<div class="callout">
+		<strong>Cần biết trước.</strong> <strong>D1</strong> — <code>Prefs</code>, "một instance", đọc/ghi
+		<code>suspend</code>. <strong>S4</strong> — ViewModel sống ngoài UI, <code>viewModel()</code>, UI state;
+		<code>viewModel(...)</code> mặc định chỉ gọi được constructor rỗng — bài này dạy cách "dạy" nó tạo ViewModel
+		có tham số. <strong>S3</strong> — truyền giá trị xuống qua tham số, gửi sự kiện lên qua callback.
+		<strong>C3</strong> — bạn đã từng <em>nghe tên</em> <code>CompositionLocal</code> (mục theme); bài này dạy
+		<em>cơ chế</em> thật của nó. <strong>C4</strong> — <code>LaunchedEffect</code> ở mức nhận diện.
+	</div>
+
+	<h2 id="noi-day">11. Bài toán nối dây: một dependency, nhiều nơi cần dùng</h2>
+	<p>
+		Giả sử đi theo cách trực giác nhất: màn hình nào cần lưu/đọc thì tự dựng <code>Prefs(context)</code>.
+		<code>MainScreen</code> dựng một cái, <code>RecipeDetails</code> dựng một cái, <code>RecipeList</code> nữa...
+		Với cách đó, có bốn vấn đề — cả bốn đều đã học đủ nền để nhìn ra:
+	</p>
+	<ul>
+		<li>
+			<strong>Sở hữu trùng.</strong> Mỗi instance <code>Prefs</code> giữ một instance DataStore riêng (D1 mục 5) — tạo
+			2 <code>Prefs</code> là có 2 store trỏ cùng file. Đúng cảnh báo "Important".
+		</li>
+		<li>
+			<strong>Vòng đời mơ hồ.</strong> Ai sống lâu hơn ai? Một <code>Prefs</code> cầm <code>Context</code> của
+			Activity nào đó rồi bị giữ bởi thứ sống lâu hơn — rò rỉ kinh điển của Android.
+		</li>
+		<li>
+			<strong>Dựng lẫn với dùng.</strong> Mỗi nơi gọi <code>Prefs(context)</code> vừa <em>tạo</em> vừa <em>dùng</em> —
+			khi muốn đổi cách tạo (bọc thêm log, fake cho test), phải sửa mọi nơi.
+		</li>
+		<li>
+			<strong>Khó kiểm thử.</strong> Không thể thay <code>Prefs</code> bằng bản giả nếu mọi nơi tự dựng bản thật.
+		</li>
+	</ul>
+	<p>
+		Điều cần có là tách ba việc: <strong>(1) tạo</strong> dependency ở một chủ sở hữu sống đủ lâu và sống một lần;
+		<strong>(2) cấp</strong> nó cho phần còn lại của app; <strong>(3) tiêu thụ</strong> ở nơi cần, mà không biết
+		chuyện tạo. Ba mục tiếp theo làm đúng ba việc đó.
+	</p>
+
+	<h2 id="application">12. Application: chủ sở hữu hợp lý — và "dependency injection" nghĩa là gì</h2>
+	<p>
+		Class <code>Application</code> là "app object": hệ thống tạo <strong>một lần</strong>, <em>trước</em> mọi
+		Activity, và nó sống suốt vòng đời process. Đó là đặc tính chủ sở hữu cần — và project đặt
+		<code>Prefs</code> vào đúng đó (<code>RecipeApp.kt</code>):
+	</p>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">starter — 2 chỗ TODO</div>
+			<Code code={recipeAppStarterCode} lang="kotlin" theme="github-dark" />
+			<p class="src">
+				<code>{STARTER}/RecipeApp.kt</code> — TODO ở dòng <strong>9</strong> và <strong>18</strong>
+			</p>
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">final — đã điền</div>
+			<Code code={recipeAppFinalCode} lang="kotlin" theme="github-dark" />
+			<p class="src">
+				<code>{FINAL}/RecipeApp.kt</code> — <code>lateinit var prefs</code> dòng <strong>10</strong>,
+				<code>prefs = Prefs(this)</code> dòng <strong>19</strong>
+			</p>
+		</div>
+	</div>
+	<p>Hai dòng, mỗi dòng một quyết định:</p>
+	<ul>
+		<li>
+			<strong><code>lateinit var prefs: Prefs</code></strong> — <em>JIT:</em> <code>lateinit</code> là lời hứa "tôi sẽ
+			gán giá trị trước khi dùng" cho <code>var</code> không thể gán ngay lúc khai báo. Cần ở đây vì
+			<code>Prefs</code> đòi một <code>Context</code>, mà <code>Application</code> chỉ trở thành <code>Context</code>
+			hợp lệ <em>sau khi</em> <code>onCreate()</code> chạy. (Bạn đã gặp <code>lateinit</code> trong code Ditto ở
+			Chương 7.)
+		</li>
+		<li>
+			<strong><code>prefs = Prefs(this)</code></strong> — <code>this</code> là chính <code>Application</code>:
+			<code>Context</code> "sống lâu nhất" của app, nên không nguy cơ giữ tham chiếu tới một Activity đã bị huỷ.
+			Truyền <code>Activity</code> vào một object sống lâu là một trong những lỗi rò rỉ kinh điển của Android; ở đây
+			chọn đúng.
+		</li>
+	</ul>
+	<p class="src">
+		Vì sao hệ thống biết phải tạo <code>RecipeApp</code>: <code>{FINAL_ROOT}/app/src/main/AndroidManifest.xml</code>
+		dòng <strong>12</strong> — <code>android:name=".RecipeApp"</code> (dòng này có sẵn từ chương trước, dùng để khởi
+		Timber).
+	</p>
+	<Code code={manifestCode} lang="xml" theme="github-dark" />
+	<p>Ba lý do <code>Application</code> là chỗ đúng cho <code>Prefs</code>, xếp theo mức quan trọng:</p>
+	<ol>
+		<li><strong>Đảm bảo đúng một instance</strong> — hệ thống tạo <code>Application</code> một lần, nên <code>Prefs</code> cũng chỉ được tạo một lần.</li>
+		<li><strong>Sẵn sàng trước mọi UI</strong> — <code>Application.onCreate()</code> chạy trước <code>MainActivity.onCreate()</code>, nên khi Composable đầu tiên cần <code>prefs</code> thì nó đã có.</li>
+		<li><strong>Không chết theo cấu hình</strong> — xoay máy huỷ và tạo lại Activity, nhưng <code>Application</code> thì không; <code>prefs</code> vẫn nguyên.</li>
+	</ol>
+	<div class="callout note">
+		<strong>Đây chính là "dependency injection" — ở mức nguyên lý</strong>
+		<p>
+			<code>RecipeViewModel</code> không tự gõ <code>Prefs(context)</code>; nó <em>nhận</em> <code>Prefs</code> qua
+			constructor. <code>RecipeDetails</code> cũng không tự tạo — nó lấy từ provider. Dependency được
+			<strong>dựng bên ngoài class sử dụng nó</strong> và <strong>truyền vào</strong> — đó là toàn bộ ý của
+			"dependency injection" (tiêm phụ thuộc). Không cần framework: cách nối tay này là hợp lệ và đủ cho quy mô
+			hiện tại. Trong một app lớn hơn, một DI framework như Hilt có thể tự động hoá phần lớn việc dựng và nối dây
+			kiểu này — đó là câu chuyện của một bài khác, không phải của đây.
+		</p>
+	</div>
+
+	<h2 id="compositionlocal">13. CompositionLocal: cấp giá trị theo ngữ cảnh xuống cây Composable</h2>
+	<p>
+		<code>prefs</code> đã nằm trong <code>RecipeApp</code>. Nhưng chỗ cần nó là các Composable ở sâu trong cây UI.
+		Truyền tay qua từng tham số thì mọi Composable trung gian đều phải nhận một tham số nó không dùng — đúng vấn
+		đề "xâu chuỗi dữ liệu qua nhiều tầng" mà S3 đã cảnh báo. Compose có cơ chế riêng cho việc cấp giá trị theo
+		ngữ cảnh — và bạn đã <em>dùng nó mỗi ngày từ C3</em> mà có thể chưa biết tên:
+		<code>MaterialTheme</code> cấp màu/chữ/kích thước xuống mọi composable con chính bằng CompositionLocal.
+		C3 hẹn "gặp lại cơ chế này ở giai đoạn Dữ liệu cục bộ" — đây chính là chỗ đó.
+	</p>
+	<p><strong>Bước 1 — khai báo local</strong> (đặt ở <code>MainActivity.kt</code>, cạnh <code>LocalNavigatorProvider</code> của Chương 8):</p>
+	<Code code={localPrefsDeclareCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/MainActivity.kt</code> dòng <strong>30–31</strong> (trong <code>starter</code>, TODO ở
+		dòng <strong>29</strong>).
+	</p>
+	<div class="callout note">
+		<strong>Cái lambda <code>&#123; error("No prefs provided") &#125;</code> là gì?</strong>
+		<p>
+			Nó là <strong>giá trị mặc định</strong> của local — được viết thành "văng lỗi". Nghĩa là: <em>nếu</em> có
+			Composable nào đọc <code>LocalPrefsProvider.current</code> mà chưa ai cấp giá trị, app sẽ crash ngay với thông
+			báo rõ ràng "No prefs provided". Đây là <strong>chủ ý thiết kế</strong>, không phải cẩu thả: lựa chọn còn lại
+			là mặc định <code>null</code>, khi đó mọi chỗ dùng đều phải kiểm tra null cho một tình huống <em>không bao giờ
+			được phép xảy ra</em>. Chọn "crash sớm, kèm thông báo dễ hiểu" — bạn phát hiện thiếu provider ngay lần chạy
+			đầu, ở đúng chỗ, thay vì gặp lỗi mơ hồ về sau. (Chính vì vậy, một <code>@Preview</code> đứng ngoài provider
+			sẽ không render được — xem mục 19.)
+		</p>
+	</div>
+	<p><strong>Bước 2 — cấp giá trị</strong>, bên trong <code>setContent</code> của <code>MainActivity</code>:</p>
+	<Code code={compositionProviderCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/MainActivity.kt</code> dòng <strong>44–48</strong> (TODO tương ứng ở
+		<code>starter</code> dòng <strong>45</strong>).
+	</p>
+	<p>
+		Chú ý <code>(application as RecipeApp).prefs</code>: trong một Activity, <code>application</code> có kiểu chung
+		<code>Application</code>, nên phải <em>ép kiểu</em> (<code>as</code>) về <code>RecipeApp</code> mới thấy được
+		thuộc tính <code>prefs</code> tự thêm ở mục 12. Ép kiểu này an toàn vì manifest dòng 12 đã bảo đảm class
+		<code>Application</code> thật sự là <code>RecipeApp</code>.
+	</p>
+	<p>
+		Mô hình cần nắm của cả cơ chế — <strong>provider ở ngoài, mọi composable con đọc được</strong>. Phạm vi của giá
+		trị là <em>cây con</em> bên trong <code>CompositionLocalProvider &#123; &#125;</code>:
+	</p>
+	<pre class="tree">CompositionLocalProvider(LocalPrefsProvider provides ...)
+└── NavHost
+    ├── MainScreen()                 ← đọc được prefs (dòng 29)
+    │   ├── RecipeList()             ← đọc được (dòng 26)
+    │   │   └── SearchRow(...)       ← đọc được
+    │   └── GroceryList()            ← đọc được (dòng 19)
+    └── RecipeDetails(...)           ← đọc được (dòng 53)</pre>
+	<p><strong>Bước 3 — tiêu thụ</strong>, ở bất kỳ đâu trong cây con:</p>
+	<pre class="tree">val prefs = LocalPrefsProvider.current</pre>
+	<ul>
+		<li>
+			<code>LocalPrefsProvider</code> <strong>không phải persistence</strong> — nó không lưu gì cả; DataStore mới là
+			chỗ lưu.
+		</li>
+		<li>
+			CompositionLocal <strong>không tự tạo <code>Prefs</code></strong> — nó chỉ <em>vận chuyển</em> instance đã được
+			tạo ở <code>RecipeApp</code> tới nơi cần.
+		</li>
+		<li>
+			<code>.current</code> đọc giá trị do <strong>provider gần nhất</strong> phía trên cấp — và giá trị đó chỉ tồn
+			tại trong <em>phạm vi cây con</em> của provider đó.
+		</li>
+	</ul>
+	<p class="hint">
+		Compose còn có một biến thể khai báo khác (<code>staticCompositionLocalOf</code>) — khác nhau ở cách Compose xử
+		lý vẽ lại khi giá trị đổi; project dùng <code>compositionLocalOf</code> và đó là cái cần nhớ ở mức này. Phần
+		này <em>không</em> dạy internals recomposition của CompositionLocal.
+	</p>
+
+	<h2 id="khong-phai-service-locator">14. Ranh giới: không biến CompositionLocal thành "biến toàn cục"</h2>
+	<p>
+		Sau khi thấy <code>prefs</code> "hiện ra" ở mọi composable, quy tắc sai dễ rút ra nhất là: "vậy cứ thứ gì cần
+		dùng ở nhiều nơi thì bỏ vào CompositionLocal". Đừng. Suy tới cùng, CompositionLocal là <strong>đường tắt quanh
+		các tầng tham số</strong> — và đường tắt nào cũng có giá:
+	</p>
+	<ul>
+		<li>
+			Hàm composable đọc <code>.current</code> thì <em>không khai báo</em> mình cần gì — chữ ký nằm im trong khi
+			hành vi đổi theo ngữ cảnh; khó đọc, khó test lại từng phần.
+		</li>
+		<li>
+			Giá trị thay đổi thì vùng phụ thuộc vẽ lại rộng hơn vùng bạn tưởng.
+		</li>
+	</ul>
+	<p>Quy tắc khoá này, nhất quán với S3:</p>
+	<ul>
+		<li>
+			<strong>Dữ liệu và sự kiện của một màn hình</strong> (danh sách hiển thị, callback bấm nút...) → truyền
+			<strong>tham số tường minh</strong>: giá trị chảy xuống, sự kiện chảy lên. Đây là con đường mặc định.
+		</li>
+		<li>
+			<strong>Ngữ cảnh/giả thuyết môi trường</strong> mà cả cây con cùng hưởng — theme (C3), <code>prefs</code> cấp
+			ở gốc app, navigator — mới là chỗ CompositionLocal hợp lý.
+		</li>
+	</ul>
+	<p>
+		Nhìn lại project cho thấy ranh giới được giữ khá nghiêm: <code>RecipeViewModel</code> nhận <code>prefs</code>
+		qua constructor, còn mọi state màn hình vẫn đi qua <code>uiState</code> — CompositionLocal chỉ là
+		<em>cầu vận chuyển dependency</em>, không phải kho state.
+	</p>
+
+	<h2 id="viewmodel-factory">15. Đưa <code>Prefs</code> vào ViewModel: <code>viewModelFactory</code></h2>
+	<p>
+		<code>prefs</code> đã tới được mọi Composable. Nhưng chỗ <em>thật sự</em> cần đọc/ghi dữ liệu là
+		<code>RecipeViewModel</code> — nơi giữ state của màn hình (S4). Vấn đề: S4 đã dạy bạn lấy ViewModel bằng
+		<code>viewModel()</code>, và cơ chế đó mặc định chỉ biết gọi constructor <strong>rỗng</strong>. Ngay khi
+		ViewModel cần một tham số (<code>private val prefs: Prefs</code>), phải dạy cho <code>viewModel()</code> biết
+		cách tạo nó — đó là việc của một <em>factory</em> (hàm sản xuất).
+	</p>
+	<p><strong>Bước 1 — ViewModel khai nhận dependency qua constructor:</strong></p>
+	<Code code={viewModelCtorCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>32</strong> (constructor) và
+		<strong>34</strong> (<code>PREVIOUS_SEARCH_KEY</code>). Trong <code>starter</code> dòng 32 là constructor rỗng.
+	</p>
+	<p class="hint">
+		<strong>Vì sao không tự <code>RecipeViewModel(prefs)</code> rồi giữ trong biến?</strong> ViewModel phải do
+		Compose tạo qua <code>viewModel()</code> để nó <em>sống lâu hơn</em> lần recomposition và lần huỷ-tạo-lại
+		Activity (S4). Tự tạo là mất đúng ý nghĩa của ViewModel.
+	</p>
+	<p>
+		Factory trong project đã có sẵn từ trước trong <code>utils/ComposeUtils.kt</code> — 4 dòng, đáng đọc vì nó giải
+		thích cả cơ chế:
+	</p>
+	<Code code={viewModelFactoryCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/utils/ComposeUtils.kt</code> dòng <strong>44–47</strong>.
+	</p>
+	<p>Đọc từ trong ra ngoài:</p>
+	<ul>
+		<li>
+			<code>f: () -&gt; VM</code> — bạn đưa vào một <strong>công thức tạo ViewModel</strong>, chứ không đưa ViewModel
+			đã tạo. Đây là điểm cốt lõi: Compose sẽ gọi công thức đó <em>khi nào nó muốn</em>, chỉ đúng một lần cho mỗi
+			vòng đời.
+		</li>
+		<li>
+			<code>object : ViewModelProvider.Factory</code> — gói công thức vào đúng kiểu mà hệ thống ViewModel yêu cầu.
+		</li>
+		<li>
+			<code>create(modelClass) = f() as T</code> — khi hệ thống hỏi "tạo cho tôi một ViewModel", factory chạy công
+			thức của bạn.
+		</li>
+	</ul>
+	<p><strong>Bước 2 — chỗ dùng.</strong> Ví dụ <code>RecipeDetails</code>:</p>
+	<Code code={recipeDetailsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/ui/RecipeDetails.kt</code> — <code>prefs</code> dòng <strong>53</strong>,
+		<code>RecipeViewModel(prefs)</code> dòng <strong>55</strong>.
+	</p>
+	<div class="callout note">
+		<strong>Trật tự hai dòng đó không được đảo — vì closure</strong>
+		<p>
+			<code>val prefs = LocalPrefsProvider.current</code> phải đặt <em>trước</em> khối
+			<code>viewModelFactory &#123; ... &#125;</code>. Bên trong lambda đó không còn là "vùng Composable" nữa — nó là
+			code thường sẽ chạy sau, nên không đọc được CompositionLocal. Bạn phải lấy giá trị ra ngoài trước, rồi lambda
+			mới bắt được nó (closure). Đảo hai dòng này là lỗi biên dịch, và là lỗi rất thường gặp khi mới học Compose.
+		</p>
+	</div>
+	<p>
+		Cùng khuôn đó lặp lại ở <code>ui/recipes/RecipeList.kt</code> (dòng <strong>26–28</strong>) và
+		<code>ui/groceries/GroceryList.kt</code> — file cuối chính là bài tập (mục 19). Còn bốn chỗ nữa là các
+		<code>@Preview</code> — một bài toán riêng, mục 19.
+	</p>
+
+	<h2 id="trace-tu-khoa">16. Trace 1 — một từ khoá tìm kiếm: ghi xuống và đọc lại</h2>
+	<p>
+		Tính năng thật thứ nhất: người dùng gõ từ khoá, đóng app, mở lại — menu gợi ý (ba dấu chấm của thanh search)
+		vẫn còn các từ cũ. Đây là mạch <strong>ViewModel → Prefs → DataStore</strong> hoàn chỉnh, và là chỗ mọi khái
+		niệm hai bài gặp nhau.
+	</p>
+	<p><strong>Nửa ghi — chạy khi người dùng tìm kiếm.</strong> Điểm vào là hàm helper mọi đường tìm kiếm đều đi qua:</p>
+	<Code code={searchRecipesCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/ui/recipes/ImageRow.kt</code> dòng <strong>36–43</strong>; được gọi từ
+		<code>SearchRow.kt</code> và <code>ShowRecipeList.kt</code>.
+	</p>
+	<p>Trong ViewModel, <code>addPreviousSearch</code> cập nhật state rồi mới kích hoạt lưu:</p>
+	<Code code={addPreviousSearchCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>122–133</strong>.
+	</p>
+	<ol>
+		<li>
+			<strong>Chống trùng</strong> — tìm lại đúng từ khoá cũ thì không thêm lần nữa.
+		</li>
+		<li>
+			<strong>Tạo list mới rồi copy sang</strong>, thay vì <code>previousSearches.add(...)</code> trực tiếp. Đây
+			<em>không</em> phải code dư: Compose chỉ vẽ lại khi nhận ra state <strong>đổi tham chiếu</strong>; sửa nội dung
+			list cũ tại chỗ thì tham chiếu vẫn y nguyên và UI sẽ không cập nhật — bài học immutable state của
+			S2/S4, xuất hiện lại trong tình huống thật.
+		</li>
+		<li>
+			<strong><code>_uiState.value.copy(...)</code></strong> — cập nhật state để UI vẽ lại ngay.
+		</li>
+		<li>
+			<strong>Rồi mới lưu xuống máy.</strong> Thứ tự này quan trọng: UI phản hồi tức thì (đồng bộ), việc ghi file
+			diễn ra sau trong coroutine (bất đồng bộ). Người dùng không phải chờ ổ đĩa.
+		</li>
+	</ol>
+	<p>Hàm ghi thật — nơi <code>List&lt;String&gt;</code> bị mã hoá thành một chuỗi:</p>
+	<Code code={savePreviousSearchesCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>85–90</strong>.
+	</p>
+	<ul>
+		<li>
+			<code>viewModelScope.launch</code> — <code>prefs.saveString</code> là <code>suspend</code> (D1), nên
+			phải chạy trong coroutine của scope gắn với vòng đời ViewModel (S1/S4).
+		</li>
+		<li>
+			<code>private</code> — ViewModel tự quyết định khi nào ghi; bên ngoài không được gọi.
+		</li>
+		<li>
+			<code>joinToString(",")</code> (F1) — DataStore Preferences chỉ lưu giá trị đơn của 5 kiểu nguyên thuỷ, không
+			lưu <code>List</code>. Nên danh sách bị <strong>ép thành một chuỗi</strong>:
+			<code>["chicken","beef"]</code> → <code>"chicken,beef"</code>. Đơn giản, chạy được — và có một cái bẫy mổ riêng
+			ở mục 17.
+		</li>
+	</ul>
+	<p><strong>Nửa đọc — chạy một lần lúc ViewModel được tạo</strong> (khối <code>init</code>):</p>
+	<Code code={initLoadCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> dòng <strong>57–65</strong>.
+	</p>
+	<ul>
+		<li>
+			<strong>Đặt trong <code>init</code></strong> — chạy đúng một lần, ngay khi ViewModel được tạo. Vì ViewModel sống
+			qua recomposition và qua xoay máy, việc đọc cũng chỉ xảy ra một lần cho mỗi màn hình.
+		</li>
+		<li>
+			<strong><code>viewModelScope.launch</code></strong> — đọc là <code>suspend</code>; UI hiện ra <em>trước</em> khi
+			dữ liệu về, danh sách gợi ý trống trong khoảnh khắc đầu rồi mới đầy. Với dữ liệu nhỏ thì không ai thấy, nhưng
+			đó đúng là điều đang xảy ra.
+		</li>
+		<li>
+			<strong><code>isNullOrEmpty()</code></strong> — xử lý key-chưa-có đúng như D1 mục 9: <code>null</code> (chưa từng
+			lưu) và <code>""</code> (đã lưu chuỗi rỗng) đều bị loại. Nếu bỏ kiểm tra này,
+			<code>"".split(",")</code> trả về <code>[""]</code> — một danh sách chứa đúng một mục rỗng, và menu gợi ý sẽ có
+			một dòng trống bấm được. (JIT: <code>split(",")</code> cắt chuỗi theo ký tự phân cách, ngược với
+			<code>joinToString</code> của F1.)
+		</li>
+		<li>
+			<strong><code>copy(...)</code></strong> — cùng khuôn immutable ở trên.
+		</li>
+	</ul>
+	<p>Và nơi dữ liệu đã lưu hiện ra trước mắt người dùng — menu ba dấu chấm:</p>
+	<Code code={dropdownCode} lang="kotlin" theme="github-dark" />
+	<p class="src">
+		Code thật: <code>{FINAL}/ui/recipes/SearchRow.kt</code> — <code>Box</code> dòng <strong>105</strong>,
+		<code>DropdownMenu</code> dòng <strong>115</strong>, <code>forEach</code> qua <code>previousSearches</code> dòng
+		<strong>119</strong>.
+	</p>
+	<p>
+		Phần này có sẵn từ <code>starter</code> nhưng nên đọc, vì nó <em>đóng vòng lặp</em>:
+		<code>uiState.previousSearches.forEach</code> đọc từ state, mà state được nạp lại từ DataStore lúc khởi động.
+		Bấm vào một mục thì <code>searchText = it</code> — điền lại từ khoá cũ. Đó là toàn bộ giá trị người dùng nhận
+		được từ mạch này.
+	</p>
+
+	<h2 id="bug-dau-phay">17. Cái bẫy dấu phẩy: đọc code mẫu một cách phê phán</h2>
+	<p>
+		Mục 16 đã chốt: danh sách được lưu bằng <code>joinToString(",")</code> và đọc lại bằng <code>split(",")</code>.
+		Cách này chạy tốt cho mọi từ khoá <em>không chứa dấu phẩy</em>. Còn nếu người dùng gõ từ khoá
+		<strong>có</strong> dấu phẩy — mà đây là app tìm công thức nấu ăn, "chicken, rice" là kiểu gõ hoàn toàn tự nhiên:
+	</p>
+	<Code code={commaBugCode} lang="kotlin" theme="github-dark" />
+	<p>
+		Một mục biến thành hai, và mục thứ hai còn dư một dấu cách ở đầu. Đây là một bug thật trong project mẫu — đi
+		theo khuôn <strong>expected → trace code → actual → bài học mang đi được</strong>:
+	</p>
+	<ul>
+		<li><strong>Expected:</strong> menu gợi ý hiện đúng "chicken, rice".</li>
+		<li><strong>Trace:</strong> lưu <code>joinToString(",")</code> → chuỗi "chicken, rice"; đọc <code>split(",")</code> — ký tự phân cách <em>đồng thời</em> là dữ liệu, nên không phân biệt được "ranh giới giữa hai mục" và "dấu phẩy trong một mục".</li>
+		<li><strong>Actual:</strong> <code>["chicken", " rice"]</code> — dữ liệu hỏng ngay sau một vòng tắt/mở app.</li>
+	</ul>
+	<div class="callout note">
+		<strong>Tên của vấn đề: thiếu escaping</strong>
+		<p>
+			Bạn dùng một ký tự vừa làm <em>dấu phân tách</em> vừa có thể là <em>dữ liệu</em>, mà không có cách phân biệt
+			hai vai trò đó. Cùng một họ với lỗi làm vỡ file CSV khi nội dung ô có dấu phẩy. Hiểu nó ở đây bằng một bug vô
+			hại thì sau này bạn nhận ra nó ở chỗ nguy hiểm hơn nhiều.
+		</p>
+	</div>
+	<p><strong>Hướng sửa</strong> — ba cách, xếp từ đơn giản tới đúng đắn:</p>
+	<table class="cmp">
+		<thead>
+			<tr><th>Cách</th><th>Làm gì</th><th>Đánh giá</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Đổi ký tự phân tách</td>
+				<td>Dùng <code>"\n"</code> hoặc <code>" "</code> thay dấu phẩy</td>
+				<td>Sửa 2 dòng. Giảm rủi ro rất nhiều nhưng <em>không</em> triệt tiêu — chỉ là chọn ký tự người dùng khó gõ hơn.</td>
+			</tr>
+			<tr>
+				<td>Chặn ở đầu vào</td>
+				<td>Loại bỏ dấu phẩy trong <code>addPreviousSearch</code> trước khi thêm</td>
+				<td>Dữ liệu lưu luôn sạch, nhưng đổi thứ người dùng gõ — nên nói cho họ biết.</td>
+			</tr>
+			<tr>
+				<td>Lưu bằng JSON</td>
+				<td>Chuyển list thành JSON array rồi lưu chuỗi đó</td>
+				<td><strong>Đúng đắn nhất.</strong> JSON tự escaping. Project <em>đã có</em> Moshi (Chương 8) nên gần như không tốn thêm gì.</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Bài học mang đi được nằm ở tầng cao hơn ba cách sửa: <strong>Preferences DataStore lưu giá trị đơn</strong>. Ngay
+		khi dữ liệu là một <em>tập hợp</em>, bạn đã phải bịa ra cách mã hoá riêng — và mỗi cách bịa đều mang theo một cái
+		bẫy. Đó là dấu hiệu dữ liệu đang vượt khỏi công cụ: khi bài toán thật sự là "lưu nhiều bản ghi có cấu trúc",
+		hãy chuyển sang database — Chương 10 (Room). Đừng phát minh thêm tầng mã hoá trên key/value.
+	</p>
+
+	<h2 id="trace-tab">18. Trace 2 — tab đang chọn: cùng công cụ, nơi chạy khác</h2>
+	<p>
+		Tính năng thứ hai nghe rất nhỏ: nhớ người dùng đang ở tab nào (Recipes hay Groceries) để lần mở app sau vào
+		lại đúng tab. Nó dùng đúng bộ công cụ D1, nhưng ở một dạng khác: lưu <strong>Int</strong> thay vì String,
+		và đọc/ghi từ <strong>Composable</strong> thay vì từ ViewModel — vì chỉ số tab chỉ là một
+		<code>remember &#123; mutableIntStateOf(0) &#125;</code> trong Composable, không có ViewModel nào giữ nó.
+	</p>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">starter — 4 TODO</div>
+			<Code code={mainScreenStarterCode} lang="kotlin" theme="github-dark" />
+			<p class="src">
+				<code>{STARTER}/ui/MainScreen.kt</code> — TODO dòng <strong>28</strong>, <strong>32</strong>,
+				<strong>43</strong>, <strong>51</strong>
+			</p>
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">final — đã điền</div>
+			<Code code={mainScreenFinalCode} lang="kotlin" theme="github-dark" />
+			<p class="src">
+				<code>{FINAL}/ui/MainScreen.kt</code> — <code>CURRENT_INDEX_KEY</code> dòng <strong>22</strong>,
+				<code>prefs</code> dòng <strong>29</strong>, <code>LaunchedEffect</code> dòng <strong>31–38</strong>,
+				<code>getInt</code> dòng <strong>33</strong>, <code>saveInt(...,0)</code> dòng <strong>48</strong>,
+				<code>saveInt(...,1)</code> dòng <strong>58</strong>
+			</p>
+		</div>
+	</div>
+	<p class="hint">
+		<strong>Vì sao đọc bằng <code>LaunchedEffect</code> mà không phải <code>init</code>:</strong> không có ViewModel
+		nào ở đây, nên phải dùng công cụ tương ứng của Compose — <code>LaunchedEffect(Unit)</code> chạy một lần khi
+		Composable vào màn hình, và Compose tự cấp + tự huỷ scope theo vòng đời của nó (chạm lần đầu ở C4; chiều sâu đầy
+		đủ ở R4). Nếu viết <code>prefs.getInt(...)</code> trực tiếp trong thân Composable (không bọc), nó sẽ chạy lại
+		<strong>mỗi lần vẽ lại</strong> — hàng chục lần đọc file, và có thể ghi đè lựa chọn người dùng vừa bấm.
+	</p>
+	<div class="callout note">
+		<strong><code>rememberCoroutineScope()</code> vs <code>LaunchedEffect</code> — chọn cái nào</strong>
+		<p>
+			<code>MainScreen</code> dùng cả hai nên là ví dụ rất tốt để phân biệt:
+		</p>
+		<ul>
+			<li>
+				<strong><code>LaunchedEffect</code></strong> — cho việc chạy <em>tự động</em> khi Composable xuất hiện (hoặc
+				khi key đổi). Bạn không gọi nó; Compose gọi.
+			</li>
+			<li>
+				<strong><code>rememberCoroutineScope</code></strong> — cho việc chạy <em>khi có sự kiện</em>: người dùng bấm
+				nút. Bạn cần một scope để <em>tự</em> phóng coroutine trong một callback thường (<code>onclick</code> không
+				phải Composable, nên không gọi được <code>suspend</code> trực tiếp).
+			</li>
+		</ul>
+		<p>
+			Quy tắc ngắn: <strong>đọc lúc mở màn hình → <code>LaunchedEffect</code>; ghi lúc người dùng bấm →
+			<code>rememberCoroutineScope</code></strong>. Đúng như <code>MainScreen</code> đang làm. (Thấy code mẫu bọc
+			<code>scope.launch</code> bên trong <code>LaunchedEffect</code> — hai lớp coroutine dư một lớp:
+			<code>LaunchedEffect</code> đã là một coroutine scope, gọi thẳng <code>prefs.getInt(...)</code> là đủ. Nó chạy
+			đúng nên không phải bug, nhưng code của bạn có thể bỏ lớp.)
+		</p>
+	</div>
+	<p>
+		Để ý chi tiết thiết kế: <code>selectedIndex.intValue = 0</code> chạy <strong>đồng bộ</strong> nên tab đổi ngay,
+		còn <code>saveInt</code> chạy trong coroutine — cùng nguyên tắc "UI trước, ổ đĩa sau" như mục 16.
+	</p>
+	<div class="callout note">
+		<strong>Phân biệt bốn "thứ được giữ lại" — đây là chốt của cả chương</strong>
+		<table class="cmp">
+			<thead>
+				<tr><th>Cơ chế</th><th>Chống lại cái gì</th><th>Chết khi nào</th></tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><code>remember</code></td>
+					<td>Lần vẽ lại (recomposition)</td>
+					<td>Composable rời màn hình / Activity được tạo lại</td>
+				</tr>
+				<tr>
+					<td><code>rememberSaveable</code> (S2)</td>
+					<td>Activity được tạo lại do <em>thay đổi cấu hình</em> (xoay máy...)</td>
+					<td><strong>Tắt app / hệ thống thu hồi process</strong> — và không bao giờ ghi đĩa</td>
+				</tr>
+				<tr>
+					<td>DataStore (đĩa)</td>
+					<td>Tắt app, khởi động lại máy</td>
+					<td>Người dùng xoá app / xoá dữ liệu app (D1 mục 1)</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			Đó là lý do tab dùng DataStore chứ không phải <code>rememberSaveable</code>: yêu cầu là "lần <em>mở app
+			sau</em> vào đúng tab" — một <strong>preference</strong> của người dùng, không phải trạng thái UI qua xoay
+			máy. Hai công cụ giải hai bài toán khác nhau; dùng <code>rememberSaveable</code> cho bài toán persistence là
+			nhầm loại.
+		</p>
+	</div>
+	<p class="hint">
+		<strong>Một quyết định dữ liệu đáng để ý:</strong> tab được lưu bằng <em>số</em> (<code>0</code>/<code>1</code>),
+		nên dữ liệu đã lưu ràng buộc vào <em>thứ tự</em> các tab trong code — chèn thêm một tab vào giữa ở bản cập nhật
+		sau, người dùng cũ sẽ mở app ra và thấy sai tab. Cách bền hơn là lưu một chuỗi định danh
+		(<code>"recipes"</code>/<code>"groceries"</code>). Đây là lớp vấn đề "migration của dữ liệu đã lưu" — thật, và sẽ
+		gặp lại ở Chương 10 với dạng lớn hơn.
+	</p>
+
+	<h2 id="preview">19. Đổi constructor = đổi hợp đồng: mọi chỗ dựng ViewModel</h2>
+	<p>
+		Thêm tham số vào constructor của <code>RecipeViewModel</code> là <strong>đổi hợp đồng với toàn bộ codebase</strong>:
+		mọi lời gọi <code>RecipeViewModel()</code> đều lỗi ngay lập tức, và compiler trở thành danh sách việc cần làm —
+		sửa cho tới khi hết đỏ. Trong <code>final</code> có 3 chỗ dựng thật
+		(<code>RecipeDetails.kt:55</code>, <code>RecipeList.kt:28</code>, <code>GroceryList.kt:21</code>) và 4 chỗ trong
+		<code>@Preview</code>. Đây cũng là lý do người ta dùng DI framework ở app lớn: để không phải sửa tay từng chỗ
+		mỗi lần thêm một dependency.
+	</p>
+	<p><strong>Chỗ chính cần sửa</strong> — <code>GroceryList.kt</code>:</p>
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">trước — còn TODO</div>
+			<Code code={exerciseStarterCode} lang="kotlin" theme="github-dark" />
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">sau — đúng khuôn mục 15</div>
+			<Code code={exerciseFinalCode} lang="kotlin" theme="github-dark" />
+		</div>
+	</div>
+	<p>
+		Đúng khuôn <code>RecipeDetails</code>: lấy <code>prefs</code> từ CompositionLocal <em>trước</em>, rồi truyền vào
+		<code>RecipeViewModel(prefs)</code> trong factory. Không có gì mới — và đó chính là điểm: khuôn đã lặp lại đủ
+		để thành phản xạ.
+	</p>
+	<div class="callout diff">
+		<strong>Bài toán <code>@Preview</code>: hai cách sửa, mỗi cách một cái giá</strong>
+		<p>
+			Preview <em>không</em> đi qua <code>MainActivity</code>, tức không có
+			<code>CompositionLocalProvider</code> bọc ngoài — nên đọc <code>LocalPrefsProvider.current</code> trong preview
+			sẽ chạm giá trị mặc định <code>error("No prefs provided")</code> (mục 13) và preview không render được. Có hai
+			hướng xử lý trong tự nhiên:
+		</p>
+		<div class="ba">
+			<div class="ba-col">
+				<div class="ba-head">Tự tạo <code>Prefs</code> trong preview</div>
+				<Code code={previewBookWayCode} lang="kotlin" theme="github-dark" />
+				<p>Preview render được — nhưng mỗi <code>Prefs(context)</code> mới là một instance DataStore mới trỏ vào cùng
+					file <code>recipes</code>, đúng điều D1 mục 5 cấm. Trong preview gần như vô hại (chỉ chạy trong Android
+					Studio), nhưng nó dạy sai thói quen.</p>
+			</div>
+			<div class="ba-col">
+				<div class="ba-head">Đọc từ provider (project làm)</div>
+				<Code code={previewChipRowCode} lang="kotlin" theme="github-dark" />
+				<p class="src">
+					<code>{FINAL}/ui/recipes/ChipRow.kt</code> dòng <strong>65–73</strong> — cùng khuôn ở <code>SearchRow.kt</code>
+					dòng <strong>137–141</strong>, <code>ShowBookmarks.kt</code> <strong>106–110</strong>,
+					<code>ShowRecipeList.kt</code> dòng <strong>95–100</strong>.
+				</p>
+				<p>Sạch về kiến trúc — nhưng như đã nói, preview không render được khi thiếu provider. Để ý cả 4 preview
+					vẫn giữ <code>val context = LocalContext.current</code> <strong>khai rồi không dùng</strong> — vết của một
+					cách sửa khác; Android Studio sẽ cảnh báo "unused variable" (chi tiết ở AP3).</p>
+			</div>
+		</div>
+		<p>
+			<strong>Cách đúng thật sự</strong> (không có trong project): bọc nội dung preview trong
+			<code>CompositionLocalProvider(LocalPrefsProvider provides ...)</code> với một <code>Prefs</code> giả chỉ dùng
+			cho preview — và đó là lý do người ta tách <code>Prefs</code> thành <code>interface</code>: để có bản thật và
+			bản giả. Ý tưởng này chờ bạn ở phần testing (bài mở rộng O2); với app học thì chấp nhận được.
+		</p>
+	</div>
+
+	<h2 id="bang-trach-nhiem">20. Bảng trách nhiệm: ai giữ gì — không lẫn cái nào</h2>
+	<p>
+		Cả chương có 5 "nhân vật" tham gia một mạch. Đây là bảng phân vai — nếu bạn có thể tự vẽ lại bảng này thì
+		bài này đã đạt:
+	</p>
+	<table class="api">
+		<thead>
+			<tr><th>Nhân vật</th><th>Trách nhiệm</th><th>Không phải việc của nó</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>DataStore</strong></td>
+				<td>Lưu các cặp key/value xuống đĩa, đọc qua Flow, ghi nguyên khối</td>
+				<td>Biết app có những màn hình nào; dựng UI state</td>
+			</tr>
+			<tr>
+				<td><strong>Prefs</strong></td>
+				<td>Phơi các thao tác preference có tên (<code>saveInt</code>, <code>getString</code>...); giữ một điểm khai
+					báo store</td>
+				<td>Quyết định UI hiện gì; là "repository" cho mọi loại dữ liệu</td>
+			</tr>
+			<tr>
+				<td><strong>CompositionLocal</strong></td>
+				<td>Vận chuyển dependency đã tạo tới mọi composable trong cây con</td>
+				<td>Tạo object; lưu dữ liệu; thay tham số tường minh cho dữ liệu màn hình</td>
+			</tr>
+			<tr>
+				<td><strong>ViewModel</strong></td>
+				<td>Giữ/transform UI state; phản ứng với dữ liệu; chạy coroutine với <code>viewModelScope</code></td>
+				<td>Tự dựng <code>Prefs</code>; giữ tham chiếu Activity</td>
+			</tr>
+			<tr>
+				<td><strong>Composable</strong></td>
+				<td>Vẽ từ state; gửi sự kiện lên (tham số tường minh + callback — S3)</td>
+				<td>Ghi đĩa trực tiếp (trừ preference gắn với UI thuần như tab — và cả đó cũng qua <code>Prefs</code>)</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>
+		Hai lẫn lộn hay gặp nhất, giờ có chỗ để chặn: nhầm <strong>CompositionLocal với persistence</strong> (nó vận
+		chuyển, không lưu) và nhầm <strong>DataStore với UI state</strong> (DataStore là nguồn dữ liệu bền; UI state là
+		ảnh chụp màn hình đang hiện — mạch là <code>DataStore → Prefs → ViewModel → UiState → Compose</code>, mỗi chặng
+		một vai).
+	</p>
+
+	<h2 id="tom-tat">21. Tóm tắt, luyện tập và đi tiếp</h2>
+	<div class="callout journey">
+		<ol>
+			<li>Không cho mỗi màn hình tự dựng dependency: <strong>tạo một lần</strong> ở chủ sở hữu sống đủ lâu →
+				<strong>cấp</strong> → <strong>tiêu thụ</strong>.</li>
+			<li><code>Application</code> là chủ sở hữu hợp lý: một lần, trước mọi UI, không chết theo xoay máy. Dependency
+				dựng ngoài class sử dụng = dependency injection ở mức nguyên lý; Hilt là câu chuyện của app lớn hơn.</li>
+			<li>CompositionLocal: khai local (mặc định <code>error(...)</code> = crash sớm có chủ ý) →
+				<code>CompositionLocalProvider ... provides</code> → <code>.current</code> trong cây con. Không persistence,
+				không tự tạo object, không thay tham số tường minh cho dữ liệu màn hình.</li>
+			<li>ViewModel có tham số → factory: đưa <em>công thức tạo</em>, Compose gọi đúng một lần mỗi vòng đời; đọc
+				<code>.current</code> <em>trước</em> lambda factory.</li>
+			<li>Hai trace: từ khoá (ViewModel → <code>joinToString</code> → DataStore; đọc lại trong <code>init</code>) và
+				tab (Composable; <code>LaunchedEffect</code> đọc, <code>rememberCoroutineScope</code> ghi).</li>
+			<li><code>joinToString</code>/<code>split</code> quanh dấu phẩy = bug thật: dữ liệu tập hợp đã vượt công cụ
+				key/value → Chương 10 (Room).</li>
+			<li>Bốn thứ "được giữ lại" khác nhau: <code>remember</code> (vẽ lại) / <code>rememberSaveable</code> (xoay máy)
+				/ DataStore (tắt app) / — và chỉ cái cuối là persistence.</li>
+		</ol>
+	</div>
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Một người bạn dựng app riêng, viết trong <code>SomeScreen.kt</code>:
+			<code>val prefs = Prefs(LocalContext.current)</code> ngay trong thân Composable để gọi
+			<code>prefs.saveInt(...)</code> khi bấm nút — và nói "app tôi chạy đúng mà". Hãy chỉ ra <strong>(a)</strong>
+			hai vấn đề kiến trúc với dòng đó (một về instance, một về vòng đời), <strong>(b)</strong> ba dòng thay thế
+			đúng khuôn của chương (từ khai báo tới tiêu thụ), và <strong>(c)</strong> nếu giờ thêm tham số
+			<code>prefs</code> vào constructor của một ViewModel, vì sao đọc
+			<code>LocalPrefsProvider.current</code> <em>phải</em> nằm ngoài lambda
+			<code>viewModelFactory &#123; &#125;</code>?
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>(a)</strong> Mỗi lần vẽ lại là một <code>Prefs</code> mới → một instance DataStore mới trỏ cùng file
+				(vi phạm "một instance", D1 mục 5); và <code>LocalContext.current</code> là Context của màn hình — một object
+				sống lâu cầm Context ngắn hạn là khuôn rò rỉ (mục 12).
+			</p>
+			<p>
+				<strong>(b)</strong> <code>RecipeApp</code> tạo <code>prefs = Prefs(this)</code> một lần trong
+				<code>onCreate()</code>; <code>MainActivity</code> cấp
+				<code>LocalPrefsProvider provides (application as RecipeApp).prefs</code> quanh <code>NavHost</code>;
+				Composable tiêu thụ <code>val prefs = LocalPrefsProvider.current</code> rồi phóng coroutine qua
+				<code>rememberCoroutineScope</code> để ghi (mục 12–13, 18).
+			</p>
+			<p>
+				<strong>(c)</strong> Vì bên trong lambda factory không còn là vùng Composable — nó là code thường chạy sau,
+				không đọc được CompositionLocal. Phải lấy giá trị ra biến trước, lambda closure bắt biến đó (mục 15).
+			</p>
+		</details>
+	</div>
+	<div class="callout">
+		<strong>Ba việc nên tự làm trước khi qua Chương 10</strong>
+		<ol>
+			<li>
+				<strong>Sửa bug dấu phẩy.</strong> Chọn một trong ba cách ở mục 17 và làm thật. Cách nhanh nhất để kiểm tra:
+				gõ tìm "chicken, rice", tắt app, mở lại, xem menu 3 chấm.
+			</li>
+			<li>
+				<strong>Chuyển <code>getString</code> sang trả <code>Flow&lt;String?&gt;</code></strong> (bỏ <code>first()</code>)
+				và <code>collect</code> nó trong ViewModel. Đây là bài tập biến DataStore từ "SharedPreferences kiểu mới"
+				thành thứ nó thật sự là — có thể làm được ngay, thoải mái hơn sau khi học W1.
+			</li>
+			<li>
+				<strong>Dời delegate ra top-level</strong> (D1 mục 5) rồi thử tạo <code>Prefs</code> hai lần. Bạn sẽ thấy vấn
+				đề "một instance" đổi từ chuyện phải ghi nhớ thành chuyện trình biên dịch lo.
+			</li>
+		</ol>
+	</div>
+	<p>
+		<strong>Chương 10 — Room.</strong> Bạn sẽ gặp lại đúng bài toán đã đụng ở mục 17: khi dữ liệu là một
+		<em>tập hợp bản ghi có cấu trúc</em> (danh sách công thức đã bookmark, mỗi cái có id, tên, ảnh, nguyên liệu),
+		key-value hết đường. Room là database SQLite — "hướng thứ ba" mà D1 mục 1 đã kể tên nhưng chưa dùng. Và lúc đó
+		bookmark ở đầu chương mới thật sự được làm.
+	</p>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng
+		phía trên. Bảng lệch phiên bản và bảng đối chiếu "văn bản gốc ↔ project" đầy đủ nằm ở phần tra cứu phiên bản
+		của khoá (AP3, mục Ch09).
+	</p>
+	<ul>
+		<li>
+			<strong>Tưởng CompositionLocal là persistence, hoặc là máy tạo object.</strong> Nó <em>vận chuyển</em> giá trị
+			đã được tạo ở provider; instance thật nằm ở <code>RecipeApp</code>, dữ liệu thật nằm ở DataStore (mục 13, 20).
+		</li>
+		<li>
+			<strong>Đổ mọi dependency vào CompositionLocal.</strong> Đường mặc định cho dữ liệu/sự kiện màn hình là tham số
+			tường minh (S3); CompositionLocal dành cho ngữ cảnh của cả cây con — theme, <code>prefs</code>, navigator
+			(mục 14).
+		</li>
+		<li>
+			<strong>Đọc <code>.current</code> bên trong lambda factory.</strong> Lambda không còn là vùng Composable — lấy
+			giá trị ra trước rồi closure mới bắt được (mục 15). Lỗi biên dịch kinh điển.
+		</li>
+		<li>
+			<strong>Tự <code>RecipeViewModel(prefs)</code> rồi giữ trong biến.</strong> ViewModel phải do
+			<code>viewModel()</code> tạo qua factory để sống qua xoay máy (mục 15, S4).
+		</li>
+		<li>
+			<strong>Ghi đĩa trong thân Composable hoặc trong <code>onclick</code> không bọc coroutine.</strong> Đọc/ghi là
+			<code>suspend</code>: đọc lúc mở màn hình → <code>LaunchedEffect</code>; ghi lúc bấm →
+			<code>rememberCoroutineScope</code> (mục 18).
+		</li>
+		<li>
+			<strong>Dùng <code>hasKey</code> trước <code>getString</code>.</strong> Đọc file hai lần cho một câu hỏi — và
+			<code>hasKey</code> không tìm thấy key kiểu <code>Int</code> vì luôn tạo key dạng string (D1 mục 10).
+		</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<ul>
+		<li>
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — <code>RecipeApp</code> (dòng 233–243), khai
+			CompositionLocal + provider (dòng 248–261), ViewModel nhận <code>Prefs</code> (dòng 269–273),
+			<code>savePreviousSearches</code>/<code>addPreviousSearch</code> (dòng 275–303), <code>RecipeDetails</code> +
+			factory (dòng 305–315), bài tập các file còn lại + hướng dẫn preview (dòng 316–329), đọc lại trong
+			<code>init</code> (dòng 337–345), lưu tab (dòng 350–383), Key Points (dòng 385–389), link
+			<code>SharedPreferences</code> reference (dòng 393–395).
+		</li>
+		<li>
+			<strong>Code thật:</strong> <code>{FINAL}/RecipeApp.kt</code> (dòng 9–21),
+			<code>{FINAL_ROOT}/app/src/main/AndroidManifest.xml</code> (dòng 12),
+			<code>{FINAL}/MainActivity.kt</code> (dòng 25–31 — hai provider; 44–48 — cấp giá trị; 80–86 —
+			<code>MainPreview</code>), <code>{FINAL}/viewmodels/RecipeViewModel.kt</code> (dòng 32–35 — constructor + key;
+			57–65 — <code>init</code>; 85–90 — <code>savePreviousSearches</code>; 122–133 —
+			<code>addPreviousSearch</code>), <code>{FINAL}/utils/ComposeUtils.kt</code> (dòng 44–47 —
+			<code>viewModelFactory</code>; helper <code>rememberState</code> trong cùng file là bài Medium của Matt
+			Robertson, được ghi nguồn ngay trong comment code), <code>{FINAL}/ui/RecipeDetails.kt</code> (dòng 53–55),
+			<code>{FINAL}/ui/recipes/RecipeList.kt</code> (dòng 26–28), <code>{FINAL}/ui/recipes/ImageRow.kt</code> (dòng
+			36–43 — <code>searchRecipes</code>), <code>{FINAL}/ui/recipes/SearchRow.kt</code> (dòng 105–119 — dropdown),
+			<code>{FINAL}/ui/MainScreen.kt</code> (dòng 22–58 — tab), <code>{FINAL}/ui/groceries/GroceryList.kt</code>
+			(dòng 19–21), 4 preview: <code>ChipRow.kt</code> (68–72), <code>SearchRow.kt</code> (137–141),
+			<code>ShowBookmarks.kt</code> (106–110), <code>ShowRecipeList.kt</code> (95–100).
+		</li>
+		<li>
+			<strong>Đối chiếu nền tảng:</strong> D1 (kho lưu trữ <code>Prefs</code>, key có kiểu, một-instance) · S3 (tham số tường minh vs ngữ cảnh cây con — mục 14) · S4
+			(<code>viewModel()</code>, vòng đời ViewModel — mục 15) · S2 (<code>remember</code>/<code>rememberSaveable</code>
+			— mục 18) · C3 (ghi nhận tên CompositionLocal — trả nợ ở mục 13) · C4 (<code>LaunchedEffect</code> chạm lần
+			đầu; chiều sâu đầy đủ ở R4 — mục 18) · <code>docs/drafts/s5-app-architecture-repository.md</code> (Hilt/DI để
+			ngoài, seam note ở mục 12; ngôn ngữ data source ở mục 20) · Chương 8 (Moshi đã có sẵn — mục 17).
+		</li>
+		<li>
+			<strong>Ví dụ tối giản do khoá dựng:</strong> bảng bốn vấn đề của "mỗi màn hình tự dựng" (mục 11), sơ đồ cây
+			provider (mục 13 — dựng từ số dòng thật của <code>MainActivity</code>), bảng "bốn thứ được giữ lại" (mục 18),
+			bảng trách nhiệm (mục 20), khuôn kiểm tra nhanh.
+		</li>
+	</ul>
+	<p class="hint">
+		<strong>Tra cứu phiên bản:</strong> bảng lệch phiên bản DataStore (1.0.0 → 1.2.x) và bảng đối chiếu "văn bản
+		gốc ↔ project" của chương này (7 điểm lệch + chuyện preview) nằm ở <code>docs/drafts/ap3-version-drift.md</code>,
+		mục Ch09 — không lặp lại ở đây.
+	</p>
+</section>

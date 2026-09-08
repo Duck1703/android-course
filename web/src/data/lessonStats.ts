@@ -161,6 +161,14 @@ const FILE_KEY_PIN: Record<string, string> = {
   "ch08-coroutines-va-flow": "08_1",
   "ch08-retrofit-moshi-json": "08_2",
   "ch08-trang-thai-mang-api-key": "08_3",
+  // Stage 6 (Giai đoạn 6 — Dữ liệu cục bộ): D1/D2 là tách monolith Ch09DataStore.astro —
+  // file live KHÔNG mang số đơn vị (Ch09DataStoreVaSharedPreferences…, regex "Ch(\d{2})"
+  // cho key "09" — key của monolith đã retired) → bị loại, trong khi 4 file ngủ đông
+  // Ch09_1ViSaoDataStore/Ch09_2VietClassPrefs/Ch09_3PhatPrefsXuongApp/Ch09_4BugDauPhayVaLuuTab
+  // thắng key 09_1/09_2/09_3/09_4 — đúng bug-class stats-pairing Stage 1/3/5. Ghim key =
+  // "09_N" theo subNumber registry để file live vào đúng bucket của mình.
+  "ch09-data-store-va-sharedpreferences": "09_1",
+  "ch09-prefs-composition-local-va-wiring": "09_2",
   "ch06-state-va-recomposition": "06_2",
   "ch06-state-hoisting-va-udf": "06_3",
   "ch06-viewmodel-va-ui-state": "06_4",

@@ -71,7 +71,12 @@ const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
 // "ch08-networking" chết → entry replace old → [W1, W2, W3]. KHÔNG có bài NEW
 // trong batch này — cả ba bài kế nhiệm trực tiếp nội dung monolith, credit chia
 // đủ ba theo mapping khai báo (không no-fabricate case nào).
-const SCHEMA_VERSION = 10;
+// 11 = Stage 6: Ch09 monolith tách thành D1–D2 (registry §7 entry 7). Old slug
+// "ch09-data-store" chết → entry replace old → [D1, D2]. KHÔNG có bài NEW
+// trong batch này — cả hai bài kế nhiệm trực tiếp nội dung monolith theo mốc
+// D1/D2 START/END, credit chia đủ hai theo mapping khai báo. Redirect 1 đích
+// old → D1 (astro.config.mjs).
+const SCHEMA_VERSION = 11;
 
 // Khi một chương lớn được tách thành nhiều chương nhỏ, slug cũ trong localStorage
 // của người học không còn ứng với trang nào — tiến độ của họ sẽ "bốc hơi".
@@ -169,6 +174,16 @@ const SPLIT_MAP: Record<string, string[]> = {
     "ch08-coroutines-va-flow",
     "ch08-retrofit-moshi-json",
     "ch08-trang-thai-mang-api-key",
+  ],
+  // IMP-0xx (v11) — Stage 6: Ch09 monolith dead-source split (registry §7 entry 7).
+  // Old slug CHẾT (route retired) → replace: D1 (DataStore & SharedPreferences —
+  // cơ chế lưu trữ) + D2 (Prefs trong app — CompositionLocal & ViewModel wiring).
+  // KHÔNG có bài NEW trong batch này — cả hai bài kế nhiệm trực tiếp nội dung
+  // monolith theo mốc D1/D2 START/END, credit chia đủ hai theo mapping khai báo.
+  // Redirect 1 đích old → D1 (astro.config.mjs).
+  "ch09-data-store": [
+    "ch09-data-store-va-sharedpreferences",
+    "ch09-prefs-composition-local-va-wiring",
   ],
 };
 
