@@ -139,17 +139,38 @@ const FILE_KEY_PIN: Record<string, string> = {
   "ch05-material-3-va-theming": "05_3",
   "ch05-preview-va-vong-doi": "05_4",
   "ch05-tiep-can-moi-nguoi-dung": "05_5",
+  // Stage 3 (IMP-035/042/043): S2–S4 giữ file Ch06<Name>.astro không mang số đơn vị
+  // (regex "Ch(\d{2})" khớp → key "06") — ghim key = "06_N" theo subNumber registry
+  // để key "06" (của file ngủ đông Ch06_*) không tranh bucket với các bài live.
+  // S1/S5 là bài NEW không theo quy ước ChNN (tên kebab→Pascal thuần) — file không
+  // khớp regex nên TỰ rơi vào nhánh foundationKey (key = slug bỏ gạch, như F1/F2);
+  // nhưng fileKeyOf phải trả về CÙNG key đó theo slug, nên vẫn cần hai dòng ghim
+  // (key = slug-bỏ-gạch, không phải "06_N") để vòng resolve khớp vòng quét file.
+  "coroutines-20-phut-khong-so": "coroutines20phutkhongso",
+  "kien-truc-ui-data-repository": "kientrucuidatarepository",
+  "ch06-state-va-recomposition": "06_2",
+  "ch06-state-hoisting-va-udf": "06_3",
+  "ch06-viewmodel-va-ui-state": "06_4",
 };
 // Bảng ngược cho vòng quét file: "Ch02DocProjectMau" → "02_2" v.v. (tên file
 // không đuôi, cả lesson lẫn quiz).
+// ⚠ Ghim theo slug→pascalOf(slug) có một ca lệch: "ch06-viewmodel-va-ui-state"
+// pascalOf → "Ch06ViewmodelVaUiState" nhưng tên file thật là "Ch06ViewModelVaUiState"
+// (registry §9: danh pháp API giữ nguyên casing). Nếu để pinByFile suy theo
+// pascalOf thì file live KHÔNG được ghim key 06_4 → rơi vào key "06" (không thuộc
+// registry) → bị loại, và file ngủ đông Ch06_4JumpToBottom* thắng key 06_4 — đúng
+// bug-class stats-pairing mà Stage 1 đã gặp. Bảng FILE_NAME_CASE ghim TÊN FILE THẬT
+// cho những slug như vậy; pinByFile ưu tiên nó trước pascalOf.
+const FILE_NAME_CASE: Record<string, string> = {
+  "ch06-viewmodel-va-ui-state": "Ch06ViewModelVaUiState",
+};
 const pinByFile: Map<string, string> = new Map(
   Object.entries(FILE_KEY_PIN).flatMap(([slug, key]) => {
     const ch = ALL_CHAPTERS.find((c) => c.slug === slug);
     if (!ch) return [];
-    // slug kebab → tên file: theo quy uoc kebab→Pascal (mỗi segment hoa đầu).
-    // Số dư: quy uoc đủ rộng cho 3 file ghim này; nếu sai tên, vòng resolve
-    // sẽ fail-loud ở bước đếm thiếu/thừa file.
-    const base = slug
+    // slug kebab → tên file: theo quy uoc kebab→Pascal (mỗi segment hoa đầu),
+    // TRỪ các ca lệch đã ghim ở FILE_NAME_CASE.
+    const base = FILE_NAME_CASE[slug] ?? slug
       .split("-")
       .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
       .join("");
@@ -177,7 +198,6 @@ function fileKeyOf(ch: Pick<ChapterInfo, "number" | "subNumber" | "slug">): stri
   if (ch.number < 1) return foundationKey(ch.slug);
   return FILE_KEY_PIN[ch.slug] ?? FILE_KEY_OVERRIDE[ch.slug] ?? chapterFileKey(ch);
 }
-
 /** File name quy uoc cho 1 slug: tu chapterFileKey (vd "10_2") + ten nhom tu
  * lessons.ts import. Vi ten file khong suy ra duoc tu slug mot minh, buoc
  * validate duoi dung MAP NGUOC tu chinh LESSONS: moi entry import 2 component
@@ -200,8 +220,9 @@ const byKey = new Map<string, Bucket>();
 for (const [path] of Object.entries(RAW)) {
   const file = path.slice(path.lastIndexOf("/") + 1);
   const m = /^Ch(\d{2})(?:_(\d+))?(.*)\.astro$/.exec(file);
-  // Stage 2: file không mang số đơn vị (Ch05ComposableVaLayout…) được ghim key
+  // Stage 2 (IMP-033/044): file không mang số đơn vị (Ch05ComposableVaLayout…) được ghim key
   // qua pinByFile theo TÊN FILE thay vì theo số — khớp cách vòng filesByKey làm.
+  // Stage 3: ba file tách Ch06 (Ch06StateVaRecomposition…) không mang số đơn vị — cùng cơ chế.
   const noNumber = m ? pinByFile.get(file.replace(/\.astro$/, "")) : undefined;
   const key = noNumber ?? (m
     ? m[2] ? `${m[1]}_${m[2]}` : m[1]!
@@ -337,8 +358,16 @@ function resolveLiveFileNames(): { lesson: Record<string, string>; quiz: Record<
     const slug = registeredLessonSlugs[0]!;
     const pascalOf = (s: string) =>
       s.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
-    const exactLesson = `${pascalOf(slug)}.astro`;
-    const exactQuiz = `${pascalOf(slug)}Quiz.astro`;
+    // Ghim tường minh cho những slug có TÊN FILE lệch chuẩn pascalOf(slug):
+    // duy nhất một ca hiện tại là "ch06-viewmodel-va-ui-state" — pascalOf cho ra
+    // "Ch06ViewmodelVaUiState" trong khi tên file thật (registry §9: tên thật giữ
+    // nguyên danh pháp API) là "Ch06ViewModelVaUiState". Bảng này chỉ ghi CA LỆCH.
+    const FILE_NAME_PIN: Record<string, string> = {
+      "ch06-viewmodel-va-ui-state": "Ch06ViewModelVaUiState",
+    };
+    const fileBase = FILE_NAME_PIN[slug] ?? pascalOf(slug);
+    const exactLesson = `${fileBase}.astro`;
+    const exactQuiz = `${fileBase}Quiz.astro`;
     if (lessonFiles.length === 0) {
       errors.push(`${slug}: khong tim thay file Lesson cho key "${key}"`);
     } else if (lessonFiles.length === 1) {

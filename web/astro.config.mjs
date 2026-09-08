@@ -16,10 +16,9 @@ import { defineConfig } from "astro/config";
 // redirect. Danh sách 8 slug chết dự kiến nằm ở registry §6 — không khai báo
 // tại đây trước khi batch tương ứng chạy.
 //
-// Hiện tại: 2 redirect thật (pilot R1 + Stage-1 ch03-2). Source phải là URL
-// công khai THẬT đã nghỉ — route bài học nằm dưới /chapters/<slug>/, nên source
-// key cũng dùng cùng dạng "chapters/<slug>" (Astro sinh trang redirect đúng vị
-// trí đó).
+// Hiện tại: 4 redirect thật (pilot R1 + Stage-1 ch03-2 + Stage-2 ch05 + Stage-3 ch06).
+// Source phải là URL công khai THẬT đã nghỉ — route bài học nằm dưới /chapters/<slug>/,
+// nên source key cũng dùng cùng dạng "chapters/<slug>" (Astro sinh trang redirect đúng vị trí đó).
 const COURSE_REDIRECTS = {
   // IMP-020 (pilot): old R1 slug chết tại batch này → redirect 1 đích sang R1.
   "chapters/ch10-1-vi-sao-can-database": "/chapters/ch10-room-la-gi-va-sqlite/",
@@ -31,6 +30,10 @@ const COURSE_REDIRECTS = {
   // C1 (registry §6 row 2: redirectTarget = ch05-composable-va-layout). C2–C4 đến
   // được qua sidebar/TOC; C5 là bài mới, không redirect.
   "chapters/ch05-jetpack-compose": "/chapters/ch05-composable-va-layout/",
+  // IMP-035 (Stage 3): old Ch06 monolith chết tại batch này → redirect 1 đích sang
+  // S2 (registry §6 row 3: redirectTarget = ch06-state-va-recomposition). S3/S4 đến
+  // được qua sidebar/bài tiếp theo; S1 và S5 là bài mới, không redirect.
+  "chapters/ch06-advanced-jetpack-compose": "/chapters/ch06-state-va-recomposition/",
 };
 
 export default defineConfig({

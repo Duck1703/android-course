@@ -41,11 +41,12 @@
 //    22 URL hiện tại = 14 giữ nguyên + 8 chết. KHÔNG dùng số "15/22" cũ.
 //
 // G. SCHEMA_VERSION là phiên bản CẤU TRÚC SLUG của tiến độ — không phải version
-//    app, nội dung, hay registry. Hiện tại 8 = 7 + 1 (Stage 2: ch05 monolith
-//    split → C1–C4). Lịch sử: 6 = Stage 1 (ch02-2 fan-out + ch03-2 split); 7 =
+//    app, nội dung, hay registry. Hiện tại 9 = 8 + 1 (Stage 3: ch06 monolith
+//    split → S2–S4). Lịch sử: 6 = Stage 1 (ch02-2 fan-out + ch03-2 split); 7 =
 //    +1 vì sửa entry ch01 monolith (typo dead slug → slug live, map content
 //    đổi nên mọi máy phải re-run: correct-criterion §12.4 đơn điệu theo thứ tự
-//    thực thi — không gán cứng sẵn dãy version tương lai).
+//    thực thi — không gán cứng sẵn dãy version tương lai); 8 = Stage 2 (ch05
+//    monolith split → C1–C4); 9 = Stage 3 (ch06 monolith split → S2–S4).
 // ────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "hoc-android-tv:progress";
 const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
@@ -60,7 +61,12 @@ const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
 // "ch05-jetpack-compose" chết → entry replace old → [C1, C2, C3, C4] (SPLIT_MAP
 // #3 của registry §7). C5 (ch05-tiep-can-moi-nguoi-dung) là bài HỌC MỚI — KHÔNG
 // nằm trong mapping, không tự done (no-fabricate §D).
-const SCHEMA_VERSION = 8;
+// 9 = Stage 3 (IMP-035/042/043): Ch06 monolith tách thành S2–S4 + S1/S5 mới.
+// Old slug "ch06-advanced-jetpack-compose" chết → entry replace old →
+// [S2, S3, S4] (SPLIT_MAP #4 của registry §7). S1 (coroutines-20-phut-khong-so)
+// và S5 (kien-truc-ui-data-repository) là bài HỌC MỚI — KHÔNG nằm trong mapping,
+// không tự done (no-fabricate §D; đặc biệt ch10-1 cũ vẫn chỉ sang R1, không S5).
+const SCHEMA_VERSION = 9;
 
 // Khi một chương lớn được tách thành nhiều chương nhỏ, slug cũ trong localStorage
 // của người học không còn ứng với trang nào — tiến độ của họ sẽ "bốc hơi".
@@ -137,6 +143,16 @@ const SPLIT_MAP: Record<string, string[]> = {
     "ch05-modifier-va-danh-sach",
     "ch05-material-3-va-theming",
     "ch05-preview-va-vong-doi",
+  ],
+  // IMP-035 (v9) — Stage 3: Ch06 monolith dead-source split (registry §7 entry 4).
+  // Old slug CHẾT (route retired) → replace: S2 (state & recomposition) + S3 (state
+  // hoisting & UDF) + S4 (ViewModel & UI state). S1 và S5 là bài HỌC MỚI — cố ý
+  // KHÔNG nằm trong mảng này: no-fabricate §D, không nhận credit thừa kế từ Ch06
+  // monolith. Redirect 1 đích old → S2 (astro.config.mjs).
+  "ch06-advanced-jetpack-compose": [
+    "ch06-state-va-recomposition",
+    "ch06-state-hoisting-va-udf",
+    "ch06-viewmodel-va-ui-state",
   ],
 };
 

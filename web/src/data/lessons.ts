@@ -43,8 +43,16 @@ import Ch05PreviewVaVongDoi from "../components/lessons/Ch05PreviewVaVongDoi.ast
 import Ch05PreviewVaVongDoiQuiz from "../components/lessons/Ch05PreviewVaVongDoiQuiz.astro";
 import Ch05TiepCanMoiNguoiDung from "../components/lessons/Ch05TiepCanMoiNguoiDung.astro";
 import Ch05TiepCanMoiNguoiDungQuiz from "../components/lessons/Ch05TiepCanMoiNguoiDungQuiz.astro";
-import Ch06AdvancedJetpackCompose from "../components/lessons/Ch06AdvancedJetpackCompose.astro";
-import Ch06Quiz from "../components/lessons/Ch06Quiz.astro";
+import Ch06StateVaRecomposition from "../components/lessons/Ch06StateVaRecomposition.astro";
+import Ch06StateVaRecompositionQuiz from "../components/lessons/Ch06StateVaRecompositionQuiz.astro";
+import Ch06StateHoistingVaUdf from "../components/lessons/Ch06StateHoistingVaUdf.astro";
+import Ch06StateHoistingVaUdfQuiz from "../components/lessons/Ch06StateHoistingVaUdfQuiz.astro";
+import Ch06ViewModelVaUiState from "../components/lessons/Ch06ViewModelVaUiState.astro";
+import Ch06ViewModelVaUiStateQuiz from "../components/lessons/Ch06ViewModelVaUiStateQuiz.astro";
+import Coroutines20PhutKhongSo from "../components/lessons/Coroutines20PhutKhongSo.astro";
+import Coroutines20PhutKhongSoQuiz from "../components/lessons/Coroutines20PhutKhongSoQuiz.astro";
+import KienTrucUiDataRepository from "../components/lessons/KienTrucUiDataRepository.astro";
+import KienTrucUiDataRepositoryQuiz from "../components/lessons/KienTrucUiDataRepositoryQuiz.astro";
 import Ch07AdvancedArchitecture from "../components/lessons/Ch07AdvancedArchitecture.astro";
 import Ch07Quiz from "../components/lessons/Ch07Quiz.astro";
 import Ch08Networking from "../components/lessons/Ch08Networking.astro";
@@ -119,7 +127,17 @@ export const LESSONS: Partial<Record<string, LessonEntry>> = {
   "ch05-material-3-va-theming": { Lesson: Ch05Material3VaTheming, Quiz: Ch05Material3VaThemingQuiz },
   "ch05-preview-va-vong-doi": { Lesson: Ch05PreviewVaVongDoi, Quiz: Ch05PreviewVaVongDoiQuiz },
   "ch05-tiep-can-moi-nguoi-dung": { Lesson: Ch05TiepCanMoiNguoiDung, Quiz: Ch05TiepCanMoiNguoiDungQuiz },
-  "ch06-advanced-jetpack-compose": { Lesson: Ch06AdvancedJetpackCompose, Quiz: Ch06Quiz },
+  // Chương 6 đã tách thành 5 chương nhỏ của Giai đoạn 3 (batch Stage 3): S1 là bài NEW
+  // (coroutine foundation — bài đầu của giai đoạn, mở dãy số), rồi S2/S3/S4 tách từ monolith
+  // theo mốc S2/S3/S4 START/END, S5 là bài NEW (kiến trúc UI/data + repository). Mỗi chương
+  // nhỏ có quiz riêng. Old slug ch06-advanced-jetpack-compose chết trong batch này →
+  // redirect 1 đích sang S2 (astro.config.mjs) + SPLIT_MAP replace (progress.ts).
+  // S1 và S5 là bài HỌC MỚI — KHÔNG nằm trong mapping nào (no-fabricate).
+  "coroutines-20-phut-khong-so": { Lesson: Coroutines20PhutKhongSo, Quiz: Coroutines20PhutKhongSoQuiz },
+  "ch06-state-va-recomposition": { Lesson: Ch06StateVaRecomposition, Quiz: Ch06StateVaRecompositionQuiz },
+  "ch06-state-hoisting-va-udf": { Lesson: Ch06StateHoistingVaUdf, Quiz: Ch06StateHoistingVaUdfQuiz },
+  "ch06-viewmodel-va-ui-state": { Lesson: Ch06ViewModelVaUiState, Quiz: Ch06ViewModelVaUiStateQuiz },
+  "kien-truc-ui-data-repository": { Lesson: KienTrucUiDataRepository, Quiz: KienTrucUiDataRepositoryQuiz },
   "ch07-advanced-architecture": { Lesson: Ch07AdvancedArchitecture, Quiz: Ch07Quiz },
   "ch08-networking": { Lesson: Ch08Networking, Quiz: Ch08Quiz },
   "ch09-data-store": { Lesson: Ch09DataStore, Quiz: Ch09Quiz },
