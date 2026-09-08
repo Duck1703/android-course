@@ -13,10 +13,10 @@
 	<p class="intro">10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn làm đúng, nên đọc hết.</p>
 
 	<form id="quiz-form">
-		<fieldset data-answer="d">
+		<fieldset data-answer="a">
 			<legend>1. Đồng nghiệp viết <code>viewModelScope.launch &#123; withContext(Dispatchers.IO) &#123; spoonacularService.queryRecipes(q, 0) &#125; &#125;</code> và giải thích "mạng thì phải IO". Đánh giá nào đúng?</legend>
-			<label><input type="radio" name="q1" value="a" /> Lời bọc thừa — phần chờ HTTP đã nằm trên thread pool của OkHttp, không nằm trên dispatcher nào của bạn</label>
-			<label><input type="radio" name="q1" value="b" /> Đúng quy tắc — mọi lời gọi mạng bắt buộc phải bọc <code>withContext(Dispatchers.IO)</code></label>
+			<label><input type="radio" name="q1" value="a" /> Lời bọc thừa — phần chờ HTTP đã nằm trên thread pool của OkHttp</label>
+			<label><input type="radio" name="q1" value="b" /> Đúng quy tắc — mọi lời gọi mạng bắt buộc phải bọc <code>withContext(Dispatchers.IO)</code> để nằm trên dispatcher nền</label>
 			<label><input type="radio" name="q1" value="c" /> Lời bọc cần thiết, nhưng phải dùng <code>Dispatchers.Default</code> thay vì <code>IO</code></label>
 			<label><input type="radio" name="q1" value="d" /> Lời bọc vô hại nhưng bắt buộc, vì <code>viewModelScope</code> mặc định chạy trên dispatcher nền</label>
 			<p class="explain" hidden>
@@ -30,7 +30,7 @@
 		<fieldset data-answer="a">
 			<legend>2. Điều gì xảy ra với dòng code viết <em>ngay sau</em> <code>viewModel.recipeState.collect &#123; ... &#125;</code> trong cùng một khối <code>launch</code>?</legend>
 			<label><input type="radio" name="q2" value="b" /> Chạy bình thường — <code>collect</code> chỉ đăng ký lắng nghe rồi trả về ngay</label>
-			<label><input type="radio" name="q2" value="a" /> Không bao giờ chạy — <code>collect</code> trên một dòng trạng thái không có điểm kết thúc</label>
+			<label><input type="radio" name="q2" value="a" /> Không bao giờ chạy — <code>collect</code> trên StateFlow không dừng</label>
 			<label><input type="radio" name="q2" value="c" /> Chạy ngay trước <code>collect</code>, vì Compose sắp xếp lại thứ tự</label>
 			<label><input type="radio" name="q2" value="d" /> Chạy sau khi flow phát đủ 2 giá trị</label>
 			<p class="explain" hidden>
@@ -57,7 +57,7 @@
 		<fieldset data-answer="c">
 			<legend>4. <code>viewModelScope</code> giải quyết vấn đề gì mà một scope tự tạo không giải quyết được?</legend>
 			<label><input type="radio" name="q4" value="a" /> Nó tự thử lại (retry) khi mạng lỗi</label>
-			<label><input type="radio" name="q4" value="c" /> Nó gắn vòng đời coroutine vào vòng đời ViewModel — ViewModel bị dọn thì mọi coroutine tự bị huỷ</label>
+			<label><input type="radio" name="q4" value="c" /> Nó gắn vòng đời coroutine vào vòng đời ViewModel</label>
 			<label><input type="radio" name="q4" value="b" /> Nó làm lời gọi mạng nhanh hơn nhờ tái sử dụng kết nối</label>
 			<label><input type="radio" name="q4" value="d" /> Nó cho phép chạy nhiều coroutine hơn cùng lúc</label>
 			<p class="explain" hidden>
@@ -87,7 +87,7 @@
 			<label><input type="radio" name="q6" value="a" /> Tạo hai bản sao dữ liệu để so sánh khi có lỗi</label>
 			<label><input type="radio" name="q6" value="b" /> Bản public dùng cho Compose, bản private dùng cho unit test</label>
 			<label><input type="radio" name="q6" value="c" /> Vì <code>StateFlow</code> không tự giữ giá trị nên phải có bản mutable đứng sau làm kho dữ liệu trung gian</label>
-			<label><input type="radio" name="q6" value="d" /> Chỉ ViewModel được ghi giá trị; UI chỉ được đọc — quyền hạn ép bằng kiểu dữ liệu, không bằng lời nhắc</label>
+			<label><input type="radio" name="q6" value="d" /> Chỉ ViewModel được ghi giá trị; UI chỉ được đọc — quyền hạn ép bằng kiểu dữ liệu, không cần lời nhắc nào cả</label>
 			<p class="explain" hidden>
 				<code>MutableStateFlow</code> có <code>.value</code> ghi được; <code>asStateFlow()</code> bọc lại thành kiểu
 				chỉ-đọc — không copy dữ liệu, cùng một dòng nhìn từ hai vai. Nếu phơi thẳng bản mutable, composable nào cũng
@@ -95,11 +95,11 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="a">
+		<fieldset data-answer="b">
 			<legend>7. Trong <code>RecipeViewModel</code>, hai hàm cùng gọi một API nhưng viết hai kiểu: <code>queryRecipes</code> là hàm thường mở <code>viewModelScope.launch</code>; <code>queryRecipe</code> khai <code>suspend</code> <em>và</em> bên trong vẫn mở <code>launch</code>. Chỉ ra lỗi của kiểu thứ hai.</legend>
 			<label><input type="radio" name="q7" value="a" /> Lỗi biên dịch — không thể gọi <code>launch</code> bên trong một hàm suspend</label>
 			<label><input type="radio" name="q7" value="c" /> Lỗi kiểu dữ liệu — hàm suspend bắt buộc phải trả về giá trị, còn <code>launch</code> trả về <code>Job</code></label>
-			<label><input type="radio" name="q7" value="b" /> Lớp dư: hàm trả về ngay sau khi mở coroutine nên người gọi không chờ được kết quả — chữ suspend không mang lại lợi ích gì</label>
+			<label><input type="radio" name="q7" value="b" /> Lớp dư: hàm trả về ngay, không ai chờ được — suspend vô ích</label>
 			<label><input type="radio" name="q7" value="d" /> Lỗi hiệu năng — mỗi hàm suspend tự tạo thêm một thread mới khi chạy</label>
 			<p class="explain" hidden>
 				Mục 7: chọn một trong hai — bỏ <code>suspend</code> giữ <code>launch</code> (hàm "khởi động việc", đối chiếu
@@ -109,10 +109,10 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="c">
+		<fieldset data-answer="b">
 			<legend>8. Vì sao <code>RecipeList.kt</code> mở <strong>hai</strong> khối <code>scope.launch</code> riêng biệt thay vì viết cả hai việc trong một khối?</legend>
-			<label><input type="radio" name="q8" value="b" /> Vì <code>collect</code> trên dòng trạng thái không bao giờ kết thúc — lệnh viết sau nó trong cùng khối không bao giờ chạy</label>
-			<label><input type="radio" name="q8" value="a" /> Vì mỗi <code>launch</code> chỉ được chứa đúng một câu lệnh</label>
+			<label><input type="radio" name="q8" value="b" /> Vì <code>collect</code> trên dòng trạng thái không bao giờ kết thúc</label>
+			<label><input type="radio" name="q8" value="a" /> Vì mỗi <code>launch</code> chỉ được chứa đúng một câu lệnh trong khối</label>
 			<label><input type="radio" name="q8" value="d" /> Vì hai việc phải chạy trên hai dispatcher khác nhau</label>
 			<label><input type="radio" name="q8" value="c" /> Vì <code>LaunchedEffect</code> giới hạn mỗi khối tối đa một coroutine</label>
 			<p class="explain" hidden>
@@ -122,10 +122,10 @@
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="b">
+		<fieldset data-answer="d">
 			<legend>9. <code>LaunchedEffect(Unit)</code> có hành vi gì?</legend>
 			<label><input type="radio" name="q9" value="c" /> Chạy lại sau mỗi lần recompose</label>
-			<label><input type="radio" name="q9" value="d" /> Chạy đúng một lần khi Composable xuất hiện, và không chạy lại khi recompose</label>
+			<label><input type="radio" name="q9" value="d" /> Chạy một lần khi Composable xuất hiện</label>
 			<label><input type="radio" name="q9" value="a" /> Chỉ chạy khi người dùng chạm vào màn hình</label>
 			<label><input type="radio" name="q9" value="b" /> Chạy mỗi khi ViewModel phát giá trị mới</label>
 			<p class="explain" hidden>
@@ -140,7 +140,7 @@
 			<label><input type="radio" name="q10" value="d" /> Code sai chắc chắn — coroutine chưa chạy xong thì tuyệt đối không được gọi <code>popBackStack()</code></label>
 			<label><input type="radio" name="q10" value="b" /> Không có gì đáng nói — dòng sau dòng trong coroutine luôn chờ dòng trước xong hẳn</label>
 			<label><input type="radio" name="q10" value="c" /> <code>popBackStack()</code> sẽ tự huỷ và đợi coroutine trong scope chạy xong mới rời màn hình</label>
-			<label><input type="radio" name="q10" value="a" /> Khởi động việc và rời màn hình là hai hành động riêng; cần tự hỏi "việc có kịp xong trước khi màn hình đi không" — phân tích chính xác khoảnh khắc huỷ thuộc phần sâu hơn</label>
+			<label><input type="radio" name="q10" value="a" /> Khởi động việc và rời màn hình là hai hành động riêng — dấu hỏi được giữ lại</label>
 			<p class="explain" hidden>
 				Đây là dấu hỏi bài này cố tình giữ lại (mục 7): <code>scope</code> là <code>rememberCoroutineScope()</code> —
 				gắn với composable, và coroutine thuộc scope đó có thể bị huỷ khi màn hình rời. Bài không đủ công cụ để phán

@@ -15,8 +15,8 @@
 	<form id="quiz-form">
 		<fieldset data-answer="b">
 			<legend>1. Đọc <code>queryRecipes</code> trong <code>RecipeViewModel</code>: khi gọi mạng thất bại, hàm ghi log Timber rồi gán danh sách rỗng. Vấn đề thật của cách xử lý này là gì?</legend>
-			<label><input type="radio" name="q1" value="b" /> Người dùng không phân biệt được "mất mạng" với "không có kết quả"</label>
 			<label><input type="radio" name="q1" value="a" /> App crash ngay vì exception không được bắt trong khối try/catch nào cả</label>
+			<label><input type="radio" name="q1" value="b" /> Người dùng không phân biệt được "mất mạng" với "không có kết quả"</label>
 			<label><input type="radio" name="q1" value="d" /> Hàm tự động thử lại ba lần rồi mới báo lỗi, làm chậm giao diện</label>
 			<label><input type="radio" name="q1" value="c" /> Timber không chạy được trong bản debug nên log bị mất</label>
 			<p class="explain" hidden>
@@ -28,10 +28,10 @@
 
 		<fieldset data-answer="d">
 			<legend>2. Vùng dữ liệu mạng có bao nhiêu tình huống cần giao diện phân biệt — và cặp nào bị code mẫu gộp thành một?</legend>
-			<label><input type="radio" name="q2" value="d" /> Bốn: loading, content, empty, error — gộp empty với error</label>
-			<label><input type="radio" name="q2" value="a" /> Hai: thành công và thất bại — không cần phân biệt gì thêm</label>
-			<label><input type="radio" name="q2" value="c" /> Ba: loading, có dữ liệu, lỗi — rỗng là một dạng của lỗi</label>
 			<label><input type="radio" name="q2" value="b" /> Bốn: loading, content, empty, error — code mẫu gộp loading với content</label>
+			<label><input type="radio" name="q2" value="a" /> Hai: thành công và thất bại — không cần phân biệt gì thêm</label>
+			<label><input type="radio" name="q2" value="d" /> Bốn: loading, content, empty, error — gộp empty với error</label>
+			<label><input type="radio" name="q2" value="c" /> Ba: loading, có dữ liệu, lỗi — rỗng là một dạng của lỗi</label>
 			<p class="explain" hidden>
 				Bốn tình huống, không phải hai (mục 16): "tìm 'zxqv' không ra món nào" là một <em>thành công</em> của request;
 				"mất mạng" là một <em>thất bại</em>. Code mẫu gộp chúng bằng cách trả <code>emptyList()</code> trong khối
@@ -41,10 +41,10 @@
 
 		<fieldset data-answer="c">
 			<legend>3. Vì sao nói lỗi "biến mất khỏi giao diện" của project mẫu — dù code có bắt exception?</legend>
-			<label><input type="radio" name="q3" value="c" /> Vì state của ViewModel không có ô nào chứa thông tin lỗi</label>
-			<label><input type="radio" name="q3" value="b" /> Vì Timber bị tắt trong bản release nên lỗi không được ghi lại</label>
 			<label><input type="radio" name="q3" value="a" /> Vì Compose không vẽ lại được khi một flow phát giá trị <code>null</code></label>
+			<label><input type="radio" name="q3" value="c" /> Vì state của ViewModel không có ô nào chứa thông tin lỗi</label>
 			<label><input type="radio" name="q3" value="d" /> Vì khối <code>catch</code> viết sai cú pháp nên trình biên dịch âm thầm bỏ qua nó</label>
+			<label><input type="radio" name="q3" value="b" /> Vì Timber bị tắt trong bản release nên lỗi không được ghi lại</label>
 			<p class="explain" hidden>
 				Bài học thiết kế của mục 17: nếu người dùng cần thấy một thông tin, state phải có ô cho thông tin đó.
 				<code>RecipeViewModel</code> có <code>uiState</code> và <code>recipeListState</code> nhưng không có
@@ -54,9 +54,9 @@
 
 		<fieldset data-answer="a">
 			<legend>4. Thông báo lỗi cho người dùng nên lấy nội dung từ đâu?</legend>
+			<label><input type="radio" name="q4" value="b" /> Để người dùng tự mở logcat đọc — developer không cần phải làm gì thêm nữa</label>
 			<label><input type="radio" name="q4" value="a" /> Do ViewModel tự viết: đã xảy ra việc gì + làm gì tiếp — không dùng <code>e.message</code></label>
 			<label><input type="radio" name="q4" value="c" /> Lấy thẳng <code>e.message</code> của exception để người dùng thấy nguyên nhân kỹ thuật chính xác</label>
-			<label><input type="radio" name="q4" value="b" /> Để người dùng tự mở logcat đọc — developer không cần phải làm gì thêm nữa</label>
 			<label><input type="radio" name="q4" value="d" /> Dùng chung một câu cho mọi lỗi, không cần phân biệt nguyên nhân</label>
 			<p class="explain" hidden>
 				Nội dung raw của exception ("<code>Failed to connect to api.spoonacular.com</code>", "<code>HTTP 401</code>…")
@@ -68,10 +68,10 @@
 
 		<fieldset data-answer="b">
 			<legend>5. Khối <code>catch (e: Exception)</code> trong một coroutine có cái bẫy riêng nào?</legend>
+			<label><input type="radio" name="q5" value="c" /> Nó làm coroutine tự chuyển sang một dispatcher nền ngay sau khi thoát khỏi khối catch</label>
 			<label><input type="radio" name="q5" value="b" /> Nó bắt được cả <code>CancellationException</code> — xử lý "lỗi" cho việc người dùng đã bỏ đi</label>
 			<label><input type="radio" name="q5" value="a" /> Nó không bắt được lỗi mạng — lỗi mạng phải bắt bằng khối riêng <code>catch (e: IOException)</code></label>
 			<label><input type="radio" name="q5" value="d" /> Nó tự động khởi động lại coroutine sau khi bắt xong</label>
-			<label><input type="radio" name="q5" value="c" /> Nó làm coroutine tự chuyển sang một dispatcher nền ngay sau khi thoát khỏi khối catch</label>
 			<p class="explain" hidden>
 				Huỷ coroutine được giao tiếp qua exception (<code>CancellationException</code>) — bắt rộng bắt được cả nó
 				(mục 19). Thói quen an toàn: cho huỷ đi tiếp (ném lại, hoặc kiểm tra <code>isActive</code> trước khi đặt
@@ -81,10 +81,10 @@
 
 		<fieldset data-answer="d">
 			<legend>6. Logcat hiện <code>HTTP 401</code> sau một lần tìm kiếm. Chẩn đoán hợp lý nhất là gì?</legend>
-			<label><input type="radio" name="q6" value="d" /> API key sai, hoặc chưa dán key — server không nhận bạn</label>
-			<label><input type="radio" name="q6" value="b" /> Máy/emulator không có mạng — không phân giải được tên server</label>
-			<label><input type="radio" name="q6" value="c" /> Đã hết hạn mức miễn phí trong ngày</label>
 			<label><input type="radio" name="q6" value="a" /> JSON trả về sai định dạng, Moshi parse thất bại</label>
+			<label><input type="radio" name="q6" value="c" /> Đã hết hạn mức miễn phí trong ngày</label>
+			<label><input type="radio" name="q6" value="b" /> Máy/emulator không có mạng — không phân giải được tên server</label>
+			<label><input type="radio" name="q6" value="d" /> API key sai, hoặc chưa dán key — server không nhận bạn</label>
 			<p class="explain" hidden>
 				Bảng chẩn đoán mục 20: <code>HTTP 401</code> = không có quyền (key sai/thiếu) · <code>HTTP 402</code>/429 =
 				hết hạn mức · <code>UnknownHostException</code> = không có mạng. Lỗi parse không đi kèm mã HTTP.
@@ -93,9 +93,9 @@
 
 		<fieldset data-answer="c">
 			<legend>7. Khuôn keys.properties → Gradle → BuildConfig thực sự bảo vệ được điều gì?</legend>
-			<label><input type="radio" name="q7" value="c" /> Chống key rơi vào Git — lịch sử commit và người đọc repo</label>
 			<label><input type="radio" name="q7" value="b" /> Làm key trở thành bí mật thật — không ai lấy được từ APK</label>
 			<label><input type="radio" name="q7" value="a" /> Mã hoá key ngay khi app chạy, nên đọc APK cũng không thấy</label>
+			<label><input type="radio" name="q7" value="c" /> Chống key rơi vào Git — lịch sử commit và người đọc repo</label>
 			<label><input type="radio" name="q7" value="d" /> Chặn mọi lời gọi API không hợp lệ trước khi chúng rời thiết bị</label>
 			<p class="explain" hidden>
 				Đó là <strong>vệ sinh mã nguồn</strong> (source-control hygiene), không phải bảo mật thật (mục 21). Giá trị
@@ -107,9 +107,9 @@
 		<fieldset data-answer="b">
 			<legend>8. Server Spoonacular ngày mai tính phí theo key. Khuôn keys.properties còn đủ không — và hướng đi đúng là gì?</legend>
 			<label><input type="radio" name="q8" value="b" /> Không đủ — key phải nằm ở máy chủ: app gọi backend, backend giữ key</label>
-			<label><input type="radio" name="q8" value="c" /> Đủ — chỉ cần bật thêm obfuscate R8 cho bản release là key được giấu kín</label>
-			<label><input type="radio" name="q8" value="a" /> Đủ — đổi tên biến <code>SPOONACULAR_API_KEY</code> thành tên khó đoán hơn</label>
 			<label><input type="radio" name="q8" value="d" /> Không đủ — phải chuyển key sang <code>AndroidManifest.xml</code> vì file này không bị dịch ngược được</label>
+			<label><input type="radio" name="q8" value="a" /> Đủ — đổi tên biến <code>SPOONACULAR_API_KEY</code> thành tên khó đoán hơn</label>
+			<label><input type="radio" name="q8" value="c" /> Đủ — chỉ cần bật thêm obfuscate R8 cho bản release là key được giấu kín</label>
 			<p class="explain" hidden>
 				Đây là lúc chuyển sang kiến trúc (mục 21, hàng ba của bảng): app gọi backend của bạn, backend giữ key; hoặc
 				dùng giới hạn theo app/domain nếu provider hỗ trợ. Obfuscate chỉ đổi tên — không giấu được chuỗi giá trị, và
@@ -120,9 +120,9 @@
 		<fieldset data-answer="a">
 			<legend>9. Cơ chế phân trang của project mẫu: điều kiện <code>loadMore</code> gồm hai phần. Hai phần đó là gì?</legend>
 			<label><input type="radio" name="q9" value="a" /> Đã cuộn gần đáy (chỉ số cuối + 6 vượt số item), và vẫn còn kết quả chưa lấy</label>
-			<label><input type="radio" name="q9" value="d" /> Đã cuộn đúng đến item cuối cùng của lưới, và wifi đang bật</label>
-			<label><input type="radio" name="q9" value="c" /> Người dùng đã kéo tay ra cuối danh sách (overscroll), và request trước đã thành công</label>
 			<label><input type="radio" name="q9" value="b" /> Đã hết thời gian chờ 5 giây kể từ lần tải trang trước, và đồng thời từ khoá tìm kiếm vẫn không đổi</label>
+			<label><input type="radio" name="q9" value="c" /> Người dùng đã kéo tay ra cuối danh sách (overscroll), và request trước đã thành công</label>
+			<label><input type="radio" name="q9" value="d" /> Đã cuộn đúng đến item cuối cùng của lưới, và wifi đang bật</label>
 			<p class="explain" hidden>
 				Mục 22: <code>lastVisibleIndex + PAGING_OFFSET > recipes.value.size</code> (tải trước khi còn cách đáy 6 ô) —
 				<em>và</em> <code>lastVisibleIndex &lt; queryState.totalResults</code> (còn kết quả để lấy, nhờ metadata
