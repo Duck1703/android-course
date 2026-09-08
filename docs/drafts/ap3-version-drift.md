@@ -264,7 +264,8 @@ không nhân đôi ở đây.
 **Nguồn:** `aaf-materials/09-data-store/projects/{starter,final}/` ·
 `content/book/ch09-data-store.md`
 **Số liệu chốt:** 2026-09-06 (verify trực tiếp trong phiên dựng lại trang Ch09; bản của giáo trình = 2023).
-**Bài lõi trỏ về đây:** trang Ch09 hiện tại (hai đơn vị D1/D2) — khối `#cam-bay` (đoạn mở "tra cứu
+**Bài lõi trỏ về đây:** hai bài `ch09-data-store-va-sharedpreferences` (D1) và
+`ch09-prefs-composition-local-va-wiring` (D2) — khối `#cam-bay` (đoạn mở "tra cứu
 phiên bản của khoá — AP3") và cuối khối `#nguon`; riêng điểm "deprecated" được trỏ từ mục 2 của D1.
 Các con số dưới đây không lặp lại trong thân bài.
 
