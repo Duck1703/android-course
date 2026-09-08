@@ -7,10 +7,12 @@
 // trace tab (LaunchedEffect vs rememberCoroutineScope), rememberSaveable ≠ persistence,
 // bảng trách nhiệm.
 // Tám câu kế thừa ý của monolith (câu 11/12/13/15/16/17/18/19), hai câu mới bám mục 15
-// (runBlocking vs closure) và mục 18 (bốn cơ chế giữ state).
+// (closure + đọc CompositionLocal trong factory) và mục 18 (bốn cơ chế giữ state).
+// Câu 8 "đọc ra biến trước vs runBlocking" là mở rộng suy luận: tiền đề commit()-chặn-luồng
+// lấy từ D1 mục 2 (có trong "Cần biết trước" của D2), phân tích closure lấy từ mục 15.
 // Chuẩn quiz §13 + quy tắc Stage 5: 4 đáp án / 1 đúng NGỮ NGHĨA, giải thích 100% không trỏ
 // theo chữ cái (thứ tự HIỂN THỊ đã xáo), phân bố GIÁ TRỊ data-answer (3/2/3/2), VỊ TRÍ HIỂN
-// THỊ (2/1/4/3) và ĐỘ DÀI đáp án đúng (rank 1..4 = 0/3/4/3) đều tách bạch. Chấm bằng harness IMP-001.
+// THỊ (2/1/4/3) và ĐỘ DÀI đáp án đúng (rank 1..4 = 0/3/3/4) đều tách bạch. Chấm bằng harness IMP-001.
 ---
 
 <section class="quiz" id="quiz">
@@ -82,8 +84,8 @@
 			<label><input type="radio" name="q5" value="d" /> Một chuỗi JSON, mã hoá bằng Moshi</label>
 			<p class="explain" hidden>
 				<code>savePreviousSearches()</code> (mục 16) gọi <code>previousSearches.joinToString(",")</code> rồi lưu chuỗi đó. Đọc lên thì
-				<code>split(",")</code> ở khối <code>init</code>. Đây là cách xoay quanh giới hạn 5 kiểu nguyên thuỷ của D1 — đơn giản và chạy
-				được, nhưng có đúng một cái bẫy (xem câu 7). JSON là <em>hướng sửa</em> được nêu ở mục 17, không phải cách project đang làm.
+				<code>split(",")</code> ở khối <code>init</code>. Đây là cách xoay quanh giới hạn "chỉ lưu giá trị nguyên thuỷ" của D1 — đơn giản và
+				chạy được, nhưng có đúng một cái bẫy (xem câu 7). JSON là <em>hướng sửa</em> được nêu ở mục 17, không phải cách project đang làm.
 			</p>
 		</fieldset>
 
@@ -133,13 +135,14 @@
 			<legend>9. Vì sao tab đang chọn lưu bằng DataStore chứ không phải <code>rememberSaveable</code>?</legend>
 			<label><input type="radio" name="q9" value="d" /> Vì <code>rememberSaveable</code> không sống qua xoay máy — mới là vấn đề cần giải quyết ở đây</label>
 			<label><input type="radio" name="q9" value="b" /> Vì <code>rememberSaveable</code> chỉ dùng được cho <code>String</code>, còn tab là <code>Int</code></label>
-			<label><input type="radio" name="q9" value="a" /> Vì yêu cầu là "lần mở app sau vào đúng tab"; <code>rememberSaveable</code> không ghi đĩa</label>
+			<label><input type="radio" name="q9" value="a" /> Vì yêu cầu là "lần mở app sau vào đúng tab"; <code>rememberSaveable</code> bị xoá khi người dùng tự tắt app, và không ghi đĩa</label>
 			<label><input type="radio" name="q9" value="c" /> Vì <code>rememberSaveable</code> bị giới hạn dung lượng nhỏ</label>
 			<p class="explain" hidden>
-				<code>rememberSaveable</code> (S2) chống được việc Activity được tạo lại do thay đổi cấu hình (xoay máy) — nhưng chết khi tắt app /
-				hệ thống thu hồi process, và <strong>không bao giờ ghi đĩa</strong> (mục 18, bảng bốn cơ chế). Hai công cụ giải hai bài toán khác nhau;
-				dùng <code>rememberSaveable</code> cho bài toán persistence là nhầm loại. Dung lượng không phải lý do — và đáp án "không sống qua xoay máy"
-				gán ngược đúng điểm mạnh của nó.
+				<code>rememberSaveable</code> (S2) chống được cả xoay máy lẫn hệ thống thu hồi process — nhưng bị xoá khi
+				<em>người dùng tự tắt</em> app (swipe away / force stop), và <strong>không bao giờ ghi đĩa</strong> (mục 18,
+				bảng bốn cơ chế). Hai công cụ giải hai bài toán khác nhau; dùng <code>rememberSaveable</code> cho bài toán
+				persistence là nhầm loại. Dung lượng không phải lý do — và đáp án "không sống qua xoay máy" gán ngược đúng
+				điểm mạnh của nó.
 			</p>
 		</fieldset>
 

@@ -184,6 +184,9 @@ const FILE_KEY_PIN: Record<string, string> = {
 // cho những slug như vậy; pinByFile ưu tiên nó trước pascalOf.
 const FILE_NAME_CASE: Record<string, string> = {
   "ch06-viewmodel-va-ui-state": "Ch06ViewModelVaUiState",
+  // Stage 6: "ch09-data-store-va-sharedpreferences" pascalOf → "Ch09DataStoreVaSharedpreferences"
+  // nhưng tên file thật giữ casing API "SharedPreferences" (registry §9) — cùng bug-class ch06.
+  "ch09-data-store-va-sharedpreferences": "Ch09DataStoreVaSharedPreferences",
 };
 const pinByFile: Map<string, string> = new Map(
   Object.entries(FILE_KEY_PIN).flatMap(([slug, key]) => {

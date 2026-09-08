@@ -9,7 +9,7 @@
 // "deprecated") và mục 9 (null = key chưa có).
 // Chuẩn quiz §13 + quy tắc Stage 5: 4 đáp án / 1 đúng NGỮ NGHĨA, giải thích 100% không trỏ
 // theo chữ cái (thứ tự HIỂN THỊ đã xáo), phân bố GIÁ TRỊ data-answer (2/2/3/3), VỊ TRÍ HIỂN
-// THỊ (2/3/3/2) và ĐỘ DÀI đáp án đúng (rank 1..4 = 3/2/2/3) đều tách bạch. Chấm bằng harness IMP-001.
+// THỊ (2/3/3/2) và ĐỘ DÀI đáp án đúng (rank 1..4 = 3/2/1/4) đều tách bạch. Chấm bằng harness IMP-001.
 ---
 
 <section class="quiz" id="quiz">
@@ -73,14 +73,16 @@
 		</fieldset>
 
 		<fieldset data-answer="c">
-			<legend>5. SharedPreferences (và DataStore Preferences) lưu được những kiểu nào?</legend>
+			<legend>5. Theo mục 2, giới hạn kiểu dữ liệu của SharedPreferences (và DataStore Preferences) là gì?</legend>
 			<label><input type="radio" name="q5" value="b" /> Chỉ có mỗi String</label>
-			<label><input type="radio" name="q5" value="c" /> String, Boolean, Int, Long, Float — đúng 5 kiểu này</label>
+			<label><input type="radio" name="q5" value="c" /> Chỉ giá trị nguyên thuỷ: String, Boolean, Int, Long, Float (SharedPreferences thêm Set&lt;String&gt;) — không có kiểu nào chứa được object tự định nghĩa</label>
 			<label><input type="radio" name="q5" value="a" /> Mọi kiểu Kotlin đều lưu được, kể cả data class và List&lt;String&gt;</label>
 			<label><input type="radio" name="q5" value="d" /> String, Int và List&lt;String&gt;</label>
 			<p class="explain" hidden>
-				Đúng 5 kiểu nguyên thuỷ (mục 2). Để ý những gì <strong>không</strong> có trong danh sách:
-				<code>Double</code>, <code>List</code>, và mọi object của bạn. Đó là lý do chương phải ép
+				Mục 2 chốt: chỉ giá trị nguyên thuỷ (SharedPreferences quen thuộc nhất với 5 kiểu, kèm
+				<code>Set&lt;String&gt;</code>; DataStore Preferences gần đây thêm <code>Double</code>/<code>Set&lt;String&gt;</code>)
+				— nhưng <strong>không kiểu nào đựng được object tự định nghĩa</strong>. Để ý những gì <em>không</em> "đựng" được:
+				<code>List</code>, <code>data class</code>, và mọi object của bạn. Đó là lý do chương phải ép
 				<code>List&lt;String&gt;</code> thành một chuỗi nối bằng dấu phẩy trước khi lưu — và cũng là nguồn gốc của bug
 				dấu phẩy ở bài D2 (mục 17).
 			</p>

@@ -301,9 +301,9 @@ fun PreviewChipRow() {
 				phạm vi là cây con — và vì sao nó <em>không</em> phải biến toàn cục cũng <em>không</em> tự tạo object.</li>
 			<li>Đưa một dependency vào ViewModel qua <code>viewModelFactory</code>, và giải thích vì sao phải đặt
 				<code>.current</code> <em>trước</em> lambda factory.</li>
-			<li>Phân biệt rõ: <strong>recomposition</strong>, <strong>configuration change</strong>, <strong>tắt/mở
-				app</strong>, <strong>lưu trữ bền</strong> — và nói đúng <code>remember</code>/<code>rememberSaveable</code>
-				không phải persistence.</li>
+			<li>Phân biệt rõ: <strong>recomposition</strong>, <strong>configuration change</strong>, <strong>hệ thống thu
+				hồi process</strong>, <strong>tắt/mở app</strong>, <strong>lưu trữ bền</strong> — và nói đúng
+				<code>remember</code>/<code>rememberSaveable</code> không phải persistence.</li>
 			<li>Trình bày <strong>bảng trách nhiệm</strong> DataStore / Prefs / CompositionLocal / ViewModel / Composable
 				không lẫn cái nào.</li>
 		</ul>
@@ -319,8 +319,10 @@ fun PreviewChipRow() {
 		<code>suspend</code>. <strong>S4</strong> — ViewModel sống ngoài UI, <code>viewModel()</code>, UI state;
 		<code>viewModel(...)</code> mặc định chỉ gọi được constructor rỗng — bài này dạy cách "dạy" nó tạo ViewModel
 		có tham số. <strong>S3</strong> — truyền giá trị xuống qua tham số, gửi sự kiện lên qua callback.
-		<strong>C3</strong> — bạn đã từng <em>nghe tên</em> <code>CompositionLocal</code> (mục theme); bài này dạy
-		<em>cơ chế</em> thật của nó. <strong>C4</strong> — <code>LaunchedEffect</code> ở mức nhận diện.
+		<strong>S2</strong> — <code>remember</code>/<code>rememberSaveable</code> giữ state ở mức nào (bảng "bốn thứ
+		được giữ lại" ở mục 18 xây trên nền đó). <strong>C3</strong> — bạn đã từng <em>nghe tên</em>
+		<code>CompositionLocal</code> (mục theme); bài này dạy <em>cơ chế</em> thật của nó.
+		<strong>C4</strong> — <code>LaunchedEffect</code> ở mức nhận diện.
 	</div>
 
 	<h2 id="noi-day">11. Bài toán nối dây: một dependency, nhiều nơi cần dùng</h2>
@@ -631,7 +633,7 @@ fun PreviewChipRow() {
 			<code>private</code> — ViewModel tự quyết định khi nào ghi; bên ngoài không được gọi.
 		</li>
 		<li>
-			<code>joinToString(",")</code> (F1) — DataStore Preferences chỉ lưu giá trị đơn của 5 kiểu nguyên thuỷ, không
+			<code>joinToString(",")</code> (F1) — DataStore Preferences chỉ lưu giá trị nguyên thuỷ, không
 			lưu <code>List</code>. Nên danh sách bị <strong>ép thành một chuỗi</strong>:
 			<code>["chicken","beef"]</code> → <code>"chicken,beef"</code>. Đơn giản, chạy được — và có một cái bẫy mổ riêng
 			ở mục 17.
@@ -807,20 +809,23 @@ fun PreviewChipRow() {
 				</tr>
 				<tr>
 					<td><code>rememberSaveable</code> (S2)</td>
-					<td>Activity được tạo lại do <em>thay đổi cấu hình</em> (xoay máy...)</td>
-					<td><strong>Tắt app / hệ thống thu hồi process</strong> — và không bao giờ ghi đĩa</td>
+					<td>Activity được tạo lại — kể cả do <em>thay đổi cấu hình</em> (xoay máy...) <strong>và</strong> do hệ
+						thống thu hồi process</td>
+					<td>Người dùng <strong>tự tắt</strong> app (swipe away, force stop), khởi động lại máy — và không bao giờ
+						ghi đĩa</td>
 				</tr>
 				<tr>
 					<td>DataStore (đĩa)</td>
-					<td>Tắt app, khởi động lại máy</td>
+					<td>Mọi kiểu tắt app — kể cả khi người dùng tự tắt; khởi động lại máy</td>
 					<td>Người dùng xoá app / xoá dữ liệu app (D1 mục 1)</td>
 				</tr>
 			</tbody>
 		</table>
 		<p>
 			Đó là lý do tab dùng DataStore chứ không phải <code>rememberSaveable</code>: yêu cầu là "lần <em>mở app
-			sau</em> vào đúng tab" — một <strong>preference</strong> của người dùng, không phải trạng thái UI qua xoay
-			máy. Hai công cụ giải hai bài toán khác nhau; dùng <code>rememberSaveable</code> cho bài toán persistence là
+			sau</em> vào đúng tab" — một <strong>preference</strong> của người dùng. <code>rememberSaveable</code> chỉ là
+			bản ghi tạm bên ngoài process, bị xoá ngay khi người dùng tự tắt app; nó không bao giờ ghi đĩa theo đúng
+			nghĩa. Hai công cụ giải hai bài toán khác nhau; dùng <code>rememberSaveable</code> cho bài toán persistence là
 			nhầm loại.
 		</p>
 	</div>
@@ -955,8 +960,9 @@ fun PreviewChipRow() {
 				tab (Composable; <code>LaunchedEffect</code> đọc, <code>rememberCoroutineScope</code> ghi).</li>
 			<li><code>joinToString</code>/<code>split</code> quanh dấu phẩy = bug thật: dữ liệu tập hợp đã vượt công cụ
 				key/value → Chương 10 (Room).</li>
-			<li>Bốn thứ "được giữ lại" khác nhau: <code>remember</code> (vẽ lại) / <code>rememberSaveable</code> (xoay máy)
-				/ DataStore (tắt app) / — và chỉ cái cuối là persistence.</li>
+			<li>Bốn thứ "được giữ lại" khác nhau: <code>remember</code> (vẽ lại) / <code>rememberSaveable</code> (xoay máy
+				+ thu hồi process; chết khi người dùng tự tắt) / DataStore (tắt app kể cả khi người dùng tự tắt) — và chỉ
+				cái cuối là persistence.</li>
 		</ol>
 	</div>
 	<div class="callout note">

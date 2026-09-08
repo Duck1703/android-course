@@ -194,6 +194,8 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 		<code>suspend</code> cho phép tạm dừng chứ không chọn thread, <code>viewModelScope</code>, Flow = giá trị
 		theo thời gian. <strong>S4</strong> — ViewModel sở hữu UI state. <strong>A14</strong> — version catalog
 		Gradle. <strong>Chương 1</strong> — sandbox: app của bạn chỉ được đụng thư mục của chính nó.
+		<strong>C4</strong> — <code>LaunchedEffect</code>/<code>rememberCoroutineScope</code> chỉ được nhắc tên ở mục
+		mở đầu, chưa cần dùng tới.
 	</div>
 
 	<h2 id="luu-gi-vao-dau">1. Lưu thứ gì, vào đâu: chọn công cụ theo hình dạng dữ liệu</h2>
@@ -322,13 +324,16 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 		và chỉ đọc file một lần — DataStore ở mục 9 chọn cách thứ hai.
 	</p>
 	<p>
-		Cuối cùng, giới hạn quan trọng nhất của cả cơ chế — chỉ lưu được <strong>5 kiểu nguyên thuỷ</strong>:
+		Cuối cùng, giới hạn quan trọng nhất của cả cơ chế — chỉ lưu được <strong>giá trị nguyên thuỷ</strong>:
 	</p>
-	<pre class="tree">String   Boolean   Int   Long   Float</pre>
+	<pre class="tree">String   Boolean   Int   Long   Float   (+ Set&lt;String&gt;)</pre>
 	<p>
-		Class — kể cả <code>data class</code> — <em>không</em> lưu được, trừ khi tự tách ra lưu từng phần. Giới hạn này
-		quyết định một phần của chương: muốn lưu <em>danh sách</em> từ khoá (mục tiêu 1), bạn phải tự mã hoá nó thành
-		một <code>String</code> — và ở D2 mục 17 sẽ thấy cái giá của phép mã hoá đó.
+		Class — kể cả <code>data class</code> — <em>không</em> lưu được, trừ khi tự tách ra lưu từng phần. (SharedPreferences
+		quen thuộc nhất với 5 kiểu trên, kèm thêm <code>Set&lt;String&gt;</code> qua <code>putStringSet</code>; DataStore
+		Preferences hiện đại hơn có thêm <code>Double</code> và <code>Set&lt;String&gt;</code>.) Giới hạn cốt lõi vẫn là:
+		không có kiểu nào "đựng" được object tự định nghĩa. Điều này quyết định một phần của chương: muốn lưu
+		<em>danh sách</em> từ khoá (mục tiêu 1), bạn phải tự mã hoá nó thành một <code>String</code> — và ở D2 mục 17
+		sẽ thấy cái giá của phép mã hoá đó.
 	</p>
 	<p class="notice">
 		<strong>Chữ "deprecated" cần nói cho chính xác.</strong> Một số tài liệu — kể cả giáo trình gốc mà khoá này
@@ -384,8 +389,8 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 	<p class="notice">
 		<strong>Hai điều DataStore <em>không</em> phải, để không rút ra quy tắc sai:</strong> (1) nó <strong>không phải
 		database</strong> — không truy vấn, không quan hệ, không "cho tôi mọi bản ghi có chữ X"; nó là một kho key/value
-		có kiểu, và database là Chương 10. (2) nó <strong>không tự lưu mọi object</strong> — như mục 2 đã chốt, chỉ 5
-		kiểu nguyên thuỷ (ở biến thể Preferences), mọi thứ phức tạp hơn phải tự mã hoá.
+		có kiểu, và database là Chương 10. (2) nó <strong>không tự lưu mọi object</strong> — như mục 2 đã chốt, chỉ lưu
+		giá trị nguyên thuỷ (ở biến thể Preferences), mọi thứ phức tạp hơn phải tự mã hoá.
 	</p>
 
 	<h2 id="them-thu-vien">4. Thêm thư viện — hai file, hai lần Gradle sync</h2>
@@ -438,8 +443,12 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 			<strong>Tầng DataStore — một store gắn với Context, có tên.</strong> Tham số <code>name = "settings"</code>
 			đặt tên file preference; trong project thật tên là <code>"recipes"</code> (mục 10). Một cái tên = một file =
 			một store: <strong>không được tạo nhiều hơn một instance DataStore trỏ vào cùng một file</strong> — tài liệu
-			chính thức in cảnh báo này bằng chữ "Important". Hai instance giữ cache riêng và tự ghi file; chúng ghi đè
-			lẫn nhau hoặc trả giá trị cũ, và lỗi <em>không đều</em> — chạy 10 lần đúng 9 lần — nên rất khó lần ra.
+			chính thức đặt cảnh báo này ở mục "Use DataStore correctly". Hai instance giữ cache riêng và tự ghi file:
+			chúng không biết về nhau, nên có khi ghi đè lẫn nhau hoặc trả giá trị cũ. Ở các phiên bản DataStore gần đây,
+			thư viện còn chủ động <em>bật Error</em> (<code>IllegalStateException</code>) khi đọc/ghi vào store trùng file —
+			tức là lỗi vỡ ngay khi chạy, thay vì im lặng như các bản đầu. Dù hiện ra theo cách nào, quy tắc vẫn là:
+			<strong>một file, một instance</strong> — và với project của khoá (ghim DataStore 1.0.0), lỗi nói dối lặng lẽ
+			"chạy 10 lần đúng 9 lần" là tình huống thật cần cảnh giác.
 		</li>
 	</ul>
 	<div class="callout note">
@@ -745,8 +754,8 @@ context.dataStore.data.first()[k]</pre>
 			<li>Chọn công cụ theo <strong>hình dạng dữ liệu</strong>: vài giá trị rời → key/value (DataStore); tập hợp bản
 				ghi cần truy vấn → database (Chương 10); file định dạng riêng → bài toán khác.</li>
 			<li><code>SharedPreferences</code>: đọc trực tiếp (<code>getXXX</code>/<code>contains</code>), ghi qua editor +
-				<code>apply()</code>/<code>commit()</code>; chỉ 5 kiểu; <code>commit()</code> có thể chặn UI. Chưa bị đánh dấu
-				deprecated — nhưng không còn là lựa chọn cho code mới.</li>
+				<code>apply()</code>/<code>commit()</code>; chỉ giá trị nguyên thuỷ; <code>commit()</code> có thể chặn UI. Chưa
+				bị đánh dấu deprecated — nhưng không còn là lựa chọn cho code mới.</li>
 			<li>DataStore = <code>data: Flow&lt;T&gt;</code> + <code>suspend updateData</code>: mọi phép đọc-ghi là
 				<code>suspend</code>, ghi <strong>nguyên khối</strong>. Không phải database, không tự lưu object.</li>
 			<li><code>by preferencesDataStore(name = ...)</code>: delegate tạo đúng một instance per store; đặt top-level thì
@@ -773,12 +782,13 @@ context.dataStore.data.first()[k]</pre>
 		</li>
 		<li>
 			<strong>Tưởng DataStore là database, hoặc là "tự lưu mọi object".</strong> Không truy vấn, không quan hệ, không
-			lưu class — chỉ 5 kiểu giá trị đơn ở biến thể Preferences (mục 3). Tập hợp bản ghi có cấu trúc → Room,
-			Chương 10.
+			lưu class — chỉ giá trị nguyên thuỷ (String/Boolean/Int/Long/Float, cộng thêm Set&lt;String&gt; và Double ở các
+			bản gần đây) ở biến thể Preferences (mục 2, 3). Tập hợp bản ghi có cấu trúc → Room, Chương 10.
 		</li>
 		<li>
-			<strong>Tưởng <code>rememberSaveable</code> là persistence.</strong> Nó sống qua xoay máy, chết khi tắt app, và
-			không bao giờ ghi đĩa (bảng bốn cơ chế ở D2 mục 18). Preference thật → DataStore.
+			<strong>Tưởng <code>rememberSaveable</code> là persistence.</strong> Nó sống qua xoay máy và qua cả trường hợp
+			hệ thống thu hồi process, nhưng chết khi <em>người dùng</em> tự tắt app — và không bao giờ ghi đĩa (bảng bốn cơ
+			chế ở D2 mục 18). Preference thật → DataStore.
 		</li>
 		<li>
 			<strong>Đọc DataStore với mental model chặn.</strong> Mọi phép đọc là <code>suspend</code> + trả qua Flow —
@@ -805,8 +815,9 @@ context.dataStore.data.first()[k]</pre>
 		<li>
 			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — ba cách lưu dữ liệu (dòng 17–23), ví dụ đáng lưu (dòng
 			27), hai mục tiêu chương (dòng 31), SharedPreferences + ghi chú "deprecated" của giáo trình (dòng 38–40), các
-			nhóm hàm đọc/ghi (dòng 44–57), ví dụ SharedPreferences (dòng 61–70), 5 kiểu (dòng 78–84), vì sao thư viện riêng
-			+ interface DataStore (dòng 88–95), khai store (dòng 100), key/đọc/<code>first()</code> + cảnh báo "Important"
+			nhóm hàm đọc/ghi (dòng 44–57), ví dụ SharedPreferences (dòng 61–70), các kiểu nguyên thuỷ (dòng 78–84), vì sao
+			thư viện riêng
+			+ interface DataStore (dòng 88–95), khai store (dòng 100), key/đọc/<code>first()</code> + cảnh báo một instance
 			một instance (dòng 108–119), thêm thư viện (dòng 121–142), bộ khung <code>Prefs</code> + 5 TODO (dòng 151–167,
 			173, 179–194, 205, 222, 231), Key Points (dòng 385–389), link DataStore chính thức (dòng 391–399).
 		</li>
