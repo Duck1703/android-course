@@ -33,7 +33,7 @@
 **Nguồn:** `aaf-materials/06-advanced-jetpack-compose/projects/{starter,final}/` ·
 `content/book/ch06-advanced-jetpack-compose.md`
 **Số liệu chốt:** 2026-08-28 (giữ nguyên mốc của bảng gốc trong bài Ch06).
-**Bài lõi trỏ về đây:** trang Ch06 hiện tại (ba đơn vị S2/S3/S4), khối `#cam-bay` → mục "Tài liệu lỗi
+**Bài lõi trỏ về đây:** S4 (`ch06-viewmodel-va-ui-state`, sau Stage-3 tách), khối `#cam-bay` → mục "Tài liệu lỗi
 thời — nơi tra".
 
 ### 1. Kiến thức bền vs cú pháp dễ đổi
@@ -171,15 +171,21 @@ giữa hai project, không phải suy đoán từ mục lục.
 
 Ghi lại để đợt tách Ch06 → S2/S3/S4 (IMP-037) và các batch sau không dựng lại nội dung đã có chỗ.
 
-| Nội dung gốc của Ch06 | Đích |
-|---|---|
-| State · `mutableStateOf` · `remember` · `rememberSaveable` · recomposition | **S2** (trang Ch06, mục 1–4) |
-| Stateful ↔ stateless · state hoisting · UDF ở mức UI · callback là sự kiện | **S3** (mục 5–8) |
-| ViewModel · UiState · `MutableStateFlow`/`StateFlow` · `collectAsStateWithLifecycle` · `stateIn` · chuỗi cú chạm→UI · đọc state chết · Jump to bottom | **S4** (mục 9–19) |
-| Kiến trúc tầng UI/data · repository · nguồn dữ liệu thật · Dependency Injection / Hilt | **S5** (repository, tầng dữ liệu) và các bài sau — trang Ch06 chỉ trỏ tới, không dạy |
-| Chiều sâu Flow: toán tử, cold ↔ hot, cancellation, `SharedFlow`, cơ chế chia sẻ của `stateIn` | **W1** |
-| Bảng lệch phiên bản · bảng so `starter` ↔ `final` · lệch giáo trình ↔ project | **AP3 — file này** |
-| MVI như một pattern kiến trúc đầy đủ (bảng Model/View/Intent, thuật ngữ) | **Bỏ khỏi bài lõi.** Người học chỉ cần luồng một chiều ở mức UI (S3) + chuỗi ViewModel→UI (S4). Riêng cảnh báo *"Intent trong MVI không phải `android.content.Intent`"* được giữ ở đây vì nó vẫn hữu ích khi đọc tài liệu ngoài. |
+**Trạng thái sau Stage 3 (batch IMP-035/042/043, 2026-09-08):** bảng dưới đây đã thực thi
+xong — S1 (bài NEW, `coroutines-20-phut-khong-so`) đứng trước S2–S4; monolith
+`Ch06AdvancedJetpackCompose.astro` + `Ch06Quiz.astro` và 4 file ngủ đông `Ch06_1…Ch06_4`
+đã xoá (khôi phục được từ Git). Từ khoá trỏ về AP3 của trang gộp cũ nằm trong S4
+(`ch06-viewmodel-va-ui-state`, khối `#cam-bay` → mục "Tài liệu lỗi thời — nơi tra").
+
+| Nội dung gốc của Ch06 | Đích | Trạng thái Stage 3 |
+|---|---|---|
+| State · `mutableStateOf` · `remember` · `rememberSaveable` · recomposition | **S2** (`ch06-state-va-recomposition`, mục 1–4) | ✅ live |
+| Stateful ↔ stateless · state hoisting · UDF ở mức UI · callback là sự kiện | **S3** (`ch06-state-hoisting-va-udf`, mục 5–8) | ✅ live |
+| ViewModel · UiState · `MutableStateFlow`/`StateFlow` · `collectAsStateWithLifecycle` · `stateIn` · chuỗi cú chạm→UI · đọc state chết · Jump to bottom | **S4** (`ch06-viewmodel-va-ui-state`, mục 9–19) | ✅ live |
+| Kiến trúc tầng UI/data · repository · nguồn dữ liệu thật · Dependency Injection / Hilt | **S5** (`kien-truc-ui-data-repository`, bài NEW) và các bài sau — trang Ch06 chỉ trỏ tới, không dạy | ✅ live (S5); Hilt/DI sâu → D2 |
+| Chiều sâu Flow: toán tử, cold ↔ hot, cancellation, `SharedFlow`, cơ chế chia sẻ của `stateIn` | **W1** | còn lại (W1 chưa dựng) |
+| Bảng lệch phiên bản · bảng so `starter` ↔ `final` · lệch giáo trình ↔ project | **AP3 — file này** | ✅ mục 1–5 dưới đây |
+| MVI như một pattern kiến trúc đầy đủ (bảng Model/View/Intent, thuật ngữ) | **Bỏ khỏi bài lõi.** Người học chỉ cần luồng một chiều ở mức UI (S3) + chuỗi ViewModel→UI (S4). Riêng cảnh báo *"Intent trong MVI không phải `android.content.Intent`"* được giữ ở đây vì nó vẫn hữu ích khi đọc tài liệu ngoài. | ✅ đã bỏ; quiz cũ Ch06 (MVI order-exercise, câu 9 Intent-vs-Intent) được viết lại theo ownership S2/S3/S4, không sao chép |
 
 **Cảnh báo tên gọi cần giữ:** chữ *"Intent"* trong MVI **không phải** `android.content.Intent` — thứ
 dùng để mở Activity khác ở Chương 3. Trùng tên hoàn toàn ngẫu nhiên; trong MVI, "intent" nghĩa là *ý
