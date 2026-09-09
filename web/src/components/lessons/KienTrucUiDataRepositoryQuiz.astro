@@ -17,7 +17,7 @@
 			<label><input type="radio" name="q1" value="c" /> Quyết định "đã có dữ liệu trong bộ nhớ thì không đi lấy lại"</label>
 			<label><input type="radio" name="q1" value="d" /> Hàm <code>onMessageSent(text)</code> của ViewModel</label>
 			<p class="explain" hidden>
-				"Không đi lấy lại nếu đã có" là một quyết định về <strong>cách lấy dữ liệu</strong> — thuộc tầng dữ liệu, cụ thể là repository. Ba cái còn lại đều là chuyện của màn hình: 1 và 4 nằm trong ViewModel/UiState, 2 là một lựa chọn trình bày dựa trên state.
+				"Không đi lấy lại nếu đã có" là một quyết định về <strong>cách lấy dữ liệu</strong> — thuộc tầng dữ liệu, cụ thể là repository. Ba cái còn lại đều là chuyện của màn hình: a và d nằm trong ViewModel/UiState, b là một lựa chọn trình bày dựa trên state.
 			</p>
 		</fieldset>
 
@@ -61,7 +61,7 @@
 			<label><input type="radio" name="q5" value="b" /> Nguồn đáng tin luôn là database trên máy — repository chỉ đứng bọc ngoài và chuyển lời gọi</label>
 			<label><input type="radio" name="q5" value="d" /> Mọi repository trong cùng một app bắt buộc phải dùng chung một loại nguồn đáng tin duy nhất</label>
 			<p class="explain" hidden>
-				Mục 6: repository thường là chỗ <strong>kiểm soát đường vào</strong> nguồn đáng tin, chứ không tự động <em>là</em> nguồn đó; nguồn có thể là một data source (ví dụ database) <strong>hoặc một bộ nhớ tạm</strong> mà repository đang cầm; và hai repository khác nhau trong cùng một app <em>có thể</em> có nguồn đáng tin khác nhau. Phương án a nói sai địa chỉ; c là bẫy "nguồn đáng tin luôn là database"; d bị phản bởi chính ví dụ của Kiểm tra nhanh 3 — <code>SettingsRepository</code> giữ trong bộ nhớ, <code>MessageRepository</code> đọc từ mạng, app vẫn hợp lệ.
+				Mục 6: repository thường là chỗ <strong>kiểm soát đường vào</strong> nguồn đáng tin, chứ không tự động <em>là</em> nguồn đó; nguồn có thể là một data source (ví dụ database) <strong>hoặc một bộ nhớ tạm</strong> mà repository đang cầm; và hai repository khác nhau trong cùng một app <em>có thể</em> có nguồn đáng tin khác nhau. Phương án a nói sai địa chỉ; b là bẫy "nguồn đáng tin luôn là database"; d bị phản bởi chính ví dụ của Kiểm tra nhanh 3 — <code>SettingsRepository</code> giữ trong bộ nhớ, <code>MessageRepository</code> đọc từ mạng, app vẫn hợp lệ.
 			</p>
 		</fieldset>
 
@@ -72,7 +72,7 @@
 			<label><input type="radio" name="q6" value="d" /> Tầng dưới không bao giờ với tay lên tầng trên</label>
 			<label><input type="radio" name="q6" value="c" /> Chiều phụ thuộc đi từ dưới lên: data source phụ thuộc ViewModel, ViewModel phụ thuộc composable</label>
 			<p class="explain" hidden>
-				Mục 8 — phần <em>bất biến</em> của kiến trúc. Mũi tên nghĩa là "phụ thuộc vào": composable phụ thuộc ViewModel, ViewModel phụ thuộc repository, repository phụ thuộc data source — nên tầng dưới không được biết gì về tầng trên (bảng "được phép biết về / không được biết về": data source chỉ biết chỗ dữ liệu nằm; repository không biết ViewModel · UI). Phương án d đảo ngược chiều. Cách kiểm bằng mắt khi đọc code: ViewModel thấy import thư viện lưu trữ/mạng, hay file tầng dữ liệu thấy import composable/<code>Modifier</code>/màu — biên giới đã bị phá (mục 3).
+				Mục 8 — phần <em>bất biến</em> của kiến trúc. Mũi tên nghĩa là "phụ thuộc vào": composable phụ thuộc ViewModel, ViewModel phụ thuộc repository, repository phụ thuộc data source — nên tầng dưới không được biết gì về tầng trên (bảng "được phép biết về / không được biết về": data source chỉ biết chỗ dữ liệu nằm; repository không biết ViewModel · UI). Phương án c đảo ngược chiều. Cách kiểm bằng mắt khi đọc code: ViewModel thấy import thư viện lưu trữ/mạng, hay file tầng dữ liệu thấy import composable/<code>Modifier</code>/màu — biên giới đã bị phá (mục 3).
 			</p>
 		</fieldset>
 

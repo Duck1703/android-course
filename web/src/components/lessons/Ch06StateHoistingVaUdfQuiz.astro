@@ -18,7 +18,7 @@
 			<label><input type="radio" name="q1" value="b" /> <code>fun C() &#123; val items = remember &#123; loadData() &#125; ... &#125;</code></label>
 			<label><input type="radio" name="q1" value="d" /> Mọi composable đều stateless — khác nhau chỉ ở tham số</label>
 			<p class="explain" hidden>
-				Stateless = không tự giữ state nào cả, mọi thứ cần đều đến từ tham số — đúng chữ ký của b. a và c đều gọi
+				Stateless = không tự giữ state nào cả, mọi thứ cần đều đến từ tham số — đúng chữ ký của c. a và b đều gọi
 				<code>remember</code> để tạo và giữ state bên trong, tức stateful. Đáp án d phủ nhận luôn phân loại mà bài này
 				dựa vào để quyết định "ai giữ gì".
 			</p>
@@ -46,7 +46,7 @@
 			<p class="explain" hidden>
 				Khuôn chuẩn: một tham số giá trị đi xuống + một callback báo thay đổi đi lên. Đáp án b vẫn đưa đối tượng
 				<em>ghi được</em> vào trong nên composable con sửa trực tiếp được — mất tính một chiều. Đáp án c làm composable
-				phụ thuộc hẳn vào ViewModel, không tái sử dụng và không test riêng được. Đáp án d vừa tự giữ vừa tự trả giá trị —
+				phụ thuộc hẳn vào ViewModel, không tái sử dụng và không test riêng được. Đáp án a vừa tự giữ vừa tự trả giá trị —
 				stateful trá hình.
 			</p>
 		</fieldset>
@@ -99,7 +99,7 @@
 			<label><input type="radio" name="q7" value="d" /> Lên tổ tiên chung thấp nhất, và đồng thời xóa luôn mọi state cục bộ của các composable khác trên màn hình</label>
 			<p class="explain" hidden>
 				Quy tắc là <strong>tổ tiên chung thấp nhất</strong> của mọi chỗ cần đọc/đổi/phối hợp — không thấp hơn (sẽ có chỗ
-				không đọc được), không cao hơn (thừa). Đáp án b là cách hiểu sai phổ biến nhất: đẩy quá cao thì mọi thay đổi nhỏ đi
+				không đọc được), không cao hơn (thừa). Đáp án a là cách hiểu sai phổ biến nhất: đẩy quá cao thì mọi thay đổi nhỏ đi
 				qua đỉnh, các composable trung gian phải truyền tiếp tham số chúng không dùng. Đáp án c tái tạo đúng bug hai chủ.
 				Đáp án d mở rộng quy tắc thành một lệnh xoá state cục bộ — state của riêng một khu vực (tooltip, animation) thì
 				vẫn giữ cục bộ.
@@ -114,7 +114,7 @@
 			<label><input type="radio" name="q8" value="b" /> Tiến trình của một animation chỉ khu vực đó quan tâm</label>
 			<p class="explain" hidden>
 				Tiến trình animation, tooltip đang hiện, mục đang mở rộng tạm thời — chỉ khu vực đó cần biết, nên giữ cục bộ (đúng
-				danh sách ví dụ ngay sau bảng "hoist tới đâu là đủ"). a cần bởi hai nơi khác nhau → lên tổ tiên chung. b phải lên cao hơn UI và
+				danh sách ví dụ ngay sau bảng "hoist tới đâu là đủ"). a cần bởi hai nơi khác nhau → lên tổ tiên chung. d phải lên cao hơn UI và
 				sống qua xoay máy → ViewModel. c cần bởi hai nơi trong cùng khu vực nhập liệu → giữ ở khu vực nhập liệu, nhưng vẫn
 				là mức "chủ hợp lý", không phải cục bộ của một composable lá.
 			</p>
