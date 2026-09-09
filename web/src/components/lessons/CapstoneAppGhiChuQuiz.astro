@@ -1,0 +1,166 @@
+---
+// Quiz O6 — CapstoneAppGhiChuQuiz.astro — bám nội dung O6 (capstone).
+// Workstream F / IMP-055. 10 câu: phạm vi, thứ tự xây dựng, state ownership,
+// 1-UiState, route type-safe, 1 màn cho cả tạo/sửa, checkpoint nhịp làm việc,
+// anti-scope-creep, fake-repo checkpoint.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		10 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích hiện ra sau khi chấm —
+		đọc cả những câu bạn làm đúng, vì nhiều giải thích có thêm chi tiết không nằm trong bài.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>Capstone này chọn app ghi chú OFFLINE thuần. Lý do đúng nhất?</legend>
+			<label><input type="radio" name="q1" value="a" /> Vì API mạng quá khó cho người mới</label>
+			<label><input type="radio" name="q1" value="b" /> Vì mạng chỉ chạy được trên thiết bị thật</label>
+			<label><input type="radio" name="q1" value="c" /> Vì thêm mạng là scope creep</label>
+			<label><input type="radio" name="q1" value="d" /> Vì Room không tương thích với mạng</label>
+			<p class="explain" hidden>
+				Kỹ năng mạng (W2/W3) đã có và có thể lắp — nhưng lắp thêm nghĩa là app cần API thật, API key, trạng
+				thái lỗi... làm nhòe mục đích chính. Capstone thỏa mãn khi mọi công nghệ nó dùng phục vụ đúng một
+				sản phẩm mạch lạc; "dùng cho đủ" là lỗi phạm vi, không phải kỹ năng. Sản phẩm chốt: tạo/sửa/tick/
+				xoá, tìm theo tiêu đề, nhớ theme — không cái nào cần mạng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Thứ tự xây dựng đúng theo bản đồ 10 bước là gì?</legend>
+			<label><input type="radio" name="q2" value="a" /> UI trước — vẽ màn hình đẹp đã, nối dữ liệu sau</label>
+			<label><input type="radio" name="q2" value="b" /> Dữ liệu trước — UI sau</label>
+			<label><input type="radio" name="q2" value="c" /> Thứ tự nào cũng như nhau — viết cả app rồi chạy một lần</label>
+			<label><input type="radio" name="q2" value="d" /> Theme và DataStore trước, vì dễ</label>
+			<p class="explain" hidden>
+				Tầng dữ liệu trước vì mọi tầng trên phụ thuộc nó (UI cần UiState, UiState cần ViewModel, ViewModel
+				cần repository). Nhịp cốt lõi: <em>mỗi bước một lần chạy + đối chiếu cột "kết quả"</em> — lỗi tích
+				tụ theo số bước; viết cả app rồi chạy là cách đảm bảo không biết gãy ở đâu trong 10 tầng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>Tìm kiếm trong app ghi chú được cài đặt thế nào?</legend>
+			<label><input type="radio" name="q3" value="a" /> Query trong UiState</label>
+			<label><input type="radio" name="q3" value="b" /> Một query mới tới Room mỗi lần gõ ký tự</label>
+			<label><input type="radio" name="q3" value="c" /> Gọi một API tìm kiếm</label>
+			<label><input type="radio" name="q3" value="d" /> Tìm trong file strings.xml</label>
+			<p class="explain" hidden>
+				<code>visible</code> là property tính toán trên state: nếu query rỗng → toàn bộ, không thì lọc theo
+				tiêu đề (ignoreCase). Mỗi ký tự gõ là một <code>onQueryChange</code> → <code>uiState</code> phát bản
+				copy mới; Room không bị gọi lại lần nào — cuộc tìm kiếm là việc của tầng presentation. Đây là ưu
+				điểm của "một UiState": thêm tính năng chỉ là thêm field + cách tính, không thêm nguồn dữ liệu.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>Vì sao dùng MỘT màn chi tiết cho cả tạo mới và sửa?</legend>
+			<label><input type="radio" name="q4" value="a" /> Vì Compose không hỗ trợ nhiều màn hình</label>
+			<label><input type="radio" name="q4" value="b" /> Vì làm hai màn sẽ nhanh hơn</label>
+			<label><input type="radio" name="q4" value="c" /> Vì Room yêu cầu như vậy</label>
+			<label><input type="radio" name="q4" value="d" /> Vì noteId null = tạo mới</label>
+			<p class="explain" hidden>
+				<code>NoteDetailRoute(noteId: Long? = null)</code> — navigate với id là sửa, không id là tạo mới. Hai
+				mục đích dùng chung OutlinedTextField/Button/ViewModel pattern; chỉ khác phần "load ghi chú ban đầu"
+				khi noteId != null. Giữ scope nhỏ là kỹ năng của capstone: thêm màn thứ ba cho "tạo mới" là trùng
+				code và gấp đôi chỗ để bug.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>State nào thuộc sở hữu của DataStore (qua ThemeRepository)?</legend>
+			<label><input type="radio" name="q5" value="a" /> Danh sách ghi chú — dữ liệu nghiệp vụ chính</label>
+			<label><input type="radio" name="q5" value="b" /> Nội dung ghi chú đang soạn</label>
+			<label><input type="radio" name="q5" value="c" /> Lựa chọn theme — sống qua khởi động lại</label>
+			<label><input type="radio" name="q5" value="d" /> Ô tìm kiếm</label>
+			<p class="explain" hidden>
+				Bảng ownership của bài: dữ liệu nghiệp vụ (ghi chú) → Room, source of truth; soạn thảo → ViewModel
+				của màn chi tiết; tìm kiếm → UiState của màn danh sách; cấu hình toàn app sống qua restart →
+				DataStore (D1). Hai source of truth (Room + DataStore) không giành nhau gì vì hai loại dữ liệu
+				khác nhau — luật "một loại dữ liệu, một nguồn đáng tin" vẫn giữ nguyên.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend><code>@Serializable data class NoteDetailRoute(val noteId: Long? = null)</code> mang lại lợi ích gì so với string route?</legend>
+			<label><input type="radio" name="q6" value="a" /> Sai kiểu là lỗi compile, không parse tay</label>
+			<label><input type="radio" name="q6" value="b" /> Chạy nhanh hơn hẳn vì string bị bỏ khỏi điều hướng</label>
+			<label><input type="radio" name="q6" value="c" /> Là yêu cầu bắt buộc của Room</label>
+			<label><input type="radio" name="q6" value="d" /> Tự động tạo UI cho màn chi tiết</label>
+			<p class="explain" hidden>
+				Route type-safe (N2): object/data class + <code>@Serializable</code> thay chuỗi "note/{id}" +
+				parse tay. Lợi ích thật là <em>biên dịch được kiểm</em>: đổi kiểu tham số → lỗi compile tại chỗ
+				navigate/đọc, thay vì crash runtime vì "Expected Long, got String". Đây là mảnh N2 lắp trực tiếp
+				vào capstone.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Trong <code>NotesViewModel</code>, việc gì xảy ra trong <code>init { }</code>?</legend>
+			<label><input type="radio" name="q7" value="a" /> Tải danh sách một lần duy nhất, sau đó phải gọi refresh thủ công</label>
+			<label><input type="radio" name="q7" value="b" /> Collect <code>observeNotes()</code> — Room đẩy list mới, không hàm refresh</label>
+			<label><input type="radio" name="q7" value="c" /> Tạo database</label>
+			<label><input type="radio" name="q7" value="d" /> Chạy migration</label>
+			<p class="explain" hidden>
+				<code>observeNotes()</code> trả Flow — Room phát lại toàn bộ danh sách mỗi khi bảng đổi. ViewModel
+				collect đúng một lần trong init và update UiState — mô hình reactive không có "nút refresh" (giống
+				phân tích của O1). Mọi thay đổi (tick, xoá, lưu) đều qua repository → Room đổi → Flow phát lại →
+				UI cập nhật: một đường, không hai nhánh.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>Bạn đang ở Bước 7 (màn chi tiết) và bỗng muốn thêm cột <code>color</code> vào ghi chú. Cách đúng theo bài?</legend>
+			<label><input type="radio" name="q8" value="a" /> Thêm ngay — schema đổi lúc nào cũng tiện</label>
+			<label><input type="radio" name="q8" value="b" /> Thêm ngay và bỏ quên phần Room — chỉ đổi UI</label>
+			<label><input type="radio" name="q8" value="c" /> Bỏ capstone, làm lại từ đầu với schema mới</label>
+			<label><input type="radio" name="q8" value="d" /> Ghi lại vào "v1.1" và đi tiếp Bước 8</label>
+			<p class="explain" hidden>
+				Cạm bẫy scope của capstone: ý tưởng tốt xuất hiện giữa chừng là bình thường — <em>ghi lại, đi
+				tiếp</em>. Schema giữa project là vùng nguy hiểm nhất của Room (bump version + migration + test —
+				cả một bài O5). Sau capstone, thêm cột màu chính là bài tập v1.1 hoàn hảo: nó mở ra bài toán
+				migration thật với dữ liệu thật của chính bạn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>Checkpoint Bước 10 (tuỳ chọn) kiểm chứng điều gì mà các bước trước chưa kiểm?</legend>
+			<label><input type="radio" name="q9" value="a" /> App cài được lên Play Store</label>
+			<label><input type="radio" name="q9" value="b" /> App cài được cả emulator lẫn máy thật qua ADB</label>
+			<label><input type="radio" name="q9" value="c" /> FakeNotesRepository chạy thay Room — kiểm bằng test</label>
+			<label><input type="radio" name="q9" value="d" /> Theme đổi được</label>
+			<p class="explain" hidden>
+				Cả 9 bước trước kiểm bằng mắt ("chạy, thấy"). Bước 10 — cho ai đã học O2 — viết
+				<code>FakeNotesRepository</code> (dữ liệu RAM, cài cùng <code>NotesRepository</code>), dựng ViewModel
+				với fake, và assert <code>toggleDone</code> đổi state theo khuôn Arrange/Act/Assert. Giá trị: app
+				của bạn <em>chứng minh được</em> rằng tầng UI không phụ thuộc Room — hợp đồng S5 đúng nghĩa, không
+				phải lời hứa.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>Trong màn danh sách, <code>LazyColumn(items = state.visible, key = { it.id })</code> — vai trò của <code>key</code>?</legend>
+			<label><input type="radio" name="q10" value="a" /> Giúp Compose chỉ vẽ lại đúng dòng đổi</label>
+			<label><input type="radio" name="q10" value="b" /> Sắp xếp danh sách theo id</label>
+			<label><input type="radio" name="q10" value="c" /> Đặt màu nền xen kẽ giữa các dòng chẵn và lẻ</label>
+			<label><input type="radio" name="q10" value="d" /> Bắt buộc của Room</label>
+			<p class="explain" hidden>
+				Mảnh C2 lắp vào capstone: key nhận diện từng item giữa các lần recompose — khi tick một dòng giữa
+				danh sách, Compose biết đúng dòng đó đổi (không vẽ lại tất cả), và state vị trí/animation không bị
+				gán nhầm cho dòng khác. Dùng id duy nhất (autoGenerate của Room) — đừng dùng chỉ số vị trí khi danh
+				sách có xoá/sắp xếp lại.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	// Harness chung — chấm MCQ, "Câu x/N", retry ẩn→hiện→ẩn (IMP-001 contract, quiz.css).
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>

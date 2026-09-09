@@ -1,0 +1,356 @@
+---
+// O5 — RoomMigrationDauTien.astro — "Room migration đầu tiên".
+// Workstream F / IMP-054. Learning job: "Thực hiện migration schema đầu tiên
+// một cách có chủ đích." Prerequisite: R2 (Entity/DAO/Database) — KHÔNG dạy lại.
+//
+// Reuse: R2 (Room database, @Entity/@DAO, fallbackToDestructive), A14 (dependency),
+// O2 (test migration với fake seam), AP3 (bảng drift Room 2.x vs 3).
+//
+// Anti-duplication (brief §15): không dạy lại Entity/DAO/Database/Repository —
+// bài chỉ MỞ RỘNG R2 theo chiều thời gian (schema đổi sau khi app đã phát hành).
+//
+// Freshness (kiểm 09/09/2026 — chi tiết #nguon):
+//  - Room 2.x hiện hành 2.8.x; Room 3 (androidx.room3:room3-*, 3.0.x) đổi nền:
+//    SQLiteDriver bắt buộc, KMP-first. Migration object + MigrationTestHelper giữ nguyên
+//    tư duy ở CẢ HAI thế hệ (Room 3 đổi API test nhưng ý niệm giống).
+//  - fallbackToDestructiveMigration: Room 2.6+ có biến thể disableMigrationsChecking...
+//    bài dùng khuôn cổ điển có ưu tiên.
+//  - exportSchema = true + schema location là khuyến nghị chính thức (Room 2.x);
+//    Room 3 giữ exportSchema.
+//  - autoMigrations (@AutoMigration + @DeleteColumn...) từ Room 2.4 — nhắc mức nhận diện.
+import { Code } from "astro:components";
+
+const entityV1Code = `@Entity(tableName = "notes")
+data class NoteEntity(
+  @PrimaryKey val id: Long,
+  val title: String,
+  val body: String,
+)`; 
+
+const entityV2Code = `@Entity(tableName = "notes")
+data class NoteEntity(
+  @PrimaryKey val id: Long,
+  val title: String,
+  val body: String,
+  val pinned: Boolean = false,      // ← cột mới, version 2
+)`; 
+
+const migrationCode = `val MIGRATION_1_2 = object : Migration(1, 2) {
+  override fun migrate(db: SupportSQLiteDatabase) {
+    db.execSQL(
+      "ALTER TABLE notes ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0"
+    )
+  }
+}`;
+
+const databaseCode = `@Database(entities = [NoteEntity::class], version = 2, exportSchema = true)
+abstract class NotesDatabase : RoomDatabase() {
+  abstract fun noteDao(): NoteDao
+}
+
+// khi dựng database:
+Room.databaseBuilder(context, NotesDatabase::class.java, "notes.db")
+  .addMigrations(MIGRATION_1_2)
+  .build()`;
+
+const destructiveCode = `// KHÔNG có addMigrations, KHÔNG fallback:
+// Room không biết cách nâng bản cũ → IllegalStateException lúc mở DB
+
+// "cách chữa" nguy hiểm:
+Room.databaseBuilder(context, NotesDatabase::class.java, "notes.db")
+  .fallbackToDestructiveMigration()   // không tìm thấy migration? XOÁ CẢ DATABASE
+  .build()`;
+
+const migrationTestCode = `@get:Rule
+val helper = MigrationTestHelper(
+  InstrumentationRegistry.getInstrumentation(),
+  NotesDatabase::class.java
+)
+
+@Test
+fun migrate1To2_ginDuLieuCu() {
+  // tạo DB ở version 1, ghi một dòng
+  helper.createDatabase(TEST_DB, 1).use { db ->
+    db.execSQL("INSERT INTO notes (id, title, body) VALUES (1, 'Mua sữa', '')")
+  }
+  // chạy migration tới version 2 — helper tự chạy MIGRATION_1_2 đã khai
+  val db = helper.runMigrationsAndValidate(TEST_DB, 2, true, MIGRATION_1_2)
+
+  // dữ liệu cũ phải còn; cột mới có giá trị mặc định
+  db.query("SELECT title, pinned FROM notes WHERE id = 1").use { cursor ->
+    cursor.moveToFirst()
+    assertEquals("Mua sữa", cursor.getString(0))
+    assertEquals(0, cursor.getInt(1))
+  }
+}`;
+
+const autoMigrationCode = `@Database(
+  entities = [NoteEntity::class],
+  version = 2,
+  exportSchema = true,
+  autoMigrations = [AutoMigration(from = 1, to = 2)]
+)
+// Room tự sinh migration cho các thay đổi "tự mô tả được" (thêm cột có default...);
+// đổi tên cột cần @RenameColumn trong spec. Thay đổi phức tạp vẫn phải Migration tay.
+`;
+---
+
+<article class="lesson">
+	<div class="callout goals">
+		<p><strong>Sau bài này bạn sẽ:</strong></p>
+		<ul>
+			<li>Giải thích được vì sao migration tồn tại: schema Room đổi khi app <em>đã có người dùng với dữ liệu thật</em> — và Room từ chối mở database cũ bằng code mới nếu không ai dạy nó cách nâng.</li>
+			<li>Viết được một <code>Migration(N, N+1)</code> đầu tiên: thêm một cột bằng <code>ALTER TABLE</code>, bump <code>version</code>, đăng ký bằng <code>addMigrations</code>.</li>
+			<li>Chỉ ra được vì sao <code>fallbackToDestructiveMigration()</code> là "nút xoá dữ liệu người dùng" — và nó nằm trong app thật ở đâu là chấp nhận được.</li>
+			<li>Viết được một test migration với <code>MigrationTestHelper</code>: tạo DB version cũ, chạy migration, khẳng định dữ liệu còn.</li>
+			<li>Biết được <code>exportSchema</code>, auto-migration, và sự khác biệt Room 2.x vs Room 3 ở mức nhận diện.</li>
+		</ul>
+	</div>
+
+	<p>
+		Trong R2, database của bạn luôn "sinh ra đúng bản hiện tại": viết <code>@Entity</code>, bấm chạy,
+		Room tạo bảng theo schema mới nhất. Đó là thế giới <em>trước khi phát hành</em>. Bài này là thế giới
+		sau: app của bạn đã nằm trên hàng nghìn máy, và mỗi máy đang giữ một file SQLite với schema
+		<em>phiên bản cũ</em>. Bạn ra bản cập nhật có thêm một cột — và giờ mỗi máy phải đi từ schema cũ sang
+		schema mới <strong>mà không mất một dòng dữ liệu nào của người dùng</strong>. Đó là migration.
+	</p>
+
+	<p class="hint">
+		<strong>Cần biết trước.</strong> R2 — <code>@Entity</code>, <code>@Dao</code>, <code>@Database</code>,
+		<code>Room.databaseBuilder</code>, cột NOT NULL/DEFAULT của SQL; O2 — khuôn test Arrange/Act/Assert
+		và seam để thay thế. Bài <strong>không</strong> dạy lại Room từ đầu: nếu "schema", "DAO" còn mơ hồ
+		thì đọc lại R2 trước.
+	</p>
+
+	<div class="callout mental">
+		<strong>Mental model: nhà đang có người ở.</strong>
+		<p>
+			Trước khi phát hành, đổi schema giống sửa bản vẽ nhà chưa xây — vẽ lại thoải mái. Sau khi phát
+			hành, nhà <em>đang có người ở</em>: muốn thêm một căn phòng, bạn phải xây <em>lên nhà hiện hữu</em>
+			không cho nó sập, không xóa đồ đạc của chủ nhà. Migration là bản kế hoạch thi công: nó ghi rõ "từ
+			bản vẽ số 1 sang số 2, làm đúng những gì này". Destructive migration là "phá nhà xây lại" — đơn
+			giản nhất, và đồ đạc của người ở biến mất.
+		</p>
+	</div>
+
+	<h2 id="version">1. <code>version</code>: con số room dùng để đối chiếu</h2>
+
+	<p>
+		Bản vẽ 1 của app ghi chú R2:
+	</p>
+
+	<Code code={entityV1Code} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Người dùng đã dùng app này một tháng — máy của họ có file <code>notes.db</code> với bảng
+		<code>notes</code> ba cột. Giờ bạn thêm cột <code>pinned</code>:
+	</p>
+
+	<Code code={entityV2Code} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Code mới mong đợi bảng <em>bốn</em> cột; file trên máy của người dùng là <em>ba</em> cột. Cầu nối
+		giữa hai thế giới là số <code>version</code> trong <code>@Database</code>: Room lưu version của file
+		SQLite khi tạo (trong bảng metadata của chính SQLite). Khi app mới mở file <code>version = 1</code>
+		trong khi code khai <code>version = 2</code>, Room tra cứu danh sách migration được đăng ký — có
+		<code>MIGRATION_1_2</code> thì chạy nó; <strong>không có thì không mở database</strong> (crash lúc
+		<code>build()</code>/<code>use</code>).
+	</p>
+
+	<div class="callout note">
+		<p>
+			<strong>Quy tắc bump:</strong> <em>mọi thay đổi schema</em> (thêm/xoá/đổi cột, thêm bảng, thêm
+			index) phải đi kèm bump <code>version</code> đúng +1 và một migration tương ứng. Đổi code mà quên
+			bump — Room tưởng schema chưa đổi; bump mà thiếu migration — app của người dùng crash lúc mở.
+		</p>
+	</div>
+
+	<h2 id="migration">2. Migration đầu tiên: ALTER TABLE</h2>
+
+	<Code code={migrationCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Đọc theo từng mảnh:
+	</p>
+
+	<ul>
+		<li><code>Migration(1, 2)</code> — khai "tôi nâng từ version 1 lên 2". Room có thể cần chuỗi:
+		nâng 1→3 của người nào còn ở version 1 sẽ chạy 1→2 rồi 2→3 nối tiếp.</li>
+		<li><code>db.execSQL(...)</code> — SQL thuần chạy trực tiếp trên file. <code>ALTER TABLE ... ADD
+		COLUMN</code> là lệnh thêm cột <em>không phá dữ liệu cũ</em> — mọi dòng hiện hữu nhận giá trị mặc
+		định (<code>DEFAULT 0</code> tức <code>false</code>).</li>
+		<li><code>INTEGER NOT NULL DEFAULT 0</code> — SQLite không có kiểu Boolean; Boolean Kotlin map sang
+		INTEGER 0/1. <code>NOT NULL</code> phải khai đúng vì Room <em>kiểm lại schema sau migration</em> —
+		cột thiếu NOT NULL/DEFAULT lệch với <code>@Entity</code> là Room báo lỗi ngay: migration đã chạy
+		nhưng kết quả không khớp bản vẽ.</li>
+	</ul>
+
+	<p>Sau đó: bump version và đăng ký migration khi dựng database:</p>
+
+	<Code code={databaseCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		<code>exportSchema = true</code> (đã có từ R2) giờ phát huy tác dụng thật: Room xuất file JSON của
+		mỗi version vào thư mục schema — đó là <em>bằng chứng lịch sử</em> để đối chiếu khi viết migration,
+		là đầu vào cho MigrationTestHelper, và cho phép auto-migration hoạt động (mục 5).
+	</p>
+
+	<h2 id="destructive">3. fallbackToDestructiveMigration: nút xoá dữ liệu người dùng</h2>
+
+	<Code code={destructiveCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Trường hợp đầu (không migrations, không fallback) là <strong>crash có chủ đích</strong> — Room từ
+		chối mở thay vì đoán. Nó nghe "khó chịu" nhưng là hành vi đúng: lỗi lộ ra <em>trong lúc phát
+		triển</em>, ngay trên máy bạn, chứ không phải âm thầm trên máy người dùng.
+	</p>
+
+	<p>
+		<code>fallbackToDestructiveMigration()</code> "chữa" crash bằng cách: không tìm thấy migration →
+		<strong>xoá sạch file database</strong> rồi tạo lại theo schema mới. Với <em>cache</em> (dựng lại
+		được) là lựa chọn hợp lý. Với dữ liệu thật (ghi chú của người dùng) là mất dữ liệu im lặng — lỗi tệ
+		nhất trong bách khoa của khoá này, đúng loại "app chạy bình thường, dữ liệu đã hỏng". Quy tắc thực
+		dụng: <strong>mọi database có dữ liệu người dùng → viết migration, không fallback</strong>. Vùng xám
+		chỉ có Room <em>in-memory</em> của phiên demo.
+	</p>
+
+	<div class="callout diff">
+		<p>
+			<strong>1. "Chỉ thêm cột thôi mà."</strong> Thêm cột là thay đổi schema <em>đơn giản nhất</em>,
+			nhưng vẫn phải bump version + migration — Room không phân biệt "lớn" hay "nhỏ". Người mới hay đi
+			quên bước này vì trong máy dev, Room đôi khi "tự hóa" (database bị tạo lại khi gỡ app) — trên máy
+			người dùng thật thì không có phép màu nào như vậy.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>2. Development vs production.</strong> Trong lúc dev, <code>fallbackToDestructiveMigration()</code>
+			tiết kiệm thời gian (schema đổi mỗi ngày, dữ liệu dev không quý). Trong app phát hành thì nó là
+			rủi ro mất dữ liệu. Khuôn chung: giữ fallback <em>chỉ trong bản debug</em>, hoặc viết migration
+			ngay từ thay đổi đầu tiên để thói quen không phá người khác.
+		</p>
+	</div>
+
+	<h2 id="test">4. Kiểm chứng migration: đừng "tin", hãy chạy</h2>
+
+	<p>
+		Migration là code chạy trên <em>dữ liệu quý nhất của app</em> — dữ liệu người dùng — đúng một lần
+		khi họ cập nhật. Gãy thì không có "thử lại": file đã chuyển đổi dở dang. Vì vậy migration
+		<strong>đáng test hơn cả ViewModel</strong>, và Room có công cụ sẵn cho việc đó:
+	</p>
+
+	<Code code={migrationTestCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Ba bước trong test (đúng khuôn O2): <strong>Arrange</strong> — <code>helper.createDatabase(TEST_DB,
+		1)</code> tạo file DB <em>thật ở schema version 1</em>, chèn một dòng mẫu; <strong>Act</strong> —
+		<code>runMigrationsAndValidate(TEST_DB, 2, true, MIGRATION_1_2)</code> chạy migration và <em>tự kiểm
+		schema sau khi chạy</em> (cờ <code>true</code>); <strong>Assert</strong> — query lại: dữ liệu cũ
+		còn nguyên, cột mới nhận default. Test này nằm trong <code>androidTest</code> (cần instrumentation
+		— O2 đã dạy hai tầng test).
+	</p>
+
+	<div class="callout note">
+		<p>
+			<strong>Kiểm tra nhanh.</strong> Bạn thêm migration nhưng quên <code>addMigrations(MIGRATION_1_2)</code>
+			khi build database. Điều gì xảy ra trên máy người dùng đang chạy version 1?
+			<details><summary>Xem đáp án</summary>
+			Room mở file, thấy version 1 ≠ 2, tra danh sách migration đăng ký — rỗng. Không fallback →
+			<code>IllegalStateException</code> lúc mở database: app crash ngay lần mở sau cập nhật. Migration
+			viết đúng mà không đăng ký vẫn tương đương không viết — test migration qua database được build bằng
+			chính đường dây production (cùng builder, cùng danh sách migration) là cách bắt được lớp lỗi này.</details>
+		</p>
+	</div>
+
+	<h2 id="auto">5. Auto-migration và Room 3 — mức nhận diện</h2>
+
+	<p>
+		Từ Room 2.4, Room có thể <strong>tự sinh</strong> migration cho các thay đổi "tự mô tả được" — thêm
+		cột có giá trị mặc định, thêm bảng, xoá bảng — nếu <code>exportSchema = true</code> và bạn khai:
+	</p>
+
+	<Code code={autoMigrationCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Thay đổi cần <em>ý định của con người</em> (đổi tên cột — cột nào thành cột nào; gộp/split bảng) vẫn
+		cần bạn viết tay, khai qua spec (<code>@RenameColumn</code>...). Khuôn quyết định: auto-migration
+		cho thay đổi cấu trúc thuần; <code>Migration</code> tay khi có dữ liệu phải <em>chuyển đổi</em>.
+	</p>
+
+	<p>
+		Về hai thế hệ Room: <strong>Room 2.x</strong> (bạn đang dùng qua R2) là dòng hiện hành ổn định;
+		<strong>Room 3</strong> (<code>androidx.room3:room3-*</code>) là thế hệ mới rebuild cho Kotlin
+		Multiplatform — đổi nền SQLite (<code>SQLiteDriver</code> bắt buộc, thay một số API cũ). Tư duy của
+		bài — version + migration + schema export + test — <strong>giữ nguyên ở cả hai</strong>; chỉ tên
+		class/API cụ thể có thể dịch chuyển. Bảng đối chiếu Room 2.x ↔ Room 3 nằm ở
+		<a href="/chapters/bang-tra-cuu-nhanh/">AP3</a>.
+	</p>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+
+	<div class="callout diff">
+		<p>
+			<strong>1. Quên bump <code>version</code>.</strong> Thêm cột vào <code>@Entity</code> nhưng giữ
+			<code>version = 1</code>: code mới chạy trên máy dev "được" (database tạo lại), lên máy người dùng
+			thật thì Room chạy schema mới lên file cũ mà không kiểm tra gì thêm — hành vi không xác định, dữ
+			lệch schema. Mọi thay đổi schema = bump version. Không có ngoại lệ "nhỏ".
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>2. <code>ALTER TABLE ... ADD COLUMN</code> thiếu <code>NOT NULL</code>/<code>DEFAULT</code>
+			lệch với <code>@Entity</code>.</strong> Migration chạy xong nhưng schema thực tế của bảng không khớp
+			khai báo — Room validate sau migration và ném lỗi. Quy tắc: <em>cột trong migration phải sinh ra
+			schema giống hệt</em> những gì <code>@Entity</code> mô tả.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>3. Migration là chỗ duy nhất viết SQL thuần.</strong> DAO (R2) kiểm SQL lúc compile;
+			<code>db.execSQL()</code> trong migration thì <strong>không</strong> — sai tên bảng/cột chỉ lộ khi
+			chạy. Đây là lý do test migration (mục 4) không phải "nice to have" mà là phần của công việc.
+		</p>
+	</div>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+
+	<ul class="keypoints">
+		<li><strong>Migration tồn tại vì app đã phát hành:</strong> file SQLite của người dùng giữ schema
+		cũ; Room đối chiếu <code>version</code> và từ chối mở nếu không được dạy cách nâng.</li>
+		<li><strong>Công thức migration đầu tiên:</strong> <code>@Entity</code> thêm cột → bump
+		<code>version</code> +1 → viết <code>Migration(N, N+1)</code> với <code>ALTER TABLE ... ADD
+		COLUMN</code> (đúng NOT NULL/DEFAULT) → <code>addMigrations()</code>.</li>
+		<li><strong>Không có thay đổi schema "nhỏ":</strong> mọi thay đổi đều bump version + migration.</li>
+		<li><code>fallbackToDestructiveMigration()</code> = <strong>xoá sạch dữ liệu người dùng</strong> khi
+		thiếu migration — chỉ hợp với cache/database dựng lại được; dữ liệu thật thì viết migration.</li>
+		<li><strong>Test migration với MigrationTestHelper:</strong> tạo DB version cũ → chạy migration
+		+ validate schema → assert dữ liệu còn và cột mới có default.</li>
+		<li><code>exportSchema = true</code> là điều kiện để có lịch sử schema, test helper, và
+		auto-migration.</li>
+		<li><strong>Auto-migration</strong> tự sinh cho thay đổi tự mô tả được; <strong>Migration tay</strong>
+		khi dữ liệu phải chuyển đổi. Room 3 đổi nền (SQLiteDriver) nhưng tư duy giữ nguyên — tra cứu ở AP3.</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<p class="src">
+		<strong>Tài liệu chính thức:</strong> developer.android.com — <em>Migrate your Room database</em>
+		(kiểm 09/09/2026: <code>Migration</code> + <code>addMigrations</code>, <code>exportSchema</code>,
+		<code>fallbackToDestructiveMigration</code> destructive semantics) · <em>Test migrations</em> —
+		<code>MigrationTestHelper</code> + <code>runMigrationsAndValidate</code> · <em>Auto-migrations</em>
+		(từ Room 2.4) · Room release notes — dòng 2.x hiện hành 2.8.x; Room 3
+		(<code>androidx.room3:room3-*</code>, SQLiteDriver) ghi ở AP3 mục Ch10/Room.
+	</p>
+	<p class="src">
+		<strong>Nội dung của chính khoá học:</strong> R2 (<code>Ch10_2EntityDaoDatabase.astro</code>) —
+		Entity/DAO/Database, <code>databaseBuilder</code>, schema kiểm lúc compile · O2 — khuôn test
+		Arrange/Act/Assert, hai tầng test · AP3 — bảng drift Room 2.x ↔ Room 3.
+	</p>
+	<p class="src">
+		<strong>Ví dụ do khoá dựng:</strong> <code>NoteEntity</code> v1/v2, <code>MIGRATION_1_2</code>,
+		test migration — viết cho bài này theo API đã kiểm, nối tiếp app ghi chú của R2; không trích
+		<code>aaf-materials/</code> (giáo trình không dạy migration).
+	</p>
+</article>

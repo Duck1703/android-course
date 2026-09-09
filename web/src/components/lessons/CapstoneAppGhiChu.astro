@@ -1,0 +1,488 @@
+---
+// O6 — CapstoneAppGhiChu.astro — "Capstone hướng dẫn: app ghi chú của bạn".
+// Workstream F / IMP-055. Bài OPTIONAL LỚN NHẤT (~90 phút project track).
+// Learning job: lắp các kỹ năng ĐÃ HỌC thành một sản phẩm hoàn chỉnh, theo được
+// KHÔNG cần tìm kiếm ngoài.
+//
+// Prereqs (tất cả đã live): A14 (Gradle/version catalog), C2/C3 (list + Material 3),
+// S4 (ViewModel/StateFlow), N1/N2 (NavHost + type-safe args), D1 (DataStore),
+// R2/R3 (Room + repository). O2 (fake repository) là RECOMMENDED — bài vẫn theo được
+// nếu chưa học O2 (mục testing là checkpoint tuỳ chọn, có cảnh báo rõ).
+//
+// PRODUCT BOUNDARY (brief §17 — chốt trước khi viết):
+//  - Product goal: app ghi chú offline đơn giản — tạo/đọc/sửa trạng thái "đã làm xong",
+//    tìm theo tiêu đề, theme sáng/tối nhớ lựa chọn.
+//  - Screens: Danh sách (list + search) · Chi tiết/tạo (một màn cho cả hai, theo id) ·
+//    (tùy chọn) Cài đặt: chỉ 1 switch theme.
+//  - Data model: 1 Entity `NoteEntity` (id, title, body, done, updatedAt) + NoteDao.
+//  - Persistence: Room (source of truth) + DataStore (chỉ theme choice).
+//  - Navigation: NavHost 2 destination; id qua type-safe route (N2).
+//  - State ownership: UI state trong NotesViewModel (StateFlow); theme qua prefs.
+//  - Repository boundary: NotesRepository (interface) + RoomNotesRepository.
+//  - Optional preference: theme switch (DataStore).
+//  - Testing checkpoint: fake repository (O2) — TUỲ CHỌN, không chặn luồng chính.
+//
+// KHÔNG có: cloud sync, auth, AI, collaboration, backend — không scope creep (§17).
+// KHÔNG nhồi W2/W3 (mạng) — capstone này offline thuần: đúng "không force mọi
+// technology" (§16). Search là filter cục bộ (không phải mạng).
+import { Code } from "astro:components";
+
+const entityCode = `@Entity(tableName = "notes")
+data class NoteEntity(
+  @PrimaryKey(autoGenerate = true) val id: Long = 0,
+  val title: String,
+  val body: String,
+  val done: Boolean = false,
+  val updatedAt: Long = System.currentTimeMillis(),
+)`;
+
+const daoCode = `@Dao
+interface NoteDao {
+  @Query("SELECT * FROM notes ORDER BY updatedAt DESC")
+  fun observeAll(): Flow<List<NoteEntity>>
+
+  @Query("UPDATE notes SET done = :done WHERE id = :id")
+  suspend fun setDone(id: Long, done: Boolean)
+
+  @Upsert
+  suspend fun upsert(note: NoteEntity)
+
+  @Query("DELETE FROM notes WHERE id = :id")
+  suspend fun delete(id: Long)
+}`;
+
+const repositoryCode = `interface NotesRepository {
+  fun observeNotes(): Flow<List<Note>>
+  suspend fun save(note: Note)
+  suspend fun setDone(id: Long, done: Boolean)
+  suspend fun delete(id: Long)
+}
+
+class RoomNotesRepository(private val dao: NoteDao) : NotesRepository {
+  override fun observeNotes() = dao.observeAll().map { list ->
+    list.map { it.toNote() }          // Entity → model domain (S5: repository DỊCH)
+  }
+  override suspend fun save(note: Note) = dao.upsert(note.toEntity())
+  override suspend fun setDone(id: Long, done: Boolean) = dao.setDone(id, done)
+  override suspend fun delete(id: Long) = dao.delete(id)
+}`;
+
+const viewModelCode = `data class NotesUiState(
+  val notes: List<Note> = emptyList(),
+  val query: String = "",
+) {
+  val visible: List<Note>
+    get() = if (query.isBlank()) notes
+            else notes.filter { it.title.contains(query, ignoreCase = true) }
+}
+
+class NotesViewModel(private val repository: NotesRepository) : ViewModel() {
+
+  private val _uiState = MutableStateFlow(NotesUiState())
+  val uiState: StateFlow<NotesUiState> = _uiState.asStateFlow()
+
+  init {
+    viewModelScope.launch {
+      repository.observeNotes().collect { notes ->
+        _uiState.update { it.copy(notes = notes) }
+      }
+    }
+  }
+
+  fun onQueryChange(query: String) = _uiState.update { it.copy(query = query) }
+  fun toggleDone(id: Long, done: Boolean) = viewModelScope.launch {
+    repository.setDone(id, done)
+  }
+  fun delete(id: Long) = viewModelScope.launch { repository.delete(id) }
+}`;
+
+const listScreenCode = `@Composable
+fun NotesListScreen(
+  onNoteOpen: (Long) -> Unit,
+  viewModel: NotesViewModel,
+) {
+  val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+  Column(Modifier.fillMaxSize()) {
+    OutlinedTextField(
+      value = state.query,
+      onValueChange = viewModel::onQueryChange,
+      modifier = Modifier.fillMaxWidth().padding(16.dp),
+      placeholder = { Text("Tìm ghi chú") },
+    )
+    LazyColumn(Modifier.fillMaxSize()) {
+      items(state.visible, key = { it.id }) { note ->
+        NoteRow(
+          note = note,
+          onOpen = { onNoteOpen(note.id) },
+          onToggleDone = { viewModel.toggleDone(note.id, !note.done) },
+        )
+      }
+    }
+  }
+}`;
+
+const detailScreenCode = `@Composable
+fun NoteDetailScreen(noteId: Long?, viewModel: NoteDetailViewModel) {
+  val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+  Column(Modifier.fillMaxSize().padding(16.dp)) {
+    OutlinedTextField(
+      value = state.title,
+      onValueChange = viewModel::onTitleChange,
+      placeholder = { Text("Tiêu đề") },
+      modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+      value = state.body,
+      onValueChange = viewModel::onBodyChange,
+      placeholder = { Text("Nội dung") },
+      modifier = Modifier.fillMaxWidth().weight(1f),
+    )
+    Button(onClick = viewModel::save, modifier = Modifier.fillMaxWidth()) {
+      Text("Lưu")
+    }
+  }
+}`;
+
+const navCode = `@Serializable object NotesRoute            // màn danh sách
+@Serializable data class NoteDetailRoute(val noteId: Long? = null)  // null = tạo mới
+
+@Composable
+fun AppNavHost() {
+  val navController = rememberNavController()
+  NavHost(navController, startDestination = NotesRoute) {
+    composable<NotesRoute> {
+      NotesListScreen(
+        onNoteOpen = { id -> navController.navigate(NoteDetailRoute(id)) },
+        viewModel = notesViewModel,
+      )
+    }
+    composable<NoteDetailRoute> { entry ->
+      NoteDetailScreen(
+        noteId = entry.toRoute<NoteDetailRoute>().noteId,
+        viewModel = detailViewModel,
+      )
+    }
+  }
+}`;
+
+const themePrefsCode = `// D1 — DataStore: chỉ MỘT giá trị, đúng công cụ cho giá trị đơn lẻ
+val Context.themeStore by preferencesDataStore(name = "theme")
+val THEME_KEY = stringPreferencesKey("theme")
+
+class ThemeRepository(private val context: Context) {
+  val isDark: Flow<Boolean> = context.themeStore.data
+    .map { prefs -> prefs[THEME_KEY] == "dark" }
+
+  suspend fun setDark(dark: Boolean) {
+    context.themeStore.edit { it[THEME_KEY] = if (dark) "dark" else "light" }
+  }
+}`;
+
+const buildSteps = [
+  ["Bước 1", "Dựng xương project", "Empty Activity (Compose), khai dependencies Room + Navigation + DataStore qua version catalog (A14)", "App chạy, màn hình trống, sync Gradle không lỗi"],
+  ["Bước 2", "Tầng dữ liệu", "NoteEntity + NoteDao + NotesDatabase (R2), migration-ready: version = 1, exportSchema = true (O5)", "Build sinh ra NotesDatabase_Impl; không lỗi compile SQL"],
+  ["Bước 3", "Repository", "NotesRepository interface + RoomNotesRepository (R3 — Entity → domain model)", "Compile; chưa nối UI"],
+  ["Bước 4", "ViewModel + UiState", "NotesViewModel với StateFlow + query filter (S4)", "Preview/Chạy: list trống hiển thị được (empty state)"],
+  ["Bước 5", "Màn danh sách", "NotesListScreen: OutlinedTextField tìm + LazyColumn với key (C2)", "Chạy app: list trống + ô tìm hiện ra"],
+  ["Bước 6", "Điều hướng", "AppNavHost 2 destination, type-safe route (N2); detail nhận noteId nullable", "Chạm 1 dòng → mở màn trống; Back quay về list"],
+  ["Bước 7", "Màn chi tiết/tạo", "NoteDetailScreen + NoteDetailViewModel; save qua repository", "Tạo ghi chú → Back → list hiện nó; sắp xếp mới-nhất-trước"],
+  ["Bước 8", "Checkbox + xoá", "toggleDone + swipe/delete qua repository", "Tick đổi màu gạch ngang; xoá khỏi list"],
+  ["Bước 9", "Theme (DataStore)", "ThemeRepository + switch ở app bar (D1)", "Đổi theme → app nhớ sau khi khởi động lại"],
+  ["Bước 10", "Checkpoint", "(tuỳ chọn) FakeNotesRepository + 1 ViewModel test theo O2", "Test xanh; chạy app bằng fake đổi được chỗ build ViewModel"],
+];
+---
+
+<article class="lesson">
+	<div class="callout goals">
+		<p><strong>Sau bài này bạn sẽ — bằng việc tự tay hoàn thành một app thật:</strong></p>
+		<ul>
+			<li>Lắp được <strong>cả đường dọc app</strong>: Entity/DAO → repository → ViewModel/StateFlow → NavHost → hai màn hình Compose — đúng kiến trúc S5, bằng các mảnh đã học ở R2/R3, S4, N1/N2, C2/C3.</li>
+			<li>Tự quyết định được <strong>state thuộc sở hữu của ai</strong> trong app nhiều màn hình (S3 áp dụng vào sản phẩm thật).</li>
+			<li>Đọc được <strong>bản sơ đồ công việc 10 bước</strong> của một app ghi chú offline, mỗi bước có kết quả kiểm chứng được — thói quen dựng app theo checkpoint thay vì "viết hết rồi chạy thử".</li>
+			<li>Nhận biết ranh giới <strong>scope của một capstone người mới</strong>: cái nào thuộc app, cái nào là "cạm bẫy phình phạm vi".</li>
+		</ul>
+	</div>
+
+	<p>
+		Mọi bài đến đây dạy bạn một mảnh. Capstone không dạy mảnh mới nào — nó là bài kiểm tra <em>khả năng
+		lắp</em>: các mảnh đã học có khớp nhau thành một sản phẩm chạy được không. App đích: <strong>một
+		app ghi chú offline</strong> — tạo/sửa ghi chú, tick "đã làm xong", xoá, tìm theo tiêu đề, theme
+		sáng/tối được nhớ. Nghe đơn giản, nhưng nó đi qua <em>toàn bộ</em> đường dọc kiến trúc của khoá:
+		dữ liệu cục bộ, tầng repository, ViewModel, điều hướng, UI state, lựa chọn được lưu.
+	</p>
+
+	<p class="hint">
+		<strong>Cần biết trước.</strong> A14 (version catalog, dependency), C2 (<code>LazyColumn</code> +
+		<code>key</code>), C3 (Material 3 components), S4 (ViewModel/StateFlow/
+		<code>collectAsStateWithLifecycle</code>), N1/N2 (NavHost, route type-safe), D1 (DataStore),
+		R2/R3 (Room + repository + model domain). Khuyến nghị: O2 (fake repository, test) — checkpoint
+		ở Bước 10 là tuỳ chọn; bạn <em>không cần</em> O2 để hoàn thành Bước 1–9.
+	</p>
+
+	<div class="callout mental">
+		<strong>Mental model: capstone là lần đầu tự làm bếp cả bữa ăn.</strong>
+		<p>
+			Các bài trước là học cắt từng loại rau. Hôm nay nấu nguyên bữa — công thức có sẵn, từng bước có
+			kết quả để kiểm ("rau đã chín chưa"). Lần đầu sẽ chậm, sẽ đọc lại bài cũ — đó là <em>đúng mục
+			đích</em>: capstone cho bạn biết mảnh nào đã vững, mảnh nào cần học lại, trước khi bạn bắt đầu
+			công thức của riêng mình.
+		</p>
+	</div>
+
+	<h2 id="so-do">1. Sơ đồ sản phẩm: những quyết định có trước</h2>
+
+	<p>
+		Phần khó nhất của một project tự làm không phải code — là <strong>phạm vi</strong>. Bản vẽ dưới đây
+		chốt trước mọi quyết định để bạn chỉ cần thi công; đừng "cải tiến" giữa chừng (mục 4):
+	</p>
+
+	<table class="api">
+		<thead>
+			<tr><th>Quyết định</th><th>Chốt</th><th>Đã học ở</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>Sản phẩm</td><td>App ghi chú offline: tạo/sửa/tick-xong/xoá, tìm theo tiêu đề, nhớ theme</td><td>—</td></tr>
+			<tr><td>Màn hình</td><td>2: Danh sách (tìm + list) · Chi tiết (tạo/sửa, một màn cho cả hai nhờ id nullable)</td><td>N1/N2</td></tr>
+			<tr><td>Dữ liệu</td><td>1 bảng <code>notes</code> (id, title, body, done, updatedAt)</td><td>R2</td></tr>
+			<tr><td>Nguồn đáng tin</td><td>Room — qua <code>NotesRepository</code>; UI không biết Room tồn tại</td><td>S5/R3</td></tr>
+			<tr><td>State</td><td><code>NotesUiState</code> trong ViewModel (StateFlow); theme qua DataStore</td><td>S4/D1</td></tr>
+			<tr><td>Tìm kiếm</td><td>Filter cục bộ trên list đã load — KHÔNG mạng</td><td>S4</td></tr>
+			<tr><td>Tuỳ chọn</td><td>Checkpoint test với fake repository (Bước 10)</td><td>O2</td></tr>
+		</tbody>
+	</table>
+
+	<div class="callout diff">
+		<p>
+			<strong>Vì sao KHÔNG có mạng trong capstone này?</strong> Kỹ năng mạng (W2/W3) đã có và có thể lắp
+			— nhưng lắp thêm nghĩa là app cần một API thật, xử lý key, trạng thái lỗi... một lớp phức tạp làm
+			nhòe mục đích chính: <em>khớp các mảnh kiến trúc</em>. Capstone thỏa mãn khi mọi công nghệ nó dùng
+			phục vụ đúng một sản phẩm mạch lạc; "dùng cho đủ" là lỗi phạm vi, không phải kỹ năng.
+		</p>
+	</div>
+
+	<h2 id="mo-hinh-du-lieu">2. Tầng dữ liệu: Entity → DAO → Repository</h2>
+
+	<Code code={entityCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Năm cột, mỗi cột có một việc: <code>id</code> tự sinh làm key cho list <em>và</em> cho điều hướng;
+		<code>title</code>/<code>body</code> là nội dung; <code>done</code> phục vụ tick-xong;
+		<code>updatedAt</code> cho thứ tự "mới nhất trước" — mọi quyết định UI sau này (key, sort) đã được
+		chuẩn bị từ đây. Version bắt đầu là <strong>1</strong> với <code>exportSchema = true</code> — đúng
+		khuôn O5 để lần sửa schema đầu tiên không phải bổ hổ.
+	</p>
+
+	<Code code={daoCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Chú ý quy ước Flow/suspend mà S5/R2 đã dạy: <strong>đọc-liên-tục trả <code>Flow</code></strong>
+		(<code>observeAll</code> — list tự cập nhật khi Room đổi), <strong>ghi là <code>suspend</code></strong>.
+		<code>@Upsert</code> là "có thì cập nhật, chưa có thì thêm" — một hàm phục vụ cả tạo mới lẫn sửa.
+	</p>
+
+	<Code code={repositoryCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		<code>NotesRepository</code> là hợp đồng của tầng dữ liệu; <code>RoomNotesRepository</code> dịch
+		<code>NoteEntity</code> (của Room) sang <code>Note</code> (của app) — chính là trách nhiệm
+		"dịch model" của S5. ViewModel và UI chỉ thấy <code>Note</code>: sau này đổi Room sang cái khác,
+		hợp đồng không đổi. Đây cũng là seam mà <code>FakeNotesRepository</code> của O2 cài vào — nếu bạn
+		làm Bước 10.
+	</p>
+
+	<h2 id="viewmodel">3. State: một UiState, một flow</h2>
+
+	<Code code={viewModelCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Ba chi tiết đáng chú ý:
+	</p>
+
+	<ul>
+		<li><strong>Một <code>StateFlow&lt;UiState&gt;</code> duy nhất</strong> — đúng khuyến nghị kiến trúc
+		hiện hành: UI không bao giờ thấy trạng thái nửa vời (list mới + query cũ). <code>visible</code> là
+		property tính toán — tìm kiếm chỉ là <em>phun lọc</em> trên state, không thêm nguồn dữ liệu nào.</li>
+		<li><code>_uiState.update { }</code> — cách ghi an toàn luồng: nó nhận state hiện tại rồi copy, không
+		ghi đè mù.</li>
+		<li><code>init { }</code> collect <code>observeNotes()</code> đúng một lần — Room đẩy list mới mỗi
+		khi dữ liệu đổi; ViewModel chỉ <em>đổ vào</em> UiState. Không có hàm "refresh" nào cả — mô hình
+		reactive như O1 đã phân tích.</li>
+	</ul>
+
+	<div class="callout note">
+		<p>
+			<strong>Kiểm tra nhanh.</strong> Người dùng gõ "cà phê" vào ô tìm rồi xoá hết. State thay đổi thế
+			nào qua mấy lần recomposition?
+			<details><summary>Xem đáp án</summary>
+			Mỗi ký tự là một <code>onQueryChange</code> → <code>uiState</code> phát <code>copy(query = ...)</code>
+			mới; <code>visible</code> tính lại (list dài ra khi xoá). List <code>notes</code> gốc không bao giờ bị
+			sửa — query chỉ là một field trong state. Xoá hết (<code>""</code>) → <code>visible</code> = toàn bộ.
+			Cuộc tìm kiếm không đụng Room một lần nào.</details>
+		</p>
+	</div>
+
+	<h2 id="man-hinh">4. Hai màn hình và đường nối chúng</h2>
+
+	<Code code={listScreenCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		<code>LazyColumn</code> với <code>key = { it.id }</code> (C2) — key giúp Compose nhận ra dòng nào
+		đổi, chứ không vẽ lại cả list. Màn danh sách <em>không biết</em> cách mở chi tiết: nó chỉ gọi
+		callback <code>onNoteOpen(id)</code> — state hoisting (S3) áp cho điều hướng, composable giữ thuần
+		Kotlin/Compose, dễ preview, dễ test.
+	</p>
+
+	<Code code={detailScreenCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Một màn chi tiết phục vụ <strong>cả hai mục đích</strong> tạo và sửa: <code>noteId == null</code>
+		nghĩa là đang tạo mới (title/body rỗng), khác null là đang sửa (load ghi chú từ repository). Đây là
+		mẹo giữ scope nhỏ: hai mục đích, một màn hình, một ViewModel, không trùng code UI.
+	</p>
+
+	<Code code={navCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Route type-safe của N2: <code>NotesRoute</code> là object; <code>NoteDetailRoute(noteId: Long? = null)</code>
+		đóng gói tham số — navigate bằng <code>NoteDetailRoute(id)</code>, đọc lại bằng
+		<code>entry.toRoute()</code>. Không string-route, không parse tay: sai kiểu là lỗi compile.
+	</p>
+
+	<h3>4.1. Ai sở hữu state nào? — bảng quyết định</h3>
+
+	<table class="cmp">
+		<thead>
+			<tr><th>State</th><th>Chủ sở hữu</th><th>Vì sao</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>Danh sách ghi chú</td><td>Room (source of truth) → ViewModel phơi qua UiState</td><td>Dữ liệu sống lâu hơn màn hình</td></tr>
+			<tr><td>Ô tìm kiếm</td><td><code>NotesViewModel</code> (trong UiState)</td><td>Sống theo màn danh sách, cần nhớ khi quay lại</td></tr>
+			<tr><td>Nội dung đang soạn</td><td><code>NoteDetailViewModel</code></td><td>Chỉ màn chi tiết dùng; mất khi rời màn là chấp nhận (bản draft v1)</td></tr>
+			<tr><td>Theme</td><td>DataStore qua <code>ThemeRepository</code></td><td>Cấu hình toàn app, sống qua khởi động lại (D1)</td></tr>
+		</tbody>
+	</table>
+
+	<h2 id="theme">5. Theme qua DataStore — tuỳ chọn nhưng đủ mạch</h2>
+
+	<Code code={themePrefsCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Một switch, một giá trị — đúng công cụ D1: <code>preferencesDataStore</code> +
+		<code>stringPreferencesKey</code> + <code>edit</code> trong <code>suspend</code>. ViewModel của theme
+		collect <code>isDark</code> và truyền vào <code>AppTheme(darkTheme = ...)</code> — một đường dây
+		reactive nữa đi qua cùng kiến trúc S5. Điểm mấu chốt: bạn vừa thêm một <em>source of truth thứ
+		hai</em> (DataStore cho cấu hình, Room cho ghi chú) mà không phá luật "một loại dữ liệu, một nguồn
+		đáng tin" — vì hai loại dữ liệu không giành nhau gì.
+	</p>
+
+	<h2 id="checkpoint">6. Bản đồ 10 bước + checkpoint</h2>
+
+	<table class="api">
+		<thead>
+			<tr><th>Bước</th><th>Làm gì</th><th>Chạm bài nào</th><th>Kết quả kiểm chứng</th></tr>
+		</thead>
+		<tbody>
+			{buildSteps.map(([step, what, how, expect]) => (
+				<tr><td><strong>{step}</strong></td><td>{what}</td><td>{how}</td><td>{expect}</td></tr>
+			))}
+		</tbody>
+	</table>
+
+	<div class="callout note">
+		<p>
+			<strong>Nhịp làm việc khuyến nghị.</strong> Mỗi bước: làm → chạy → đối chiếu cột "kết quả" → mới
+			sang bước tiếp. Kết quả không như ghi chú: <em>dừng ngay</em> tại bước đó — lỗi của bước sau gần
+			như luôn núp trong bóng của lỗi bước trước. App ghi chú hoàn thành ở Bước 9; Bước 10 là checkpoint tuỳ chọn
+			cho ai đã học O2: cài <code>FakeNotesRepository</code> (RAM, không Room), đổi chỗ build ViewModel
+			trong preview/test, và viết một test assert <code>toggleDone</code> đổi state — khuôn Arrange/
+			Act/Assert nguyên bản của O2.
+		</p>
+	</div>
+
+	<h2 id="pham-vi">7. Ranh giới: cái nào KHÔNG thuộc capstone này</h2>
+
+	<ul>
+		<li><strong>Cloud sync / đăng nhập.</strong> Mở ra là hai bài học lớn (xác thực, đồng bộ xung đột) —
+		chính là cả một track khác (xem O1 để hiểu vì sao sync không phải "thêm một API").</li>
+		<li><strong>Mạng / API thật.</strong> Kỹ năng đã có (W2/W3) — nhưng thêm vào app này là scope creep,
+		không phục vụ sản phẩm.</li>
+		<li><strong>Nhiều loại ghi chú (ảnh, âm thanh, tag).</strong> Đổi model một cách vô kiểm soát —
+		học xong bản v1 rồi tự nâng cấp theo hướng riêng là bài tập tốt hơn nhiều so với làm nửa vời ngay
+		từ đầu.</li>
+		<li><strong>Đánh dấu "đã học" từ quiz.</strong> Tiến độ course và app của bạn là hai thế giới —
+		app thật thì "xong" = "chạy được từng bước checkpoint", không phải điểm quiz.</li>
+	</ul>
+
+	<div class="callout journey">
+		<p>
+			<strong>Sau capstone — lộ trình của riêng bạn.</strong> App nhỏ này là nền: thử tự thêm một tính
+			năng <em>bạn thật sự cần</em> (hẹn giờ nhắc — mở ra O4 WorkManager; sắp xếp theo cột — mở ra bài
+			toán schema + O5 migration; xuất ghi chú ra file — mở ra X1 SAF). Mỗi hướng là một bài đã học đặt
+			vào bối cảnh của bạn — và đó là dấu hiệu bạn đã ra khỏi giáo trình, bắt đầu làm Android thật.
+		</p>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+
+	<div class="callout diff">
+		<p>
+			<strong>1. Viết cả 10 bước rồi mới chạy lần đầu.</strong> Lỗi tích tụ theo số bước — khi chạy,
+			bạn không biết gãy ở đâu trong 10 tầng. Nhịp đúng: mỗi bước một lần chạy + đối chiếu checkpoint.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>2. "Cải tiến" schema giữa chừng.</strong> Bỗng muốn thêm cột <code>color</code> ở Bước 7 —
+			hãy ghi lại vào danh sách "v1.1" và đi tiếp. Đổi schema giữa project là lúc quên bump version/migration
+			(O5) nhiều nhất.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>3. Copy cả bài mà không gõ.</strong> Gõ tay từng bước là cách não học mạch kiến trúc;
+			copy-paste cho bạn app chạy và... một cảm giác ảo. Có thể copy các đoạn đã gõ thành công một lần —
+			không copy từ "chưa từng gõ".
+		</p>
+	</div>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+
+	<ul class="keypoints">
+		<li><strong>Capstone = lắp, không dạy mảnh mới:</strong> Entity/DAO (R2) → repository (S5/R3) →
+		ViewModel/UiState (S4) → NavHost type-safe (N1/N2) → hai màn Compose (C2/C3) → DataStore (D1).</li>
+		<li><strong>Phạm vi chốt trước:</strong> 2 màn hình, 1 bảng, offline thuần — mỗi công nghệ phục vụ
+		sản phẩm, không phục vụ danh mục công nghệ.</li>
+		<li><strong>Một UiState duy nhất</strong> cho mỗi ViewModel — tìm kiếm là filter trên state, không
+		đụng nguồn dữ liệu.</li>
+		<li><strong>Một màn chi tiết cho cả tạo và sửa</strong> nhờ <code>noteId</code> nullable.</li>
+		<li><strong>State ownership được bảng hóa:</strong> dữ liệu → Room; soạn thảo → ViewModel màn; cấu
+		hình → DataStore.</li>
+		<li><strong>Nhịp thi công: 10 bước × checkpoint</strong> — mỗi bước có kết quả kiểm chứng, lỗi dừng
+		ngay tại bước của nó.</li>
+		<li><strong>Bước 10 (tuỳ chọn, O2):</strong> fake repository + một test — lần đầu kiểm chứng kiến
+		trúc bằng test thay vì bằng mắt.</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<p class="src">
+		<strong>Tài liệu chính thức:</strong> developer.android.com — <em>Guide to app architecture</em> +
+		<em>Data layer</em> (repository/source of truth — kiểm 09/09/2026) · Room, Navigation Compose
+		(type-safe Kotlin DSL), DataStore Preferences — API surface dùng trong bài đã đối chiếu với trang
+		hướng dẫn hiện hành từng thư viện.
+	</p>
+	<p class="src">
+		<strong>Nội dung của chính khoá học (mọi khối code là sản phẩm lắp của các mảnh đã dạy):</strong>
+		A14 — version catalog · C2 — LazyColumn + key · C3 — Material 3 · S4 — ViewModel/StateFlow/
+		collectAsStateWithLifecycle · N1/N2 — NavHost + route type-safe · D1 — DataStore · R2/R3 — Room
+		+ repository · O2 — fake repository + khuôn test · O5 — exportSchema/version discipline.
+	</p>
+	<p class="src">
+		<strong>Ví dụ do khoá dựng:</strong> toàn bộ code <code>NotesApp</code> trong bài — viết liền mạch
+		cho capstone, tự túc (không trích <code>aaf-materials/</code>); mỗi mảnh phản chiếu pattern của bài
+		đã dạy tương ứng.
+	</p>
+</article>

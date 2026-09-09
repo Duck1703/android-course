@@ -1,0 +1,171 @@
+---
+// Quiz O5 — RoomMigrationDauTienQuiz.astro — bám nội dung O5 (Room migration).
+// Workstream F / IMP-054. 10 câu: version, migration object, ALTER TABLE, destructive,
+// test migration, exportSchema/auto-migration, dev-vs-production.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		10 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích hiện ra sau khi chấm —
+		đọc cả những câu bạn làm đúng, vì nhiều giải thích có thêm chi tiết không nằm trong bài.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="a">
+			<legend>App đã phát hành một tháng. Bạn thêm cột <code>pinned</code> vào <code>@Entity</code>. Máy người dùng sẽ có chuyện gì nếu code KHÔNG đụng gì khác?</legend>
+			<label><input type="radio" name="q1" value="a" /> Room thấy version 1 ≠ 2, không được dạy cách nâng → crash</label>
+			<label><input type="radio" name="q1" value="b" /> Room tự thêm cột mới vào file DB cũ một cách an toàn</label>
+			<label><input type="radio" name="q1" value="c" /> Cột mới chỉ không xuất hiện trên máy cũ — mọi thứ khác vẫn chạy</label>
+			<label><input type="radio" name="q1" value="d" /> Room tải lại database từ server</label>
+			<p class="explain" hidden>
+				File SQLite trên máy người dùng lưu số version khi tạo. Room đối chiếu: file version 1, code khai
+				version 2 → tra danh sách migration đã đăng ký (<code>addMigrations</code>); rỗng và không có fallback
+				→ Room từ chối mở (crash có chủ đích, thay vì đoán). Room không bao giờ tự sửa schema (b) — đó chính
+				là lý do migration tồn tại. Crash "khó chịu" là hành vi đúng: lỗi lộ ra lúc dev, không âm thầm ở máy
+				người dùng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>Công thức migration đầu tiên "thêm một cột" gồm những bước nào?</legend>
+			<label><input type="radio" name="q2" value="a" /> Chỉ thêm cột vào <code>@Entity</code> — Room lo phần còn lại</label>
+			<label><input type="radio" name="q2" value="b" /> Gọi support qua email Google để xin nâng cấp schema</label>
+			<label><input type="radio" name="q2" value="c" /> Thêm cột → bump version → Migration + addMigrations</label>
+			<label><input type="radio" name="q2" value="d" /> Xoá app khỏi máy test rồi cài lại</label>
+			<p class="explain" hidden>
+				Bốn bước là một đơn vị: thiếu <em>bump version</em> → Room tưởng schema chưa đổi; thiếu
+				<em>Migration</em> → crash máy người dùng; thiếu <em>addMigrations</em> → migration viết đúng vẫn
+				không được đăng ký, crash như chưa viết. (a) là giả định nguy hiểm nhất — trong máy dev nó đôi khi
+				"tự hóa" vì DB bị tạo lại khi gỡ app, trên máy người dùng thật thì không có phép màu.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Vì sao <code>ALTER TABLE notes ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0</code> phải khai <code>NOT NULL DEFAULT</code>?</legend>
+			<label><input type="radio" name="q3" value="a" /> Vì SQLite bắt buộc mọi cột đều NOT NULL</label>
+			<label><input type="radio" name="q3" value="b" /> Room validate schema sau migration</label>
+			<label><input type="radio" name="q3" value="c" /> Vì DEFAULT giúp tăng tốc độ query</label>
+			<label><input type="radio" name="q3" value="d" /> Vì không khai là lệnh ALTER bị từ chối bởi SQLite engine</label>
+			<p class="explain" hidden>
+				Sau khi migration chạy xong, Room kiểm lại schema thực tế của bảng với khai báo trong <code>@Entity</code>
+				— lệch NOT NULL/DEFAULT là lỗi ngay: "migration đã chạy nhưng kết quả không khớp bản vẽ". Chi tiết
+				kỹ thuật kèm theo: Boolean Kotlin map sang INTEGER 0/1 trong SQLite, và <code>DEFAULT 0</code> là cách
+				mọi dòng cũ nhận giá trị <code>false</code> mà không phá dữ liệu hiện hữu.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend><code>fallbackToDestructiveMigration()</code> làm gì khi không tìm thấy migration cần thiết?</legend>
+			<label><input type="radio" name="q4" value="a" /> Tự sinh migration đơn giản thay bạn</label>
+			<label><input type="radio" name="q4" value="b" /> Chờ tới khi có mạng để hỏi server</label>
+			<label><input type="radio" name="q4" value="c" /> Giữ database cũ, bỏ cột mới</label>
+			<label><input type="radio" name="q4" value="d" /> Xoá sạch DB, tạo lại</label>
+			<p class="explain" hidden>
+				Đây là "nút xoá dữ liệu người dùng". Hợp lý cho <em>cache</em> (dựng lại được) hoặc database
+				in-memory của demo; nguy hiểm cho dữ liệu thật — lỗi tệ nhất của khoá: app chạy bình thường, dữ liệu
+				đã mất, không exception nào báo. Khuôn chung: database có dữ liệu người dùng → viết migration; giữ
+				fallback chỉ trong bản debug nếu cần tốc độ dev.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>Thay đổi schema nào dưới đây vẫn BẮT BUỘC bump version + migration?</legend>
+			<label><input type="radio" name="q5" value="a" /> Thêm một cột duy nhất — "thay đổi nhỏ"</label>
+			<label><input type="radio" name="q5" value="b" /> Không có gì bắt buộc nếu chỉ đổi kiểu dữ liệu hiển thị ở UI</label>
+			<label><input type="radio" name="q5" value="c" /> Chỉ đổi khi thêm nhiều hơn 3 cột</label>
+			<label><input type="radio" name="q5" value="d" /> Room tự quyết định theo độ lớn thay đổi</label>
+			<p class="explain" hidden>
+				Room không phân biệt thay đổi "lớn" hay "nhỏ": mọi thay đổi schema (thêm/xoá/đổi cột, thêm bảng,
+				thêm index) đều là schema mới = version mới = cần migration. Kể cả thêm MỘT cột. Điều (b) đúng theo
+				nghĩa khác — đổi cách <em>hiển thị</em> ở UI không đụng schema nên không cần gì cả; nhưng một khi
+				cột thật sự thêm vào @Entity thì luật áp dụng đầy đủ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>MigrationTestHelper cho phép làm gì trong test?</legend>
+			<label><input type="radio" name="q6" value="a" /> Tự viết migration thay cho lập trình viên</label>
+			<label><input type="radio" name="q6" value="b" /> Chạy app trên emulator thật với dữ liệu thật của người dùng</label>
+			<label><input type="radio" name="q6" value="c" /> Tạo DB version cũ → chạy migration + validate → assert</label>
+			<label><input type="radio" name="q6" value="d" /> Xoá lịch sử schema cũ</label>
+			<p class="explain" hidden>
+				Ba bước của test migration: <strong>Arrange</strong> — <code>createDatabase(TEST_DB, 1)</code> tạo file
+				DB thật ở schema version 1, chèn dòng mẫu; <strong>Act</strong> —
+				<code>runMigrationsAndValidate(TEST_DB, 2, true, MIGRATION_1_2)</code> chạy migration và validate
+				schema sau khi chạy; <strong>Assert</strong> — query lại: dòng cũ còn, cột mới có default. Test nằm
+				trong <code>androidTest</code> (cần instrumentation). Migration đáng test hơn cả ViewModel vì nó chạy
+				trên dữ liệu quý nhất, đúng một lần, gãy thì không thử lại được.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Bạn viết <code>MIGRATION_1_2</code> đúng nhưng quên <code>addMigrations(MIGRATION_1_2)</code> khi build database. Kết quả?</legend>
+			<label><input type="radio" name="q7" value="a" /> Room tự tìm migration trong classpath</label>
+			<label><input type="radio" name="q7" value="b" /> Crash như chưa tồn tại</label>
+			<label><input type="radio" name="q7" value="c" /> Migration chỉ chạy chậm hơn</label>
+			<label><input type="radio" name="q7" value="d" /> Compiler báo lỗi lúc build app</label>
+			<p class="explain" hidden>
+				Danh sách migration là những gì được khai qua <code>addMigrations()</code> — Room không "tự tìm"
+				(a), không có lỗi compile (d) vì mọi thứ vẫn là Kotlin hợp lệ. Cách bắt lớp lỗi này: test migration
+				phải build database bằng chính đường dây production (cùng builder, cùng danh sách migration) chứ
+				không gọi helper một mình.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>Trong khi DEV, schema đổi mỗi ngày và dữ liệu dev không quý. Khuôn thực dụng là gì?</legend>
+			<label><input type="radio" name="q8" value="a" /> Không bao giờ dùng fallback dù ở đâu — viết migration từ phút đầu</label>
+			<label><input type="radio" name="q8" value="b" /> Luôn dùng fallback ở mọi nơi — dev lẫn production</label>
+			<label><input type="radio" name="q8" value="c" /> Bỏ luôn Room, dùng file JSON</label>
+			<label><input type="radio" name="q8" value="d" /> Fallback chỉ bản debug; production viết migration</label>
+			<p class="explain" hidden>
+				Hai bối cảnh, hai quy tắc: dev — schema đổi liên tục, dữ liệu test không quý, fallback tiết kiệm
+				hàng giờ mỗi tuần; production — dữ liệu người dùng là quý nhất, fallback là rủi ro mất dữ liệu im
+				lặng. Tách bằng build type (debug có fallback, release không) hoặc viết migration ngay từ thay đổi
+				đầu tiên để giữ thói quen. Không có một câu trả lời đúng cho cả hai bối cảnh — đó là ý của
+				"development vs production trade-off".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend><code>exportSchema = true</code> phát huy tác dụng gì cho migration?</legend>
+			<label><input type="radio" name="q9" value="a" /> Xuất JSON từng version</label>
+			<label><input type="radio" name="q9" value="b" /> Tự động backup database lên Google Drive</label>
+			<label><input type="radio" name="q9" value="c" /> Làm query chạy nhanh hơn</label>
+			<label><input type="radio" name="q9" value="d" /> Chỉ phục vụ tài liệu, không liên quan migration</label>
+			<p class="explain" hidden>
+				Schema JSON là <em>bản vẽ được lưu lại của từng version</em>: đối chiếu 1 vs 2 khi viết migration,
+				helper dùng nó để dựng DB version cũ trong test, và auto-migration cần nó để biết "từ gì sang gì".
+				Từ Room 2.4: auto-migration tự sinh cho thay đổi tự mô tả được (thêm cột có default, thêm bảng) khi
+				exportSchema bật; đổi tên cột (cần ý định con người — cột nào thành cột nào) vẫn phải khai
+				<code>@RenameColumn</code> hoặc viết Migration tay.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Về Room 2.x vs Room 3 (<code>androidx.room3</code>), điều nào đúng?</legend>
+			<label><input type="radio" name="q10" value="a" /> Room 3 xoá bỏ khái niệm migration — không cần version nữa</label>
+			<label><input type="radio" name="q10" value="b" /> Đổi nền SQLiteDriver nhưng tư duy migration giữ nguyên</label>
+			<label><input type="radio" name="q10" value="c" /> Room 2.x đã deprecated — phải nâng ngay hôm nay</label>
+			<label><input type="radio" name="q10" value="d" /> Room 3 chỉ dành cho iOS</label>
+			<p class="explain" hidden>
+				Room 3 là thế hệ rebuild cho Kotlin Multiplatform: đổi nền SQLite qua <code>SQLiteDriver</code> bắt
+				buộc, một số API cũ dịch chuyển. Nhưng học phần cứng của bài — version đối chiếu, Migration object,
+				exportSchema, test migration — còn giá trị ở cả hai thế hệ vì đó là <em>tư duy</em>, không phải
+				cú pháp. Room 2.x (đang dùng) là dòng ổn định hiện hành, không deprecated. Bảng đối chiếu chi tiết
+				nằm ở AP3.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	// Harness chung — chấm MCQ, "Câu x/N", retry ẩn→hiện→ẩn (IMP-001 contract, quiz.css).
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>

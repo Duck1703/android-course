@@ -1,0 +1,358 @@
+---
+// O4 — WorkManagerCongViecNen.astro — "WorkManager: công việc nền hiện đại".
+// Workstream F / IMP-053. Learning job: "Biết khi nào công việc nền nên dùng
+// WorkManager."
+//
+// Reuse: A12 (Ch03.3 — survey manifest/intent/permission; WorkManager được nhắc
+// ở mức khảo sát), S1 (coroutine foundation), W3 (trạng thái quan sát), S5 (repository).
+//
+// Không dạy (anti-myth, brief §14):
+//  - WorkManager ≠ foreground service (đó là Service + notification; WM có
+//    setForeground() cho long-running worker nhưng KHÔNG dạy sâu)
+//  - WorkManager ≠ coroutine replacement (công việc UI tức thời → viewModelScope)
+//  - WorkManager ≠ precise alarm (đó là AlarmManager)
+//  - WorkManager ≠ immediate network request từ button click (→ Retrofit + ViewModel)
+//
+// Freshness (kiểm 09/09/2026 — chi tiết #nguon):
+//  - androidx.work:work-runtime-ktx 2.10.x hiện hành; CoroutineWorker là cách khuyến nghị
+//  - OneTimeWorkRequest / PeriodicWorkRequest (min interval 15 phút — QUOTA hệ thống)
+//  - Constraints: NetworkType.CONNECTED/UNMETERED, requiresCharging, requiresBatteryNotLow...
+//  - unique work: enqueueUniqueWork + ExistingWorkPolicy (REPLACE/KEEP/APPEND...)
+//  - Retry/backoff: Result.retry() + BackoffPolicy (EXPONENTIAL/LINEAR) mặc định 30s
+//  - observe WorkInfo qua Flow (WorkManager.observe... hay getWorkInfoByIdFlow)
+import { Code } from "astro:components";
+
+const workerCode = `class SyncDraftsWorker(
+  context: Context,
+  params: WorkerParameters
+) : CoroutineWorker(context, params) {
+
+  override suspend fun doWork(): Result {
+    val unsent = draftRepository.unsentDrafts()   // nguồn dữ liệu qua repository (S5)
+
+    return try {
+      draftRepository.sendAll(unsent)
+      Result.success()
+    } catch (io: IOException) {
+      Result.retry()                             // lỗi tạm thời → xin thử lại sau
+    }
+  }
+}`;
+
+const enqueueCode = `val constraints = Constraints.Builder()
+  .setRequiredNetworkType(NetworkType.CONNECTED)
+  .setRequiresBatteryNotLow(true)
+  .build()
+
+val request = OneTimeWorkRequestBuilder<SyncDraftsWorker>()
+  .setConstraints(constraints)
+  .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
+  .build()
+
+WorkManager.getInstance(context).enqueueUniqueWork(
+  "sync-drafts",                       // tên duy nhất — chạy lại không tạo bản thứ hai
+  ExistingWorkPolicy.REPLACE,          // yêu cầu mới thay yêu cầu cũ đang chờ
+  request
+)`;
+
+const observeCode = `val syncState: Flow<List<WorkInfo>> =
+  WorkManager.getInstance(context)
+    .getWorkInfosForUniqueWorkFlow("sync-drafts")
+
+// trong ViewModel/Compose: đọc state để hiện "đang đồng bộ..."
+// — cùng mô hình đọc-observable đã dạy ở W3`;
+
+const periodicCode = `val dailyBackup = PeriodicWorkRequestBuilder<BackupWorker>(
+  repeatInterval = 1, repeatIntervalTimeUnit = TimeUnit.DAYS
+).build()
+
+WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+  "daily-backup",
+  ExistingPeriodicWorkPolicy.KEEP,     // đã có lịch thì giữ — không lập lại mỗi lần mở app
+  dailyBackup
+)`;
+---
+
+<article class="lesson">
+	<div class="callout goals">
+		<p><strong>Sau bài này bạn sẽ:</strong></p>
+		<ul>
+			<li>Giải thích được <strong>công việc nền trì hoãn được bảo đảm</strong> (deferred guaranteed work) là gì, và vì sao Android hiện đại bắt app đi qua WorkManager cho loại công việc này.</li>
+			<li>Chỉ ra được <strong>ba việc WorkManager KHÔNG làm</strong>: không thay thế coroutine cho việc UI tức thời, không phải báo thức chính xác, không phải foreground service.</li>
+			<li>Tự viết được một <code>CoroutineWorker</code> với ba kết quả (<code>success / retry / failure</code>) và vì sao lỗi mạng nên là <code>retry</code>.</li>
+			<li>Đặt được <strong>constraints</strong> (có mạng, pin không yếu...) và <strong>unique work</strong> — cùng hậu quả của việc quên nó.</li>
+			<li>Nhận diện được retry/backoff, công việc định kỳ (tối thiểu 15 phút), và cách <em>quan sát</em> trạng thái công việc để hiện lên UI.</li>
+		</ul>
+	</div>
+
+	<p>
+		Ở A12, khảo sát về nền Android đã liệt kê WorkManager trong danh sách "công cụ nào cho việc nào" —
+		nhưng chưa làm gì với nó. Giờ bạn có đủ nền tảng (coroutine ở S1, repository ở S5, trạng thái quan
+		sát được ở W3) để hiểu nó thật. Câu hỏi của bài không phải "WorkManager hoạt động ra sao trong từng
+		chi tiết" mà là <strong>"công việc nào của app tôi đáng dùng nó"</strong> — và công việc nào <em>không</em>
+		đáng, dù nghe có vẻ liên quan đến "chạy nền".
+	</p>
+
+	<p class="hint">
+		<strong>Cần biết trước.</strong> Coroutine và <code>suspend</code> theo S1; repository theo S5;
+		trạng thái quan sát qua Flow theo W3; khảo sát công cụ nền (Service, Alarm, WorkManager) theo A12.
+		Không cần kiến thức Room/Retrofit cụ thể — ví dụ dùng một <code>draftRepository</code> hư cấu đúng
+		hình dạng S5.
+	</p>
+
+	<div class="callout mental">
+		<strong>Mental model: bưu điện tận nhà.</strong>
+		<p>
+			Bạn đưa lá thư cho bưu điện rồi đi làm việc khác — không đứng chờ bưu tá. Bưu điện hứa: <em>lá thư
+			sẽ đến tận nơi</em>, dù phải chờ đường thông, chờ xe rảnh, thử lại khi bưu cục quá tải. WorkManager
+			là bưu điện của Android: bạn khai "việc này cần xảy ra, kể cả khi app bị đóng, kể cả sau khi khởi
+			động lại máy" — hệ thống lo phần còn lại. Ngược lại, gọi API ngay khi người dùng bấm nút là
+			<em>bạn tự chạy đến bưu cục</em>: cần kết quả ngay, không phải công việc của bưu điện.
+		</p>
+	</div>
+
+	<h2 id="deferred-guaranteed">1. Công việc "trì hoãn được bảo đảm" — định nghĩa bằng ba chữ</h2>
+
+	<ul>
+		<li><strong>Trì hoãn được (deferred)</strong> — không cần xảy ra ngay. Người dùng không nhìn thấy và
+		không chờ nó: đồng bộ bản nháp lên server, nén ảnh cho lần gửi sau, dọn cache, sao lưu hằng ngày.</li>
+		<li><strong>Bảo đảm (guaranteed)</strong> — Android hứa nó <em>rồi sẽ chạy</em>, kể cả khi app bị
+		hệ thống đóng, kể cả khi thiết bị khởi động lại. Đây là phần hệ thống lo, không phải code của bạn.</li>
+		<li><strong>Chạy nền (background)</strong> — không gắn với một màn hình nào đang mở.</li>
+	</ul>
+
+	<p>
+		Vì sao phải đi qua một thư viện? Vì Android hiện đại khóa các cửa sổ chạy nền tự do: từ API 26,
+		broadcast ngầm bị siết; từ API 28+ trở đi, đứng ngoài mọi framework mà chạy việc nền "hứa được" gần
+		như không khả thi. WorkManager là <strong>cửa chính thức duy nhất</strong> còn mở cho công việc
+		bảo đảm — nó tự chọn cơ chế dưới (JobScheduler, Alarm, broadcast...) theo phiên bản Android. Bạn
+		học một API, hệ thống lo phần tương thích.
+	</p>
+
+	<div class="callout note">
+		<p>
+			<strong>Thử phân loại trước khi đọc tiếp.</strong> Bốn việc sau — việc nào là "trì hoãn được bảo
+			đảm"? (1) Gửi tin nhắn khi người dùng bấm Gửi. (2) Đồng bộ lại bản nháp chưa gửi được, mỗi khi máy
+			có mạng. (3) Báo thức medication 8h sáng chính xác từng giây. (4) Làm mờ 10 ảnh khi người dùng mở
+			màn trình bày ảnh.
+			<details><summary>Xem đáp án</summary>
+			Chỉ (2). (1) là hành động UI tức thời — người dùng đang nhìn và chờ, đi qua ViewModel + Retrofit.
+			(3) cần độ chính xác từng giây — đó là AlarmManager (WorkManager định kỳ tối thiểu 15 phút và chỉ
+			hứa "trong khung"). (4) cần chạy <em>trong lúc người dùng đang xem</em> — đó là coroutine trong
+			viewModelScope, công việc kết thúc cùng màn hình. Quy tắc nhanh: <strong>người dùng có nhìn thấy và
+			chờ việc đó không? Có → không phải WorkManager.</strong></details>
+		</p>
+	</div>
+
+	<h2 id="worker">2. CoroutineWorker: một hàm, ba kết quả</h2>
+
+	<Code code={workerCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		<code>CoroutineWorker</code> là biến thể khuyến nghị hiện nay: <code>doWork()</code> là hàm
+		<code>suspend</code> — mọi kỹ năng S1 dùng lại nguyên văn, không phải học mô hình callback. Hàm trả
+		về một trong ba kết quả, và mỗi kết quả là một lời hứa khác nhau:
+	</p>
+
+	<table class="api">
+		<thead>
+			<tr><th>Kết quả</th><th>Ý nghĩa</th><th>Hệ thống làm gì</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>Result.success()</code></td>
+				<td>Việc xong</td>
+				<td>Bỏ yêu cầu khỏi hàng đợi</td>
+			</tr>
+			<tr>
+				<td><code>Result.retry()</code></td>
+				<td>Chưa xong, nhưng đáng thử lại (mạng rớt, server 5xx)</td>
+				<td>Chạy lại theo chính sách backoff — mục 3</td>
+			</tr>
+			<tr>
+				<td><code>Result.failure()</code></td>
+				<td>Gãy vĩnh viễn (input sai, dữ liệu hỏng) — thử lại vô ích</td>
+				<td>Bỏ yêu cầu, đánh dấu failed</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p>
+		Quy tắc phân biệt <code>retry</code> và <code>failure</code> thực dụng: <strong>lỗi sẽ tự hết nếu
+		cố lại sau → retry; lỗi không đổi nếu cố lại → failure.</strong> Mạng rớt, server quá tải là
+		retry; JSON hỏng, file không tồn tại là failure. Nuốt exception rồi trả <code>success()</code> để
+		"cho qua" là lỗi âm thầm kinh điển: công việc tưởng đã xong, dữ liệu thật sự chưa đi đâu.
+	</p>
+
+	<p>
+		Và chú ý dòng đầu của Worker: nó gọi <code>draftRepository</code> — chính là <strong>tầng repository
+		của S5</strong>. Worker không tự biết Room hay Retrofit; nó là một người gọi khác của cùng cửa vào
+		dữ liệu. Đây là cách kiến trúc giữ nguyên khi thêm một "người dùng" mới (Worker) vào app.
+	</p>
+
+	<h2 id="enqueue">3. Đưa việc vào hàng đợi: constraints, unique, backoff</h2>
+
+	<Code code={enqueueCode} lang="kotlin" theme="github-dark" />
+
+	<p>Ba mảnh trong đoạn ngắn này đáng dừng lại:</p>
+
+	<ul>
+		<li>
+			<strong>Constraints — điều kiện "khi nào ĐƯỢC chạy".</strong> Bạn khai yêu cầu (phải có mạng, pin
+			không yếu...); hệ thống chỉ khởi động Worker khi điều kiện thỏa. Đây là phần "miễn phí" lớn nhất
+			của WorkManager: tự viết thủ công nghĩa là tự nghe broadcast PIN/Network rồi tự quản vòng đời —
+			không khả thi.
+		</li>
+		<li>
+			<strong>Unique work — một cái tên, một bản sao.</strong> <code>enqueueUniqueWork("sync-drafts",
+			...)</code> bảo đảm không bao giờ có hai Worker "sync-drafts" cùng lúc. Đủ policy: <code>REPLACE</code>
+			(yêu cầu mới thay cũ đang chờ — hợp cho đồng bộ), <code>KEEP</code> (cũ đang chạy/chờ thì giữ, yêu
+			cầu mới bị bỏ). <strong>Quên unique work là lỗi kinh điển</strong>: mỗi lần mở app enqueue một
+			bản, sáu bản đồng bộ chạy chồng nhau, server của bạn "tự dưng" gánh gấp sáu.
+		</li>
+		<li>
+			<strong>Backoff — nhịp thử lại.</strong> <code>Result.retry()</code> không nói "thử ngay sau 0
+			giây"; khoảng cách do <code>setBackoffCriteria</code> định: <code>EXPONENTIAL</code> (10s → 20s →
+			40s...) là mặc định hợp lý, tránh dập server bằng chuỗi retry dồn dập.
+		</li>
+	</ul>
+
+	<h3>3.1. Công việc định kỳ: tối thiểu 15 phút</h3>
+
+	<Code code={periodicCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		<code>PeriodicWorkRequest</code> có khoảng cách nhỏ nhất là <strong>15 phút</strong> — không phải
+		giới hạn của thư viện, mà là hạn mức hệ thống để bảo vệ pin. Và nó chỉ hứa "chạy <em>trong khung</em>
+		mỗi 15 phút", không hứa "đúng giờ tick". Đó là lý do báo thức đúng giây không thuộc WorkManager.
+		<code>ExistingPeriodicWorkPolicy.KEEP</code> trong ví dụ là khuôn chuẩn cho lịch hằng ngày: lần mở
+		app thứ hai KHÔNG lập lại lịch — chính là unique work áp cho định kỳ.
+	</p>
+
+	<h2 id="observe">4. Quan sát công việc — nối về UI theo đúng mô hình đã học</h2>
+
+	<Code code={observeCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Công việc nền vẫn cần được <em>nhìn thấy</em> khi nó hiển thị: vòng quay "đang đồng bộ..." trên UI
+		phải phản ánh trạng thái thật. WorkManager phơi trạng thái qua Flow — cùng mô hình "đọc quan sát
+		được" của W3: ViewModel collect, UI render, không polling, không callback rải rác. Các trạng thái
+		quan trọng: <code>ENQUEUED</code> (đang chờ, ví dụ chờ có mạng), <code>RUNNING</code>,
+		<code>SUCCEEDED</code>/<code>FAILED</code>.
+	</p>
+
+	<div class="callout note">
+		<p>
+			<strong>Mức tối thiểu của bài:</strong> quan sát chỉ cần khi UI phải hiển thị tiến trình. Với việc
+			"tự chạy lặng lẽ" (sao lưu, dọn dẹp), không cần quan sát gì cả — enqueue rồi quên là thiết kế đúng.
+		</p>
+	</div>
+
+	<h2 id="khong-la">5. Bốn điều WorkManager KHÔNG làm</h2>
+
+	<table class="cmp">
+		<thead>
+			<tr><th>Sai lầm phổ biến</th><th>Thực tế</th><th>Công cụ đúng</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>"Chạy ngay khi bấm nút"</td>
+				<td>WorkManager <em>bảo đảm</em> sẽ chạy, không hứa <em>ngay</em> — hàng đợi của hệ thống, có thể
+				chờ constraints</td>
+				<td>ViewModel + coroutine (S1/S4)</td>
+			</tr>
+			<tr>
+				<td>"Thay coroutine"`</td>
+				<td>Worker là người gọi <em>khác</em> của tầng dữ liệu; coroutine trong Worker vẫn là coroutine
+				S1</td>
+				<td>Coroutine cho mọi việc trong vòng đời màn hình</td>
+			</tr>
+			<tr>
+				<td>"Báo thức đúng giờ"</td>
+				<td>Định kỳ tối thiểu 15 phút, chỉ hứa "trong khung"</td>
+				<td>AlarmManager cho báo thức chính xác</td>
+			</tr>
+			<tr>
+				<td>"Foreground service để nghe nhạc / định vị"</td>
+				<td>Khác hoàn toàn: foreground service là Service + notification, sống lâu và người dùng thấy
+				(ví dụ phát nhạc). WorkManager có cầu <code>setForeground()</code> cho worker dài, nhưng đó là
+				chủ đề riêng</td>
+				<td>Foreground service (không trong khoá này)</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<div class="callout mental">
+		<strong>Chỉ có một câu hỏi cần thuộc:</strong> "Việc này cần xảy ra <em>ngay</em> và người dùng
+		<em>đang chờ</em>?" — Đúng: coroutine + ViewModel. Sai, và phải xong <em>dù app đã đóng</em>:
+		WorkManager. Còn lại là biến thể của hai câu đó.
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+
+	<div class="callout diff">
+		<p>
+			<strong>1. Enqueue trong Activity.onCreate không unique.</strong> Mỗi lần mở app là một bản Worker
+			mới trong hàng đợi. Mười lần mở app, mười bản đồng bộ chờ chạy. Luôn dùng
+			<code>enqueueUniqueWork</code> / <code>enqueueUniquePeriodicWork</code> với tên cố định — và chọn
+			policy có chủ đích (REPLACE cho đồng bộ, KEEP cho lịch định kỳ).
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>2. Nuốt exception rồi trả <code>Result.success()</code>.</strong> Worker "thành công",
+			hàng đợi sạch, dữ liệu chưa đi đâu — và không có log nào báo lỗi vì bạn đã bắt nó. Dùng
+			<code>retry()</code> cho lỗi tạm thời, <code>failure()</code> cho lỗi vĩnh viễn; giữ
+			<code>try/catch</code> hẹp quanh chỗ thật sự có thể gãy.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>3. <code>PeriodicWorkRequest</code> với interval nhỏ hơn 15 phút.</strong> Thư viện tự nâng
+			lên 15 phút một cách im lặng (không exception) — lịch "mỗi phút" của bạn thực chất là lịch 15 phút.
+			Nếu kiểm thử cần chạy nhanh hơn, dùng OneTimeWork + test driver của <code>androidx.work:work-testing</code>
+			— đừng bẻ interval.
+		</p>
+	</div>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+
+	<ul class="keypoints">
+		<li><strong>WorkManager = công việc trì hoãn được bảo đảm:</strong> xong dù app đóng, dù máy khởi
+		động lại; là cửa chính thức duy nhất cho việc nền "hứa được" trên Android hiện đại.</li>
+		<li><strong>Đúng việc:</strong> người dùng không nhìn thấy và không chờ (đồng bộ, sao lưu, dọn
+		dẹp). Sai việc: bấm nút → thấy ngay (ViewModel), báo thức đúng giây (AlarmManager), phát nhạc/định
+		vị (foreground service).</li>
+		<li><code>CoroutineWorker.doWork()</code> trả <strong>success / retry / failure</strong> — retry cho
+		lỗi tạm thời (mạng), failure cho lỗi vĩnh viễn; nuốt exception rồi success là lỗi âm thầm.</li>
+		<li><strong>Constraints</strong> khai điều kiện chạy (mạng, pin); <strong>unique work</strong> chống
+		đăng ký chồng; <strong>backoff exponential</strong> là nhịp retry mặc định hợp lý.</li>
+		<li><strong>Định kỳ tối thiểu 15 phút</strong> — hạn mức hệ thống bảo vệ pin; chỉ hứa "trong
+		khung", không hứa đúng giờ.</li>
+		<li><strong>Quan sát qua Flow</strong> khi UI cần hiện tiến trình — cùng mô hình W3; việc lặng lẽ
+		thì enqueue rồi quên.</li>
+		<li><strong>Worker gọi repository</strong> như mọi người dùng khác của tầng dữ liệu (S5) — kiến
+		trúc không đổi khi thêm Worker.</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<p class="src">
+		<strong>Tài liệu chính thức:</strong> developer.android.com — <em>WorkManager</em> (Guide:
+		<em>Define work requests</em>, <em>Work states</em>, <em>Custom work configuration</em>; kiểm
+		09/09/2026: <code>CoroutineWorker</code> là khuyến nghị, interval định kỳ tối thiểu 15 phút là
+		hạn mức tài liệu nêu, backoff mặc định EXPONENTIAL) · <em>Background work overview</em> — bảng
+		phân loại "immediate / deferred / long-running" là khung của bài này.
+	</p>
+	<p class="src">
+		<strong>Nội dung của chính khoá học:</strong> A12 (<code>Ch03_3ManifestIntentPermission.astro</code>)
+		— khảo sát công cụ nền, manifest/permission · S1 — coroutine/suspend · S5 — repository là cửa vào
+		dữ liệu · W3 — trạng thái quan sát qua Flow · X1 (mục backup) — liên hệ việc nền định kỳ.
+	</p>
+	<p class="src">
+		<strong>Ví dụ do khoá dựng:</strong> <code>SyncDraftsWorker</code>, đoạn enqueue/observe — viết cho
+		bài này theo API đã kiểm; không trích <code>aaf-materials/</code> (giáo trình không dạy
+		WorkManager).
+	</p>
+</article>

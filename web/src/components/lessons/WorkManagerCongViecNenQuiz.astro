@@ -1,0 +1,167 @@
+---
+// Quiz O4 — WorkManagerCongViecNenQuiz.astro — bám nội dung O4 (WorkManager).
+// Workstream F / IMP-053. 10 câu: deferred-guaranteed, 3 kết quả, constraints,
+// unique work, backoff, periodic 15 phút, quan sát, anti-myth.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		10 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích hiện ra sau khi chấm —
+		đọc cả những câu bạn làm đúng, vì nhiều giải thích có thêm chi tiết không nằm trong bài.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>Việc nào dưới đây ĐÚNG là công việc cho WorkManager?</legend>
+			<label><input type="radio" name="q1" value="a" /> Gửi request tìm kiếm khi người dùng bấm nút Tìm</label>
+			<label><input type="radio" name="q1" value="b" /> Đồng bộ bản nháp khi có mạng, kể cả app đã đóng</label>
+			<label><input type="radio" name="q1" value="c" /> Cập nhật chữ trên màn hình sau khi người dùng gõ</label>
+			<label><input type="radio" name="q1" value="d" /> Báo thức uống thuốc lúc 8:00:00 chính xác</label>
+			<p class="explain" hidden>
+				WorkManager dành cho việc <strong>trì hoãn được bảo đảm</strong>: người dùng không nhìn thấy và không
+				chờ, nhưng phải xong dù app đã đóng (a) và (c) là việc UI tức thời — người dùng đang nhìn và chờ →
+				ViewModel + coroutine. (d) cần độ chính xác từng giây — AlarmManager; WorkManager định kỳ tối thiểu
+				15 phút và chỉ hứa "trong khung". Quy tắc nhanh: người dùng có chờ việc đó không? Có → không phải
+				WorkManager.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend><code>doWork()</code> gọi API, network rớt giữa chừng. Nên trả kết quả gì?</legend>
+			<label><input type="radio" name="q2" value="a" /> <code>Result.success()</code> — để Worker không chạy lại, tránh tốn pin</label>
+			<label><input type="radio" name="q2" value="b" /> <code>Result.failure()</code> — vì công việc đã thất bại</label>
+			<label><input type="radio" name="q2" value="c" /> <code>Result.retry()</code> — lỗi tạm thời, thử lại được</label>
+			<label><input type="radio" name="q2" value="d" /> Ném exception ra ngoài — hệ thống tự xử lý</label>
+			<p class="explain" hidden>
+				Quy tắc phân biệt: lỗi <em>tự hết nếu thử lại</em> (mạng rớt, server 5xx) → <code>retry()</code>, hệ
+				thống chạy lại theo backoff. Lỗi <em>không đổi nếu thử lại</em> (JSON hỏng, file không tồn tại) →
+				<code>failure()</code>. Trả <code>success()</code> là lỗi âm thầm kinh điển: Worker "thành công",
+				hàng đợi sạch, nhưng dữ liệu chưa đi đâu — và không log nào báo vì exception đã bị nuốt.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend><code>Constraints</code> (setRequiredNetworkType, setRequiresBatteryNotLow...) quyết định điều gì?</legend>
+			<label><input type="radio" name="q3" value="a" /> Điều kiện "khi nào ĐƯỢC chạy" của Worker</label>
+			<label><input type="radio" name="q3" value="b" /> Giới hạn số dòng code của Worker</label>
+			<label><input type="radio" name="q3" value="c" /> Quyền (permission) cần khai trong manifest</label>
+			<label><input type="radio" name="q3" value="d" /> Thứ tự ưu tiên giữa các Worker</label>
+			<p class="explain" hidden>
+				Constraints là khai báo "chỉ chạy khi..." — Worker nằm trong hàng đợi <code>ENQUEUED</code> cho tới khi
+				điều kiện thỏa (có mạng, pin không yếu...). Đây là phần "miễn phí" lớn nhất của WorkManager: tự viết
+				thủ công nghĩa là tự nghe broadcast pin/mạng rồi tự quản vòng đời. Constraints không liên quan
+				permission (manifest) hay ưu tiên giữa các Worker.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>App enqueue đồng bộ mỗi lần người dùng mở app, không dùng unique work. Hậu quả?</legend>
+			<label><input type="radio" name="q4" value="a" /> WorkManager tự gộp các yêu cầu trùng tên class</label>
+			<label><input type="radio" name="q4" value="b" /> Chỉ bản đầu tiên chạy, các bản sau bị bỏ</label>
+			<label><input type="radio" name="q4" value="c" /> Không có gì — enqueue hai lần là ghi đè</label>
+			<label><input type="radio" name="q4" value="d" /> Mỗi lần mở app thêm một bản Worker</label>
+			<p class="explain" hidden>
+				<code>enqueue()</code> thường tạo yêu cầu mới mỗi lần gọi — không có gộp tự động (a), không tự ghi đè
+				(c). Cách đúng: <code>enqueueUniqueWork("sync-drafts", policy, request)</code> — một tên, một bản sao;
+				<code>REPLACE</code> cho đồng bộ (mới thay cũ), <code>KEEP</code> cho lịch định kỳ (cũ đang chờ thì
+				giữ). Quên unique work là lỗi kinh điển nhất khi mới dùng WorkManager.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Chính sách backoff <code>EXPONENTIAL</code> với khởi điểm 10 giây nghĩa là gì?</legend>
+			<label><input type="radio" name="q5" value="a" /> Thử lại đúng 10 lần rồi dừng</label>
+			<label><input type="radio" name="q5" value="b" /> Thử lại cách nhau xa dần</label>
+			<label><input type="radio" name="q5" value="c" /> Chờ 10 giây rồi chạy Worker chính</label>
+			<label><input type="radio" name="q5" value="d" /> Mười luồng chạy song song</label>
+			<p class="explain" hidden>
+				Backoff là <em>nhịp</em> giữa các lần <code>retry()</code>: EXPONENTIAL nhân đôi khoảng cách mỗi lần
+				(10 → 20 → 40...), LINEAR cộng đều. Mục đích: khi server vừa rớt, một đám Workers retry dồn dập cùng
+				lúc chỉ làm nó gãy thêm. <code>Result.retry()</code> không hứa "thử ngay" — khoảng cách do chính sách
+				này định.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>WorkManager định kỳ có interval nhỏ nhất bao nhiêu và vì sao?</legend>
+			<label><input type="radio" name="q6" value="a" /> 1 phút — để app phản ứng nhanh</label>
+			<label><input type="radio" name="q6" value="b" /> Không giới hạn</label>
+			<label><input type="radio" name="q6" value="c" /> 15 phút — hạn mức hệ thống</label>
+			<label><input type="radio" name="q6" value="d" /> 24 giờ — vì chỉ chạy lúc đêm</label>
+			<p class="explain" hidden>
+				<code>PeriodicWorkRequest</code> tối thiểu 15 phút — không phải giới hạn thư viện mà là hạn mức hệ
+				thống bảo vệ pin. Và nó chỉ hứa "chạy trong khung", không hứa "đúng giờ tick" — đó là lý do báo thức
+				đúng giây thuộc AlarmManager. Nếu khai interval nhỏ hơn 15 phút, thư viện im lặng nâng lên 15 (không
+				exception) — lịch "mỗi phút" của bạn thực chất là 15 phút.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>Vòng quay "đang đồng bộ..." trên UI nên lấy dữ liệu từ đâu?</legend>
+			<label><input type="radio" name="q7" value="a" /> Quan sát WorkInfo qua Flow</label>
+			<label><input type="radio" name="q7" value="b" /> Một biến toàn cục Worker tự ghi</label>
+			<label><input type="radio" name="q7" value="c" /> Polling mỗi giây bằng Handler</label>
+			<label><input type="radio" name="q7" value="d" /> Đặt sẵn vòng quay vĩnh viễn, không cần biết trạng thái thật</label>
+			<p class="explain" hidden>
+				WorkManager phơi trạng thái (ENQUEUED/RUNNING/SUCCEEDED/FAILED) qua Flow — cùng mô hình "đọc quan sát
+				được" của W3: ViewModel collect, UI render, không polling (c), không biến toàn cục (b). Nhưng nhớ mức
+				đúng-đủ: quan sát chỉ cần khi UI phải hiển thị; việc lặng lẽ (sao lưu, dọn dẹp) thì enqueue rồi quên
+				là thiết kế đúng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>Trong Worker, dòng <code>draftRepository.unsentDrafts()</code> minh hoạ nguyên tắc kiến trúc nào?</legend>
+			<label><input type="radio" name="q8" value="a" /> Worker phải tự mở Room connection riêng cho từng request</label>
+			<label><input type="radio" name="q8" value="b" /> Worker là tầng UI của app</label>
+			<label><input type="radio" name="q8" value="c" /> Worker thay thế hoàn toàn ViewModel</label>
+			<label><input type="radio" name="q8" value="d" /> Worker là người gọi khác của cùng tầng repository</label>
+			<p class="explain" hidden>
+				Theo S5, cửa vào dữ liệu duy nhất là repository — ViewModel đi qua nó, Worker cũng đi qua nó. Worker
+				không tự biết Room/Retrofit (a sai), không phải tầng UI (b), không thay ViewModel — nó đảm nhiệm
+				công việc không gắn màn hình. Lợi ích thật: thêm một loại người dùng mới vào app mà tầng dữ liệu
+				không phải đổi.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Phát nhạc trong nền với notification điều khiển — dùng WorkManager đúng không?</legend>
+			<label><input type="radio" name="q9" value="a" /> Đúng — Worker chạy được vô hạn trong nền</label>
+			<label><input type="radio" name="q9" value="b" /> Không — đó là foreground service</label>
+			<label><input type="radio" name="q9" value="c" /> Đúng nếu khai constraint <code>requiresCharging</code></label>
+			<label><input type="radio" name="q9" value="d" /> Đúng nếu dùng CoroutineWorker thay vì Worker</li></label>
+			<p class="explain" hidden>
+				Four myth của bài: WorkManager ≠ chạy-ngay, ≠ thay coroutine, ≠ báo thức chính xác, ≠ foreground
+				service. Phát nhạc/định vị dài hạn là foreground service — người dùng thấy, có notification điều khiển,
+				sống đến khi dừng. WorkManager có cầu <code>setForeground()</code> cho worker dài hạn (đồng bộ lớn)
+				nhưng đó là chủ đề riêng, không phải mô hình phát nhạc. <code>CoroutineWorker</code> (d) chỉ đổi cách
+				viết code trong Worker, không đổi bản chất.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>ExistingWorkPolicy.REPLACE và KEEP khác nhau thế nào khi yêu cầu "sync-drafts" đang chờ chạy?</legend>
+			<label><input type="radio" name="q10" value="a" /> Hai policy giống hệt nhau</label>
+			<label><input type="radio" name="q10" value="b" /> REPLACE bỏ yêu cầu mới còn KEEP bỏ yêu cầu cũ — ngược nhau hoàn toàn</label>
+			<label><input type="radio" name="q10" value="c" /> REPLACE: mới thay cũ đang chờ; KEEP: giữ cũ, bỏ mới</label>
+			<label><input type="radio" name="q10" value="d" /> REPLACE xoá luôn Worker class khỏi app</label>
+			<p class="explain" hidden>
+				REPLACE hợp cho đồng bộ: bản nháp mới hơn đáng "thay" yêu cầu cũ đang chờ (vì yêu cầu cũ chạy xong
+				cũng sẽ đồng bộ cả bản mới). KEEP hợp cho lịch định kỳ: lần mở app thứ hai KHÔNG lập lại lịch sao lưu
+				hằng ngày. Policy chọn sai là hai dạng lỗi ngược nhau: REPLACE khi cần KEEP làm lịch bị reset liên
+				tục; KEEP khi cần REPLACE làm bản mới không bao giờ được đồng bộ.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	// Harness chung — chấm MCQ, "Câu x/N", retry ẩn→hiện→ẩn (IMP-001 contract, quiz.css).
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>
