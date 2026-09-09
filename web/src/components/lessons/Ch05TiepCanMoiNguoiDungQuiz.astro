@@ -12,7 +12,7 @@
 	<form id="quiz-form">
 		<fieldset data-answer="b">
 			<legend>1. TalkBack không "xem" màn hình — nó đọc gì?</legend>
-			<label><input type="radio" name="q1" value="b" /> Phần mô tả kèm theo từng thành phần (semantics) — nghĩa, hành động, trạng thái</label>
+			<label><input type="radio" name="q1" value="b" /> Phần mô tả (semantics) của từng thành phần</label>
 			<label><input type="radio" name="q1" value="a" /> Toàn bộ text hiển thị trên màn hình, đọc theo thứ tự từ trái sang phải, trên xuống dưới</label>
 			<label><input type="radio" name="q1" value="c" /> Ảnh chụp màn hình rồi tự phân tích bằng nhận dạng hình ảnh</label>
 			<label><input type="radio" name="q1" value="d" /> Mã Kotlin của composable để tự suy ra ý nghĩa</label>
@@ -38,7 +38,7 @@
 			<legend>3. <code>Button(onClick = onSend) &#123; Icon(..., contentDescription = "Gửi"); Text("Gửi") &#125;</code> — vấn đề gì, sửa thế nào?</legend>
 			<label><input type="radio" name="q3" value="a" /> Không có vấn đề — icon và chữ cùng mô tả giúp người dùng chắc chắn hơn</label>
 			<label><input type="radio" name="q3" value="b" /> Icon không được đặt trong Button; phải tách icon ra ngoài rồi ghép lại bằng <code>Row</code> mới đọc đúng, đây là quy tắc của Compose</label>
-			<label><input type="radio" name="q3" value="c" /> Nút bị đọc hai lần thành "Gửi Gửi" — icon trong nút đã có chữ là trang trí ⇒ đặt <code>contentDescription = null</code> cho icon</label>
+			<label><input type="radio" name="q3" value="c" /> Nút bị đọc hai lần thành "Gửi Gửi" — icon trong nút đã có chữ là trang trí ⇒ <code>contentDescription = null</code></label>
 			<label><input type="radio" name="q3" value="d" /> Chữ "Gửi" phải bỏ đi, chỉ giữ riêng icon có mô tả để tránh trùng lặp khi đọc</label>
 
 			<p class="explain" hidden>
@@ -51,7 +51,7 @@
 			<legend>4. Lời mô tả nào là tốt nhất cho nút xoá một tin nhắn?</legend>
 			<label><input type="radio" name="q4" value="a" /> <code>"Biểu tượng thùng rác màu đỏ"</code></label>
 			<label><input type="radio" name="q4" value="b" /> <code>"Nút xoá"</code></label>
-			<label><input type="radio" name="q4" value="c" /> <code>"Xoá tin nhắn"</code></label>
+			<label><input type="radio" name="q4" value="c" /> <code>"Xoá tin nhắn này"</code></label>
 			<label><input type="radio" name="q4" value="d" /> <code>"Thùng rác"</code></label>
 			<p class="explain" hidden>
 				Mô tả <strong>việc thành phần đó làm</strong>, không mô tả nó trông thế nào: người dùng cần biết bấm vào thì gì xảy ra. Đừng nhồi loại thành phần ("Nút xoá" — dịch vụ hỗ trợ tự thông báo "nút", người dùng nghe "nút xoá, nút"); đừng nhồi màu/hình dáng ("màu đỏ" không giúp ai và sai khi đổi design). Lợi ích khác: mô tả theo hành động thì đổi hình không phải đổi mô tả. Và vì người dùng nghe được nó, mô tả là chuỗi hiển thị ⇒ thuộc <code>strings.xml</code>.
@@ -63,7 +63,7 @@
 			<label><input type="radio" name="q5" value="a" /> 48dp hiện nay — đúng chuẩn rồi, không cần sửa</label>
 			<label><input type="radio" name="q5" value="b" /> Chuẩn là 24dp; 48dp chỉ là khuyến nghị riêng cho tablet và máy tính bảng lớn</label>
 			<label><input type="radio" name="q5" value="c" /> 24dp hiện nay và chuẩn là 24dp — chỉ icon to hơn mới cần vùng chạm lớn hơn, icon nhỏ thì không</label>
-			<label><input type="radio" name="q5" value="d" /> ~24dp (padding nằm ngoài vùng bấm); chuẩn Android: <strong>48dp × 48dp</strong> — đổi thứ tự modifier là đạt</label>
+			<label><input type="radio" name="q5" value="d" /> ~24dp (padding nằm ngoài vùng bấm); chuẩn Android: <strong>48dp × 48dp</strong> — đổi thứ tự modifier lên trước padding là đạt</label>
 
 			<p class="explain" hidden>
 				Cùng quy tắc thứ tự modifier ở chương 5.2, lần này với hậu quả accessibility. Con số cần nhớ: <strong>24dp là thứ bạn thấy, 48dp là thứ ngón tay chạm được</strong> — hai con số không nhất thiết bằng nhau. Đổi <code>clickable</code> lên trước <code>padding</code> thì vùng chạm ra 24 + 12 × 2 = 48dp mà icon không to lên. Nhiều component Material (<code>Button</code>, <code>IconButton</code>, <code>ListItem</code>, <code>Checkbox</code>...) <em>đã</em> tự giữ mức 48dp khi thật sự nhận thao tác — nhưng bạn vẫn ép được nó nhỏ lại (vd <code>Modifier.height(36.dp)</code> vào một Button), đừng làm vậy không có lý do rõ ràng.
@@ -71,10 +71,10 @@
 		
 		</fieldset>
 
-		<fieldset data-answer="a">
+		<fieldset data-answer="b">
 			<legend>6. Một <code>Checkbox</code> hiển thị với <code>onCheckedChange = null</code> (chỉ để hiện trạng thái, không bấm được). Phát biểu đúng?</legend>
-			<label><input type="radio" name="q6" value="a" /> Nó <strong>không</strong> được cấp phần đệm vùng chạm 48dp — hợp lý, vì không ai bấm nó</label>
-			<label><input type="radio" name="q6" value="b" /> Nó vẫn có vùng chạm 48dp nhưng TalkBack bỏ qua vì không bấm được</label>
+			<label><input type="radio" name="q6" value="a" /> Nó vẫn có vùng chạm 48dp nhưng TalkBack bỏ qua vì không bấm được</label>
+			<label><input type="radio" name="q6" value="b" /> Không có phần đệm 48dp — vì không ai bấm nó</label>
 			<label><input type="radio" name="q6" value="c" /> Nó tự động biến thành <code>Switch</code> ở chế độ tối</label>
 			<label><input type="radio" name="q6" value="d" /> Nó phải đổi thành <code>Icon</code> + <code>contentDescription = "Đã tích"</code> để TalkBack đọc được</label>
 			<p class="explain" hidden>
@@ -123,7 +123,7 @@
 
 		<fieldset data-answer="a">
 			<legend>10. <code>Modifier.semantics(mergeDescendants = true) &#123;&#125;</code> trên một <code>Row</code> chứa tên người gửi + thời gian làm gì?</legend>
-			<label><input type="radio" name="q10" value="a" /> Gom cả nhóm thành <strong>một</strong> thành phần với dịch vụ hỗ trợ: TalkBack dừng một lần và đọc cả cụm</label>
+			<label><input type="radio" name="q10" value="a" /> Gom cả nhóm thành <strong>một</strong> thành phần duy nhất với dịch vụ hỗ trợ: TalkBack dừng một lần và đọc cả cụm</label>
 			<label><input type="radio" name="q10" value="b" /> Xoá semantics của các con để chỉ còn đọc được từ cha — gọn hơn nên người dùng nghe nhanh hơn</label>
 			<label><input type="radio" name="q10" value="c" /> Làm Row bấm được — thay thế cho <code>clickable</code>, giúp cả hàng nhận thao tác bấm</label>
 			<label><input type="radio" name="q10" value="d" /> Tự động dịch nội dung của Row sang ngôn ngữ khác</label>
@@ -145,10 +145,10 @@
 		
 		</fieldset>
 
-		<fieldset data-answer="a">
+		<fieldset data-answer="b">
 			<legend>12. Vì sao <code>@Preview</code> (và điện thoại của bạn ở thiết lập mặc định) không chứng minh được phần accessibility — và phải kiểm bằng gì?</legend>
-			<label><input type="radio" name="q12" value="a" /> Vì mô tả sai vẫn compile, vùng chạm 24dp vẫn trông đẹp — phải tự kiểm bằng TalkBack, cỡ chữ lớn, ngón tay thật</label>
-			<label><input type="radio" name="q12" value="b" /> Vì accessibility kiểm bằng unit test trong CI, không kiểm bằng tay được — tay người chậm hơn máy, máy kiểm bao quát hơn</label>
+			<label><input type="radio" name="q12" value="a" /> Vì accessibility kiểm bằng unit test trong CI, không kiểm bằng tay được — tay người chậm hơn máy, máy kiểm bao quát hơn</label>
+			<label><input type="radio" name="q12" value="b" /> Vì mô tả sai vẫn compile được, vùng chạm 24dp vẫn trông đẹp — phải tự kiểm bằng TalkBack, cỡ chữ lớn nhất, ngón tay thật — đọc code thôi thì không đủ</label>
 			<label><input type="radio" name="q12" value="c" /> Vì preview chỉ render một composable; bật TalkBack trên máy là đủ, không cần thêm gì — các lỗi còn lại ít gặp</label>
 			<label><input type="radio" name="q12" value="d" /> Vì TalkBack chỉ chạy trên máy thật của Google, nên phải gửi app đi kiểm tra — tự kiểm bằng tay vừa tốn thời gian vừa thiếu đáng tin cậy</label>
 

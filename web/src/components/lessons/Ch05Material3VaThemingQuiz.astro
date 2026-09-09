@@ -25,7 +25,7 @@
 			<legend>2. <code>MaterialTheme</code> là một composable đặc biệt. Đặc biệt ở chỗ nào?</legend>
 			<label><input type="radio" name="q2" value="a" /> Nó chạy trong một thread riêng để tính màu, nên app mở nhanh hơn hẳn</label>
 			<label><input type="radio" name="q2" value="b" /> Nó vẽ nền cho mọi màn hình, nên luôn phải đặt ngoài cùng để nền phủ kín</label>
-			<label><input type="radio" name="q2" value="c" /> Nó <strong>không vẽ gì cả</strong> — chỉ cấp ba nhóm giá trị cho cây composable bên trong</label>
+			<label><input type="radio" name="q2" value="c" /> Nó <strong>không vẽ gì cả</strong> — chỉ cấp ba nhóm giá trị cho cây bên trong</label>
 			<label><input type="radio" name="q2" value="d" /> Nó thay thế <code>setContent</code> khi app có nhiều màn hình — màn nào cũng cần theme riêng</label>
 
 			<p class="explain" hidden>
@@ -52,7 +52,7 @@
 			<label><input type="radio" name="q4" value="a" /> Thêm tham số <code>isDark</code> vào từng composable và chọn màu theo <code>if</code></label>
 			<label><input type="radio" name="q4" value="b" /> Bản thân từng composable tự hỏi hệ điều hành mỗi lần vẽ, rồi tự chọn màu tương ứng</label>
 			<label><input type="radio" name="q4" value="c" /> Sao chép toàn bộ giao diện thành hai bản: bản sáng và bản tối — mỗi lần sửa lại phải sửa cả hai bản</label>
-			<label><input type="radio" name="q4" value="d" /> Không composable nào đổi cả — tầng theme chọn giữa <code>darkColorScheme(...)</code> và <code>lightColorScheme(...)</code></label>
+			<label><input type="radio" name="q4" value="d" /> Không composable nào đổi cả — tầng theme chọn giữa <code>darkColorScheme(...)</code> và <code>lightColorScheme(...)</code> lúc chạy</label>
 
 			<p class="explain" hidden>
 				Hàm theme của project nhận <code>isDarkTheme: Boolean = isSystemInDarkTheme()</code> (giá trị mặc định là một lời gọi hàm đọc thiết lập máy), khối <code>when</code> chọn một trong bốn khả năng (tối/sáng × động/tĩnh). Composable chỉ nói vai trò và không bao giờ cần biết chế độ hiện tại. Đáp án c sai: không cần nhân bản giao diện thành hai bản sáng/tối — chỉ bộ màu ở tầng theme đổi, mọi composable giữ nguyên.
@@ -63,7 +63,7 @@
 		<fieldset data-answer="b">
 			<legend>5. Trong <code>ChatItemBubble</code>, màu bong bóng chọn bằng <code>MaterialTheme.colorScheme.primary</code> hay <code>surfaceVariant</code> tuỳ người gửi. Vì sao đây là cách viết đúng?</legend>
 			<label><input type="radio" name="q5" value="a" /> Vì <code>primary</code> và <code>surfaceVariant</code> là hai tên của cùng một màu, viết nào cũng ra một kết quả</label>
-			<label><input type="radio" name="q5" value="b" /> Vì cùng một dòng code giữ nguyên ý nghĩa khi bộ màu đổi, và không ai phải truyền màu xuống qua tham số</label>
+			<label><input type="radio" name="q5" value="b" /> Vì dòng code giữ nguyên ý nghĩa khi bộ màu đổi, không ai phải truyền màu qua tham số</label>
 			<label><input type="radio" name="q5" value="c" /> Vì <code>MaterialTheme.colorScheme</code> là biến toàn cục, đọc nhanh hơn truyền tham số</label>
 			<label><input type="radio" name="q5" value="d" /> Vì Compose bắt buộc mọi màu phải lấy từ <code>MaterialTheme</code>, gán cứng sẽ không biên dịch được — trình biên dịch chặn ngay dòng gán màu</label>
 
@@ -73,11 +73,11 @@
 		
 		</fieldset>
 
-		<fieldset data-answer="b">
+		<fieldset data-answer="c">
 			<legend>6. Bạn sửa màu <code>primary</code> trong <code>ui/theme/Color.kt</code> của project mẫu, build lại — app <strong>không đổi gì</strong>. Bạn kiểm tra gì, theo thứ tự nào?</legend>
 			<label><input type="radio" name="q6" value="a" /> Xoá app, cài lại; nếu vẫn không được thì Clean Project rồi build lại từ đầu</label>
-			<label><input type="radio" name="q6" value="b" /> Đi ngược đường đi của theme: <code>Color.kt</code> chỉ được dùng bởi <code>Theme.kt</code>, tìm tiếp nơi dùng hàm theme</label>
-			<label><input type="radio" name="q6" value="c" /> Đổi luôn cả hai thư mục <code>theme/</code> và <code>ui/theme/</code> cho chắc — sửa cả hai thì chắc chắn một cái ăn</label>
+			<label><input type="radio" name="q6" value="b" /> Đổi luôn cả hai thư mục <code>theme/</code> và <code>ui/theme/</code> cho chắc — sửa cả hai thì chắc chắn một cái ăn</label>
+			<label><input type="radio" name="q6" value="c" /> Đi ngược đường đi của theme: <code>Color.kt</code> chỉ được dùng bởi <code>Theme.kt</code>, tìm tiếp nơi dùng hàm theme</label>
 			<label><input type="radio" name="q6" value="d" /> Báo lỗi thư viện Compose — theme chắc chắn phải được áp dụng tự động</label>
 			<p class="explain" hidden>
 				Kỹ thuật truy dấu: đếm số lần tên xuất hiện trong project. <code>KodecochatTheme</code> (thường "c") có 1 khai báo + 3 lời gọi ⇒ đang chạy, màu thật nằm ở <code>theme/Color.kt</code>. <code>KodecoChatTheme</code> (hoa "C") chỉ có đúng 1 kết quả là dòng khai báo ⇒ code chết — cả thư mục <code>ui/theme/</code> là bộ theme Android Studio tự sinh mà project không xoá. Bài học: khi sửa mà không thấy đổi, đừng sửa mạnh tay hơn — kiểm tra xem thứ mình sửa có nằm trên đường đi của app không.
@@ -96,10 +96,10 @@
 		
 		</fieldset>
 
-		<fieldset data-answer="b">
+		<fieldset data-answer="a">
 			<legend>8. <code>parent="android:Theme.Material.Light.NoActionBar"</code> trong <code>themes.xml</code> — lựa chọn <code>NoActionBar</code> có chủ ý gì?</legend>
-			<label><input type="radio" name="q8" value="a" /> NoActionBar giúp app mở nhanh hơn vì không phải load thanh tiêu đề của hệ thống, tiết kiệm bộ nhớ cho khung hình đầu</label>
-			<label><input type="radio" name="q8" value="b" /> App Compose tự vẽ thanh tiêu đề bằng app bar của riêng nó (CenterAlignedTopAppBar); để hai thanh chồng nhau thì trông rất lạ</label>
+			<label><input type="radio" name="q8" value="a" /> App Compose tự vẽ thanh tiêu đề bằng app bar của riêng nó (CenterAlignedTopAppBar); để hai thanh chồng nhau thì trông rất lạ</label>
+			<label><input type="radio" name="q8" value="b" /> NoActionBar giúp app mở nhanh hơn vì không phải load thanh tiêu đề của hệ thống, tiết kiệm bộ nhớ cho khung hình đầu</label>
 			<label><input type="radio" name="q8" value="c" /> NoActionBar là yêu cầu của Material 3 — nếu dùng app bar thì không được khai theme</label>
 			<label><input type="radio" name="q8" value="d" /> NoActionBar ẩn thanh trạng thái (status bar) để màn hình tràn viền</label>
 
