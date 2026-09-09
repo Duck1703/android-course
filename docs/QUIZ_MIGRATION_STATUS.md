@@ -31,7 +31,7 @@ Yêu cầu markup (giữ nguyên contract `quiz.css` đã chốt):
 
 Các component quiz LIVE được Astro nhúng qua tham chiếu tĩnh trong `lessons.ts`, nên quiz đã chuyển gọi thẳng `initQuiz()` từ `web/src/scripts/quiz.ts`. Module harness cũng xuất side-effect tự-init (`import "../../scripts/quiz.ts";` không gán tên) để các quiz render ngoài nhánh này dùng khi muốn — hai cách dẫn đến cùng một module, `initQuiz` tự chặn gắn đôi qua `data-quiz-bound`.
 
-## Trạng thái từng quiz (26 file)
+## Trạng thái từng quiz (27 file)
 
 Quy ước: **harness** = đã gọi `initQuiz` + có nút retry; **legacy** = script inline cũ, chưa đụng tới — sẽ chuyển theo batch nội dung (WS C/D của kế hoạch tổng thể: đúng batch nào đụng bài đó thì quiz của bài đó chuyển). Quiz ORPHAN (không có route tham chiếu trong `lessons.ts`) không chuyển, chờ batch cleanup (IMP-064).
 
@@ -59,9 +59,11 @@ Quy ước: **harness** = đã gọi `initQuiz` + có nút retry; **legacy** = s
 | `Ch10_1Quiz.astro` | legacy | — |
 | `Ch10_3Quiz.astro` | legacy | — |
 | `Ch10_4Quiz.astro` | legacy | — |
-| `Ch11Quiz.astro` | legacy | — |
+| `Ch11Quiz.astro` | **retired (Stage 7)** | monolith tách X1–X2: quiz chết cùng batch, thay bằng 2 quiz harness (Ch11FilesSafVaBackupQuiz 10 câu · Ch11KeystoreSqlcipherVaMaHoaQuiz 12 câu) |
+| `Ch11FilesSafVaBackupQuiz.astro` | **harness** | Stage 7 — X1, 10 câu (files/SAF/backup) |
+| `Ch11KeystoreSqlcipherVaMaHoaQuiz.astro` | **harness** | Stage 7 — X2, 12 câu (Keystore/SQLCipher/bẫy backup) |
 | `Ch01Quiz.astro` | ORPHAN | không có trong `lessons.ts` — không chuyển, chờ IMP-064 |
 | `Ch02Quiz.astro` | ORPHAN | không có trong `lessons.ts` — không chuyển, chờ IMP-064 |
 | `Ch03Quiz.astro` | ORPHAN | không có trong `lessons.ts` — không chuyển, chờ IMP-064 |
 
-Số liệu tổng: 2/26 ở harness · 20 legacy LIVE · 4 ORPHAN. Sau IMP-001, các quiz legacy tiếp tục chạy script inline riêng — hành vi submit/chấm/giải thích không đổi; chỉ thiếu "Câu x/N", scroll điểm và retry cho tới khi batch của chúng chuyển.
+Số liệu tổng: 4/28 ở harness · 19 legacy LIVE · 5 retired/ORPHAN (Ch08Quiz/Ch09Quiz/Ch11Quiz retired; Ch01/Ch02/Ch03Quiz orphan). Sau IMP-001, các quiz legacy tiếp tục chạy script inline riêng — hành vi submit/chấm/giải thích không đổi; chỉ thiếu "Câu x/N", scroll điểm và retry cho tới khi batch của chúng chuyển.
