@@ -16,6 +16,10 @@
 
 Bắt đầu từ HEAD `8c43d42` (Stage 7 gate PASS), tree clean, không push.
 
+## Reconciliation (2026-09-09 — docs/counts only)
+
+Bản gốc của gate ghi **10 miskey + 7 explanation-letter = 17 MAJOR**; đối chiếu lại từ git diff của hai commit `ed69603` và `2e15731` cho ra sự thật: **6 semantic miskey** (thay đổi data-answer thật sự) + **7 explanation-letter** (key đúng, chữ sai) = **13 MAJOR**, và 12 stale-letter MINOR cùng lớp bị sót — đã sửa trong commit reconciliation này (kèm sửa chữ trong 3 file quiz, không đổi key/makeup câu). Wave table + cả hai docs đã thống nhất theo con số này. 411/411 keys giữ nguyên vì re-check vẫn chứng minh.
+
 ## Starting state
 
 - HEAD `8c43d42`, branch `main`, working tree clean — khớp expected checkpoint của brief.
@@ -45,24 +49,46 @@ Bắt đầu từ HEAD `8c43d42` (Stage 7 gate PASS), tree clean, không push.
 |---|---|---|---|---|---|
 | 1 | F1/F2 + A1–A7 | 94 | 5 (4 miskey Ch02_1Quiz + 1 Ch02DocProjectMauQuiz q3) | 7 | sửa hết |
 | 2 | A8–A14 | 70 | 0 | 2 (ref mục 4→mục 3; count "tám chỗ") | sửa hết (mục-4 ref; count-8 giữ — là framing của bài) |
-| 4+5a | S1–S5 + N1/N2 | 70 | 8 (S1 q3 miskey; S2 q1/q3/q7/q8, S5 q5/q6 giải thích nêu nhầm chữ đáp án) | 2 | sửa hết |
+| 4+5a | S1–S5 + N1/N2 | 70 | 8 (1 miskey: S1 Coroutines20PhutKhongSoQuiz q3 d→c; 7 giải thích nêu nhầm chữ: S2 q6, S3 Ch06StateHoistingVaUdfQuiz q1/q3/q7/q8, S5 KienTrucUiDataRepositoryQuiz q5/q6) | 2 | sửa hết |
 | 4+5b | W1–W3 + D1/D2 | 50 | 0 | 2 (W2 q10 parenthetical; D2 q7 distractor dễ tranh cãi) | sửa hết |
 | 6 | R1–R4 + X1/X2 + Ch07 | (R/X đã qua gate riêng; Ch07 19→12) | 0 | 0 | Ch07 rebalanced |
+| Reconciliation (2026-09-09) | 12 stale explanation-letter refs (Ch02_1Quiz 10, C2 q1, S2 q5) — lớp MINOR của sweep gốc | — | 0 | 12 | sửa hết |
 
 ## Repairs
 
-### Semantic miskeys (MAJOR — 10 câu)
-| Quiz | Câu | Khiếm khuyết | Sửa | Re-verify |
-|---|---|---|---|---|
-| Ch02_1Quiz | q1, q4, q5, q7 | `data-answer` trỏ vào distractor (lệch từ batch thêm cột d của Stage 1; giải thích vốn chỉ đúng (a)) | key → a cho cả 4 câu + rebalance vị trí 6 câu + sửa comment phân bố đầu file | quiz_audit PASS 2/2/2/3; value 2/2/2/3 |
-| Ch02DocProjectMauQuiz | q3 | key `c` = option giải thích đang phản bác; đáp án đúng nằm ở `b` | key c→b | audit PASS |
-| Coroutines20PhutKhongSoQuiz | q3 | key `d` nhưng giải thích nói "(c) đúng" — key lệch | key d→c | audit PASS |
+### Semantic miskeys (MAJOR — 6 câu, có thay đổi `data-answer` trong git)
 
-### Explanation-letter mismatches (MAJOR — 7 câu)
+Đối chiếu lại từ diff thực tế của `ed69603` + `2e15731` (bản reconciliation): **6 câu miskey thật**, không phải 10.
+
+| Quiz | Câu | Key cũ → mới | Bằng chứng miskey | Re-verify |
+|---|---|---|---|---|
+| Ch02_1Quiz | q1 | b → a | key b trỏ "mỗi bản Studio chỉ build 1 phiên bản" (sai); giải thích nói "(đáp án a)"; text đúng ở value a, không đổi | quiz_audit PASS; key↔text↔explain khớp |
+| Ch02_1Quiz | q4 | c → d | key c trỏ "tên hiển thị dưới icon" (sai — đúng lẫn lộn Name mà giải thích phản bác); text đúng ("danh tính duy nhất") chuyển giá trị a→d, key theo | audit PASS |
+| Ch02_1Quiz | q5 | b → a | key b trỏ "máy ảo sẽ chạy" (System Image — sai); text đúng ("thấp nhất... chịu cài") ở value a, không đổi | audit PASS |
+| Ch02_1Quiz | q7 | b → b | key b trỏ "thiếu defaultConfig versionCode" (luật bịa); text đúng ("cú pháp Groovy") chuyển vị trí a→b — key giữ nguyên, text đưa về key | audit PASS |
+| Ch02DocProjectMauQuiz | q3 | c → b | key c trỏ "khai báo với Gradle" (sai — giải thích phản bác); text đúng ("gắn khối giao diện...") ở b | audit PASS |
+| Coroutines20PhutKhongSoQuiz | q3 | d → c | key d trỏ "chỉ dùng được trong Activity/ViewModel" (sai); giải thích nói "(c) đúng" | audit PASS |
+
+6 thay đổi `data-answer` khác trong Ch02_1Quiz (q3 a→b, q6 a→d, q9 a→d và phần chuyển vị trí của q4) là **rebalance display-position thuần**: text đúng và key luôn đi cùng nhau, key trước đó đã đúng → không phải miskey. Ch07Quiz 19→12 là viết lại (câu mới key mới, đã audit ngữ nghĩa khi dựng) — không thuộc bảng miskey.
+
+### Explanation-letter mismatches (MAJOR — 7 câu; key đúng, giải thích nêu nhầm chữ)
+
 Root cause chung: batch shuffle vị trí cũ viết lại nhãn trong giải thích nhưng không đồng bộ key. Sửa toàn bộ là sửa CHỮ TRONG GIẢI THÍCH (key đã đúng ngữ nghĩa):
-- Ch06StateVaRecompositionQuiz q6: "b và c sai" → "a và b sai".
-- Ch06StateHoistingVaUdfQuiz q1 ("chữ ký của b"→c; "a và c"→a và b), q3 ("Đáp án d"→a), q7 ("Đáp án b"→a), q8 ("b phải lên cao"→d).
-- KienTrucUiDataRepositoryQuiz q5 ("c là bẫy"→b), q6 ("Phương án d"→c); q1 đánh số 1/2/4 → chữ cái a/d/b (minor).
+
+- Ch06StateVaRecompositionQuiz (S2) q6: "b và c sai" → "a và b sai".
+- Ch06StateHoistingVaUdfQuiz (S3) q1 ("chữ ký của b"→c; "a và c"→a và b), q3 ("Đáp án d"→a), q7 ("Đáp án b"→a), q8 ("b phải lên cao"→d).
+- KienTrucUiDataRepositoryQuiz (S5) q5 ("c là bẫy"→b), q6 ("Phương án d"→c).
+- KienTrucUiDataRepositoryQuiz (S5) q1 đánh số 1/2/4 → chữ cái a/d/b (MINOR, sửa cùng batch).
+
+### Stale explanation letters (MINOR — 12 chỗ, phát hiện ở reconciliation 2026-09-09, đã sửa)
+
+Lớp defect thứ ba: key đúng, giải thích phản bác đúng NỘI DUNG distractor nhưng nêu SAI CHỮ sau khi rebalance đổi vị trí nhãn (cùng root cause với lớp trên nhưng chỉ xuất hiện khi rebalance xảy ra):
+
+- Ch02_1Quiz 10 chỗ: q3 "Đáp án b mô tả hạn chế"→a; q4 "Đáp án c lẫn sang ô Name"→b, "Đáp án b bịa luật"→a, "Đáp án d cơ chế không có thật"→c; q6 "đáp án c gần đúng"→b, "Đáp án b bịa phép đối chiếu"→a; q7 "Đáp án b và c đều tự tin"→a và c; q9 "Đáp án b nhắc hai công cụ"→a, "Đáp án c đúng nửa đầu"→b, "Đáp án d tương tự"→c.
+- Ch05ModifierVaDanhSachQuiz (C2) q1: "Đáp án a làm được nhưng chậm"→b.
+- Ch06StateVaRecompositionQuiz (S2) q5: "Đáp án b nói sai lý do"→c.
+
+Cả 40 quiz quét lại bằng script chữ-cái (rebuttal + affirmation) sau sửa: 0 flag.
 
 ### Distribution rebalance (data-only)
 - **C1** (rank 1/4/5/0): trim 1 correct, 3 edit nhỏ → 2/2/3/3.
@@ -95,7 +121,9 @@ Root cause chung: batch shuffle vị trí cũ viết lại nhãn trong giải th
 
 - Tổng câu được audit ngữ nghĩa độc lập (wave sub-agent): 284 (94+70+70+50) + Ch07 12 câu (audit thủ công + adversarial) → **296**.
 - Câu còn lại (115) thuộc R1–R4, X1, X2, các quiz đã qua Stage 2–7 gates riêng với semantic-key sweep 22/22, 100% v.v.
-- **Keys correct sau sweep: 411/411.** Miskeys tìm thấy: 10 · đã sửa: 10 · còn: 0.
+- **Keys correct sau sweep + reconciliation: 411/411.**
+- **Semantic miskeys** (thay đổi `data-answer` trong git): tìm thấy 6 · đã sửa 6 · còn 0.
+- **Explanation-letter defects** (key đúng, chữ trong giải thích sai): tìm thấy 7 MAJOR + 12 MINOR stale-letter (reconciliation) · đã sửa 19 · còn 0.
 
 ## Distribution audit (sau sweep)
 
@@ -149,13 +177,13 @@ Independent reviewer (sub-agent riêng, không tham gia sửa): quét cơ học 
 
 1. **IMP-062 = no-op (0 file xoá):** brief đoán "sau IMP-062 ORPHAN = 0" — thực tế ORPHAN đã = 0 từ Stage 1. Không fake zero bằng cách xoá dormant material (§27).
 2. **Ch07Quiz bị viết lại phần lớn** (cắt 19→12 + harness + rebalance) — vượt "editorial data sweep" thuần túy, nhưng được brief §16/§15/§7 cho phép: quiz ngoài 8–12 câu phải sửa tối thiểu, harness là hard goal 100%, và §19 xác nhận audit Ch07 như LIVE. Lesson không đụng. 7 câu cắt là câu trọng số thấp nhất; widget + exercises giữ nguyên.
-3. **Sửa 7 giải thích nêu nhầm chữ đáp án (S2/S3/S5)** là sửa script-adjacent (không phải "data" thuần) nhưng đúng ý §10/§20 — explanation contradicts keyed answer là MAJOR phải sửa.
+3. **Sửa 7 giải thích nêu nhầm chữ đáp án (S2/S3/S5)** là sửa script-adjacent (không phải "data" thuần) nhưng đúng ý §10/§20 — explanation contradicts keyed answer là MAJOR phải sửa. Thêm 12 stale-letter MINOR cùng lớp phát hiện ở reconciliation đã sửa docs-only + 12 chỗ chữ trong giải thích (commit reconciliation).
 4. Script trợ tay `web/scripts/quiz_dist.mjs` thêm mới (display-position per DOM order) — dùng cho audit, không thuộc runtime.
 
 ## Findings
 
 - **BLOCKER:** 0
-- **MAJOR:** 0 (tất cả 17 MAJOR tìm thấy trong sweep — 10 miskey + 7 explanation-letter — đã sửa và re-verify)
+- **MAJOR:** 0 (còn lại chưa xử lý). Trong sweep có **13 MAJOR** được tìm thấy và sửa hết, gồm **6 semantic miskey** (thay đổi `data-answer`: Ch02_1Quiz q1/q4/q5/q7, Ch02DocProjectMauQuiz q3, S1 q3) và **7 explanation-letter** (S2 q6, S3 q1/q3/q7/q8, S5 q5/q6). 12 stale-letter MINOR phát hiện thêm ở reconciliation cũng đã sửa hết.
 - **MINOR (chưa sửa, ghi nhận):** 3 tie-count length-rank 42–44% (Ch01_1, Ch02_3, Ch05Preview — chỉ khi đếm lenient với tie); 3 legacy empty-letter (Ch01_2 thiếu a, Ch02_3/Ch03_4 thiếu d — tồn tại trước sweep, thỏa cap). Đây là pattern lớp, không phải defect từng câu; để dành cho phase optional/cleanup sau nếu owner muốn.
 
 ## Gate verdict

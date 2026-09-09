@@ -97,7 +97,7 @@ Các draft split ngủ đông Ch07_1..4, Ch08_1..4, Ch09_1..4, Ch11_1..5 và `_T
 
 ## Số liệu tổng (SAU SWEEP — đóng bạng IMP-060/061/062 @ 2e15731)
 
-**40 LIVE / 0 ORPHAN trên đĩa · 40/40 harness · 40/40 PASS quiz_audit (value/display/rank ≤40%) · semantic-key sweep 411 câu (284 câu được audit ngữ nghĩa độc lập ở 3 wave sub-agent + 127 câu các stage 5–7 đã qua gate riêng), 10 miskey sửa hết · adversarial: QUIZ_SWEEP_ADVERSARIAL_PASS (0 BLOCKER / 0 MAJOR / 6 MINOR).** Không đổi schema (12) / SPLIT_MAP (13) / redirects (7) / route membership (40 bài).
+**40 LIVE / 0 ORPHAN trên đĩa · 40/40 harness · 40/40 PASS quiz_audit (value/display/rank ≤40%) · semantic-key sweep 411 câu (284 câu được audit ngữ nghĩa độc lập ở 3 wave sub-agent + 127 câu các stage 5–7 đã qua gate riêng) · 6 semantic miskey sửa hết (Ch02_1Quiz q1/q4/q5/q7, Ch02DocProjectMauQuiz q3, S1 q3) + 7 giải thích nêu nhầm chữ (S2 q6, S3 q1/q3/q7/q8, S5 q5/q6) + 12 stale-letter MINOR (reconciliation) · adversarial: QUIZ_SWEEP_ADVERSARIAL_PASS (0 BLOCKER / 0 MAJOR / 6 MINOR).** Không đổi schema (12) / SPLIT_MAP (13) / redirects (7) / route membership (40 bài).
 
 ### Bảng 40 quiz LIVE — trạng thái sau sweep
 
@@ -109,7 +109,7 @@ Các draft split ngủ đông Ch07_1..4, Ch08_1..4, Ch09_1..4, Ch11_1..5 và `_T
 | A2 | ch01-2-app-component | Ch01_2Quiz.astro | 10 | YES | PASS (ref "Chương 8" → "giai đoạn Điều hướng"; MINOR: legacy thiếu key a) |
 | A3 | ch01-3-manifest-resources | Ch01_3Quiz.astro | 11 | YES | PASS |
 | A4 | ch01-4-gradle-va-ban-do | Ch01_4Quiz.astro | 10 | YES | PASS |
-| A5 | ch02-1-cai-dat-va-tao-project | Ch02_1Quiz.astro | 9 | YES | PASS — **4 miskey sửa (q1/q4/q5/q7)** + cân bằng lại vị trí/rank |
+| A5 | ch02-1-cai-dat-va-tao-project | Ch02_1Quiz.astro | 9 | YES | PASS — **4 miskey sửa (q1/q4/q5/q7)** + cân bằng vị trí/rank + 10 stale-letter giải thích sửa ở reconciliation |
 | A6 | ch02-2-may-ao-may-that-doc-project | Ch02_2Quiz.astro | 10 | YES | PASS |
 | A7 | ch02-doc-project-mau | Ch02DocProjectMauQuiz.astro | 11 | YES | PASS — **1 miskey sửa (q3: c→b)** |
 | A8 | ch02-3-chay-app-va-cap-nhat | Ch02_3Quiz.astro | 9 | YES | PASS (MINOR: legacy thiếu key d) |
@@ -120,12 +120,12 @@ Các draft split ngủ đông Ch07_1..4, Ch08_1..4, Ch09_1..4, Ch11_1..5 và `_T
 | A13 | ch03-4-theme-va-doi-chieu | Ch03_4Quiz.astro | 10 | YES | PASS (MINOR: legacy thiếu key d; widget sắp thứ tự ngoài form giữ script chấm riêng — hợp lệ) |
 | A14 | ch04-gradle-basics-a-look-behind-the-curtain | Ch04Quiz.astro | 10 | YES | PASS |
 | C1 | ch05-composable-va-layout | Ch05ComposableVaLayoutQuiz.astro | 10 | YES | PASS — cân bằng rank 1/4/5/0 → 2/2/3/3 |
-| C2 | ch05-modifier-va-danh-sach | Ch05ModifierVaDanhSachQuiz.astro | 11 | YES | PASS — dịch vị trí q1/q9: 1/5/2/3 → 2/3/3/3 |
+| C2 | ch05-modifier-va-danh-sach | Ch05ModifierVaDanhSachQuiz.astro | 11 | YES | PASS — dịch vị trí q1/q9: 1/5/2/3 → 2/3/3/3; reconciliation: stale-letter q1 (a→b) |
 | C3 | ch05-material-3-va-theming | Ch05Material3VaThemingQuiz.astro | 10 | YES | PASS — pos/rank 5/10 → cân bằng |
 | C4 | ch05-preview-va-vong-doi | Ch05PreviewVaVongDoiQuiz.astro | 12 | YES | PASS — disp 5/1/4/2 → 4/2/4/2, rank 0/2/8/2 → 3/2/3/4 (MINOR: tie-count 42%) |
 | C5 | ch05-tiep-can-moi-nguoi-dung | Ch05TiepCanMoiNguoiDungQuiz.astro | 12 | YES | PASS — disp 5/1/3/3 → 3/3/3/3, rank 0/4/7/1 → 1/4/3/4 |
 | S1 | coroutines-20-phut-khong-so | Coroutines20PhutKhongSoQuiz.astro | 10 | YES | PASS — **1 miskey sửa (q3: d→c)** |
-| S2 | ch06-state-va-recomposition | Ch06StateVaRecompositionQuiz.astro | 10 | YES | PASS — sửa giải thích q6 (b/c→a/b) + ref q10 |
+| S2 | ch06-state-va-recomposition | Ch06StateVaRecompositionQuiz.astro | 10 | YES | PASS — sửa giải thích q6 (b/c→a/b) + ref q10; reconciliation: stale-letter q5 (b→c) |
 | S3 | ch06-state-hoisting-va-udf | Ch06StateHoistingVaUdfQuiz.astro | 10 | YES | PASS — sửa 4 giải thích sai chữ (q1/q3/q7/q8) |
 | S4 | ch06-viewmodel-va-ui-state | Ch06ViewModelVaUiStateQuiz.astro | 10 | YES | PASS |
 | S5 | kien-truc-ui-data-repository | KienTrucUiDataRepositoryQuiz.astro | 10 | YES | PASS — sửa 2 giải thích sai chữ (q5/q6) + q1 đánh số → chữ cái |
