@@ -76,7 +76,7 @@ const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
 // trong batch này — cả hai bài kế nhiệm trực tiếp nội dung monolith theo mốc
 // D1/D2 START/END, credit chia đủ hai theo mapping khai báo. Redirect 1 đích
 // old → D1 (astro.config.mjs).
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 // Khi một chương lớn được tách thành nhiều chương nhỏ, slug cũ trong localStorage
 // của người học không còn ứng với trang nào — tiến độ của họ sẽ "bốc hơi".
@@ -184,6 +184,16 @@ const SPLIT_MAP: Record<string, string[]> = {
   "ch09-data-store": [
     "ch09-data-store-va-sharedpreferences",
     "ch09-prefs-composition-local-va-wiring",
+  ],
+  // IMP-0xx (v12) — Stage 7: Ch11 monolith dead-source split (registry §7 entry 8).
+  // Old slug CHẾT (route retired) → replace: X1 (Files, SAF & Backup — mục 1–8.5) +
+  // X2 (Mã hoá: Keystore, SQLCipher & các API lịch sử — mục 9–21). KHÔNG có bài NEW
+  // trong batch này — cả hai bài kế nhiệm trực tiếp nội dung monolith theo mốc
+  // X1/X2 START/END, credit chia đủ hai theo mapping khai báo.
+  // Redirect 1 đích old → X1 (astro.config.mjs).
+  "ch11-advanced-storage": [
+    "ch11-files-saf-va-backup",
+    "ch11-keystore-sqlcipher-va-ma-hoa",
   ],
 };
 

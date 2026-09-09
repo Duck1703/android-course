@@ -77,8 +77,11 @@ import Ch10_3RepositoryViewModel from "../components/lessons/Ch10_3RepositoryVie
 import Ch10_3Quiz from "../components/lessons/Ch10_3Quiz.astro";
 import Ch10_4GiaoDienVaCamBay from "../components/lessons/Ch10_4GiaoDienVaCamBay.astro";
 import Ch10_4Quiz from "../components/lessons/Ch10_4Quiz.astro";
-import Ch11AdvancedStorage from "../components/lessons/Ch11AdvancedStorage.astro";
-import Ch11Quiz from "../components/lessons/Ch11Quiz.astro";
+// Stage 7: Ch11 monolith tách thành X1–X2 theo mốc X1/X2 START/END — hai bài realworld.
+import Ch11FilesSafVaBackup from "../components/lessons/Ch11FilesSafVaBackup.astro";
+import Ch11FilesSafVaBackupQuiz from "../components/lessons/Ch11FilesSafVaBackupQuiz.astro";
+import Ch11KeystoreSqlcipherVaMaHoa from "../components/lessons/Ch11KeystoreSqlcipherVaMaHoa.astro";
+import Ch11KeystoreSqlcipherVaMaHoaQuiz from "../components/lessons/Ch11KeystoreSqlcipherVaMaHoaQuiz.astro";
 
 interface LessonEntry {
   Lesson: AstroComponentFactory;
@@ -186,5 +189,16 @@ export const LESSONS: Partial<Record<string, LessonEntry>> = {
   "ch10-2-entity-dao-database": { Lesson: Ch10_2EntityDaoDatabase, Quiz: Ch10_2Quiz },
   "ch10-3-repository-viewmodel": { Lesson: Ch10_3RepositoryViewModel, Quiz: Ch10_3Quiz },
   "ch10-4-giao-dien-va-cam-bay": { Lesson: Ch10_4GiaoDienVaCamBay, Quiz: Ch10_4Quiz },
-  "ch11-advanced-storage": { Lesson: Ch11AdvancedStorage, Quiz: Ch11Quiz },
+  // Giai đoạn 7 (batch Stage 7): Ch11 monolith tách thành X1–X2 theo mốc X1/X2 START/END
+  // (mục 1–8.5 · 9–21). Old slug ch11-advanced-storage chết trong batch này → redirect 1 đích
+  // sang X1 (astro.config.mjs) + SPLIT_MAP replace (progress.ts). Credit ch11 cũ chia cho cả
+  // hai bài kế nhiệm trực tiếp (registry §7 entry 8). KHÔNG có bài NEW trong batch này.
+  "ch11-files-saf-va-backup": {
+    Lesson: Ch11FilesSafVaBackup,
+    Quiz: Ch11FilesSafVaBackupQuiz,
+  },
+  "ch11-keystore-sqlcipher-va-ma-hoa": {
+    Lesson: Ch11KeystoreSqlcipherVaMaHoa,
+    Quiz: Ch11KeystoreSqlcipherVaMaHoaQuiz,
+  },
 };

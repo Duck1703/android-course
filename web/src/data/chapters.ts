@@ -623,11 +623,29 @@ export const SECTIONS: SectionInfo[] = [
         hasProject: true,
         stageId: "data",
       },
+      // Giai đoạn 7 (Real-world) — batch Stage 7: Ch11 monolith tách thành 2 bài (X1–X2) theo
+      // mốc X1/X2 START/END của monolith (mục 1–8.5 · 9–21). Mỗi bài có quiz riêng.
+      // Old slug ch11-advanced-storage chết trong batch này → redirect 1 đích sang X1
+      // (astro.config.mjs) + SPLIT_MAP replace (progress.ts). X1/X2 là tách nội dung
+      // kế nhiệm trực tiếp — credit chia đủ hai theo mapping (registry §7 entry 8).
       {
         number: 11,
-        slug: "ch11-advanced-storage",
-        title: "Advanced Storage",
-        summaryVi: "Mã hoá dữ liệu bằng SQLCipher và Encrypted Preferences.",
+        subNumber: 1,
+        slug: "ch11-files-saf-va-backup",
+        title: "Files, SAF & Backup: chọn chỗ lưu, nhờ người dùng chỉ",
+        parentTitle: "Advanced Storage",
+        summaryVi: "Khung ba câu hỏi độc lập (vị trí ≠ mã hoá ≠ backup), bản đồ chỗ lưu file, filesDir/cacheDir + use/IO-thread, Device Explorer, hợp đồng cache, external storage, SAF (Uri ≠ đường dẫn, OpenDocumentTree, takePersistableUriPermission), và hai thế hệ backup rule đọc từ manifest thật.",
+        aafFolder: "11-advanced-storage",
+        hasProject: true,
+        stageId: "realworld",
+      },
+      {
+        number: 11,
+        subNumber: 2,
+        slug: "ch11-keystore-sqlcipher-va-ma-hoa",
+        title: "Mã hoá: Keystore, SQLCipher & các API lịch sử",
+        parentTitle: "Advanced Storage",
+        summaryVi: "Bài toán \"key để đâu\", Android Keystore (non-exportable, hardware-backed không mặc định, StrongBox), SecurePrefs = đọc code lịch sử (envelope encryption, hai scheme SIV/GCM), đổi Prefs→SecurePrefs, SQLCipher seam 1 dòng + giới hạn, cái bẫy backup + key lifecycle, ghi chú phiên bản, bảng 15 chỗ lệch và nhìn lại lộ trình.",
         aafFolder: "11-advanced-storage",
         hasProject: true,
         stageId: "realworld",

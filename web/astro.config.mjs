@@ -43,6 +43,10 @@ const COURSE_REDIRECTS = {
   // (registry §6 row 6: redirectTarget = ch09-data-store-va-sharedpreferences).
   // D2 đến được qua sidebar/bài tiếp theo. KHÔNG có bài NEW trong batch D.
   "chapters/ch09-data-store": "/chapters/ch09-data-store-va-sharedpreferences/",
+  // Stage 7: old Ch11 monolith chết tại batch này → redirect 1 đích sang X1
+  // (registry §6 row 8: redirectTarget = ch11-files-saf-va-backup). X2 đến
+  // được qua sidebar/bài tiếp theo. KHÔNG có bài NEW trong batch X.
+  "chapters/ch11-advanced-storage": "/chapters/ch11-files-saf-va-backup/",
 };
 
 export default defineConfig({

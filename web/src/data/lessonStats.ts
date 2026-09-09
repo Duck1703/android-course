@@ -169,6 +169,16 @@ const FILE_KEY_PIN: Record<string, string> = {
   // "09_N" theo subNumber registry để file live vào đúng bucket của mình.
   "ch09-data-store-va-sharedpreferences": "09_1",
   "ch09-prefs-composition-local-va-wiring": "09_2",
+  // Stage 7 (Giai đoạn 7 — Real-world): X1/X2 là tách monolith Ch11AdvancedStorage.astro —
+  // file live KHÔNG mang số đơn vị (Ch11FilesSafVaBackup…, regex "Ch(\d{2})" cho key "11" —
+  // key của monolith đã retired) → bị loại, trong khi 5 file ngủ đông
+  // Ch11_1CacChoLuuFile/Ch11_2SafVaKeystore/Ch11_3SecurePrefsVaSqlCipher/
+  // Ch11_4NoiDayBackupPhienBan/Ch11_5NhinLaiCaKhoaHoc thắng key 11_1..11_5 —
+  // đúng bug-class stats-pairing Stage 1/3/5/6. Ghim key = "11_N" theo subNumber
+  // registry để file live vào đúng bucket của mình. Tên file khớp pascalOf(slug)
+  // (Files/Keystore/Sqlcipher đều hoa đúng chỗ) → KHÔNG cần ghim FILE_NAME_CASE.
+  "ch11-files-saf-va-backup": "11_1",
+  "ch11-keystore-sqlcipher-va-ma-hoa": "11_2",
   "ch06-state-va-recomposition": "06_2",
   "ch06-state-hoisting-va-udf": "06_3",
   "ch06-viewmodel-va-ui-state": "06_4",
