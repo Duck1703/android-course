@@ -1,0 +1,863 @@
+---
+// X1 — "Files, SAF & Backup: chọn chỗ lưu, nhờ người dùng chỉ, và biết cái gì được backup"
+// (slug: ch11-files-saf-va-backup).
+// Tách từ monolith Ch11AdvancedStorage.astro (batch Stage 7 — Giai đoạn 7: Real-world, bài 1/2).
+// Registry: X1 — stageId realworld · theo TARGET_REGISTRY_v5 §3 (mốc X1 START/END, mục 1–8.5).
+//
+// SỞ HỮU: khung ba câu hỏi độc lập (vị trí ≠ mã hoá ≠ backup) · bản đồ chỗ lưu file ·
+// filesDir/cacheDir + use { } + main-thread + cache quota · Device Explorer · hợp đồng cache ·
+// external storage (app-specific vs chung; getExternalStoragePublicDirectory = HISTORICAL) ·
+// SAF (Uri ≠ đường dẫn, ACTION_CREATE_DOCUMENT, Activity Result API, OpenDocumentTree,
+// takePersistableUriPermission + giới hạn, ContentResolver streams) · Database Explorer ·
+// backup (Auto Backup mặc định, hai thế hệ rule: dataExtractionRules 12+ / fullBackupContent 11−,
+// trạng thái rule thật của project).
+// KHÔNG dạy: mã hoá/Keystore/SQLCipher/EncryptedSharedPreferences (X2 mục 9–21) · cái bẫy
+// backup+key lifecycle (X2 mục 15) · Room integration (R1–R4) · DataStore cơ chế (D1).
+//
+// Code Kotlin/XML: nửa đầu của chapter không có code nào trong project mẫu (grep filesDir/
+// cacheDir/createTempFile/ACTION_CREATE_DOCUMENT/StorageManager trả về 0 kết quả toàn bộ
+// projects/) — snippet filesDir/cacheDir/external/SAF là trích từ giáo trình gốc, các ví dụ
+// "bản hiện đại/do khoá dựng" được dán nhãn tại chỗ. Code thật duy nhất của bài: manifest +
+// hai file backup rules (đã mở file thật để kiểm, phiên 2026-09-09).
+//
+// GIỌI VĂN: mọi khẳng định kỹ thuật tự đứng; các điểm lệch giữa tài liệu gốc và Android hiện tại
+// được diễn đạt trung tính ("tài liệu cũ dạy… — Android hiện nay…"), attribution chỉ trong #nguon.
+// Bảng lệch chi tiết → AP3 (docs/drafts/ap3-version-drift.md).
+import { Code } from "astro:components";
+
+const FINAL_ROOT = "aaf-materials/11-advanced-storage/projects/final";
+const BOOK = "content/book/ch11-advanced-storage.md";
+
+const dirsCode = `Context.cacheDir
+Context.filesDir`;
+
+const writeFileCode = `val file = File(context.filesDir, "test.txt")
+file.bufferedWriter().use { out ->  out.write("This is a test") }`;
+
+const writeFileSafeCode = `// bản dựng lại của khoá: không chạy trên main thread, có xử lý lỗi
+suspend fun writeNote(context: Context, text: String): Result<Unit> =
+  withContext(Dispatchers.IO) {
+    runCatching {
+      File(context.filesDir, "test.txt")
+        .bufferedWriter()
+        .use { out -> out.write(text) }
+    }
+  }`;
+
+const cacheQuotaCode = `lifecycleScope.launch {
+
+  val storageManager = getSystemService(STORAGE_SERVICE) as StorageManager
+  Timber.e(
+    "Cache Quota: \${
+      storageManager.getCacheQuotaBytes(
+        storageManager.getUuidForPath(
+          context.cacheDir
+        )
+      )
+    }"
+  )
+}`;
+
+const cacheQuotaFixedCode = `// bản dựng lại của khoá
+lifecycleScope.launch {
+  // getSystemService khong doi hoi main thread; nhung getCacheQuotaBytes
+  // co the doc dia -> day sang IO
+  val storageManager = getSystemService(Context.STORAGE_SERVICE) as StorageManager
+  val quota = withContext(Dispatchers.IO) {
+    val uuid = storageManager.getUuidForPath(cacheDir)   // trong Activity: cacheDir, khong phai context.cacheDir
+    storageManager.getCacheQuotaBytes(uuid)
+  }
+  Timber.d("Cache quota: %d bytes (~%.1f MB)", quota, quota / 1024f / 1024f)
+}`;
+
+const tempFileCode = `val tempFile = File.createTempFile(fileName, null, context.cacheDir)`;
+
+const externalWriteCode = `val documentFile = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+val textFile = File(documentFile, "test.txt")
+textFile.bufferedWriter().use { out ->  out.write("This is a test") }`;
+
+const externalPrivateCode = `// thu muc rieng cua app tren "the nho" — KHONG can quyen, tu xoa khi go app
+val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+val textFile = File(dir, "test.txt")
+textFile.bufferedWriter().use { out -> out.write("This is a test") }`;
+
+const safCreateCode = `// Request code for creating a Text document.
+const val CREATE_FILE = 1
+
+fun createFile(activity: Activity) {
+  val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+    addCategory(Intent.CATEGORY_OPENABLE)
+    type = "text/plain"
+    putExtra(Intent.EXTRA_TITLE, "test.txt")
+  }
+  activity.startActivityForResult(intent, CREATE_FILE)
+}`;
+
+const safModernCode = `// khuôn hiện tại: Activity Result API
+class MainActivity : ComponentActivity() {
+
+  private val createDoc = registerForActivityResult(
+    ActivityResultContracts.CreateDocument("text/plain")
+  ) { uri: Uri? ->
+    if (uri == null) return@registerForActivityResult   // nguoi dung bam Back
+    contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { out ->
+      out.write("This is a test")
+    }
+  }
+
+  private fun createFile() {
+    createDoc.launch("test.txt")
+  }
+}`;
+
+const safTreeCode = `// xin quyen vao ca MOT THU MUC do nguoi dung chon
+private val pickTree = registerForActivityResult(
+  ActivityResultContracts.OpenDocumentTree()
+) { treeUri: Uri? ->
+  if (treeUri == null) return@registerForActivityResult
+  val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+      Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+  contentResolver.takePersistableUriPermission(treeUri, flags)
+}`;
+
+const persistUriCode = `val contentResolver = applicationContext.contentResolver
+
+val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+
+contentResolver.takePersistableUriPermission(uri, takeFlags)`;
+
+const manifestBackupCode = `<application
+  android:allowBackup="true"
+  android:dataExtractionRules="@xml/data_extraction_rules"
+  android:fullBackupContent="@xml/backup_rules"
+  ...>`;
+---
+
+<section class="lesson">
+	<div class="callout journey">
+		<strong>Giai đoạn cuối của lộ trình lưu trữ.</strong> App Recipe Finder đã có đủ ba tầng: giá trị nhỏ qua
+		DataStore (Giai đoạn 6), dữ liệu có cấu trúc qua Room (cũng Giai đoạn 6). Giai đoạn Real-world này phủ
+		phần còn lại của bản đồ — và chia thành hai kỹ năng khác nhau, mỗi bài một kỹ năng:
+	</div>
+
+	<div class="callout goals">
+		<p><strong>Sau bài này bạn sẽ:</strong></p>
+		<ul>
+			<li>Chọn được <strong>chỗ lưu đúng</strong> cho từng loại dữ liệu — bộ nhớ trong, cache, external riêng của app,
+				hay tài liệu do người dùng chọn — và nói được vì sao.</li>
+			<li>Giải thích được <strong>ba thuộc tính độc lập</strong> của mọi dữ liệu: nằm ở đâu, có được mã hoá không, có tham gia
+				backup không — và biết mỗi câu hỏi trả lời bằng nguồn thông tin khác nhau.</li>
+			<li>Đọc được code dùng <code>Storage Access Framework</code>: nhận diện <code>Uri</code> ≠ đường dẫn file, làm việc
+				qua <code>ContentResolver</code>, và giữ quyền truy cập qua các lần mở app đúng cách.</li>
+			<li>Đọc được hai thế hệ backup rule trong manifest của project thật (<code>dataExtractionRules</code> và
+				<code>fullBackupContent</code>) và suy ra được thứ gì đang được backup mặc định.</li>
+			<li>Nhận diện được API lưu trữ đã lỗi thời khi gặp trong code cũ (<code>getExternalStoragePublicDirectory()</code>,
+				<code>startActivityForResult</code>) và chỉ ra bản thay thế hiện tại cho từng mục đích.</li>
+		</ul>
+		<p>
+			<strong>Tại sao quan trọng:</strong> chọn sai chỗ lưu không gây lỗi ngay — nó gây lỗi vài tháng sau, trên máy
+			của người dùng: file biến mất từ cache, dữ liệu không backup được, hoặc app crash vì một Uri đã hết hạn.
+			Đây là loại lỗi mà test lúc dev gần như không bắt được.
+		</p>
+		<p>
+			<strong>Cần biết trước.</strong> <strong>Chương 1</strong> — sandbox: mỗi app một vùng riêng, không app nào
+			đọc được dữ liệu của app khác. <strong>Chương 9</strong> — DataStore cho giá trị key/value.
+			<strong>Chương 10</strong> — Room database, <code>fallbackToDestructiveMigration()</code>.
+			<strong>S1</strong> — <code>suspend</code>, <code>Dispatchers.IO</code> ("việc chặn thì chuyển đi").
+			<strong>A12</strong> — <code>Intent</code> và quyền trong manifest. <strong>C4</strong> —
+			<code>LaunchedEffect</code> ở mức nhận diện (bài này có một chỗ dùng <code>lifecycleScope.launch</code>).
+			Một khái niệm mới duy nhất sẽ được dạy từ đầu: làm việc với file trong Kotlin/Java — phần còn lại đều
+			nối từ những gì đã học.
+		</p>
+		<p>
+			Bài tiếp theo (<strong>mã hoá: Keystore, SQLCipher &amp; các API lịch sử</strong>) trả lời câu hỏi thứ hai
+			trong ba câu — "dữ liệu có được mã hoá không" — và nối lại với phần backup của bài này bằng một cái bẫy
+			thật sự. Mục 8.5 sẽ chốt đúng chỗ nối đó.
+		</p>
+	</div>
+
+	<h2 id="ba-cau-hoi">1. Ba câu hỏi độc lập: nằm ở đâu, mã hoá chưa, được backup không</h2>
+
+	<p>
+		Mọi quyết định lưu trữ trong bài này — và cả bài sau — dựa trên một khung duy nhất gồm ba câu hỏi
+		<strong>độc lập</strong>, mỗi câu trả lời bằng một nguồn thông tin khác nhau:
+	</p>
+
+	<ol>
+		<li><strong>Dữ liệu nằm ở đâu?</strong> — <code>filesDir</code>, cache, external, database... Quyết định <em>ai đọc được
+			trực tiếp</em> (sandbox của ai).</li>
+		<li><strong>Dữ liệu có được mã hoá không?</strong> — hỏi về <em>nội dung</em> file trên đĩa. Sandbox
+			<strong>không tự mã hoá</strong>; bài sau mới là phần này.</li>
+		<li><strong>Dữ liệu có tham gia backup/restore không?</strong> — quyết định bởi <em>backup rules</em>, không quyết định
+			bởi vị trí hay mã hoá.</li>
+	</ol>
+
+	<div class="callout mental">
+		<p><strong>Sandbox ≠ mã hoá — hai tầng phòng thủ khác nhau.</strong></p>
+		<p>
+			Android bắt buộc phân tách app bằng user ID Linux: mỗi app chạy dưới một danh tính riêng, và thư mục dữ liệu
+			của app chỉ mở cho danh tính đó. Đó là <em>kiểm soát truy cập</em> — tầng một. Nó làm app khác không đọc được
+			file của bạn, nhưng nó <strong>không đổi nội dung file</strong>: file trong <code>filesDir</code> là
+			plaintext, ai vượt qua được tầng phân tách (máy đã root, bản build debug, một lỗi của chính bạn ghi nhầm chỗ)
+			thì đọc được nguyên văn. <em>Mã hoá</em> là tầng hai: đổi nội dung thành dạng không đọc được nếu không có key —
+			và đó là chủ đề của bài sau.
+		</p>
+		<p>
+			Nói cách khác: <strong>"app-private" là câu trả lời cho câu hỏi ai đọc được, không phải câu hỏi nội dung có
+			mã hoá hay không.</strong> Hai câu hỏi, hai nguồn trả lời — suy ra nhau là hiểu sai gốc, và hầu hết các quyết
+			định lưu trữ sai của app thật đều bắt đầu từ chỗ lẫn này.
+		</p>
+	</div>
+
+	<p>
+		Bài này đi hết câu hỏi 1 và câu hỏi 3 (vị trí + backup), và để câu hỏi 2 (mã hoá) cho bài sau. Một ví dụ cho
+		thấy ba câu hỏi không suy ra nhau: file <code>test.txt</code> trong <code>filesDir</code> — nằm trong sandbox
+		(câu 1), plaintext (câu 2), và <strong>vẫn được backup lên cloud</strong> theo mặc định (câu 3, chứng minh ở
+		mục 8.5). Riêng tư không loại trừ backup, và backup không hàm ý mã hoá.
+	</p>
+
+	<h2 id="ban-do-luu-tru">2. Bản đồ: Android có bao nhiêu chỗ để lưu file?</h2>
+
+	<p>
+		Trước khi đọc từng chỗ, hãy có bản đồ tổng — vì câu hỏi thực tế bạn sẽ gặp không phải "làm sao ghi file" mà là
+		"<em>ghi vào đâu</em>". Bản đồ này nối thẳng vào hai quyết định đã có từ trước: preference nhỏ lẻ → DataStore
+		(Chương 9), dữ liệu có cấu trúc cần truy vấn → Room (Chương 10). Bài này phủ phần còn lại của bản đồ:
+		<strong>file</strong>.
+	</p>
+
+	<pre class="tree">Bộ nhớ trong (internal) — chỉ app bạn thấy, KHÔNG cần quyền
+  filesDir            data/data/&lt;package&gt;/files/        → dữ liệu app cần lâu dài
+  cacheDir            data/data/&lt;package&gt;/cache/        → có thể bị hệ thống xoá bất cứ lúc nào
+  databases/          data/data/&lt;package&gt;/databases/    → Room để ở đây
+  shared_prefs/       data/data/&lt;package&gt;/shared_prefs/ → SharedPreferences + các file preference
+
+Bộ nhớ ngoài, phần RIÊNG của app — KHÔNG cần quyền, gỡ app là mất
+  getExternalFilesDir(...)   Android/data/&lt;package&gt;/files/...
+
+Bộ nhớ ngoài, phần CHUNG — cần quyền hoặc phải qua SAF
+  Environment.DIRECTORY_DOWNLOADS / PICTURES / MOVIES / DOCUMENTS
+
+File do NGƯỜI DÙNG chọn — không cần quyền, vì chính họ vừa cho phép
+  Storage Access Framework (SAF): người dùng chọn → bạn nhận về một Uri</pre>
+
+	<p>
+		Ba câu hỏi giúp bạn chọn đúng chỗ trong 10 giây:
+	</p>
+
+	<ol>
+		<li><strong>Người dùng có cần thấy file này trong app Files / Thư viện ảnh không?</strong> Không → bộ nhớ trong. Có → external hoặc SAF.</li>
+		<li><strong>Mất file thì app có hỏng không?</strong> Không hỏng, tải lại được → <code>cacheDir</code>. Hỏng → <code>filesDir</code>.</li>
+		<li><strong>Đây có phải file người dùng tự tạo và muốn giữ sau khi gỡ app?</strong> Có → SAF, để chính họ chọn nơi lưu.</li>
+	</ol>
+
+	<p class="notice">
+		<strong>Hai hàm external dễ nhầm vì nằm cạnh nhau trong tài liệu: <code>getExternalFilesDir()</code> so với
+		<code>getExternalStoragePublicDirectory()</code>.</strong> Tài liệu gốc của khoá đặt hai hàm này cạnh nhau như
+		hai cách tương đương ("Each returns a File object") nhưng chúng khác nhau về <em>quyền</em> —
+		khác biệt lớn nhất trong cả mục này. <code>getExternalFilesDir()</code> trả về thư mục riêng của app trên bộ nhớ
+		ngoài: <strong>không cần quyền gì cả</strong>, ở mọi phiên bản Android.
+		<code>getExternalStoragePublicDirectory()</code> trả về thư mục chung: <strong>cần quyền</strong>, và từ Android
+		10 thì gần như không dùng được nữa vì Scoped Storage (mục 6). Làm theo cách thứ hai rất dễ cho ra code chạy trên
+		emulator mà chết trên máy thật.
+	</p>
+
+	<h2 id="filesdir">3. <code>filesDir</code> và <code>cacheDir</code> — hai dòng code, ba điều cần biết</h2>
+
+	<p>Hai property này lấy từ <code>Context</code>, nên gọi được ở bất cứ đâu có <code>Context</code> — Activity, Application, Service:</p>
+
+	<Code code={dirsCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: giáo trình gốc chapter 11, khối code đầu tiên (<code>{BOOK}</code> dòng 15–18).</p>
+
+	<p>Và đây là cách ghi một file vào đó:</p>
+
+	<Code code={writeFileCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: giáo trình gốc chapter 11 (<code>{BOOK}</code> dòng 22–25). Đoạn này <strong>không có trong project mẫu</strong> — toàn bộ nửa file của bài này không có code thật trong <code>projects/</code> (chi tiết ở mục Nguồn).</p>
+
+	<h3 id="use-block">3.1. <code>use &#123; &#125;</code> làm gì và vì sao bắt buộc</h3>
+
+	<p>
+		<code>use</code> là extension function của Kotlin trên mọi <code>Closeable</code>. Nó chạy lambda rồi <strong>gọi
+		<code>close()</code> trong khối <code>finally</code></strong> — nghĩa là file được đóng cả khi lambda ném exception.
+		Nếu bạn viết <code>file.bufferedWriter().write("...")</code> mà không có <code>use</code>, dữ liệu có thể còn nằm trong
+		buffer và <strong>không bao giờ tới đĩa</strong>, vì <code>BufferedWriter</code> chỉ flush khi buffer đầy hoặc khi
+		<code>close()</code>. Đây là loại bug im lặng nhất trong mảng file: code không lỗi, file được tạo, nhưng rỗng.
+		(Bạn đã gặp <code>use</code> một lần ở Chương 8, khi nạp <code>keys.properties</code> — cùng một khuôn.)
+	</p>
+
+	<p class="hint">
+		<strong>So với Java.</strong> Trong Java bạn viết <code>try (var w = ...) &#123; &#125;</code> — gọi là try-with-resources.
+		Kotlin không có cú pháp đó, thay bằng <code>use</code>. Cùng một ý tưởng: <em>ai mở thì người đó chịu trách nhiệm đóng,
+		và trách nhiệm đó không được phụ thuộc vào việc code có chạy êm hay không.</em>
+	</p>
+
+	<h3 id="io-thread">3.2. Dòng code này đang chạy trên main thread</h3>
+
+	<p>
+		Nhìn lại khối <code>writeFile</code> phía trên: bỏ vào <code>onCreate</code> của một Activity thì nó chạy được —
+		và cũng đúng là nó đang ghi đĩa <em>trên luồng vẽ giao diện</em>. Với một file 14 byte thì bạn không thấy gì. Với
+		file lớn hơn hoặc đĩa đang bận, bạn được thưởng một cú giật khung hình, hoặc ANR nếu quá 5 giây. Đây chính xác là
+		bài học của Chương 9 về <code>commit()</code> so với <code>apply()</code>, xuất hiện lại ở dạng khác — và cũng là
+		quy tắc S1: việc chặn thì chuyển đi.
+	</p>
+
+	<Code code={writeFileSafeCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Ví dụ do khoá học tự dựng (không có trong tài liệu gốc, không có trong project mẫu) để minh hoạ ba thứ thường bị bỏ: <code>Dispatchers.IO</code>, <code>runCatching</code>, và trả kết quả về cho người gọi biết.</p>
+
+	<p>
+		<code>runCatching</code> quan trọng vì thao tác file <strong>thất bại được</strong> theo những cách bạn không kiểm soát:
+		đĩa đầy, file bị process khác giữ, thiếu quyền, đường dẫn không tồn tại. Code minh hoạ thường viết như thể ghi file luôn
+		thành công. Trong app thật, "hết dung lượng" là tình huống bình thường, không phải ngoại lệ.
+	</p>
+
+	<h3 id="cache-quota">3.3. Đo dung lượng cache còn lại</h3>
+
+	<Code code={cacheQuotaCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: giáo trình gốc chapter 11 (<code>{BOOK}</code> dòng 48–62) — trích nguyên văn để đọc.</p>
+
+	<p>
+		<code>getCacheQuotaBytes()</code> trả lời một câu hỏi rất cụ thể: <em>hệ thống hứa dành cho cache của app này bao nhiêu
+		byte trước khi bắt đầu xoá?</em> Nó không phải "dung lượng trống của máy". Nếu cache của bạn vượt hạn mức đó, khi máy
+		cần chỗ, app của bạn là đứa bị dọn trước.
+	</p>
+
+	<p>
+		Nó cần một <code>UUID</code> đại diện cho <em>volume</em> chứa đường dẫn — vì một máy có thể có nhiều vùng lưu trữ.
+		<code>getUuidForPath()</code> có sẵn để làm đúng việc đổi <code>File</code> → <code>UUID</code>.
+	</p>
+
+	<div class="callout diff">
+		<p><strong>Đoạn code trên có 2 vấn đề.</strong></p>
+		<ul>
+			<li>
+				<strong>Câu giải thích đi kèm trong tài liệu gốc nói sai.</strong> Bản gốc viết: "Because the storage manager is a
+				system service, you must retrieve this from the main thread." Không có yêu cầu nào như vậy —
+				<code>getSystemService()</code> gọi được từ luồng nào cũng được. Điều <em>thật sự</em> cần cẩn thận thì ngược lại:
+				<code>getCacheQuotaBytes()</code> có thể chạm đĩa nên <strong>nên tránh</strong> main thread. Giải thích bị đảo chiều.
+			</li>
+			<li>
+				<strong>Code không compile được như in.</strong> Nó dùng <code>context.cacheDir</code> trong khi đang ở
+				<code>lifecycleScope</code> của một Activity — mà Activity <em>chính là</em> một <code>Context</code>, nên không có
+				biến nào tên <code>context</code> ở đó. Phải viết <code>cacheDir</code> (hoặc <code>this.cacheDir</code>).
+				Cùng lỗi này cũng có ở đoạn ghi file phía trên. Dấu hiệu cho thấy snippet được cắt ra từ một chỗ khác chứ không
+				chạy thử trong ngữ cảnh đang mô tả.
+			</li>
+		</ul>
+	</div>
+
+	<Code code={cacheQuotaFixedCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Bản dựng lại của khoá học: bỏ <code>context.</code>, đẩy phần đọc đĩa sang <code>Dispatchers.IO</code>, và dùng <code>Timber.d</code> thay <code>Timber.e</code> vì đây là thông tin, không phải lỗi.</p>
+
+	<p class="hint">
+		<strong>Chi tiết nhỏ nhưng đáng nhặt:</strong> bản gốc dùng <code>Timber.e</code> (error) để in một con số bình thường.
+		Log level không phải chuyện thẩm mỹ — nhiều team lọc log theo level và bật cảnh báo trên <code>e</code>. Dùng
+		<code>e</code> cho thông tin thường làm nhiễu chính hệ thống báo lỗi của bạn.
+	</p>
+
+	<h2 id="device-explorer">4. Device Explorer — nhìn thấy file bằng mắt</h2>
+
+	<p>
+		<em>View ▸ Tool Windows ▸ Device Explorer</em>. Đây là công cụ quan trọng nhất trong bài này, vì nó biến
+		"file được lưu ở đâu đó" thành một thứ bạn nhìn thấy và mở ra đọc được.
+	</p>
+
+	<p>
+		Tài liệu gốc hướng dẫn bằng ảnh chụp: mở <em>data/data</em>, cuộn tới <em>com.kodeco.recipefinder</em>, thấy
+		<em>test.txt</em>, double-click để mở. Thay ảnh, đây là <strong>cái bạn đang tìm và vì sao</strong>:
+	</p>
+
+	<table class="api">
+		<thead>
+			<tr><th>Đường dẫn trong Device Explorer</th><th>Bạn thấy gì</th><th>Dùng để kiểm tra điều gì</th></tr>
+		</thead>
+		<tbody>
+			<tr><td><code>/data/data/com.kodeco.recipefinder/files/</code></td><td>File bạn ghi bằng <code>filesDir</code></td><td>Code ghi file có thật sự chạy chưa</td></tr>
+			<tr><td><code>/data/data/com.kodeco.recipefinder/cache/</code></td><td>File tạm</td><td>Cache có phình to bất thường không</td></tr>
+			<tr><td><code>/data/data/com.kodeco.recipefinder/databases/</code></td><td><code>recipe_database</code>, <code>-shm</code>, <code>-wal</code></td><td>Room đã tạo file chưa, tên file có đúng như bạn nghĩ không</td></tr>
+			<tr><td><code>/data/data/com.kodeco.recipefinder/shared_prefs/</code></td><td><code>encrypted_preferences.xml</code></td><td>Bài sau: mở ra xem có đọc được không — câu trả lời nói lên cả bài</td></tr>
+		</tbody>
+	</table>
+
+	<div class="callout note">
+		<p><strong>Bốn điều Device Explorer sẽ làm bạn bối rối nếu không biết trước:</strong></p>
+		<ul>
+			<li><strong>Trên máy thật, <code>/data/data</code> thường trống hoặc không mở được.</strong> Cần máy đã root, hoặc dùng
+			emulator có Google APIs (không phải Google Play). Với bản build <code>debug</code> bạn vẫn xem được thư mục app của mình
+			bằng <code>adb shell run-as com.kodeco.recipefinder ls files</code>.</li>
+			<li><strong>Device Explorer không tự làm mới.</strong> Ghi file rồi không thấy? Bấm chuột phải ▸ <em>Synchronize</em> trước
+			khi kết luận code sai.</li>
+			<li><strong>Ba file database, không phải một.</strong> <code>recipe_database</code>, <code>-wal</code> (write-ahead log)
+			và <code>-shm</code> (shared memory). Dữ liệu bạn vừa ghi có thể còn nằm trong <code>-wal</code>. Copy database ra ngoài mà
+			bỏ hai file kia là copy một bản thiếu.</li>
+			<li><strong>Tên tool đã đổi qua các bản Android Studio.</strong> Từng là <em>Device File Explorer</em>; các bản gần đây gộp
+			vào panel <em>Device Explorer</em> có hai tab <em>Files</em> và <em>Processes</em>.</li>
+		</ul>
+	</div>
+
+	<h2 id="cache-files">5. File cache — cái tên nói lên hợp đồng</h2>
+
+	<Code code={tempFileCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: giáo trình gốc chapter 11 (<code>{BOOK}</code> dòng 70–72).</p>
+
+	<p>
+		<code>File.createTempFile(prefix, suffix, directory)</code> là hàm của Java, không phải của Android. Nó tạo file với tên
+		<em>duy nhất</em> (thêm số random vào sau prefix), nên hai lần gọi liên tiếp cho hai file khác nhau. Truyền
+		<code>null</code> cho suffix nghĩa là dùng mặc định <code>.tmp</code>.
+	</p>
+
+	<p>
+		Câu quan trọng nhất trong mục này là câu cảnh báo: <strong>hãy kiểm tra file còn tồn tại trước khi dùng lại,
+		vì hệ thống có thể xoá.</strong> Đó không phải lời khuyên phòng xa — đó là <em>hợp đồng</em> của thư mục cache.
+		Bạn đang nói với Android: "chỗ này cứ xoá thoải mái khi cần chỗ". Android sẽ làm đúng như vậy, và không báo trước.
+	</p>
+
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">Cách nghĩ sai</div>
+			<p>Lưu vào cache để "tiết kiệm" chỗ chính, rồi giữ đường dẫn trong biến và dùng lại sau. Chạy tốt lúc test, hỏng ngẫu nhiên trên máy người dùng.</p>
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">Cách nghĩ đúng</div>
+			<p>Cache = "app tạo lại được cái này". Mỗi lần dùng: <code>if (!file.exists()) tạoLại()</code>. Không tạo lại được → nó không thuộc cache, hãy để ở <code>filesDir</code>.</p>
+		</div>
+	</div>
+
+	<p class="hint">
+		<strong>Bổ sung.</strong> App của bạn <em>cũng nên</em> tự dọn cache, đừng chờ hệ thống. <code>tempFile.delete()</code> ngay
+		sau khi dùng xong là đủ. Ngoài ra Android còn cho khai <code>android:hasFragileUserData</code> và các API dọn cache theo tuổi
+		file — nhưng cách đơn giản nhất vẫn là xoá cái bạn vừa tạo khi không cần nữa.
+	</p>
+
+	<h2 id="external">6. External storage — nơi tài liệu cũ và Android hiện tại lệch nhau nhiều nhất</h2>
+
+	<p>Android có sẵn tên cho các thư mục quen thuộc, khai trong class <code>Environment</code>:</p>
+
+	<table class="api">
+		<thead><tr><th>Hằng số</th><th>Thư mục</th></tr></thead>
+		<tbody>
+			<tr><td><code>Environment.DIRECTORY_DOWNLOADS</code></td><td>Download</td></tr>
+			<tr><td><code>Environment.DIRECTORY_PICTURES</code></td><td>Pictures</td></tr>
+			<tr><td><code>Environment.DIRECTORY_MOVIES</code></td><td>Movies</td></tr>
+			<tr><td><code>Environment.DIRECTORY_DOCUMENTS</code></td><td>Documents</td></tr>
+		</tbody>
+	</table>
+
+	<p>Ghi file vào Documents theo cách tài liệu gốc in ra:</p>
+
+	<Code code={externalWriteCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: giáo trình gốc chapter 11 (<code>{BOOK}</code> dòng 96–100) — trích nguyên văn để đọc, không phải khuôn nên dùng (lý do ngay dưới đây).</p>
+
+	<p>
+		Rồi tài liệu gốc nói thẳng một câu rất đúng và rất quan trọng: <em>"This works well on an emulator, but you can't just access
+		any file on a real device."</em> Hãy dừng ở câu đó một chút, vì nó là bản lề của cả phần file trong bài này.
+	</p>
+
+	<div class="callout diff">
+		<p><strong>Cần biết rõ hơn: <code>getExternalStoragePublicDirectory()</code> đã bị deprecated từ API 29.</strong></p>
+		<p>
+			Từ Android 10 (API 29), Android bật <strong>Scoped Storage</strong>: app không còn được nhìn thấy toàn bộ bộ nhớ ngoài.
+			Hàm này vẫn còn trong SDK nhưng được đánh dấu deprecated, và đường dẫn nó trả về thường không ghi được. Điều này giải
+			thích chính xác câu "works on emulator but not real device" — nhưng tài liệu gốc không nói <em>tại sao</em>, khiến
+			người học tưởng đây là chuyện quyền hạn thông thường, trong khi thực chất là một thay đổi kiến trúc của Android.
+		</p>
+		<p>Ba lựa chọn thay thế, tuỳ mục đích:</p>
+		<ul>
+			<li><strong>File riêng của app trên bộ nhớ ngoài</strong> → <code>context.getExternalFilesDir(...)</code>. Không quyền, không Scoped Storage, gỡ app là mất.</li>
+			<li><strong>Ảnh / video / nhạc dùng chung</strong> → MediaStore API.</li>
+			<li><strong>File tài liệu do người dùng chọn</strong> → SAF, đúng cái dạy ở mục sau.</li>
+		</ul>
+	</div>
+
+	<Code code={externalPrivateCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Ví dụ do khoá học tự dựng cho nhánh <code>getExternalFilesDir()</code> mà tài liệu gốc nhắc tên nhưng không đưa code.</p>
+
+	<p class="notice">
+		<strong>Cập nhật tư duy "external" cho thời Scoped Storage:</strong> từ Android 10, "external" <em>không còn</em> nghĩa là
+		"khu vực công cộng ai vào được", và cũng <em>không còn</em> đồng nghĩa với "thẻ SD rời". Hai loại external có tính chất rất
+		khác nhau: phần <em>riêng của app</em> (<code>getExternalFilesDir()</code>) vẫn là sandbox của bạn — chỉ không nằm trong
+		phân vùng nội bộ; phần <em>chung</em> thì app không tự do đọc ghi nữa, mà phải qua MediaStore (ảnh/video) hoặc SAF
+		(tài liệu). Nghĩ "external = SD card công khai" là tư duy của thời Android trước 10 — thẻ nhớ rời chỉ là một
+		trong nhiều cách triển khai của bộ nhớ ngoài, và nhiều máy ngày nay không có thẻ nào.
+	</p>
+
+	<h2 id="saf">7. Storage Access Framework — đổi "quyền vào bộ nhớ" thành "người dùng chỉ vào file"</h2>
+
+	<p>
+		Đây là mục quan trọng nhất trong bài, và cũng là mục dễ hiểu sai nhất nếu chỉ đọc code.
+		Hãy nắm ý tưởng trước:
+	</p>
+
+	<div class="callout mental">
+		<p><strong>Mental model.</strong> Có hai cách xin file trên Android:</p>
+		<ul>
+			<li><strong>Cách cũ — xin quyền:</strong> "cho app quyền đọc toàn bộ bộ nhớ ngoài". Người dùng bấm Allow một lần,
+			app thấy hết mọi file. Đây là cách <code>getExternalStoragePublicDirectory()</code> hoạt động, và là lý do Android
+			phải siết lại.</li>
+			<li><strong>Cách của SAF — nhờ người dùng chỉ:</strong> app không xin quyền gì cả. App mở giao diện chọn file
+			<em>của hệ thống</em> (không phải của app), người dùng tự chọn, và app chỉ nhận đúng một <code>Uri</code> trỏ tới
+			đúng thứ vừa được chọn.</li>
+		</ul>
+		<p>
+			Điểm cốt lõi: <strong>giao diện chọn file đó không thuộc app bạn.</strong> App bạn không đọc được thư mục, không
+			nhìn thấy danh sách file, không biết người dùng vừa cuộn qua những gì. App chỉ nhận về kết quả cuối. Vì vậy SAF
+			<em>không cần quyền nào trong manifest</em> — không có gì để lạm dụng.
+		</p>
+	</div>
+
+	<h3 id="saf-uri">7.1. Phân biệt bắt buộc trước code: đường dẫn file ≠ <code>Uri</code></h3>
+
+	<p>
+		Mọi thứ bạn làm cho tới giờ đều là <code>File</code> — một đường dẫn mà app tự đọc/ghi trực tiếp vì nó thuộc sandbox của
+		app. SAF trả về một thứ khác loại:
+	</p>
+
+	<pre class="tree">File (đường dẫn):   /data/data/com.kodeco.recipefinder/files/test.txt
+                    → app tự mở, tự đọc/ghi — vì thư mục đó thuộc app
+
+content Uri:        content://com.android.externalstorage.documents/document/primary%3ADocuments%2Ftest.txt
+                    → chỉ là một "định danh" trong hệ thống content/provider
+                    → không ai bảo đảm nó trông giống (hoặc ánh xạ được tới) một đường dẫn file</pre>
+
+	<p>
+		<code>Uri</code> (Uniform Resource Identifier) là <strong>một định danh do hệ thống content/provider cấp</strong>, không
+		phải một đường dẫn file. Ba hệ quả thực tế của sự khác biệt này — cả ba đều là chỗ người mới gãy:
+	</p>
+	<ul>
+		<li><strong>Không ghép được</strong> một <code>content://...</code> thành đường dẫn bằng cách "decode chuỗi" — nó
+			<em>không</em> mã hoá một đường dẫn bên dưới. Việc đó có thể trông chạy được trên một thiết bị rồi hỏng trên thiết bị khác.</li>
+		<li><strong>Khi làm việc với Uri, app đi qua <code>ContentResolver</code></strong> (mục 7.4) — chứ không qua
+			<code>File</code>/<code>FileInputStream</code>.</li>
+		<li><strong>Quyền vào Uri là loại quyền riêng</strong>, không phải quyền filesystem (mục 7.4).</li>
+	</ul>
+
+	<h3 id="saf-create">7.2. Tạo file mới — <code>ACTION_CREATE_DOCUMENT</code></h3>
+
+	<Code code={safCreateCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: giáo trình gốc chapter 11 (<code>{BOOK}</code> dòng 112–123) — dùng <code>startActivityForResult</code>, API đã deprecated; đọc để hiểu từng dòng, khuôn hiện tại ở mục 7.3.</p>
+
+	<p>Đọc từng dòng, vì mỗi dòng có một việc riêng:</p>
+
+	<table class="api">
+		<thead><tr><th>Dòng</th><th>Nó làm gì</th><th>Bỏ đi thì sao</th></tr></thead>
+		<tbody>
+			<tr><td><code>Intent(Intent.ACTION_CREATE_DOCUMENT)</code></td><td>Nói với hệ thống: "mở màn hình để người dùng <em>tạo</em> một file mới"</td><td>Không có gì mở ra</td></tr>
+			<tr><td><code>addCategory(Intent.CATEGORY_OPENABLE)</code></td><td>Lọc chỉ những thứ có thể mở bằng stream</td><td>Có thể lọt các nguồn không mở được, dẫn tới lỗi khi ghi</td></tr>
+			<tr><td><code>type = "text/plain"</code></td><td>MIME type của file sẽ tạo — quyết định đuôi file hệ thống gợi ý</td><td>Bắt buộc phải có, nếu không hệ thống không biết tạo loại file gì</td></tr>
+			<tr><td><code>putExtra(Intent.EXTRA_TITLE, "test.txt")</code></td><td>Tên gợi ý điền sẵn vào ô tên file</td><td>Ô tên trống, người dùng phải tự nghĩ tên</td></tr>
+		</tbody>
+	</table>
+
+	<p class="hint">
+		<strong>Cần nhớ:</strong> <code>EXTRA_TITLE</code> là <em>gợi ý</em>, không phải lệnh. Người dùng có thể sửa thành tên
+		khác, hoặc chọn một thư mục khác hoàn toàn. App bạn không kiểm soát được điều đó — và đó chính là mục đích thiết kế.
+	</p>
+
+	<h3 id="saf-note">7.3. Khuôn hiện tại: Activity Result API</h3>
+
+	<p>
+		Tài liệu gốc dùng <code>startActivityForResult</code> — API đã deprecated — kèm một <em>Note</em> bảo chuyển sang Activity
+		Result API nhưng <strong>không đưa code mới</strong>, nên người học bị bỏ lửng đúng ở chỗ khó nhất. Dưới đây là bản
+		hiện đại tương ứng:
+	</p>
+
+	<Code code={safModernCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Ví dụ do khoá học tự dựng để lấp chỗ Note của tài liệu gốc (<code>{BOOK}</code> dòng 128) chỉ nhắc mà không đưa code.</p>
+
+	<table class="cmp">
+		<thead><tr><th>Khía cạnh</th><th>Cách cũ (tài liệu gốc in)</th><th>Activity Result API</th></tr></thead>
+		<tbody>
+			<tr><td>Kết quả trả về ở đâu</td><td><code>onActivityResult()</code> — một hàm khổng lồ dùng chung cho mọi request</td><td>Ngay trong lambda đặt cạnh chỗ đăng ký</td></tr>
+			<tr><td>Phân biệt các request</td><td>Tự quản lý <code>requestCode</code> là số nguyên</td><td>Không cần — mỗi launcher là một biến riêng</td></tr>
+			<tr><td>Kiểu dữ liệu</td><td><code>Intent?</code>, tự lấy <code>data.data</code>, tự kiểm <code>resultCode</code></td><td><code>Uri?</code> — đúng kiểu bạn cần, <code>null</code> nghĩa là người dùng huỷ</td></tr>
+			<tr><td>Sống sót qua thay đổi cấu hình</td><td>Dễ sai vì phải giữ state thủ công</td><td>Hệ thống tự lo</td></tr>
+		</tbody>
+	</table>
+
+	<p>
+		Chú ý một chi tiết dễ bỏ qua: <code>registerForActivityResult</code> phải được gọi <strong>khi Activity đang khởi tạo</strong>
+		(gán vào property như trên, hoặc trong <code>onCreate</code>), không được gọi ngay lúc người dùng bấm nút. Gọi muộn sẽ
+		bị exception. Còn <code>launch()</code> thì gọi bất cứ lúc nào cũng được — đó mới là lúc màn hình chọn file mở ra.
+	</p>
+
+	<p>
+		Mental model của toàn cơ chế, đúng một dòng: <strong>đăng ký launcher trước → <code>launch()</code> mở system picker →
+		người dùng chọn → callback nhận về <code>Uri</code></strong>. Các contract phổ biến: <code>CreateDocument</code> (tạo mới),
+		<code>OpenDocument</code> (một file có sẵn), <code>OpenDocumentTree</code> (cả một thư mục) — dùng cái nào thì callback
+		đó.
+	</p>
+
+	<h3 id="saf-tree">7.4. Xin cả một thư mục, và giữ quyền qua các lần mở app</h3>
+
+	<p>
+		<code>ACTION_OPEN_DOCUMENT</code> cho người dùng chọn một file có sẵn để đọc. Còn khi app cần làm việc với
+		<em>nhiều</em> file trong cùng chỗ (ví dụ app đọc tài liệu quét cả thư mục), có <code>ACTION_OPEN_DOCUMENT_TREE</code>:
+		người dùng chọn một thư mục, app được phép truy cập mọi thứ bên trong.
+	</p>
+
+	<Code code={safTreeCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Ví dụ do khoá học tự dựng cho nhánh <code>OpenDocumentTree</code>, dựa trên hai API tài liệu gốc nhắc tên (<code>{BOOK}</code> dòng 139–146).</p>
+
+	<p>
+		Mặc định, quyền vào <code>Uri</code> mà người dùng vừa chọn chỉ sống <strong>tới khi process của app chết</strong>.
+		Mở lại app, dùng lại cái <code>Uri</code> cũ đã lưu → <code>SecurityException</code>. Đây là lỗi rất hay gặp và rất
+		khó đoán, vì đường dẫn vẫn đúng, chỉ quyền là mất. Cách giữ:
+	</p>
+
+	<Code code={persistUriCode} lang="kotlin" theme="github-dark" />
+	<p class="src">Nguồn: giáo trình gốc chapter 11 (<code>{BOOK}</code> dòng 139–146).</p>
+
+	<div class="callout note">
+		<p><strong>Ba điều về <code>takePersistableUriPermission</code> cần biết trước khi tin vào chữ "persistable":</strong></p>
+		<ul>
+			<li><strong>Chỉ hoạt động nếu Intent gốc có cờ tương ứng.</strong> Bạn không thể "xin thêm" quyền ghi nếu lúc mở
+			chỉ xin đọc. Cờ bạn <em>take</em> phải là tập con của cờ hệ thống đã <em>grant</em>.</li>
+			<li><strong>Bạn vẫn phải tự lưu cái <code>Uri</code>.</strong> Hệ điều hành nhớ "app này có quyền vào Uri đó",
+			nhưng không nhớ hộ bạn <em>Uri đó là gì</em>. Lưu string của nó vào DataStore.</li>
+			<li><strong>Có giới hạn số lượng.</strong> Mỗi app chỉ giữ được một số lượng persisted URI nhất định (khoảng 128
+			trên nhiều bản Android). Giữ vô hạn thì cái cũ nhất bị đẩy ra. Dùng
+			<code>contentResolver.releasePersistableUriPermission()</code> khi không cần nữa.</li>
+		</ul>
+	</div>
+
+	<p>
+		Và một lưu ý về độ bền của "persisted": <strong>quyền đã persist không phải quyền vĩnh viễn.</strong> Người dùng có thể
+		thu hồi; file/thư mục có thể bị xoá, đổi tên, hoặc provider của nó biến mất (tài khoản cloud bị ngắt đồng bộ, app
+		provider bị gỡ). Vì vậy app thật luôn kiểm tra lại quyền và xử lý được tình huống "Uri đã lưu không còn hợp lệ" — không
+		giả định "lưu một lần, dùng mãi". Khi đó, cách ứng xử chuẩn là nhờ người dùng chọn lại.
+	</p>
+
+	<h3 id="saf-stream">7.5. Đọc/ghi nội dung: <code>ContentResolver</code>, không phải đường dẫn giả</h3>
+
+	<p>
+		Đoạn code hiện đại ở mục 7.3 đã cho thấy cách đúng khi làm việc với một Uri của SAF:
+		<code>contentResolver.openOutputStream(uri)</code>. Đó là khuôn chuẩn: <strong>với Uri, app làm việc qua
+		<code>ContentResolver</code></strong> — <code>openInputStream(uri)</code> để đọc, <code>openOutputStream(uri)</code> để
+		ghi. Không cố biến Uri thành đường dẫn file rồi mở bằng <code>FileInputStream</code>: content/provider có thể đứng
+		phía sau một tài liệu trên Drive, một file trên cloud, hay một dữ liệu không có file vật lý nào cả.
+	</p>
+
+	<p>
+		Trong code ở 7.3 bạn cũng thấy lại <code>use &#123; &#125;</code> (mục 3.1) — stream từ
+		<code>openInputStream</code>/<code>openOutputStream</code> cũng là <code>Closeable</code>, và quy tắc "ai mở thì đóng,
+		cả khi có exception" áp dụng y như với file thường.
+	</p>
+
+	<div class="ba">
+		<div class="ba-col">
+			<div class="ba-head bad">Trước SAF</div>
+			<p>Khai <code>READ_EXTERNAL_STORAGE</code> trong manifest. Hỏi quyền lúc runtime. Người dùng thấy "app này muốn xem
+			mọi file của bạn". Tỉ lệ từ chối cao, và app thấy nhiều hơn nó cần.</p>
+		</div>
+		<div class="ba-col">
+			<div class="ba-head good">Với SAF</div>
+			<p>Không quyền nào trong manifest. Người dùng thấy màn hình chọn file quen thuộc của hệ thống. App nhận đúng một
+			<code>Uri</code>. Không có dialog quyền, không có gì bị lạm dụng.</p>
+		</div>
+	</div>
+
+	<h2 id="database-explorer">8. Database Explorer — xem thẳng vào bảng đang chạy</h2>
+
+	<p>
+		<em>View ▸ Tool Windows ▸ App Inspection ▸ Database Inspector</em> (tài liệu gốc gọi là "Database Explorer"; các bản Android
+		Studio gần đây đặt nó thành một tab trong panel <em>App Inspection</em>). Yêu cầu: app đang chạy trên thiết bị API 26+,
+		và bạn chọn đúng process.
+	</p>
+
+	<p>Ba việc nó làm được mà Device Explorer không làm được:</p>
+
+	<ul>
+		<li><strong>Xem bảng và dữ liệu thật, ngay lúc app đang chạy</strong> — không cần copy file ra ngoài, không cần công cụ khác.</li>
+		<li><strong>Chạy câu query của riêng bạn</strong> — kiểm tra xem query trong DAO có ra đúng kết quả bạn nghĩ hay không.</li>
+		<li><strong>Live updates</strong> — bật checkbox, bảng tự cập nhật khi app ghi dữ liệu. Cách nhanh nhất để xác nhận cái
+		luồng live query của Chương 10 đang thật sự chạy.</li>
+	</ul>
+
+	<p class="hint">
+		<strong>Vì sao mục này nằm ở đây, không nằm ở Chương 10?</strong> Vì nó là bàn đạp cho bài sau. Cuối bài sau
+		bạn sẽ mã hoá database — và cách chứng minh việc mã hoá có tác dụng chính là mở lại bằng đúng những công cụ này và thấy
+		<em>không đọc được nữa</em>. Hai bài đứng cạnh nhau vì một lý do nối tiếp như vậy.
+	</p>
+
+	<div class="callout note">
+		<p>
+			<strong>Sau khi mã hoá, Database Inspector sẽ không mở được database nữa.</strong> Đó là dấu hiệu <em>thành công</em>,
+			không phải lỗi. Bạn sẽ chỉ thấy database trống hoặc thông báo không đọc được, vì công cụ không có passcode. Đừng mất
+			buổi tối đi debug cái này — bài sau sẽ giải thích đầy đủ.
+		</p>
+	</div>
+
+	<h2 id="backup">8.5. Backup: chốt lại ba câu hỏi trước khi sang mã hoá</h2>
+
+	<p>
+		Trước khi sang bài sau, cần chốt lại khung ba câu hỏi ở mục 1 — vì phần còn lại của lộ trình sẽ dựa vào đó. Câu 3
+		(backup) đáng một mục riêng, vì trạng thái backup mặc định của app học này là một quả bom nổ chậm mà bạn cần nhìn thấy
+		ngay từ bây giờ.
+	</p>
+
+	<p>
+		Điểm dễ hiểu sai nhất: <strong>file trong <code>filesDir</code> là riêng tư nhưng vẫn có thể được backup lên cloud.</strong>
+		Theo tài liệu Auto Backup, mặc định được backup gồm: shared preferences, file nội bộ (<code>getFilesDir()</code>), database
+		(<code>getDatabasePath()</code>) và file external riêng của app (<code>getExternalFilesDir()</code>) — tối đa 25 MB mỗi
+		app, lên Google Drive của người dùng. Riêng thư mục cache/code-cache/no-backup bị loại trừ <em>cứng</em> (kể cả cố tình
+		<code>&lt;include&gt;</code> cũng không đưa lại được). Riêng tư (mục 1) và được backup (mục này) là hai thuộc tính khác
+		nhau — app học này đang bật cả hai cùng lúc.
+	</p>
+
+	<p>
+		Backup của project này do các attribute trong <code>AndroidManifest.xml</code> điều khiển — và đây là code thật trong
+		project, không phải minh hoạ:
+	</p>
+
+	<Code code={manifestBackupCode} lang="xml" theme="github-dark" />
+	<p class="src">Code thật: <code>{FINAL_ROOT}/app/src/main/AndroidManifest.xml</code> dòng 7–9 (<code>...</code> là phần attribute khác của thẻ <code>&lt;application&gt;</code>, lược).</p>
+
+	<table class="api">
+		<thead><tr><th>Attribute trong manifest</th><th>Trỏ tới</th><th>Áp dụng cho</th></tr></thead>
+		<tbody>
+			<tr>
+				<td><code>android:dataExtractionRules="@xml/data_extraction_rules"</code></td>
+				<td><code>res/xml/data_extraction_rules.xml</code></td>
+				<td><strong>Android 12+ (API 31+)</strong> — định dạng <code>&lt;data-extraction-rules&gt;</code> mới, có phân biệt
+					các kênh: <code>&lt;cloud-backup&gt;</code> (backup lên Drive), <code>&lt;device-transfer&gt;</code> (chuyển máy
+					trực tiếp máy-sang-máy), <code>&lt;cross-platform-transfer&gt;</code> (Android 16+).</td>
+			</tr>
+			<tr>
+				<td><code>android:fullBackupContent="@xml/backup_rules"</code></td>
+				<td><code>res/xml/backup_rules.xml</code></td>
+				<td><strong>Android 11 trở xuống</strong> — định dạng <code>&lt;full-backup-content&gt;</code> cũ. Cả hai file cùng
+					tồn tại trong project để phủ cả hai nhóm thiết bị; app target API 31+ mà <em>không</em> khai
+					<code>fullBackupContent</code> thì các thiết bị cũ sẽ dùng rule mặc định (backup mọi thứ trừ cache).</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p>
+		Và trạng thái thật của hai file đó trong project: <strong>mọi rule đều đang nằm trong comment</strong> —
+		<code>data_extraction_rules.xml</code> chỉ có khung <code>&lt;cloud-backup&gt;</code> rỗng kèm TODO,
+		<code>backup_rules.xml</code> chỉ có sample bị comment. Nghĩa là: với <code>allowBackup="true"</code>, <em>mọi thứ được
+		backup theo mặc định, không loại trừ gì</em>. Điều đó vô hại với preference thường, và là một quả bom nổ chậm với dữ
+		liệu mã hoá — vì sao, bài sau sẽ chứng minh từng bước (mục 15 của bài đó).
+	</p>
+
+	<p class="notice">
+		<strong>Ba quy tắc đọc backup rules:</strong> (1) mỗi section (<code>cloud-backup</code>, <code>device-transfer</code>)
+		<em>chỉ</em> áp dụng cho kênh của nó — khai thiếu <code>device-transfer</code> thì backup cloud được loại nhưng chuyển
+		máy trực tiếp vẫn copy; (2) <code>&lt;exclude&gt;</code> thắng <code>&lt;include&gt;</code>; (3) khai một
+		<code>&lt;include&gt;</code> là mặc định "backup tất cả" bị tắt — chỉ còn đúng những gì bạn liệt kê. Bảng drift chi tiết
+		về cú pháp hai thế hệ rule nằm ở phụ lục AP3, không nhân đôi ở đây.
+	</p>
+
+	<div class="callout note">
+		<strong>Kiểm tra nhanh</strong>
+		<p>
+			Bốn thứ sau đây của app học này, hãy trả lời: nằm ở đâu, có được mã hoá không, có được backup mặc định không — và
+			<em>theo câu hỏi nào</em> trong ba câu ở mục 1? <strong>(1)</strong> file <code>test.txt</code> trong
+			<code>filesDir</code>; <strong>(2)</strong> database <code>recipe_database</code>; <strong>(3)</strong> ảnh thumbnail
+			tải về cho card công thức; <strong>(4)</strong> file <code>encrypted_preferences.xml</code>.
+		</p>
+		<details>
+			<summary>Xem đáp án</summary>
+			<p>
+				<strong>(1)</strong> <code>filesDir</code> (câu 1: sandbox riêng) · không mã hoá (câu 2: plaintext) · có backup
+				mặc định (câu 3). <strong>(2)</strong> <code>databases/</code> · chưa mã hoá (cho tới bài sau) · có backup mặc định.
+				<strong>(3)</strong> đúng chỗ là <code>cacheDir</code> — vì mất thì tải lại được · không mã hoá · <em>không</em>
+				backup (cache bị loại trừ cứng). <strong>(4)</strong> <code>shared_prefs/</code> · <em>có</em> mã hoá (đó là cả
+				điểm của nó) · có backup mặc định — và chính sự kết hợp "có mã hoá + có backup" này tạo ra cái bẫy ở bài sau.
+				Chú ý câu hỏi vị trí trả lời bằng đường dẫn, câu hỏi mã hoá trả lời bằng nội dung file, câu hỏi backup trả lời bằng
+				rules — ba câu, ba nguồn trả lời khác nhau.
+			</p>
+		</details>
+	</div>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+	<div class="callout">
+		<ul>
+			<li><strong>Ba câu hỏi độc lập</strong> — nằm ở đâu / có mã hoá không / có backup không — mỗi câu một nguồn trả lời.
+				Sandbox (ai đọc được) ≠ mã hoá (nội dung đĩa là gì): hai tầng phòng thủ khác nhau, suy ra nhau là hiểu sai gốc.</li>
+			<li><strong>Chọn chỗ theo hợp đồng, không theo thói quen:</strong> <code>filesDir</code> bền; <code>cacheDir</code> là
+				lời hứa "tạo lại được" — luôn <code>exists()</code> trước khi dùng lại; external riêng của app không cần quyền;
+				file người dùng tự tạo thì để chính họ chọn chỗ qua SAF.</li>
+			<li><strong>File = IO: <code>use</code> luôn, IO thread luôn, <code>runCatching</code> luôn.</strong> Code không lỗi
+				nhưng file rỗng (quên <code>use</code>), giật khung hình (ghi trên main thread), crash lúc hết đĩa (quên xử lý lỗi)
+				— ba bug phổ biến nhất của code ghi file.</li>
+			<li><strong><code>Uri</code> ≠ đường dẫn file.</strong> Làm việc với Uri qua <code>ContentResolver</code> (stream + use),
+				không qua <code>File</code>. Quyền vào Uri chết theo process; <code>takePersistableUriPermission</code> giữ được
+				quanh các lần mở app nhưng không phải vĩnh viễn — app thật phải xử lý được "Uri không còn hợp lệ".</li>
+			<li><strong>Backup là một thuộc tính riêng:</strong> mặc định Auto Backup mang đi shared prefs + files + database +
+				external riêng (≤ 25 MB), cache bị loại cứng; Android 12+ đọc <code>dataExtractionRules</code>, Android 11 trở xuống
+				đọc <code>fullBackupContent</code> — hai thế hệ rule cùng tồn tại trong manifest của project này, và cả hai hiện
+				đang rỗng rule.</li>
+		</ul>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+
+	<div class="callout warn">
+		<strong>1. <code>getExternalStoragePublicDirectory()</code> — deprecated từ API 29, vẫn xuất hiện trong nhiều tài liệu cũ.</strong>
+		<p>
+			Code ghi thẳng vào thư mục dùng chung kiểu này chạy được trên emulator và chết (hoặc chỉ đọc được) trên máy thật, vì
+			Scoped Storage. Thay thế tuỳ mục đích: file riêng của app → <code>getExternalFilesDir()</code>; ảnh/video → MediaStore;
+			tài liệu người dùng chọn → SAF (mục 6). Đây là điểm lệch giữa tài liệu gốc và Android hiện tại lớn nhất của bài này.
+		</p>
+	</div>
+
+	<div class="callout warn">
+		<strong>2. "Persistable" trong <code>takePersistableUriPermission</code> không nghĩa là "mãi mãi".</strong>
+		<p>
+			Quyền persist sống qua restart nhưng vẫn có thể mất: người dùng thu hồi, tài liệu bị xoá/đổi tên, provider (kể cả
+			tài khoản cloud) biến mất, hoặc vượt hạn mức ~128 Uri mỗi app khiến cái cũ bị đẩy ra. App thật phải xử lý được tình
+			huống "Uri đã lưu không còn hợp lệ" — nhờ người dùng chọn lại — thay vì giả định quyền vĩnh viễn (mục 7.4).
+		</p>
+	</div>
+
+	<div class="callout warn">
+		<strong>3. "App-private nghĩa là an toàn" — nhầm hai tầng phòng thủ.</strong>
+		<p>
+			Sandbox là kiểm soát truy cập, không phải mã hoá: file trong <code>filesDir</code> là plaintext trên đĩa, và bản
+			build <code>debug</code> đọc được thư mục app bằng <code>run-as</code> không cần root. Mã hoá là tầng khác — bài sau.
+			Tương tự đừng lẫn: "được backup" không hàm ý "được mã hoá", và "riêng tư" không loại trừ việc dữ liệu được copy lên
+			cloud theo backup rule (mục 1, 8.5).
+		</p>
+	</div>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+
+	<div class="callout note">
+		<p class="src">
+			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 9–205 (Files and Directories · Device Explorer ·
+			Cache Files · External Files · Storage Access Framework · Database Explorer) và phần backup (mục "Auto Backup" của
+			chapter, dòng 173–205). Ảnh chụp màn hình trong giáo trình (<code>img128–137.png</code>) không được dùng; phần hướng
+			dẫn tương ứng diễn giải bằng chữ và bảng.
+		</p>
+
+		<p class="src">
+			<strong>Code thật:</strong> <code>{FINAL_ROOT}/app/src/main/AndroidManifest.xml</code>
+			(dòng 7–9: <code>allowBackup</code> + <code>dataExtractionRules</code> + <code>fullBackupContent</code>) ·
+			<code>.../res/xml/data_extraction_rules.xml</code> và <code>.../res/xml/backup_rules.xml</code> (khung rule tồn tại,
+			mọi rule đang comment). Toàn bộ phần file/SAF của bài <strong>không có code trong project mẫu</strong> (grep
+			<code>filesDir</code>, <code>cacheDir</code>, <code>createTempFile</code>, <code>ACTION_CREATE_DOCUMENT</code>,
+			<code>StorageManager</code> trả về 0 kết quả toàn bộ <code>projects/</code>): các snippet
+			<code>filesDir</code>/<code>cacheDir</code>/<code>external</code>/<code>SAF</code> là bản trích nguyên văn từ giáo
+			trình gốc, còn <code>writeFileSafeCode</code>, <code>cacheQuotaFixedCode</code>, <code>safModernCode</code>,
+			<code>safTreeCode</code>, <code>externalPrivateCode</code> là ví dụ do khoá học tự dựng (đã ghi ngay tại chỗ).
+		</p>
+
+		<p class="src">
+			<strong>Số liệu backup</strong> theo tài liệu <em>Back up user data with Auto Backup</em>
+			(developer.android.com/identity/data/autobackup — mặc định backup shared prefs/files/databases/external app files;
+			cache loại trừ cứng; <code>exclude</code> thắng <code>include</code>;
+			<code>dataExtractionRules</code> cho Android 12+ / API 31+, <code>fullBackupContent</code> cho Android 11 trở xuống —
+			kiểm tra 06/09/2026) và <em>Save files on external storage</em> / <em>Storage Access Framework</em>
+			(developer.android.com/training/data-storage — deprecated của <code>getExternalStoragePublicDirectory()</code> từ API
+			29, khuôn Activity Result API, <code>takePersistableUriPermission</code> và giới hạn persisted grants — kiểm tra
+			06/09/2026).
+		</p>
+
+		<p class="src">
+			<strong>Phần bổ sung ngoài giáo trình:</strong> mục 1 (khung ba câu hỏi + phân biệt sandbox ≠ mã hoá) · mục 7.1
+			(file path vs Uri) · mục 7.3/7.5 (Activity Result API + ContentResolver streams) · mục 8.5 (hai thế hệ backup rules,
+			đọc từ manifest/XML thật) · các ví dụ tự dựng đã liệt kê ở trên. Bảng drift chi tiết dài → AP3
+			(<code>docs/drafts/ap3-version-drift.md</code>).
+		</p>
+	</div>
+</section>
