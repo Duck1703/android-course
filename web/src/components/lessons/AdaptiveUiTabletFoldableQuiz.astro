@@ -1,0 +1,170 @@
+---
+// Quiz O3 — AdaptiveUiTabletFoldableQuiz.astro — bám nội dung O3 (adaptive UI).
+// Workstream F / IMP-052. 10 câu: size class, tính-1-lần, list/detail, state ownership,
+// weight vs dp, nội dung vs khung, posture, a11y.
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		10 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích hiện ra sau khi chấm —
+		đọc cả những câu bạn làm đúng, vì nhiều giải thích có thêm chi tiết không nằm trong bài.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>Vì sao nên đo màn hình bằng window size class thay vì so <code>width &gt; 700.dp</code> tự chế?</legend>
+			<label><input type="radio" name="q1" value="a" /> Vì size class chính xác hơn dp — không làm tròn số</label>
+			<label><input type="radio" name="q1" value="b" /> Vì 700.dp là giá trị bị hệ điều hành cấm dùng</label>
+			<label><input type="radio" name="q1" value="c" /> Vì 600/840dp là chuẩn chung</label>
+			<label><input type="radio" name="q1" value="d" /> Vì nó đo được cả màu màn hình</label>
+			<p class="explain" hidden>
+				Nguy cơ của ngưỡng tự chế: thiết bị 699dp và 701dp nhận hai trải nghiệm khác nhau vì 2dp, và mỗi dev
+				chọn một số khác nhau. <code>WindowWidthSizeClass</code> (Compact &lt; 600, Medium 600–839,
+				Expanded ≥ 840) là chuẩn Google phát hành cùng thư viện — nghĩa của <code>Expanded</code> được bảo đảm
+				giống nhau trên mọi app. Chiều cao cũng có size class riêng (<code>WindowHeightSizeClass</code>) dùng
+				khi bố cục nhạy chiều cao (máy gập dựng dọc).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Chỗ đúng để tính <code>calculateWindowSizeClass</code> là đâu?</legend>
+			<label><input type="radio" name="q2" value="a" /> Trong composable gốc, bằng <code>remember { }</code> để cache</label>
+			<label><input type="radio" name="q2" value="b" /> Trong Activity — tính một lần trong setContent rồi truyền xuống qua tham số</label>
+			<label><input type="radio" name="q2" value="c" /> Trong từng composable cần — mỗi chỗ tự tính cho đúng ngữ cảnh</label>
+			<label><input type="radio" name="q2" value="d" /> Trong file Manifest</label>
+			<p class="explain" hidden>
+				Size class là thuộc tính của <strong>cửa sổ</strong>, không phải của composable — nên chỗ tính đúng
+				là Activity, một lần trong <code>setContent</code>, rồi truyền xuống. Composable nhận một hạng cỡ và
+				quyết định bố cục — chính là chiều state hoisting của S3. Gọi trong composable vừa sai tầng (composable
+				không biết Activity nào đang chứa mình), vừa tính lại mỗi recomposition. Khi cửa sổ đổi (xoay, kéo
+				cửa sổ, gập/mở), Activity dựng lại và hạng mới được tính — không cần code theo dõi.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>App ghi chú: điện thoại thì chạm ghi chú → điều hướng sang màn chi tiết. Màn hình Expanded nên trình bày thế nào?</legend>
+			<label><input type="radio" name="q3" value="a" /> Hai khung song song trái–phải</label>
+			<label><input type="radio" name="q3" value="b" /> Giữ nguyên hai màn tuần tự, chỉ phóng to chữ lên 2 lần</label>
+			<label><input type="radio" name="q3" value="c" /> Chia 4 ô hiển thị cùng lúc</label>
+			<label><input type="radio" name="q3" value="d" /> Ẩn danh sách đi, chỉ hiện chi tiết full màn</label>
+			<p class="explain" hidden>
+				Đây là khuôn <strong>list/detail</strong> kinh điển: cùng nội dung, cách trình bày khác nhau theo không
+				gian — điện thoại chuộng tuần tự (một việc một lúc), màn rộng chuộng song song. Phóng to chữ (b) là
+				"adaptive giả": mọi thứ to ra nhưng vẫn một cột tuần tự. Hai khung không phải là "đổi vị trí" mà là
+				<em>đổi mô hình tương tác</em>: chọn ở khung trái, nội dung khung phải đổi theo.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>Trong bố cục list/detail, khi người dùng chưa chọn ghi chú nào, khung chi tiết nên thế nào?</legend>
+			<label><input type="radio" name="q4" value="a" /> Hiện một khung màu xám mờ cố định</label>
+			<label><input type="radio" name="q4" value="b" /> Giữ khung với nội dung ghi chú đầu tiên tự động chọn hộ</label>
+			<label><input type="radio" name="q4" value="c" /> Crash — luôn phải có chọn sẵn</label>
+			<label><input type="radio" name="q4" value="d" /> Không tồn tại — danh sách giãn full</label>
+			<p class="explain" hidden>
+				Nhánh "trạng thái rỗng" của bố cục hai khung cũng cần được thiết kế: <code>if (selectedNoteId != null)</code>
+				thì khung phải không chiếm chỗ (danh sách giãn full) hoặc hiện placeholder có chủ đích. Tự chọn hộ ghi
+				chú đầu tiên (b) làm người dùng thấy "app tự bấm hộ" — hành vi bất ngờ. Một nửa màn hình trống không
+				giải thích là layout kém, không phải adaptive.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend><code>selectedNoteId</code> (ghi chú đang xem) nên sống ở đâu để người dùng không mất ghi chú đang đọc khi máy gập đổi từ Expanded về Compact?</legend>
+			<label><input type="radio" name="q5" value="a" /> Trong <code>remember { }</code> của danh sách</label>
+			<label><input type="radio" name="q5" value="b" /> Không cần giữ — người dùng chạm lại là được</label>
+			<label><input type="radio" name="q5" value="c" /> Ở ViewModel/<code>rememberSaveable</code></label>
+			<label><input type="radio" name="q5" value="d" /> Trong file preferences của hệ điều hành</label>
+			<p class="explain" hidden>
+				Khi đổi size class, Activity dựng lại — <code>remember { }</code> thường bị mất, người dùng trắng màn
+				hình chi tiết. State <em>giao dịch</em> (đang xem gì) phải nằm ở ViewModel hoặc
+				<code>rememberSaveable</code> để sống qua lần dựng lại; bố cục chỉ quyết định <em>cách hiển thị</em>
+				state đó. Đây là nguyên tắc tổng quát của adaptive: <strong>thiết kế state trước, layout theo
+				sau</strong> — phần khó thật của adaptive không phải layout mà là state ownership (S3).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend><code>Modifier.weight(0.4f)</code> trên khung danh sách nghĩa là gì?</legend>
+			<label><input type="radio" name="q6" value="a" /> Khung danh sách cao 0.4 lần màn hình</label>
+			<label><input type="radio" name="q6" value="b" /> Khung chiếm 40% theo tỷ trọng</label>
+			<label><input type="radio" name="q6" value="c" /> Khung có opacity 0.4</label>
+			<label><input type="radio" name="q6" value="d" /> Khung cách mép 0.4dp</label>
+			<p class="explain" hidden>
+				<code>weight</code> chia không gian <em>theo tỷ lệ</em>, không phải pixel: 0.4f + 0.6f = danh sách 40%,
+				chi tiết 60% của phần còn lại. Dùng tỷ trọng thay dp cứng là cách bố cục co giãn đúng nghĩa khi cửa sổ
+				đổi giữa các kích thước trong cùng một size class. dp cứng để cho <em>điều khiển</em> (nút, ô nhập,
+				khoảng chạm — Material có chuẩn riêng) chứ không phải khung chứa.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>Trên tablet, đoạn văn dài giãn ra cả bề rộng 12 inch khiến khó đọc. Cách sửa đúng?</legend>
+			<label><input type="radio" name="q7" value="a" /> Giới hạn chiều rộng</label>
+			<label><input type="radio" name="q7" value="b" /> Giảm cỡ chữ xuống để vừa nhiều dòng hơn</label>
+			<label><input type="radio" name="q7" value="c" /> Chia nội dung ra thành nhiều cột riêng biệt để mỗi cột ngắn hơn</label>
+			<label><input type="radio" name="q7" value="d" /> Bỏ nội dung chữ trên tablet</label>
+			<p class="explain" hidden>
+				Khuôn tổng quát: <strong>giãn khung chứa, khoá nội dung</strong> — canvas to hơn không có nghĩa nội
+				dung phải chiếm hết canvas. Mỗi dòng dài quá là mắt mất dấu khi xuống dòng (cỡ chữ càng to càng tệ —
+				nối với mục a11y). <code>widthIn(max = ...)</code> đặt giới hạn trên, để lại phần còn cho khoảng lề.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>Máy gập dựng hình chữ V (half-opened). Quy tắc thực dụng cần nhớ?</legend>
+			<label><input type="radio" name="q8" value="a" /> Luôn xoay nội dung ngang 90 độ</label>
+			<label><input type="radio" name="q8" value="b" /> Tắt app khi máy đang gập một nửa</label>
+			<label><input type="radio" name="q8" value="c" /> Chỉ dùng máy mở phẳng</label>
+			<label><input type="radio" name="q8" value="d" /> Đừng đặt nút qua bản lề</label>
+			<p class="explain" hidden>
+				Posture (tư thế máy: phẳng, half-opened...) được phơi ra bởi Jetpack WindowManager qua
+				<code>WindowInfoTracker</code> — bài chỉ cần nhận diện là có, không sâu. Quy tắc thực dụng của
+				half-opened: điều khiển chính (nút gửi, FAB) không được nằm qua chuồng bản lề. App cần chia bố cục
+				hai bên bản lề thật sự thì tìm <code>WindowInfoTracker</code> trong tài liệu WindowManager.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>Khuôn adaptive nào đã có sẵn trong artifact <code>material3-adaptive</code> và nên ưu tiên trước khi tự viết?</legend>
+			<label><input type="radio" name="q9" value="a" /> Không có thư viện nào — adaptive luôn tự viết bằng <code>when</code></label>
+			<label><input type="radio" name="q9" value="b" /> Chỉ có theme màu tối</label>
+			<label><input type="radio" name="q9" value="c" /> NavigationSuiteScaffold</label>
+			<label><input type="radio" name="q9" value="d" /> Emulator tablet</label>
+			<p class="explain" hidden>
+				Jetpack có artifact <code>material3-adaptive</code> với các composable khuôn sẵn:
+				<code>NavigationSuiteScaffold</code> (rail/bar tự đổi theo size class),
+				<code>ListDetailPaneScaffold</code> (list/detail có state pane chuẩn). Bạn khai báo pane và cú
+				chuyển; thư viện tự đọc size class/posture. Ở mức học, viết <code>when</code> thủ công giúp hiểu khuôn
+				tư duy; trong app thật, ưu tiên thành phần thư viện trước khi tự chế — nguyên tắc "không phát minh
+				lại bánh xe đã kiểm".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Khi người dùng bật cỡ chữ hệ thống lên 2×, bố cục adaptive đúng cần đảm bảo điều gì?</legend>
+			<label><input type="radio" name="q10" value="a" /> App chuyển về theme màu khác</label>
+			<label><input type="radio" name="q10" value="b" /> Bố cục đứng vững khi text scale</label>
+			<label><input type="radio" name="q10" value="c" /> App tự tắt scale chữ của hệ thống để giữ layout nguyên vẹn như thiết kế</label>
+			<label><input type="radio" name="q10" value="d" /> App ép xoay ngang màn hình</label>
+			<p class="explain" hidden>
+				Adaptive đúng tính tới <em>người dùng</em>, không chỉ thiết bị: cỡ chữ hệ thống là lựa chọn tiếp cận
+				thật (người thị lực yếu), app không được phá vỡ khi text scale — và càng không được tự tắt scale
+				(đó là phản a11y). Kiểm sớm trong preview với <code>FontScale</code> (C4) thay vì thấy vỡ trên máy
+				người dùng. Mục tiêu chạm tối thiểu 48dp của Material giữ nguyên trên mọi size class — không "thu
+				nhỏ nút cho vừa" bằng cách phá chuẩn.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	// Harness chung — chấm MCQ, "Câu x/N", retry ẩn→hiện→ẩn (IMP-001 contract, quiz.css).
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>

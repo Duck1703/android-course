@@ -1,0 +1,365 @@
+---
+// O3 — AdaptiveUiTabletFoldable.astro — "Adaptive UI: tablet & foldable (window size classes)".
+// Workstream F / IMP-052. Learning job: "Biết UI không nên giả định một kích thước
+// điện thoại duy nhất."
+//
+// Reuse: C1–C3 (layout/Modifier/Material 3), S3 (state hoisting — list/detail state
+// chủ sở hữu), C5 (a11y kết nối).
+//
+// Freshness (kiểm 09/09/2026 — chi tiết ở #nguon):
+//  - Cách chính thức hiện hành: Jetpack WindowManager + WindowSizeClass (material3
+//    window-size-class artifact: calculateWindowSizeClass) — compact/medium/expanded.
+//  - material3 adaptive artifact (adaptive layouts: NavigationSuiteScaffold, ListDetailPaneScaffold)
+//    tồn tại và được khuyến nghị cho app mới — dạy ở mức nhận diện, không thành khoá học.
+//  - isExpandedInCurrentWindow của WindowWidthSizeClass.Expanded; posture qua
+//    WindowInfoTracker — chỉ nhận diện, không sâu.
+//  - KHÔNG dạy các API superseded: `BoxWithConstraints` làm cách chính (vẫn dùng được
+//    nhưng không phải cách khuyến nghị cho size class), `configuration.screenWidthDp` thủ công.
+import { Code } from "astro:components";
+
+const sizeClassEnumCode = `enum class WindowWidthSizeClass { Compact, Medium, Expanded }
+// Compact:  < 600dp   — điện thoại dựng dọc (phần lớn app trên điện thoại)
+// Medium:   600–839dp — tablet nhỏ, điện thoại gập mở phần trong, desktop cửa sổ nhỏ
+// Expanded: ≥ 840dp   — tablet, máy tính bảng, desktop, điện thoại gập mở toàn màn`;
+
+const calculateCode = `override fun onCreate(savedInstanceState: Bundle?) {
+  super.onCreate(savedInstanceState)
+  setContent {
+    val appTheme = AppTheme()
+    // tính 1 lần trong Activity — size class là thuộc tính của CỬA SỔ, không phải của composable
+    val windowSize = calculateWindowSizeClass(this)
+    AppRoot(windowSizeClass = windowSize.widthSizeClass)
+  }
+}`;
+
+const whenBranchCode = `@Composable
+fun AppRoot(windowSizeClass: WindowWidthSizeClass) {
+  when (windowSizeClass) {
+    WindowWidthSizeClass.Expanded -> ListDetailScaffold()  // hai khung cạnh nhau
+    WindowWidthSizeClass.Medium    -> FeedScreen()          // một khung, nhường phần lề cho nội dung
+    else                           -> SingleColumnScaffold() // điện thoại — stack dọc như mọi khi
+  }
+}`;
+
+const listDetailCode = `@Composable
+fun ListDetailScaffold() {
+  var selectedNoteId by remember { mutableStateOf<String?>(null) }
+
+  Row(Modifier.fillMaxSize()) {
+    NoteList(
+      // khung trái: trọng lượng 0.4 — tỷ trọng, không phải pixel cứng
+      modifier = Modifier.weight(0.4f),
+      onNoteClick = { selectedNoteId = it },
+    )
+    if (selectedNoteId != null) {
+      NoteDetail(
+        noteId = selectedNoteId,
+        modifier = Modifier.weight(0.6f),
+      )
+    }
+  }
+}`;
+
+const hoistingPhoneCode = `// Điện thoại (Compact): hai màn hình riêng — selectedNoteId nằm ở MÀN DANH SÁCH,
+// được "vận chuyển" sang màn chi tiết qua điều hướng (N1/N2)
+NavHost(navController, startDestination = "notes") {
+  composable("notes") {
+    NoteList(onNoteClick = { id -> navController.navigate("note/$id") })
+  }
+  composable("note/{id}") { backStackEntry ->
+    NoteDetail(noteId = backStackEntry.arguments?.getString("id"))
+  }
+}`;
+
+const contentMaxWidthCode = `// Giữ dòng chữ đọc được trên màn hình to: giới hạn chiều rộng NỘI DUNG,
+// không giãn chữ ra cả bề rộng 12 inch
+Text(
+  text = note.body,
+  modifier = Modifier.widthIn(max = 600.dp)
+)`;
+
+const postureGlossCode = `// Nhận diện tư thế máy gập — mức "biết là có", không sâu hơn trong khoá này
+val windowInfo = rememberWindowInfoTracker()
+// FOLDED / HALF_OPENED (máy dựng hình chữ V) / FLAT / OPENED...
+// HALF_OPENED: tránh đặt nút chính QUA CHUỒNG bản lề (fold/hinge)`;
+---
+
+<article class="lesson">
+	<div class="callout goals">
+		<p><strong>Sau bài này bạn sẽ:</strong></p>
+		<ul>
+			<li>Giải thích được vì sao UI giả định "một kích thước điện thoại duy nhất" gãy đúng ở những thiết bị Android phổ biến nhất hiện nay (tablet, máy gập, desktop, cửa sổ tự do).</li>
+			<li>Dùng được <strong>window size class</strong> (compact / medium / expanded) theo cách chính thức hiện hành: tính một lần trong Activity, truyền xuống như một state bình thường.</li>
+			<li>Viết được nhánh thích ứng tối giản: điện thoại = một cột, màn hình to = list/detail hai khung — với <strong>state thuộc sở hữu đúng chỗ</strong> theo S3.</li>
+			<li>Nhận diện được các chỗ co-giãn vật lý: trọng lượng (<code>weight</code>), giới hạn chiều rộng nội dung, tránh bản lề trên máy gập.</li>
+			<li>Nói được kết nối với khả năng truy cập: text to, cử chỉ, khoảng chạm — adaptive tốt là adaptive cho cả người dùng khác nhau, không chỉ thiết bị khác nhau.</li>
+		</ul>
+	</div>
+
+	<p>
+		Toàn khoá đến đây bạn dựng UI và xem nó trên đúng một khung hình: emulator điện thoại. Android thật
+		không phải thế — và đặc biệt Android hiện nay càng không: tablet, máy gập mở ra thành máy tính bảng,
+		cửa sổ app trên desktop chạy song song. App "đẹp trên điện thoại dựng dọc" là app <em>chưa hoàn
+		thành</em>, không phải app đã xong phần khó. Bài này không biến bạn thành chuyên gia large-screen:
+		nó dạy đúng <strong>một khuôn tư duy</strong> — UI nên phản ứng với không gian nó được cho, thay vì
+		giả định không gian đó.
+	</p>
+
+	<p class="hint">
+		<strong>Cần biết trước.</strong> Layout và <code>Modifier</code> theo C1–C2; Material 3 theo C3;
+		state hoisting và "ai sở hữu state" theo S3; điều hướng NavHost theo N1/N2; testTag khi cần test
+		(theo O2 nếu bạn học). Bài không đòi hỏi device thật — mọi ví dụ chạy được trên emulator tablet
+		có sẵn trong Android Studio.
+	</p>
+
+	<div class="callout mental">
+		<strong>Mental model: bút chì và tờ giấy.</strong>
+		<p>
+			UI của bạn là một bút chì; window là tờ giấy mà người khác đưa cho bạn — dọc, ngang, vuông, nửa
+			trang, cả trang. Bút chì không quyết định tờ giấy. Việc của bạn: vẽ sao cho dùng tốt <em>bất kể</em>
+			tờ giấy nào được đưa — và đo tờ giấy bằng một vài "hạng cỡ" quy ước, không phải bằng milimet.
+		</p>
+	</div>
+
+	<h2 id="size-class">1. Size class: đo không gian bằng hạng cỡ, không bằng pixel</h2>
+
+	<p>
+		Điều bạn <em>không</em> nên làm: đọc số pixel/dp của màn hình rồi tự chia vế <code>if (width &gt;
+		700.dp)</code> khắp code. Ngưỡng tự chế là số không ai khác cùng dùng — thiết bị A 699dp, thiết bị
+		B 701dp sẽ nhận hai trải nghiệm khác nhau vì một dp duy nhất, và mỗi người dev chọn một số.
+	</p>
+
+	<p>
+		Cách chính thức hiện nay: <strong>window size class</strong> — Google quy định sẵn các ngưỡng, mọi
+		thư viện và mọi tài liệu cùng dùng chung. Chiều rộng chia ba bậc:
+	</p>
+
+	<Code code={sizeClassEnumCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Đọc bảng trên theo đúng nghĩa: ngưỡng là <strong>hợp đồng chung của cả hệ sinh thái</strong>. Khi bạn
+		viết <code>Expanded</code> thì nghĩa của nó được bảo đảm giống nhau trên mọi app — và tài liệu, test,
+		discussion của cả hệ sinh thái cùng nói một ngôn ngữ. Chiều cao cũng có size class riêng
+		(<code>WindowHeightSizeClass</code>) — dùng khi bố cục nhạy chiều cao (máy gập dựng dọc); ở mức này,
+		hãy bắt đầu với chiều rộng, nó giải quyết phần lớn trường hợp.
+	</p>
+
+	<h3>1.1. Tính một lần, truyền xuống</h3>
+
+	<p>
+		Size class là thuộc tính của <strong>cửa sổ</strong> — không phải của một composable. Nên chỗ tính
+		đúng là Activity, tính một lần, rồi truyền xuống như một state bình thường:
+	</p>
+
+	<Code code={calculateCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Khuôn này quen thuộc một cách có chủ ý: giá trị được tính ở nơi duy nhất, phơi xuống qua tham số —
+		chính là chiều <em>state hoisting</em> của S3. Composable bên dưới không cần biết "màn hình bao
+		nhiêu dp"; nó chỉ nhận một hạng cỡ và quyết định bố cục. Khi cửa sổ đổi (xoay máy, kéo cửa sổ,
+		gập/mở), Activity được dựng lại và số hạng mới tính lại — UI phản ứng theo, không cần bạn viết mã
+		theo dõi.
+	</p>
+
+	<h2 id="list-detail">2. Nhánh thích ứng kinh điển: list/detail</h2>
+
+	<p>
+		Ví dụ chuẩn nhất của adaptive UI đã có sẵn trong app của bạn: một app ghi chú. Trên điện thoại, chạm
+		một ghi chú → điều hướng sang màn chi tiết (N1/N2). Trên màn hình rộng, hai việc đó <em>cùng lúc</em>
+		hiện được: danh sách bên trái, chi tiết bên phải.
+	</p>
+
+	<Code code={whenBranchCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Đây là <strong>toàn bộ</strong> logic thích ứng ở mức này: một <code>when</code> trên size class,
+		mỗi nhánh một bố cục. Các nhánh không phải "phóng to/thu nhỏ" của nhau — chúng là <em>hai cách trình
+		bày khác nhau</em> cho cùng một nội dung. Điện thoại chuộng điều hướng tuần tự (một việc một lúc);
+		màn rộng chuộng hiển thị song song (chọn và đọc cùng lúc).
+	</p>
+
+	<Code code={listDetailCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Hai chi tiết đáng chú ý:
+	</p>
+
+	<ul>
+		<li><code>Modifier.weight(0.4f)</code> là <strong>tỷ trọng</strong>, không phải pixel — khung trái
+		chiếm 40% không gian còn lại. Dùng tỷ trọng thay vì dp cứng là cách bố cục "co giãn" đúng nghĩa khi
+		cửa sổ đổi giữa các size trong cùng một bậc.</li>
+		<li><code>if (selectedNoteId != null)</code> — khi chưa chọn gì, khung phải <em>không tồn tại</em>,
+		danh sách giãn full. Nhánh "trạng thái rỗng" của bố cục hai khung cũng cần được thiết kế: hiện
+		placeholder kiểu "Chọn một ghi chú" thay vì một nửa màn hình trống.</li>
+	</ul>
+
+	<div class="callout note">
+		<p>
+			<strong>Kiểm tra nhanh.</strong> Trên máy gập dựng hình chữ V (<em>half-opened</em>), màn hình bị
+			bản lề chia đôi. Chi tiết ghi chú đang hiện trên nửa bên phải — vế nào của code trên cần nghĩ thêm?
+			<details><summary>Xem đáp án</summary>
+			Đây là câu hỏi về <em>liên tục</em>: khi người dùng gập máy từ Expanded (đang hai khung) về Compact
+			(điện thoại), layout phải đổi thành điều hướng sang màn chi tiết — và <code>selectedNoteId</code> cần
+			sống sót qua lần dựng lại để người dùng không mất ghi chú đang đọc. Chính vì vậy state này phải được
+			<code>rememberSaveable</code> / nằm ở ViewModel, không phải <code>remember { }</code> trong
+			composable. Thiết kế state trước, layout theo sau.</details>
+		</p>
+	</div>
+
+	<h3>2.1. State thuộc sở hữu đúng chỗ — phần khó thật của adaptive</h3>
+
+	<p>
+		Mã hai nhánh ở trên còn thiếu một nửa quan trọng: <code>selectedNoteId</code> sống ở đâu trên
+		mỗi nhánh? Trên màn rộng, nó sống ở <em>scaffold chung</em> (scaffold sở hữu, cả hai khung đọc). Trên
+		điện thoại, nó được "vận chuyển" qua back stack:
+	</p>
+
+	<Code code={hoistingPhoneCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Cùng một dữ liệu, hai chủ sở hữu khác nhau theo bố cục — và code của bạn cần cả hai đường. Đây là
+		lý do adaptive UI không phải chỉ chuyện layout: nó là bài tập <strong>thiết kế state</strong>. Khuôn
+		an toàn: giữ state <em>giao dịch</em> (đang xem ghi chú nào) ở nơi tồn tại qua cả hai nhánh —
+		ViewModel hoặc <code>rememberSaveable</code> — còn bố cục chỉ quyết định <em>cách hiển thị</em> state
+		đó.
+	</p>
+
+	<h3>2.2. Không phát minh lại: thư viện adaptive của Material</h3>
+
+	<p>
+		Khuôn list/detail, navigation rail và các bố cục thích ứng phổ biến đã có sẵn trong artifact
+		<code>material3-adaptive</code> của Jetpack (với các composable như
+		<code>NavigationSuiteScaffold</code>, <code>ListDetailPaneScaffold</code>) — nó tự đọc size class và
+		posture, bạn khai báo pane và cú chuyển. Ở mức khoá này, bạn chỉ cần <strong>biết nó tồn tại</strong>
+		để không tự viết lại: dùng <code>when</code> thủ công (mục 2) khi học khuôn tư duy; trong app thật,
+		ưu tiên thành phần thư viện trước khi tự chế.
+	</p>
+
+	<h2 id="co-gian">3. Co giãn vật lý: ba chỗ hay gãy</h2>
+
+	<h3>3.1. Giãn chữ ra cả chiều rộng màn hình</h3>
+
+	<p>
+		Đặt <code>Text</code> thẳng trong <code>Row</code>/<code>Column</code> fill-max thì trên tablet mỗi
+		dòng dài 12 inch — mắt người đọc mất dấu dòng. Giải pháp 2 dòng:
+	</p>
+
+	<Code code={contentMaxWidthCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Khuôn tổng quát: <strong>giãn khung chứa, khoá nội dung</strong>. Canvas to hơn không nghĩa là nội
+	dung phải chiếm hết canvas.
+	</p>
+
+	<h3>3.2. Nhắm theo pixel thay vì tỷ trọng</h3>
+
+	<p>
+		Đã nói ở mục 2: <code>weight</code> cho bố cục co giãn; dp cứng cho <em>điều khiển</em> (nút, ô nhập,
+		khoảng chạm — Material đã có chuẩn kích thước). Nhắm cứng khung chứa vào dp là cách chắc chắn gãy
+		khi window size nằm giữa hai ngưỡng.
+	</p>
+
+	<h3>3.3. Bản lề của máy gập</h3>
+
+	<Code code={postureGlossCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Máy gập có khái niệm <strong>posture</strong> (tư thế): phẳng, dựng chữ V (<em>half-opened</em>), mở
+		hoàn toàn... API của Jetpack WindowManager phơi ra các trạng thái này. Ở mức khoá, chỉ cần ghi nhớ
+		một quy tắc thực dụng: <strong>đừng đặt điều khiển chính qua vùng bản lề</strong> — nút nằm đúng
+		đường gập là nút không bấm được ở giữa. Khi app cần nhận diện posture thật (chia bố cục hai bên bản
+		lề), tìm <code>WindowInfoTracker</code> trong tài liệu WindowManager.
+	</p>
+
+	<h2 id="a11y">4. Adaptive không chỉ cho thiết bị — cho cả con người</h2>
+
+	<p>
+		Cùng một size class nhưng hai người dùng khác nhau: một người bật cỡ chữ lớn nhất hệ thống, một người
+		dùng tay một. Adaptive đúng phải tính tới:
+	</p>
+
+	<ul>
+		<li><strong>Cỡ chữ</strong>: bố cục phải còn đứng vững khi text scale lên 1.5–2× — thử với
+		<code>FontScale</code> trong preview (C4) trước khi thấy nó vỡ trên máy người dùng. Giới hạn chiều
+		rộng nội dung (mục 3.1) cũng giúp dòng chữ không dài vô hạn khi cỡ chữ tăng.</li>
+		<li><strong>Điều khiển bằng tay một</strong>: trên màn rộng, đặt hành động chính ở vùng ngón tay cái
+		của cả hai hướng — navigation rail (dọc bên trái) phục vụ tốt hơn bottom bar kéo dài qua hết màn
+		hình.</li>
+		<li><strong>Mục tiêu chạm</strong>: Material 3 đã có chuẩn tối thiểu 48dp — giữ nguyên trên mọi size
+		class, không "thu nhỏ nút lại cho vừa màn hẹp" bằng cách phá chuẩn.</li>
+	</ul>
+
+	<div class="callout note">
+		<p>
+			<strong>Nối với C5.</strong> C5 dạy semantics cho screen reader — adaptive theo <em>người dùng</em>.
+			Bài này dạy adaptive theo <em>window</em>. Cùng một nguyên tắc phía sau: UI tốt không giả định
+			người dùng của nó — cả cấu hình thiết bị lẫn cấu hình con người.
+		</p>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+
+	<div class="callout diff">
+		<p>
+			<strong>1. Ngưỡng tự chế <code>if (width &gt; 600.dp)</code> rải trong code.</strong> Tư liệu cũ và
+			code mẫu nhiều chỗ dùng chiều rộng thủ công (<code>configuration.screenWidthDp</code>,
+			<code>BoxWithConstraints</code>) với ngưỡng tự chọn. Cách chính thức hiện nay là
+			<code>calculateWindowSizeClass</code> + enum chuẩn — nếu thấy một số ngưỡng "kỳ lạ" không phải
+			600/840, đó là code tự chế, nên chuyển sang size class.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>2. Tính size class trong từng composable.</strong> <code>calculateWindowSizeClass</code>
+			đòi <code>Activity</code> — gọi nó trong composable vừa sai tầng (composable không biết Activity
+			đâu là mình đang ở), vừa tốn tính lại mỗi recomposition. Tính một lần ở Activity, truyền xuống.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>3. "Tablet = phone lớn hơn".</strong> Chỉ phóng to phần tử là adaptive giả — mọi thứ to ra
+			nhưng vẫn một cột tuần tự. Adaptive thật đổi <em>cách trình bày</em> (hai khung, rail, multi-pane)
+			theo không gian, giữ nguyên nội dung và hành vi.
+		</p>
+	</div>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+
+	<ul class="keypoints">
+		<li><strong>Đo bằng hạng cỡ, không pixel:</strong> window size class compact / medium / expanded —
+		ngưỡng chuẩn chung, không tự chế.</li>
+		<li><strong>Tính một lần ở Activity</strong> (<code>calculateWindowSizeClass</code>), truyền xuống
+		như state — composable không tự đo màn hình.</li>
+		<li><strong>Nhánh thích ứng = một <code>when</code>:</strong> Compact → một cột + điều hướng;
+		Expanded → list/detail hai khung; Medium thường về một cột với nội dung giới hạn bề rộng.</li>
+		<li><strong>State thiết kế trước, layout theo sau:</strong> <code>selectedNoteId</code> sống ở
+		ViewModel/<code>rememberSaveable</code> để sống sót qua đổi bố cục — S3 áp dụng nguyên văn.</li>
+		<li><strong>Tỷ trọng thay dp cứng</strong> cho khung chứa (<code>weight</code>); <strong>giãn khung,
+		khoá nội dung</strong> (<code>widthIn(max = 600.dp)</code>).</li>
+		<li><strong>Máy gập:</strong> biết posture tồn tại, đừng đặt nút qua bản lề; thư viện
+		<code>material3-adaptive</code> có sẵn khuôn list/detail + rail.</li>
+		<li><strong>Adaptive cho cả con người:</strong> cỡ chữ lớn, tay một, mục tiêu chạm 48dp — không chỉ
+		cho thiết bị.</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<p class="src">
+		<strong>Tài liệu chính thức:</strong> developer.android.com — <em>Support different screen sizes</em> /
+		<em>Window size classes</em> (kiểm 09/09/2026: <code>calculateWindowSizeClass</code>, ngưỡng
+		600/840dp, "compute once in the activity") · <em>Build adaptive layouts</em> — khuôn list/detail,
+		NavigationSuiteScaffold, ListDetailPaneScaffold (material3-adaptive) · <em>Jetpack WindowManager</em>
+		— <code>WindowInfoTracker</code>, posture (kiểm 09/09/2026).
+	</p>
+	<p class="src">
+		<strong>Nội dung của chính khoá học:</strong> C1–C2 — layout/Modifier, <code>weight</code> · C3 —
+		Material 3, chuẩn 48dp · C4 — preview với <code>FontScale</code> · S3 — state hoisting, chủ sở hữu
+		state · N1/N2 — NavHost, truyền id qua back stack · C5 — a11y.
+	</p>
+	<p class="src">
+		<strong>Ví dụ do khoá dựng:</strong> <code>AppRoot</code>, <code>ListDetailScaffold</code>, hai bản
+		dẫn hướng điện thoại/màn rộng — viết cho bài này theo đúng API đã kiểm; không trích
+		<code>aaf-materials/</code> (giáo trình không có chapter adaptive UI).
+	</p>
+</article>

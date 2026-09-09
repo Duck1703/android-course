@@ -1,0 +1,478 @@
+---
+// O2 — TestingViewModelVaComposeUi.astro — "Testing: test ViewModel & một test UI".
+// Workstream F / IMP-051. Bài OPTIONAL, readiness-oriented: dạy thực hành nhập môn,
+// không phải bách khoa về testing. Learning job: "Biết viết một ViewModel test có
+// giá trị và một test UI nhỏ."
+//
+// Reuse (đã dạy, KHÔNG dạy lại): S4 ViewModel/StateFlow/mutableStateOf; S5 repository
+// boundary + fake-able seam; C5 testTag/semantics; W3 khuôn Arrange-Act-Assert tư duy.
+// Không yêu cầu Hilt/DI framework. Fake repository pattern dựng để O6 tái dùng.
+//
+// Freshness (kiểm 09/09/2026, ghi ở #nguon):
+//  - compose-ui-test.junit4 + createComposeRule vẫn là cách chính thức cho test Compose
+//    trên Android (instrumented); compose BOM không đổi API onNodeWithText/assertIsDisplayed.
+//  - kotlinx-coroutines-test: StandardTestDispatcher + Dispatchers.setMain qua
+//    MainDispatcherRule (khuân chính thức developer.android.com — "Test coroutines).
+//    runTest là API hiện hành; runBlocking cho test không khuyến khích.
+//  - test implementation deps trong ví dụ: dùng version catalog + libs.* theo A14;
+//    version cụ thể được để ở tên artifact + ghi chú "lấy bản mới nhất từ BOM/catalog"
+//    để không khóa số sai.
+import { Code } from "astro:components";
+
+// Snippet 1 — ViewModel cần test (giáo dục tối giản, pattern S4: private Mutable + public StateFlow)
+const counterViewModelCode = `class CounterViewModel(private val repository: NotesRepository) : ViewModel() {
+
+  private val _notes = MutableStateFlow<List<String>>(emptyList())
+  val notes: StateFlow<List<String>> = _notes.asStateFlow()
+
+  fun addNote(text: String) {
+    if (text.isBlank()) return            // quy tắc nghiệp vụ nhỏ — đáng test
+    _notes.value = _notes.value + text.trim()
+  }
+}`;
+
+// Snippet 2 — fake repository: cài interface bằng dữ liệu trong RAM, không DB, không mạng
+const fakeRepositoryCode = `class FakeNotesRepository : NotesRepository {
+  private val data = mutableListOf<String>()
+
+  override fun notes(): StateFlow<List<String>> =
+    MutableStateFlow(data.toList())
+
+  override suspend fun addNote(text: String) {
+    data.add(text)
+  }
+}`;
+
+// Snippet 3 — MainDispatcherRule (khuân chính thức của tài liệu Android)
+const mainDispatcherRuleCode = `class MainDispatcherRule(
+  private val dispatcher: TestDispatcher = StandardTestDispatcher()
+) : TestWatcher() {
+  override fun starting(description: Description) {
+    Dispatchers.setMain(dispatcher)
+  }
+  override fun finished(description: Description) {
+    Dispatchers.resetMain()
+  }
+}`;
+
+// Snippet 4 — ViewModel test theo Arrange / Act / Assert
+const viewModelTestCode = `class CounterViewModelTest {
+
+  @get:Rule
+  val mainDispatcherRule = MainDispatcherRule()
+
+  @Test
+  fun addNote_boTrangVaTuChoiChuoiRong() = runTest {
+    // Arrange — dựng môi trường biết trước kết quả
+    val repository = FakeNotesRepository()
+    val viewModel = CounterViewModel(repository)
+
+    // Act — gọi đúng hành vi cần kiểm
+    viewModel.addNote("  Địa chỉ khách  ")
+    viewModel.addNote("   ")               // rỗng → quy tắc nghiệp vụ phải từ chối
+
+    // Assert — đối chiếu với kết quả mong đợi
+    val notes = viewModel.notes.first()
+    assertEquals(listOf("Địa chỉ khách"), notes)
+  }
+}`;
+
+
+
+// Snippet 6 — testTag đặt có chủ đích trong composable
+const testTagCode = `OutlinedTextField(
+  value = text,
+  onValueChange = onTextChange,
+  modifier = Modifier.testTag("note-input")
+)`;
+
+// Snippet 7 — dependencies trong libs.versions.toml + module (mức nhận diện)
+const depsCode = `[libraries]
+junit4 = { module = "junit:junit", version = "4.13.2" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+compose-ui-test = { module = "androidx.compose.ui:ui-test-junit4" }  # version từ BOM
+`;
+
+// Snippet 8 — test đơn giản nhất KHÔNG cần rule: hàm thuần Kotlin
+const pureFunctionTestCode = `class NoteValidatorTest {
+  @Test
+  fun chuoiChiToanKhoangTrang_laKhongHopLe() {
+    assertFalse(isValidNote("   "))
+  }
+}`;
+
+const uiTestCodeClean = `class NotesScreenTest {
+
+  @get:Rule
+  val composeRule = createComposeRule()
+
+  @Test
+  fun themGhiChu_hienThiTrongDanhSach() {
+    // Arrange
+    composeRule.setContent {
+      NotesScreen(viewModel = CounterViewModel(FakeNotesRepository()))
+    }
+    // Act
+    composeRule.onNodeWithTag("note-input").performTextInput("Mua cà phê")
+    composeRule.onNodeWithTag("add-button").performClick()
+    // Assert
+    composeRule.onNodeWithText("Mua cà phê").assertIsDisplayed()
+  }
+}`;
+---
+
+<article class="lesson">
+	<div class="callout goals">
+		<p><strong>Sau bài này bạn sẽ:</strong></p>
+		<ul>
+			<li>Giải thích được vì sao một test <strong>có giá trị</strong> phải kiểm <em>hành vi</em> (quy tắc nghiệp vụ), không phải kiểm lại phần thư viện đã đảm bảo sẵn.</li>
+			<li>Phân biệt được <strong>unit test chạy trên JVM</strong> (nhanh, cục bộ) và <strong>test giao diện chạy trên thiết bị/emulator</strong> (instrumented) — và biết loại nào hợp với thay đổi nào.</li>
+			<li>Tự viết được một <strong>fake repository</strong> cài cùng interface với bản thật — mối nối để test ViewModel không đụng Room/mạng.</li>
+			<li>Tự viết được một test ViewModel theo khuôn <strong>Arrange / Act / Assert</strong>, dùng <code>MainDispatcherRule</code> để xử lý <code>Dispatchers.Main</code> trong test.</li>
+			<li>Tự viết được một test UI Compose nhỏ với <code>createComposeRule</code>, biết khi nào <code>testTag</code> là cần thiết và khi nào thừa.</li>
+			<li>Chỉ ra được những thứ <strong>không nên test</strong> ở mức người mới — và vì sao.</li>
+		</ul>
+	</div>
+
+	<p>
+		Bạn đã dựng cả một mạch app: ViewModel lắp flow (S4), repository che nguồn dữ liệu (S5), UI đọc
+		state và vẽ lại (S2). Mọi thay đổi nhỏ bạn đều phải chạy app, gõ tay, nhìn bằng mắt. Testing là công
+		cụ để máy làm việc đó thay bạn — <strong>trong vài giây, mỗi lần build</strong>. Đây không phải bài
+		về "văn hoá test" hay độ phủ phần trăm: đây là bài về viết <em>một test có giá trị</em>, và nhận ra
+		điều gì đáng ném vào test, điều gì không.
+	</p>
+
+	<p class="hint">
+		<strong>Cần biết trước.</strong> ViewModel + StateFlow theo S4 (<code>_notes</code> private Mutable,
+		public read-only); interface repository và dependency "đưa từ ngoài vào" theo S5; testTag/semantics
+		theo C5; dependency khai qua version catalog theo A14. Bài KHÔNG dùng Hilt hay DI framework —
+		fake được tiêm bằng constructor thuần Kotlin.
+	</p>
+
+	<div class="callout mental">
+		<strong>Mental model: test là bản hợp đồng nhỏ.</strong>
+		<p>
+			Mỗi test là một câu khẳng định viết bằng code: "khi đầu vào là X, hành vi phải là Y". Giá trị lớn
+			nhất của nó không phải lúc viết — mà là lúc bạn (hoặc đồng nghiệp) sửa code sáu tháng sau: nếu hợp
+			đồng đó còn đúng thì chạy qua; nếu cố tình thay đổi hành vi thì test đỏ buộc bạn phải ghi nhận.
+		</p>
+	</div>
+
+	<h2 id="hai-loai-test">1. Hai loại test, hai tốc độ</h2>
+
+	<table class="cmp">
+		<thead>
+			<tr><th></th><th>Unit test (JVM, cục bộ)</th><th>Instrumented / UI test (thiết bị/emulator)</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>Chạy ở đâu</td><td>Máy của bạn, trên JVM thuần — không máy Android nào cả</td><td>Trên thiết bị/emulator thật, trong hệ Android</td></tr>
+			<tr><td>Thư mục</td><td><code>app/src/test/</code></td><td><code>app/src/androidTest/</code></td></tr>
+			<tr><td>Tốc độ</td><td>Milliseconds mỗi test</td><td>Giây mỗi test</td></tr>
+			<tr><td>Test được gì</td><td>Logic thuần: quy tắc nghiệp vụ, ViewModel, fake repository</td><td>Giao diện thật: text xuất hiện, nút bấm được, layout hiển thị</td></tr>
+			<tr><td>Giới hạn</td><td>Không thấy UI, không thấy framework Android</td><td>Chậm — đừng dồn logic vào đây</td></tr>
+		</tbody>
+	</table>
+
+	<p>
+		Khuôn hành động: <strong>đẩy càng nhiều kiểm chứng càng tốt xuống tầng JVM</strong>, giữ test UI ở
+		mức "một cái, cho cái luồng quan trọng nhất". Chỉ có một `@Test` UI tốt vẫn hơn không; nhưng 50 test
+		UI chậm thì cả đội bỏ chạy test.
+	</p>
+
+	<h2 id="thu-dang-test">2. Thứ đáng test nhất: quy tắc nghiệp vụ</h2>
+
+	<p>
+		Hãy nhìn ViewModel nhỏ nhất có giá trị test. Nó có đúng một quy tắc nghiệp vụ: <em>ghi chú rỗng hoặc
+		chỉ toàn khoảng trắng phải bị từ chối</em>.
+	</p>
+
+	<Code code={counterViewModelCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Đây chính là pattern S4: <code>_notes</code> là <code>MutableStateFlow</code> private, bên ngoài chỉ
+		thấy StateFlow read-only. Nhưng giờ nó có thêm một tham số constructor — <code>repository</code>.
+		Vì sao? Vì S5 đã dạy: ViewModel không tự giữ dữ liệu, nó nhận dependency <em>đưa từ ngoài vào</em>.
+		Trong app thật, dependency đó là Room. Trong test, ta đưa vào một bản <em>giả</em>.
+	</p>
+
+	<h2 id="fake-repository">3. Fake repository: cùng hợp đồng, dữ liệu trong RAM</h2>
+
+	<Code code={fakeRepositoryCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Ba điểm cấu thành "fake" đúng nghĩa:
+	</p>
+
+	<ul>
+		<li><strong>Cùng interface</strong> với bản thật (<code>: NotesRepository</code>) — ViewModel không
+		có cách nào biết nó đang nói chuyện với bản giả. Đó là lý do interface tồn tại ngay từ S5: <em>điểm
+		ghép để thay thế</em>.</li>
+		<li><strong>Dữ liệu nằm trong RAM</strong> — không Room, không mạng, không file. Nhanh, và kết quả
+		<em>biết trước</em>.</li>
+		<li><strong>Không có logic nào ngoài việc ghi lại</strong> — fake không phải bản thu nhỏ của bản
+		thật; nó là một props tĩnh để test diễn trên đó.</li>
+	</ul>
+
+	<div class="callout note">
+		<p>
+			<strong>Cái giá được trả bằng gì?</strong> Bản thật (Room) cũng phải cài cùng interface. Nghĩa là
+			khi bạn thêm một hàm mới vào <code>NotesRepository</code>, compiler buộc cả bản thật lẫn fake phải
+			cài nó. Cái "chi phí duy trì fake" này chính là cơ chế ép interface không phình to vô kiểm soát —
+			lợi ích ẩn của pattern.
+		</p>
+	</div>
+
+	<p>
+		Fake này sẽ quay lại ở <a href="/chapters/capstone-app-ghi-chu/">O6 — Capstone</a>: capstone dùng
+		đúng seam này để chạy app ở chế độ dữ liệu giả trước khi nối Room. Viết một lần, dùng hai nơi.
+	</p>
+
+	<h2 id="main-dispatcher">4. Test ViewModel: dispatcher là seam duy nhất cần xử lý</h2>
+
+	<p>
+		ViewModel chạy trên <code>viewModelScope</code>, và scope đó mặc định dùng
+		<code>Dispatchers.Main</code> — dispatcher <strong>chỉ tồn tại trên thiết bị Android</strong>. Chạy
+		test trên JVM là không có Main → cần một cách thay nó. Cách chính thức hiện nay: một
+		<code>TestWatcher</code> nhỏ <em>cài lại dispatcher trước mỗi test</em> rồi trả lại sau:
+	</p>
+
+	<Code code={mainDispatcherRuleCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Đọc ngắn gọn: <code>Dispatchers.setMain(dispatcher)</code> nói cho kotlinx-coroutines-test biết
+		"từ giờ, Main là cái dispatcher trong bộ nhớ tôi điều khiển được"; <code>resetMain()</code> dọn dẹp
+		để test sau không nhiễm. Với ViewModel <em>không phát coroutine nền dài</em> thì đây là mọi thứ cần —
+		đừng học thêm phần "nâng cao virtual time" cho đến khi thật cần.
+	</p>
+
+	<p>Giờ là test. Khuôn ba nhịp <strong>Arrange — Act — Assert</strong>:</p>
+
+	<Code code={viewModelTestCode} lang="kotlin" theme="github-dark" />
+
+	<ul>
+		<li><strong>Arrange</strong> — dựng thế giới biết trước: fake repository, ViewModel thật nối vào
+		fake. Không mock framework nào, chỉ Kotlin.</li>
+		<li><strong>Act</strong> — gọi <em>đúng một hành vi</em> cần kiểm, ở đây hai lần để phủ cả nhánh
+		chấp nhận và nhánh từ chối.</li>
+		<li><strong>Assert</strong> — đối chiếu state phơi ra ngoài (StateFlow public, vì vậy test được
+		<em>mà không đụng chi tiết private</em>): phải có đúng một ghi chú, đã trim.</li>
+	</ul>
+
+	<div class="callout note">
+		<p>
+			<strong>Vì sao assert qua StateFlow public mà không soi <code>_notes</code>?</strong> Vì muốn test
+			giữ được khi bạn refactor phần private — miễn hợp đồng công khai (StateFlow read-only) còn giữ
+			guyên. Test soi chi tiết private là test "khoá cứng cấu trúc": đổi cách cài đặt là đỏ hàng loạt dù
+			hành vi không đổi.
+		</p>
+	</div>
+
+	<h3>4.1. Có những test không cần dispatcher-rule nào cả</h3>
+
+	<p>
+		Khi logic trừ được ra thành hàm thuần Kotlin (như D1 đã làm với validator), test nó chỉ còn
+		Arrange–Act–Assert trơn:
+	</p>
+
+	<Code code={pureFunctionTestCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Đây là chiều suy nghĩ quý nhất của testing: <strong>đẩy logic về chỗ càng dễ test</strong>. ViewModel
+		giữ luồng và side effect; hàm thuần giữ quy tắc. Càng nhiều hành vi ở dạng hàm thuần, càng ít test
+		cần rule, dispatcher, hay fake.
+	</p>
+
+	<h2 id="ui-test">5. Một test UI Compose</h2>
+
+	<p>
+		Test giao diện không kiểm logic — nó kiểm <em>luồng người dùng ngắn nhất</em>: gõ chữ, bấm nút, chữ
+		xuất hiện. Một cái là đủ cho mức này.
+	</p>
+
+	<Code code={uiTestCodeClean} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Bốn mảnh cần hiểu:
+	</p>
+
+	<ul>
+		<li><code>createComposeRule()</code> — "máy Android nhỏ" dựng nội dung Compose cho test; hoạt động
+		trên thiết bị/emulator, nên file này nằm trong <code>androidTest/</code>.</li>
+		<li><code>setContent { }</code> — thay <code>setContent</code> của Activity: bạn tự quyết định ứng
+		dụng nào được dựng, với dependency nào (lại là fake repository — seam tái sử dụng).</li>
+		<li><code>onNodeWithTag / onNodeWithText</code> — "node" là một composable trong cây; tìm nó bằng
+		tag hoặc bằng text hiển thị, rồi đặt hành động / khẳng định lên nó.</li>
+		<li><code>assertIsDisplayed()</code> — khẳng định node thực sự hiển thị trên màn hình, không phải
+		chỉ tồn tại trong cây.</li>
+	</ul>
+
+	<h3>5.1. testTag: khi nào cần, khi nào thừa</h3>
+
+	<Code code={testTagCode} lang="kotlin" theme="github-dark" />
+
+	<ul>
+		<li><strong>Cần</strong> khi phần tử không có text riêng để tìm (IconButton, ô nhập chưa có nội
+		dung, icon) — tag là "nhãn định danh cho test".</li>
+		<li><strong>Thừa</strong> khi <code>onNodeWithText("Mua cà phê")</code> đã tìm được bằng chính thứ
+		người dùng nhìn thấy. Thêm tag chỗ nào cũng làm test rườm và UI rác tag.</li>
+	</ul>
+
+	<div class="callout note">
+		<p>
+			<strong>Nối với C5.</strong> Trong C5, mục tiêu của semantics là cho <em>screen reader</em> đọc
+			được UI. testTag cùng cơ chế cây semantics nhưng phục vụ test. Một cái giúp người dùng thật, một
+			cái giúp máy kiểm — đừng lẫn hai vai trò, nhưng cũng đừng ngạc nhiên khi chúng sống chung trong
+			cùng một <code>Modifier</code>.
+		</p>
+	</div>
+
+	<h2 id="dependencies">6. Thêm dependency test (mức nhận diện)</h2>
+
+	<Code code={depsCode} lang="toml" theme="github-dark" />
+
+	<ul>
+		<li><code>junit:junit</code> — runner + assertion cơ bản của test JVM (<code>@Test</code>,
+		<code>assertEquals</code>).</li>
+		<li><code>kotlinx-coroutines-test</code> — <code>runTest</code>, <code>StandardTestDispatcher</code>,
+		<code>Dispatchers.setMain</code>.</li>
+		<li><code>androidx.compose.ui:ui-test-junit4</code> — <code>createComposeRule</code>, các
+		<code>onNode.../assert...</code>; version lấy từ Compose BOM nên không cần ghi số.</li>
+	</ul>
+
+	<p>
+		Hai thứ khai trong <code>androidTest</code> (không phải <code>test</code>): ui-test-junit4 và một
+		test runner instrumentation. Thứ nào dùng ở tầng nào nhớ đúng thư mục — nhầm là dependency "không
+		tồn tại" ở tầng kia.
+	</p>
+
+	<div class="callout diff">
+		<p>
+			<strong>1. <code>runTest</code> vs <code>runBlocking</code> trong test.</strong> Tư liệu cũ trên
+			mạng nhiều chỗ vẫn dùng <code>runBlocking</code>. Cách hiện hành cho test coroutine là
+			<code>runTest</code> — nó quản lý dispatcher kiểm thử và bỏ qua delay ảo một cách có kiểm soát.
+			<code>runBlocking</code> vẫn dùng được trong code sản xuất, nhưng trong test hiện đại thì nên là
+			<code>runTest</code>.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>2. API Compose test đổi theo BOM nhưng tư duy không đổi.</strong> Các hàm
+			<code>onNodeWithText</code>, <code>performClick</code>, <code>assertIsDisplayed</code> là bề mặt
+			ổn định nhiều năm. Nếu một ví dụ nào trên mạng báo "hàm không tồn tại", nguyên nhân gần như luôn
+			 là thiếu dependency <code>ui-test-junit4</code> hoặc khai nhầm vào <code>test/</code> thay vì
+			<code>androidTest/</code> — không phải API đã đổi.
+		</p>
+	</div>
+
+	<h2 id="khong-nen-test">7. Những thứ KHÔNG nên test (mức người mới)</h2>
+
+	<ul>
+		<li>
+			<strong>Thư viện bên thứ ba.</strong> Bạn không cần test rằng StateFlow phát lại giá trị cho
+			người collect — JetBrains đã test điều đó. Test mỗi chỗ <em>bạn quyết định</em>: quy tắc, mapping,
+			luồng ghép.
+		</li>
+		<li>
+			<strong>Trivial getter/setter.</strong> Test
+			<code>assertEquals(3, viewModel.someValue)</code> sau khi vừa gán
+			<code>someValue = 3</code> chỉ kiểm lại ngôn ngữ Kotlin.
+		</li>
+		<li>
+			<strong>Chi tiết cài đặt private.</strong> Đã nói ở mục 4 — test hợp đồng công khai, không test
+			cấu trúc bên trong.
+		</li>
+		<li>
+			<strong>Mọi nhánh UI bằng test UI.</strong> Mỗi test UI tốn giây; điều hướng 4 màn hình × 3 trạng
+			thái × 2 theme sẽ nhân lên nhanh. Test UI nên dừng ở "luồng chính chạy được trên mọi kích thước
+			phổ biến" — phần ngược lại là việc của preview (C4) và người dùng thật.
+		</li>
+		<li>
+			<strong>Đuổi phần trăm độ phủ.</strong> 80% độ phủ với 60% là test vô dụng vẫn tệ hơn 40% test
+			đắt giá. Hỏi mỗi test: "nó bắt được lỗi gì nếu ai đó phá đúng chỗ này?" — không trả lời được thì
+			xoá.
+		</li>
+	</ul>
+
+	<div class="callout mental">
+		<strong>Khuôn quyết định: cái gì đáng test?</strong>
+		<p>
+			Cái gì <em>bạn viết</em>, <em>đang sống</em> (không phải wrapper của thư viện), và <em>gãy sẽ tốn
+			tiền</em> (quy tắc nghiệp vụ, mapping dữ liệu, luồng ghép state). Ba điều kiện đó đủ — không cần
+			học thêm giáo trình test nào cho mức này.
+		</p>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+
+	<div class="callout diff">
+		<p>
+			<strong>1. "Test ViewModel cần Robolectric."</strong> Không cần cho mức này. Robolectric là công cụ
+			chạy API Android trên JVM — giá trị thật khi ViewModel đụng Context/Resource. ViewModel được viết
+			đúng theo S4/S5 (không giữ Context, nhận repository qua constructor) chỉ cần
+			<code>kotlinx-coroutines-test</code> + fake repository. Nếu một ViewModel "phải" có Robolectric để
+			test được, đó thường là tín hiệu thiết kế — Context đã rò vào tầng sai.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>2. Mock framework ngay từ đầu.</strong> mockk/Mockito phổ biến, nhưng với repository
+			nhỏ thì fake tự viết (mục 3) dễ đọc hơn, không thêm dependency, và bộc lộ đúng interface thật.
+			Tài liệu chính thức của Android cũng hướng dẫn fake-first cho Compose/architecture codelab —
+			mock framework là công cụ cho chỗ phức tạp (static call, API đóng), không phải mặc định.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>3. Test flaky vì thời gian thật.</strong> Test dùng <code>delay(500)</code> thật rồi
+			assert là nguồn flake kinh điển. Trong test dùng <code>runTest</code>, delay bị kiểm soát bởi
+			dispatcher kiểm thử; tránh viết test phụ thuộc timing thật (sleep, thread block) — khi thấy mình
+			viết <code>Thread.sleep</code> trong test, dừng lại và tìm seam dispatcher thay thế.
+		</p>
+	</div>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+
+	<ul class="keypoints">
+		<li><strong>Test = hợp đồng nhỏ</strong>: "đầu vào X → hành vi Y" viết bằng code; giá trị nằm ở
+		lần sửa tiếp theo.</li>
+		<li><strong>Hai tầng:</strong> JVM test nhanh cho logic; instrumented test cho giao diện — đẩy
+		càng nhiều kiểm chứng càng tốt xuống JVM.</li>
+		<li><strong>Đáng test:</strong> quy tắc nghiệp vụ bạn tự viết (như từ chối ghi chú rỗng).</li>
+		<li><strong>Fake repository</strong> = cài cùng interface, dữ liệu trong RAM, không logic — nhờ
+		interface từ S5, ViewModel không biết bản giả.</li>
+		<li><strong>Arrange / Act / Assert</strong> giữ test đọc được: dựng thế giới → một hành vi → đối
+		chiếu kết quả qua hợp đồng công khai.</li>
+		<li><code>MainDispatcherRule</code> + <code>runTest</code> là cách hiện hành để test ViewModel
+		có coroutine trên JVM.</li>
+		<li><strong>Một test UI nhỏ</strong> với <code>createComposeRule</code> đủ cho mức này;
+		testTag chỉ thêm khi không tìm được bằng text.</li>
+		<li><strong>Không test:</strong> thư viện, trivial getter, chi tiết private, mọi nhánh UI, và
+		phần trăm độ phủ.</li>
+	</ul>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<p class="src">
+		<strong>Tài liệu chính thức:</strong> developer.android.com — <em>Test your app</em> /
+		<em>Testing in Android</em> và <em>Test in Compose</em> (kiểm 09/09/2026: <code>createComposeRule</code>,
+		<code>onNodeWithTag</code>/<code>onNodeWithText</code>, <code>assertIsDisplayed</code> là bề mặt
+		khuyến nghị hiện hành) · <em>Testing Kotlin coroutines</em> — khuyến nghị <code>runTest</code> +
+		<code>Dispatchers.setMain</code> qua <code>TestWatcher</code> (kiểm 09/09/2026) ·
+		<em>Testing in Jetpack Compose codelab</em> — fake-first cho repository.
+	</p>
+	<p class="src">
+		<strong>Nội dung của chính khoá học:</strong> S4 (<code>Ch06ViewModelVaUiState.astro</code>) —
+		pattern private Mutable / public StateFlow, viewModelScope · S5
+		(<code>KienTrucUiDataRepository.astro</code>) — interface repository, dependency đưa từ ngoài vào ·
+		C5 (<code>Ch05TiepCanMoiNguoiDung.astro</code>) — semantics/testTag trong cây Compose · A14
+		(<code>Ch04GradleBasics.astro</code>) — version catalog khai dependency · D1 — tách logic ra hàm
+		thuần dễ test.
+	</p>
+	<p class="src">
+		<strong>Ví dụ do khoá dựng:</strong> <code>CounterViewModel</code>, <code>FakeNotesRepository</code>,
+		<code>MainDispatcherRule</code>, test JVM/UI kèm theo — viết cho bài này, tối giản để dạy khuôn;
+		không trích <code>aaf-materials/</code> (chapter mẫu của giáo trình không dạy testing).
+	</p>
+</article>

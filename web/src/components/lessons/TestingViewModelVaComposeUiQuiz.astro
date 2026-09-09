@@ -1,0 +1,169 @@
+---
+// Quiz O2 — TestingViewModelVaComposeUiQuiz.astro — bám nội dung O2 (testing).
+// Workstream F / IMP-051. 10 câu: khi nào test có giá trị, hai tầng test, fake
+// repository, Arrange/Act/Assert, MainDispatcherRule/runTest, testTag, what-not-to-test.
+// KHÔNG có câu yêu cầu Hilt/mock framework/Robolectric (bài dạy fake-first).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		10 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích hiện ra sau khi chấm —
+		đọc cả những câu bạn làm đúng, vì nhiều giải thích có thêm chi tiết không nằm trong bài.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="b">
+			<legend>Test nào dưới đây <em>có giá trị</em> nhất theo tiêu chí của bài?</legend>
+			<label><input type="radio" name="q1" value="a" /> Test kiểm tra rằng <code>MutableStateFlow</code> phát lại giá trị cho người collect muộn</label>
+			<label><input type="radio" name="q1" value="b" /> Test kiểm tra <code>addNote("   ")</code> không được thêm vào danh sách</label>
+			<label><input type="radio" name="q1" value="c" /> Test kiểm tra rằng sau khi gán <code>x = 3</code> thì <code>x</code> bằng 3</label>
+			<label><input type="radio" name="q1" value="d" /> Test kiểm tra rằng Room của thư viện lưu và đọc lại một bản ghi vào/ra bảng ghi chú đúng</label>
+			<p class="explain" hidden>
+				Test có giá trị kiểm <em>hành vi bạn tự viết</em>: quy tắc nghiệp vụ (từ chối chuỗi rỗng) là thứ bạn
+				quyết định, gãy sẽ tốn tiền. (a) là hành vi của thư viện kotlinx-coroutines — JetBrains đã test rồi.
+				(c) kiểm lại ngôn ngữ Kotlin. (d) là việc của Room's own test suite — app của bạn chỉ cần test cách
+				<em>bạn dùng</em> Room, thường ở tầng repository với fake thay thế.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>Điểm khác biệt quyết định giữa unit test (JVM) và instrumented/UI test là gì?</legend>
+			<label><input type="radio" name="q2" value="a" /> Unit test dùng JUnit còn UI test dùng Kotlin</label>
+			<label><input type="radio" name="q2" value="b" /> Unit test cho ViewModel, UI test cho Repository — phân chia theo tầng kiến trúc</label>
+			<label><input type="radio" name="q2" value="c" /> Unit test chạy trên JVM; UI test trên thiết bị/emulator</label>
+			<label><input type="radio" name="q2" value="d" /> Unit test miễn phí còn UI test tính phí theo phút chạy</label>
+			<p class="explain" hidden>
+				Unit test nằm trong <code>app/src/test/</code>, chạy trên JVM của máy bạn — không máy Android nào cả,
+				nên milliseconds mỗi test. Instrumented test nằm trong <code>app/src/androidTest/</code>, chạy trong hệ
+				Android thật nên thấy UI, nhưng chậm hơn hàng trăm lần. Hệ quả chiến lược: đẩy càng nhiều kiểm chứng
+				càng tốt xuống JVM, giữ UI test ở mức một vài cái cho luồng quan trọng nhất. Phân chia (b) sai vì
+				ViewModel test được trên JVM — đúng là nơi ViewModel test nên chạy.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>Vì sao ViewModel có thể test được trên JVM mà không cần thiết bị Android?</legend>
+			<label><input type="radio" name="q3" value="a" /> Vì ViewModel không giữ Context, nhận repository qua constructor</label>
+			<label><input type="radio" name="q3" value="b" /> Vì ViewModel tự phát hiện môi trường test và chuyển sang chế độ JVM</label>
+			<label><input type="radio" name="q3" value="c" /> Vì JVM của desktop cài sẵn framework Android rút gọn</label>
+			<label><input type="radio" name="q3" value="d" /> Vì ViewModel chạy trên chính thiết bị đó qua kết nối ADB</label>
+			<p class="explain" hidden>
+				Đây là hậu quả trực tiếp của thiết kế mà S4/S5 dạy: ViewModel không giữ Context (ai cần Context thì
+				nhận qua dependency), dữ liệu đến từ repository phơi ra Flow. Toàn bộ phần "Android" của ViewModel
+				được tiêm từ ngoài, nên trên JVM bạn tiêm bản fake. Nếu một ViewModel <em>buộc</em> phải có Robolectric
+				hoặc thiết bị để test được, đó thường là tín hiệu Context đã rò vào tầng sai — lỗi thiết kế, không
+				phải thiếu công cụ.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend><code>FakeNotesRepository</code> "giả" ở điểm nào so với bản thật cài Room?</legend>
+			<label><input type="radio" name="q4" value="a" /> Nó không cài interface <code>NotesRepository</code> — ViewModel phải biết nó là fake</label>
+			<label><input type="radio" name="q4" value="b" /> Nó dùng database thật nhưng chạy trong bộ nhớ</label>
+			<label><input type="radio" name="q4" value="c" /> Nó thu nhỏ mọi logic của bản thật xuống phiên bản đơn giản hơn</label>
+			<label><input type="radio" name="q4" value="d" /> Nó cài cùng interface, dữ liệu trong RAM, ViewModel không biết là bản giả</label>
+			<p class="explain" hidden>
+				Ba tính chất của fake đúng nghĩa: cùng interface (bản hợp đồng từ S5 — <em>điểm ghép để thay thế</em>);
+				dữ liệu trong RAM, kết quả biết trước; không logic ngoài ghi lại. Fake KHÔNG phải bản thu nhỏ của bản
+				thật — nó là đạo cụ tĩnh cho test diễn. Cái giá phải trả: thêm hàm vào interface là compiler buộc cả
+				fake lẫn bản thật cài theo — và đó cũng là cơ chế ép interface không phình vô kiểm soát.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Trong khuôn Arrange / Act / Assert, phần "Act" nên chứa bao nhiêu hành vi?</legend>
+			<label><input type="radio" name="q5" value="a" /> Mọi hành vi của ViewModel — để một test phủ hết chức năng</label>
+			<label><input type="radio" name="q5" value="b" /> Đúng hành vi đang được kiểm — không thêm hành vi nào khác</label>
+			<label><input type="radio" name="q5" value="c" /> Tối thiểu ba hành vi để test có giá trị thống kê</label>
+			<label><input type="radio" name="q5" value="d" /> Không quan trọng — ba phần có thể xen kẽ tự do</label>
+			<p class="explain" hidden>
+				Mỗi test kiểm <em>một</em> hành vi: Act là lời gọi tới hành vi đó (trong ví dụ của bài, gọi hai lần để
+				phủ cả nhánh chấp nhận lẫn nhánh từ chối của cùng hành vi <code>addNote</code>). Test phủ mọi chức năng
+				là test khó đọc và khi đỏ không biết gãy ở đâu. Thứ tự Arrange→Act→Assert giữ nguyên để người đọc
+				quét mắt là hiểu — xen kẽ tự do làm mất lợi thế đó.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>Vì sao test ViewModel cần <code>MainDispatcherRule</code>?</legend>
+			<label><input type="radio" name="q6" value="a" /> Để giúp các test chạy nhanh hơn và ổn định hơn trên JVM của máy cấu hình thấp</label>
+			<label><input type="radio" name="q6" value="b" /> Vì <code>Dispatchers.Main</code> chỉ tồn tại trên thiết bị Android — trên JVM phải thay nó bằng dispatcher kiểm thử được</label>
+			<label><input type="radio" name="q6" value="c" /> Không cần — ViewModel chạy trên Dispatchers.IO nên test không đụng Main</label>
+			<label><input type="radio" name="q6" value="d" /> Để test chạy song song trên nhiều thread</label>
+			<p class="explain" hidden>
+				<code>viewModelScope</code> mặc định dùng <code>Dispatchers.Main</code> — dispatcher chỉ tồn tại khi có
+				hệ Android. Trên JVM nó không có, coroutine trong test sẽ chết. <code>MainDispatcherRule</code> gọi
+				<code>Dispatchers.setMain(dispatcher)</code> trước mỗi test (thay Main bằng dispatcher kiểm thử) và
+				<code>resetMain()</code> sau — đúng khuân chính thức của tài liệu. (a) sai mục đích, (d) không liên quan.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>Test ViewModel nên assert kết quả qua đâu?</legend>
+			<label><input type="radio" name="q7" value="a" /> Qua StateFlow public</label>
+			<label><input type="radio" name="q7" value="b" /> Qua field private <code>_notes</code> bằng reflection</label>
+			<label><input type="radio" name="q7" value="c" /> Qua nội dung màn hình — ViewModel test cũng nên assert trên UI</label>
+			<label><input type="radio" name="q7" value="d" /> Qua log đầu ra của coroutine</label>
+			<p class="explain" hidden>
+				Assert qua hợp đồng công khai (StateFlow read-only mà bên ngoài đọc được) để test sống sót khi bạn
+				refactor phần cài đặt private — miễn hành vi công khai còn giữ nguyên. Test soi chi tiết private là
+				test "khoá cứng cấu trúc": đổi cách cài là đỏ hàng loạt dù hành vi không đổi. (c) là việc của UI test
+				— một test kiểm một tầng, đừng trộn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>Trong test UI Compose, khi nào <code>Modifier.testTag("...")</code> là cần thiết?</legend>
+			<label><input type="radio" name="q8" value="a" /> Mọi composable đều phải có testTag để test tìm được</label>
+			<label><input type="radio" name="q8" value="b" /> Chỉ cần cho Text — các phần tử khác tìm bằng vị trí</label>
+			<label><input type="radio" name="q8" value="c" /> Chỉ khi muốn test chạy nhanh hơn</label>
+			<label><input type="radio" name="q8" value="d" /> Khi phần tử không có text riêng để tìm</label>
+			<p class="explain" hidden>
+				Test tìm node bằng matcher: <code>onNodeWithText("Mua cà phê")</code> tìm bằng chính thứ người dùng
+				nhìn thấy — nơi nào text dùng được thì <strong>không cần tag</strong>. Tag chỉ cần khi phần tử không
+				có text (icon button, TextField trống...). Thêm tag chỗ nào cũng làm test rườm và UI rác tag. Nối với
+				C5: testTag cùng cơ chế cây semantics nhưng phục vụ test — khác vai trò với semantics cho screen reader.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Hàm <code>addNote</code> của ViewModel được tách thành hàm thuần <code>isValidNote(text)</code>. Điều gì đúng?</legend>
+			<label><input type="radio" name="q9" value="a" /> ViewModel giờ khó test hơn vì tách hai chỗ</label>
+			<label><input type="radio" name="q9" value="b" /> Hàm thuần test được trên JVM, không cần rule</label>
+			<label><input type="radio" name="q9" value="c" /> Hàm thuần phải chuyển sang androidTest vì là logic nghiệp vụ</label>
+			<label><input type="radio" name="q9" value="d" /> Tách hàm làm mất khả năng assert qua StateFlow</label>
+			<p class="explain" hidden>
+				Hàm thuần Kotlin (không state, không side effect) chỉ cần <code>@Test</code> + assertion trơn — không
+				<code>MainDispatcherRule</code>, không <code>runTest</code>, không fake. Chiều suy nghĩ tổng quát:
+				ViewModel giữ luồng và side effect, hàm thuần giữ quy tắc — càng nhiều hành vi ở dạng hàm thuần, bộ
+				test càng nhẹ và nhanh. Đây cũng là pattern D1 đã dùng với validator.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>Vì sao bài khuyên KHÔNG dùng mock framework (Mockito/mockk) làm mặc định khi mới học?</legend>
+			<label><input type="radio" name="q10" value="a" /> Vì mock framework không tương thích Kotlin</label>
+			<label><input type="radio" name="q10" value="b" /> Vì mock framework chỉ chạy được trên thiết bị thật và cần emulator có sẵn Google Play</label>
+			<label><input type="radio" name="q10" value="c" /> Vì fake tự viết dễ đọc hơn và buộc chạm đúng interface thật</label>
+			<label><input type="radio" name="q10" value="d" /> Vì mock framework bị cấm trong Google Play policy</label>
+			<p class="explain" hidden>
+				Fake tự viết (mục 3) có ba lợi thế ở mức này: code test đọc như Kotlin thường, không thêm dependency
+				nào, và việc cài interface buộc bạn "chạm" đúng bản hợp đồng thật. Mock framework phát huy ở chỗ phức
+				tạp hơn: static call, API đóng không thể fake bằng interface, tương tác phức tạp cần verify số lần
+				gọi. Không phải mock xấu — chỉ là không phải mặc định đầu tay. Tài liệu chính thức của Android cũng
+				hướng dẫn fake-first cho các codelab architecture/Compose.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	// Harness chung — chấm MCQ, "Câu x/N", retry ẩn→hiện→ẩn (IMP-001 contract, quiz.css).
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>
