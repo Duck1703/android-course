@@ -329,8 +329,10 @@ cần *đọc được*, còn kiến trúc mới của khoá dựng trên DataSt
 **Nguồn:** `aaf-materials/11-advanced-storage/projects/{starter,final}/` ·
 `content/book/ch11-advanced-storage.md`
 **Số liệu chốt:** 2026-09-06 (verify trực tiếp khi dựng lại trang Ch11; bản của giáo trình = 2023).
-**Bài lõi trỏ về đây:** trang Ch11 hiện tại (hai nửa X1/X2 trên cùng một route, đánh dấu `X1/X2 START/END`) —
-khối `#cam-bay` (cảnh báo ESP + SQLCipher artifact) và mục 16/17 của bài trỏ về đây cho phần drift dài.
+**Bài lõi trỏ về đây:** hai bài X1/X2 sau khi tách route Stage 7 —
+X1 `ch11-files-saf-va-backup` (Files, SAF & Backup, mục 1–8.5) và
+X2 `ch11-keystore-sqlcipher-va-ma-hoa` (Mã hoá, mục 9–21). Khối `#cam-bay` và mục 16/17 của X2
+trỏ về đây cho phần drift dài; X1 trỏ về đây từ mục 8.5 (bảng cú pháp hai thế hệ backup rule).
 Các con số dưới đây không lặp lại đầy đủ trong thân bài.
 
 ### 1. Kiến thức bền vs cú pháp dễ đổi
@@ -365,28 +367,28 @@ ALTERNATIVE / REDUNDANT / HISTORICAL/VERSION DRIFT / BUG/RISK); bảng dưới c
 
 | # | Điểm | Nơi dạy bây giờ |
 |---|---|---|
-| 1 | "getSystemService phải trên main thread" — đảo chiều | X1 mục 3.3 (BUG/RISK) |
-| 2 | `context.cacheDir`/`context.filesDir` trong Activity — không compile | X1 mục 3.3 (BUG/RISK) |
-| 3 | `getExternalStoragePublicDirectory()` như cách dùng được | X1 mục 6 (HISTORICAL/VERSION DRIFT) — chi tiết drift ở mục 2 bảng trên |
-| 4 | `startActivityForResult` + Note không có code mới | X1 mục 7.3 (HISTORICAL/VERSION DRIFT) |
-| 5 | `isInsideSecurityHardware()` + mốc API 28/29 | X2 mục 9.1 (BUG/RISK) — chi tiết ở mục 2 bảng trên |
-| 6 | Nối dây đặt trong MainActivity | X2 mục 14 (VALID ALTERNATIVE — project đặt RecipeApp.onCreate đúng hơn) |
-| 7 | `PASSCODE_KEY` trần | X2 mục 14 (BUG/RISK) |
-| 8 | `prefs = SecurePrefs(this)` sau khi chính sách đổi tên `securePrefs` | X2 mục 14 (BUG/RISK — tự mâu thuẫn) |
-| 9 | Đổi tên database `"Recipes"` → `"recipe_database"` âm thầm | X2 mục 13.3 (BUG/RISK — mất dữ liệu im lặng) |
-| 10 | `getPassCode()` dùng `kotlin.random.Random`, chỉ a–z (~70 bit) | X2 mục 13.1 (BUG/RISK — SecureRandom + 62 ký tự ≈ 89 bit) |
-| 11 | Passcode `String` rồi `toCharArray()` — lợi ích CharArray bị vô hiệu | X2 mục 13.1 (REDUNDANT) |
-| 12 | `allowBackup="true"` + mọi backup rule bị comment → bẫy backup | X1 mục 8.5 + X2 mục 15 (BUG/RISK — javadoc ESP cảnh báo) |
-| 13 | 5 version bump không liên quan trong toml | X2 mục 10 (VALID ALTERNATIVE — chỉ cần biết khi đối chiếu) |
-| 14 | Import/file/dòng code chết (RecipeApp imports 38–39, Prefs.kt không ai gọi, ShowRecipeList import LocalContext, IngredientDao dòng trống, MainScreen null-check luôn đúng) | X2 mục 12.1 + bảng 17 (REDUNDANT; riêng null-check là thay đổi hành vi) |
-| 15 | API key placeholder trong source | Bảng 17 (BUG/RISK) — khuôn đúng là W3 |
+| 1 | "getSystemService phải trên main thread" — đảo chiều | bài X1 (Files, SAF & Backup) mục 3.3 (BUG/RISK) |
+| 2 | `context.cacheDir`/`context.filesDir` trong Activity — không compile | bài X1 mục 3 (BUG/RISK) |
+| 3 | `getExternalStoragePublicDirectory()` như cách dùng được | bài X1 mục 6 (HISTORICAL/VERSION DRIFT) — chi tiết drift ở mục 2 bảng trên |
+| 4 | `startActivityForResult` + Note không có code mới | bài X1 mục 7.3 (HISTORICAL/VERSION DRIFT) |
+| 5 | `isInsideSecurityHardware()` + mốc API 28/29 | bài X2 (Mã hoá) mục 9.1 (BUG/RISK) — chi tiết ở mục 2 bảng trên |
+| 6 | Nối dây đặt trong MainActivity | bài X2 mục 14 (VALID ALTERNATIVE — project đặt RecipeApp.onCreate đúng hơn) |
+| 7 | `PASSCODE_KEY` trần | bài X2 mục 14 (BUG/RISK) |
+| 8 | `prefs = SecurePrefs(this)` sau khi chính sách đổi tên `securePrefs` | bài X2 mục 12 (BUG/RISK — tự mâu thuẫn) |
+| 9 | Đổi tên database `"Recipes"` → `"recipe_database"` âm thầm | bài X2 mục 13.3 (BUG/RISK — mất dữ liệu im lặng) |
+| 10 | `getPassCode()` dùng `kotlin.random.Random`, chỉ a–z (~70 bit) | bài X2 mục 13.1 (BUG/RISK — SecureRandom + 62 ký tự ≈ 89 bit) |
+| 11 | Passcode `String` rồi `toCharArray()` — lợi ích CharArray bị vô hiệu | bài X2 mục 13.1 (REDUNDANT) |
+| 12 | `allowBackup="true"` + mọi backup rule bị comment → bẫy backup | bài X1 mục 8.5 + bài X2 mục 15 (BUG/RISK — javadoc ESP cảnh báo) |
+| 13 | 5 version bump không liên quan trong toml | bài X2 mục 10 (VALID ALTERNATIVE — chỉ cần biết khi đối chiếu) |
+| 14 | Import/file/dòng code chết (RecipeApp imports 38–39, Prefs.kt không ai gọi, ShowRecipeList import LocalContext, IngredientDao dòng trống, MainScreen null-check luôn đúng) | bài X2 mục 12.1 + bảng mục 17 (REDUNDANT; riêng null-check là thay đổi hành vi) |
+| 15 | API key placeholder trong source | bảng mục 17 của bài X2 (BUG/RISK) — khuôn đúng là W3 |
 
 ### 4. Ghi chú lịch sử riêng
 
 - **"SharedPreferences deprecated"**: tương tự ghi chú Ch09 — giáo trình nói chung chung; class
   `SharedPreferences` của SDK **không** bị đánh dấu `@Deprecated`. Cái bị deprecated toàn bộ là
   `security-crypto` (2025). Trong Ch11, việc quay về `SharedPreferences` là đánh đổi để có mã hoá
-  (đã dạy trong X2 mục 12), không phải hệ quả của một lệnh deprecate.
+  (đã dạy trong bài X2 mục 12), không phải hệ quả của một lệnh deprecate.
 - **Backup trap** (điểm 12) là phần khoá học tự bổ sung — không có trong giáo trình; nguồn hậu thuẫn
   là javadoc `EncryptedSharedPreferences` (mục WARNING) + tài liệu Auto Backup.
 
