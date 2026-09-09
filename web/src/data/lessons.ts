@@ -57,8 +57,8 @@ import NavigationDestinationNavHost from "../components/lessons/NavigationDestin
 import NavigationDestinationNavHostQuiz from "../components/lessons/NavigationDestinationNavHostQuiz.astro";
 import NavigationBackStackTypeSafe from "../components/lessons/NavigationBackStackTypeSafe.astro";
 import NavigationBackStackTypeSafeQuiz from "../components/lessons/NavigationBackStackTypeSafeQuiz.astro";
-import Ch07AdvancedArchitecture from "../components/lessons/Ch07AdvancedArchitecture.astro";
-import Ch07Quiz from "../components/lessons/Ch07Quiz.astro";
+import DittoOfflineFirstCaseStudy from "../components/lessons/DittoOfflineFirstCaseStudy.astro";
+import DittoOfflineFirstCaseStudyQuiz from "../components/lessons/DittoOfflineFirstCaseStudyQuiz.astro";
 import Ch08CoroutinesVaFlow from "../components/lessons/Ch08CoroutinesVaFlow.astro";
 import Ch08CoroutinesVaFlowQuiz from "../components/lessons/Ch08CoroutinesVaFlowQuiz.astro";
 import Ch08RetrofitMoshiJson from "../components/lessons/Ch08RetrofitMoshiJson.astro";
@@ -161,7 +161,14 @@ export const LESSONS: Partial<Record<string, LessonEntry>> = {
     Lesson: NavigationBackStackTypeSafe,
     Quiz: NavigationBackStackTypeSafeQuiz,
   },
-  "ch07-advanced-architecture": { Lesson: Ch07AdvancedArchitecture, Quiz: Ch07Quiz },
+  // Workstream F (IMP-050): old Ch07 monolith retired — O1 là kế nhiệm REDUCE trực tiếp
+  // (case study Ditto & offline-first ở mức concepts). Old slug "ch07-advanced-architecture"
+  // chết → redirect 1 đích sang O1 (astro.config.mjs) + SPLIT_MAP replace (progress.ts).
+  // AP2 (Ditto SDK API depth) là reference, không nằm trong LESSONS-quiz pairing.
+  "ditto-offline-first-case-study": {
+    Lesson: DittoOfflineFirstCaseStudy,
+    Quiz: DittoOfflineFirstCaseStudyQuiz,
+  },
   // Giai đoạn 5 (batch Stage 5): Ch08 monolith tách thành W1–W3 theo mốc W1/W2/W3 START/END.
   // Old slug ch08-networking chết trong batch này → redirect 1 đích sang W1 (astro.config.mjs)
   // + SPLIT_MAP replace (progress.ts). Credit ch08 cũ chia cho cả ba bài kế nhiệm trực tiếp

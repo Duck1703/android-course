@@ -47,6 +47,11 @@ const COURSE_REDIRECTS = {
   // (registry §6 row 8: redirectTarget = ch11-files-saf-va-backup). X2 đến
   // được qua sidebar/bài tiếp theo. KHÔNG có bài NEW trong batch X.
   "chapters/ch11-advanced-storage": "/chapters/ch11-files-saf-va-backup/",
+  // Workstream F (IMP-050): old Ch07 monolith chết tại batch này → redirect 1 đích sang
+  // O1 (registry §6 row 4: redirectTarget = ditto-offline-first-case-study). O1 là kế
+  // nhiệm REDUCE trực tiếp của Ch07; AP2 (Ditto API) là reference, không phải đích
+  // redirect. O2–O6 là bài NEW — không liên quan old Ch07.
+  "chapters/ch07-advanced-architecture": "/chapters/ditto-offline-first-case-study/",
 };
 
 export default defineConfig({

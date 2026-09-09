@@ -182,6 +182,13 @@ const FILE_KEY_PIN: Record<string, string> = {
   "ch06-state-va-recomposition": "06_2",
   "ch06-state-hoisting-va-udf": "06_3",
   "ch06-viewmodel-va-ui-state": "06_4",
+  // Workstream F (IMP-050): O1 kế nhiệm monolith Ch07 — file live DittoOfflineFirstCaseStudy*
+  // KHÔNG mang số đơn vị (regex "Ch(\d{2})" không khớp → tự rơi vào nhánh foundationKey,
+  // key = "dittoofflinefirstcasestudy"). Nhưng 4 file ngủ đông Ch07_1..4 (IMP-064 giữ)
+  // thắng key 07_1..07_4 — key của monolith đã retired nên không thuộc registry, tự bị loại.
+  // O1 không va chạm bucket nào, NHƯNG fileKeyOf phải trả về CÙNG key với vòng quét file
+  // (slug-bỏ-gạch) → ghim tường minh như S1/S5/N1/N2.
+  "ditto-offline-first-case-study": "dittoofflinefirstcasestudy",
 };
 // Bảng ngược cho vòng quét file: "Ch02DocProjectMau" → "02_2" v.v. (tên file
 // không đuôi, cả lesson lẫn quiz).

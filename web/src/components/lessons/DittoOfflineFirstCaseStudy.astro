@@ -1,0 +1,510 @@
+---
+// O1 — DittoOfflineFirstCaseStudy.astro — "Case study: Ditto & offline-first (concepts)".
+// Workstream F / IMP-050: REDUCE trực tiếp từ live monolith Ch07AdvancedArchitecture.astro
+// (retired cùng batch — xem ledger docs/drafts/ch07-ownership-ledger.md).
+//
+// Hợp đồng nội dung của bài này (brief Workstream F §6):
+//   O1 giữ CONCEPT: offline-first mental model, repository vs sync engine, local source /
+//   remote source / synchronization, trade-offs kiến trúc, đọc project cũ có phê phán, khi nào
+//   mô hình này cần / khi nào là phức tạp thừa.
+//   O1 KHÔNG dạy Ditto SDK API (độ sâu API → AP2 DittoSdkApi.astro).
+//   KHÔNG dạy lại repository tổng quát từ đầu — dùng S5 làm tiên quyết.
+//
+// Code trong bài: không có block code thật nào — bài thuần concepts, mọi chi tiết API Ditto
+// → AP2 DittoSdkApi.astro. Tên "Ditto" xuất hiện ở mức mô hình (sync engine, subscription /
+// live query), không phải cú pháp gọi SDK 2026.
+---
+
+<article class="lesson">
+	<div class="callout goals">
+		<p><strong>Sau bài này bạn sẽ:</strong></p>
+		<ul>
+			<li>Giải thích được mô hình <strong>offline-first / local-first</strong> khác gì mô hình client–server quen thuộc, và vì sao "đọc–ghi cục bộ luôn thành công" thay đổi hình dáng của tầng dữ liệu.</li>
+			<li>Chỉ ra được ba vai trò trong một hệ đồng bộ: <strong>nguồn cục bộ</strong>, <strong>nguồn từ xa</strong>, và <strong>khâu đồng bộ</strong> — cùng ranh giới trách nhiệm giữa <strong>sync engine</strong> và <strong>repository</strong> đã học ở S5.</li>
+			<li>Đọc được một kiến trúc đời thực một cách <strong>phê phán</strong>: nhận ra nơi pattern bị thoả hiệp (biến toàn cục, getter có tác dụng phụ, hợp đồng rò rỉ kiểu SDK) và đoán được hệ quả.</li>
+			<li>Đánh giá được <strong>khi nào</strong> kiến trúc offline-first là lựa chọn đúng, và <strong>khi nào</strong> nó là phức tạp thừa so với một repository gọi REST API.</li>
+			<li>Biết được vì sao một database không schema đổi chỗ cho Room có schema khi app chuyển từ demo sang sản phẩm — và cái giá của mỗi bên.</li>
+		</ul>
+	</div>
+
+	<p>
+		Toàn bộ khoá học đến đây dựng app theo cùng một hình: UI ← ViewModel ← repository ← <em>một</em> nguồn
+		dữ liệu. Bài này là một case study — phân tích một app thật của giáo trình (app chat hai thiết bị,
+		không cần mạng) — để trả lời một câu hỏi mà chưa bài nào hỏi: <strong>chuyện gì xảy ra với kiến trúc
+		đã học khi nguồn dữ liệu không phải một server, mà là chính những chiếc máy đứng cạnh nhau?</strong>
+		Câu trả lời không nằm ở một thư viện cụ thể: nó là một cách tư duy bạn sẽ dùng lại với mọi công nghệ
+		đồng bộ, kể cả những cái chưa ra đời.
+	</p>
+
+	<p class="hint">
+		<strong>Cần biết trước.</strong> Kiến trúc UI–data–repository theo đúng S5
+		(kiến trúc app: tầng UI, tầng dữ liệu, repository là cửa vào duy nhất của tầng dữ liệu, nguồn đáng
+		tin, quy ước "đọc-liên-tục trả <code>Flow</code>; ghi hoặc đọc-một-lần thì <code>suspend</code>").
+		StateFlow và <code>collectAsStateWithLifecycle</code> theo S4. Khái niệm cold/hot flow theo S1/W1.
+		Bài không dùng API Android mới nào — đây là bài tư duy, không cần mở Android Studio.
+	</p>
+
+	<h2 id="hai-bai-hoc">1. Hai bài học chồng nhau — tách ra ngay từ đầu</h2>
+
+	<p>
+		Project mẫu của case study là một app chat: gõ tin nhắn ở máy này, máy cạnh hiện tin đó trong vài
+		giây — không internet, không server. Phiên bản đầu của app thậm chí chưa phải app thật: dữ liệu nằm
+		cứng trong một file hằng số trong RAM, tin nhắn bạn gõ biến mất khi tắt app. Toàn bộ phần "biến demo
+		thành app thật" của case study chỉ làm đúng một việc: <strong>thay dữ liệu giả bằng một nguồn dữ liệu
+		thật</strong> — mà không phải sửa lại UI.
+	</p>
+
+	<p>
+		Cách học case study này có hai tầng, và bạn nên tách chúng trong đầu ngay từ đầu:
+	</p>
+
+	<ol>
+		<li>
+			<strong>Bài học kiến trúc</strong> — repository đứng trước một <em>sync engine</em>. Tầng này
+			không phụ thuộc thư viện nào, không phụ thuộc phiên bản nào — đó là phần mang đi được.
+		</li>
+		<li>
+			<strong>Bài học về một SDK cụ thể</strong> — thư viện đồng bộ peer-to-peer mà project dùng
+			(Ditto 4.5.0 của 2023). Phần này <em>đã cũ</em> ngay khi viết: toạ độ thư viện đổi tên, cách khởi tạo
+			đổi, cách truy vấn đổi. Bài này chỉ học nó ở mức <em>mô hình</em>; chi tiết API nằm trong phụ lục
+			<a href="/chapters/ditto-sdk-api/">AP2 — Ditto SDK API</a>.
+		</li>
+	</ol>
+
+	<div class="callout note">
+		<p>
+			<strong>Đọc project này hôm nay thì sao?</strong> Project mẫu khóa cú pháp SDK của 2023 — bản
+			4.5.0. Tính 09/2026, thư viện đã lên dòng 5.x với toạ độ Maven đổi tên và cách khởi tạo hoàn toàn
+			khác (chi tiết ở AP2). Mọi gì bài này nói về <em>mô hình</em> (sync engine, subscription,
+			live query, hợp nhất dữ liệu) vẫn đúng; mọi ví dụ <em>cú pháp</em> bạn thấy trong project là
+			<em>code lịch sử — đọc được, không chép vào app mới</em>.
+		</p>
+	</div>
+
+	<h2 id="mo-hinh-local-first">2. Offline-first: mỗi máy một quyển sổ</h2>
+
+	<p>
+		Mô hình bạn đã quen toàn khoá là <strong>client–server</strong>: app là client, dữ liệu nằm ở server;
+		muốn đọc thì gửi request, muốn ghi thì gửi request. Không có mạng thì không có gì cả — đúng cái
+		<em>trạng thái "mất mạng" mà W3 dạy bạn hiển thị</em>.
+	</p>
+
+	<p>
+		Mô hình của case study ngược lại — <strong>offline-first / local-first</strong>. Bốn tính chất:
+	</p>
+
+	<ul>
+		<li>
+			Mỗi thiết bị có <strong>một bản database đầy đủ của riêng nó</strong>, nằm ngay trong máy. Đọc và
+			ghi luôn xảy ra trên bản cục bộ — luôn nhanh, và luôn hoạt động, kể cả ở chế độ máy bay.
+		</li>
+		<li>
+			Các thiết bị chạy cùng app <strong>tự tìm thấy nhau</strong> qua sóng gần (Bluetooth, Wi-Fi trực
+			tiếp, LAN) và tự chọn đường truyền tốt nhất, tự chuyển khi đường đó đứt — hình thành một
+			<em>mạng lưới</em> (mesh).
+		</li>
+		<li>
+			Khi hai bản database gặp nhau, chúng <strong>hợp nhất thay đổi</strong> của nhau — không phải
+			"ai ghi sau thì thắng toàn bộ" mà hợp nhất ở mức từng trường dữ liệu, theo quy tắc bảo đảm mọi
+			thiết bị rồi sẽ đi đến cùng một kết quả bất kể thứ tự gặp nhau. Tính chất này gọi là
+			<em>eventual consistency</em> (rồi cũng nhất quán).
+		</li>
+		<li>
+			Cloud <strong>tuỳ chọn</strong>. Nếu có internet, một "big peer" trên cloud tham gia mạng như một
+			peer to hơn — nó là một thành viên, không phải "nguồn sự thật" mà các máy khác phải xin phép.
+		</li>
+	</ul>
+
+	<div class="callout mental">
+		<strong>Mental model: mỗi máy một quyển sổ giống nhau.</strong>
+		<p>
+			Đừng hình dung "app gọi server". Hình dung mỗi người mang một quyển sổ giống nhau: bạn viết vào
+			sổ của mình ngay lập tức, không cần hỏi ai. Khi hai người đứng gần nhau, họ đọc chéo và chép bổ
+			sung phần thiếu của nhau. Không ai là "sổ gốc".
+		</p>
+	</div>
+
+	<p>
+		Cái giá của mô hình này hiện ra ngay trong <em>hình dáng tầng dữ liệu</em>. Vì đọc–ghi cục bộ luôn
+		tức thời và luôn thành công, tầng repository của app này <strong>không có hàm nào trả về "đang
+		tải" hay "lỗi mạng"</strong> — hai trạng thái mà W3 dạy bạn xử lý khi nguồn là REST API. Kiến trúc
+		giống nhau, nhưng tập trạng thái nó cần biểu diễn <em>mỏng hơn hẳn</em>. Đây là một khác biệt kiến
+		trúc rất đáng để ý: <strong>hình dạng tầng dữ liệu do đặc tính của nguồn dữ liệu quyết định</strong>,
+		không do thẩm mỹ.
+	</p>
+
+	<h3>2.1. Sự kiện ghi: trả về ngay, đồng bộ phía sau</h3>
+
+	<p>
+		Trong app này, "gửi tin nhắn" nghĩa là ghi vào <em>bản cục bộ</em> — hàm ghi trả về ngay, không chờ
+		mạng, không chờ máy khác xác nhận. Việc lan ra các thiết bị khác do khâu đồng bộ lo ở phía sau, song
+		song. Hệ quả thú vị nhất: tin nhắn của chính bạn và tin nhắn của người khác đi <strong>đúng cùng một
+		con đường</strong> lên UI — ghi cục bộ → nguồn dữ liệu đổi → UI cập nhật. Không cần "optimistic
+		update", không có hai nhánh code cho "tin của tôi" và "tin của người khác". Đây là một trong những
+		lợi ích lớn nhất của mô hình local-first.
+	</p>
+
+	<h3>2.2. Kiểu app nào phù hợp?</h3>
+
+	<p>
+		Nhân viên kho quét hàng trong tầng hầm không sóng; phi hành đoàn ghi dữ liệu trên máy bay; thiết bị
+		y tế trong toà nhà mất mạng; máy bán hàng ở hội chợ. Điểm chung: <strong>việc không được phép dừng
+		lại vì mạng</strong>, và dữ liệu chỉ cần nhất quán "rồi sẽ" chứ không cần nhất quán tức thời. Chat
+		trong case study chỉ là ví dụ dễ hình dung nhất.
+	</p>
+
+	<h2 id="repository-va-sync-engine">3. Repository và sync engine: ai lo chuyện gì</h2>
+
+	<p>
+		Ở S5, tầng dữ liệu của bạn có đúng một nguồn (Room hoặc REST) và repository là cửa vào duy nhất.
+		Trong app offline-first, tầng dữ liệu có <strong>ba vai trò</strong> — và việc gọi đúng tên từng vai
+		trò giúp bạn đọc mọi hệ đồng bộ về sau:
+	</p>
+
+	<table class="api">
+		<thead>
+			<tr><th>Vai trò</th><th>Ở case study này</th><th>Ở app "bình thường" bạn đã dựng</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><strong>Nguồn cục bộ</strong> (local source)</td>
+				<td>Database tài liệu nằm trong máy — nơi mọi đọc–ghi thật sự xảy ra</td>
+				<td>Room / DataStore</td>
+			</tr>
+			<tr>
+				<td><strong>Nguồn từ xa</strong> (remote source)</td>
+				<td>Các thiết bị khác + big peer trên cloud</td>
+				<td>REST API (Retrofit)</td>
+			</tr>
+			<tr>
+				<td><strong>Khâu đồng bộ</strong> (synchronization)</td>
+				<td>Engine của SDK: kéo thay đổi về và đẩy thay đổi đi, tự động</td>
+				<td><em>Không tồn tại</em> — app gọi API khi cần, không có khâu nền</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p>
+		Khác biệt lớn nhất nằm ở vai trò thứ ba. Với Retrofit, app của bạn là người chủ động: muốn dữ liệu
+		mới thì phải <em>gọi</em>. Với một sync engine, app chỉ <em>đăng ký</em> quan tâm dữ liệu gì, rồi
+		engine tự kéo về khi có đường truyền — app thậm chí không biết chuyện đó đang xảy ra. Code của bạn
+		không bao giờ "tải dữ liệu từ mạng"; nó chỉ đọc database cục bộ.
+	</p>
+
+	<p>
+		Trên database cục bộ của engine có hai cơ chế quan sát, và chúng <strong>khác nhau ở đúng một câu
+		hỏi</strong> — nhưng cái nhầm lẫn giữa chúng là lỗi kinh điển của mọi hệ sync, không riêng thư viện
+		này:
+	</p>
+
+	<div class="callout mental">
+		<strong>Subscription và live query: đường ống và cái chuông.</strong>
+		<ul>
+			<li><strong>Subscription</strong> là <em>đường ống</em> — tuyên bố "dữ liệu này tôi muốn nhận từ các máy khác", nó quyết định dữ liệu từ xa có được kéo về database cục bộ hay không.</li>
+			<li><strong>Live query</strong> là <em>cái chuông</em> — reo mỗi khi database cục bộ thay đổi, bất kể thay đổi đó do máy khác gửi về hay do chính bạn vừa ghi.</li>
+		</ul>
+		<p>
+			Chỉ có đường ống mà không có chuông: dữ liệu về máy nhưng UI không biết. Chỉ có chuông mà không có
+			đường ống: bạn thấy thay đổi của chính mình nhưng không bao giờ thấy của người khác. Cần <em>cả
+			hai</em>. Và cả hai lỗi đều <strong>im lặng</strong> — không exception, không log, app chỉ đơn
+			giản hoạt động một nửa.
+		</p>
+	</div>
+
+	<p>
+		Vậy repository của S5 ngồi ở đâu? Ngồi <strong>nguyên vị trí</strong>: vẫn là tầng đứng giữa nguồn
+		dữ liệu và phần còn lại của app, vẫn che nguồn, vẫn dịch model lưu trữ sang model app, vẫn là nguồn
+		đáng tin. Chỉ có phần bên trong <code>Impl</code> là khác: thay vì gọi Retrofit hay mở Room query,
+		nó (1) mở các đăng ký đồng bộ và (2) bơm dữ liệu từ database cục bộ vào các StateFlow — chính pattern
+		"bên trong Mutable, bên ngoài read-only" mà S5 dạy. ViewModel ở dưới không hề biết rằng dữ liệu đến
+		từ một mesh.
+	</p>
+
+	<div class="callout note">
+		<p>
+			<strong>Bốn bước đọc quy ước.</strong> Trong một app offline-first điển hình, khoá "nguồn đáng tin"
+			của dữ liệu vẫn là database cục bộ. Mọi dòng dữ liệu lên UI đều đi qua: <code>live query → model →
+			StateFlow → ViewModel → compose</code>. Bạn có thể tự vẽ sơ đồ này trước khi đọc tiếp — nếu trùng
+			với đường dây ở mục 6 thì bạn đã nắm mô hình.
+		</p>
+	</div>
+
+	<h2 id="schemaless-va-schema">4. Database không schema và database có schema</h2>
+
+	<p>
+		Một lựa chọn kiến trúc khác của case study, đáng để mắt: database của engine là <strong>không
+		schema</strong> (schemaless) — không cần khai bảng, không cần <code>CREATE TABLE</code>; ghi cái gì
+		thì lưu cái đó, document đầu tiên tự sinh "bảng". Cực kỳ tiện để bắt đầu. Cái giá:
+	</p>
+
+	<ul>
+		<li>
+			Gõ sai tên một trường dữ liệu khi ghi → không ai báo lỗi: dữ liệu vẫn lưu, chỉ là trường đó
+			<em>không ai đọc được</em>. Lỗi runtime im lặng — loại bug tệ nhất.
+		</li>
+		<li>
+			Khi đọc, giá trị trả về là cấu trúc key–value chung chung; muốn dùng trong UI phải tự "dịch" sang
+			model, và việc dịch đó cũng im lặng với key sai.
+		</li>
+	</ul>
+
+	<p>
+		Project trả lời bằng kỷ luật, không bằng công cụ: mọi tên trường được gom vào một file hằng số — ghi
+		lẫn đọc đều đi qua hằng số, nên gõ sai là <strong>lỗi biên dịch</strong> ngay. Đây là cùng một tư
+		tưởng mà bạn đã gặp ở D1 với <code>stringPreferencesKey("...")</code>: <strong>khi công cụ buộc bạn
+		dùng chuỗi, hãy đổi chuỗi thành ký hiệu (symbol) sớm nhất có thể</strong>, để compiler kiểm tra thay
+		bạn.
+	</p>
+
+	<p>
+		So sánh với Room (R2): Room kéo schema vào thời điểm <em>biên dịch</em> bằng chính hệ thống kiểu —
+		<code>@Entity</code> khai báo cấu trúc, DAO kiểm tra SQL lúc build, sai là vỡ build chứ không phải
+		lỡ dữ liệu. Mỗi bên trả một cái giá khác nhau: database không schema rẻ ở lúc bắt đầu, đắt ở lúc bảo
+		trì; Room ngược lại. Không có bên nào "đúng" — có đúng với loại rủi ro mà app của bạn sợ nhất hay
+		không.
+	</p>
+
+	<div class="callout note">
+		<p>
+			<strong>Kiểm tra nhanh.</strong> Bạn ghi một document với trường dữ liệu đánh vần
+			<code>"createdOn"</code>, nhưng ở chỗ khác đọc nó bằng chuỗi <code>"crateedOn"</code>. Trong hai
+			thế giới — database không schema có hằng số tập trung, và Room — chuyện gì xảy ra?
+			<details><summary>Xem đáp án</summary>
+			Database không schema: ghi thành công, đọc trả về rỗng, app chạy bình thường — lỗi nằm đó âm thầm;
+			còn nếu các chuỗi đó đều đi qua hằng số tập trung thì compiler chặn ngay ở bước biên dịch. Room:
+			không thể có tình huống này — tên cột nằm trong <code>@Entity</code>, sai tên là lỗi build.
+			Điểm chung của hai cách phòng vệ (hằng số, schema): <em>chuyển lỗi runtime im lặng thành lỗi
+			compile ồn ào</em>.</details>
+		</p>
+	</div>
+
+	<h2 id="doc-code-cu-co-phe-phan">5. Đọc code cũ một cách phê phán: bốn chỗ pattern bị thoả hiệp</h2>
+
+	<p>
+		Giá trị sư phạm lớn nhất của case study không phải phần code chạy đúng — mà là phần <em>chạy được
+		nhưng sai về kiến trúc</em>. Bốn chỗ dưới đây đều xuất hiện thật trong project; cả bốn là bài học
+		ánh sang những app khác, không riêng app chat.
+	</p>
+
+	<p><strong>1. Biến toàn cục thay cho dependency injection.</strong> Engine sync được giữ trong một biến
+	tĩnh toàn cục, mọi nơi dùng thẳng. Đơn giản, và có một khoảng nguy hiểm thật: nếu có đường code nào đọc
+	biến đó <em>trước khi</em> nó được khởi tạo, app chết ngay với exception, không có giá trị "rỗng" nào
+	để xử lý. App thoát được nhờ một chuỗi điều kiện ngầm (composition chạy trễ, ViewModel khởi tạo lười,
+	flow là cold) — nói cách khác, <em>đúng do may</em>, không phải đúng do thiết kế. Cách đúng: tạo engine
+	ở tầng Application và <strong>tiêm vào repository qua constructor</strong> — chính là khối "dependency
+	được đưa từ ngoài vào" của S5 mục 14; compiler và DI framework lo thứ tự, không phải trí nhớ của bạn.
+	Khiếu nại cũng đến từ chính KDoc của project: "Better approach is to use Dependency Injection".</p>
+
+	<p><strong>2. Getter có tác dụng phụ.</strong> Hàm lấy danh sách tin nhắn theo phòng — tên gõ
+	<code>get...</code> — lại <em>đăng ký</em> một live query mới mỗi lần được gọi, ghi đè lên đăng ký cũ.
+	App hiện tại không lộ lỗi vì nó chỉ có một phòng duy nhất; nhưng gọi hàm này cho hai phòng là tin nhắn
+	hai phòng lẫn vào một danh sách, và người đọc không hề đoán được điều đó từ cái tên. Quy ước ngầm trong
+	lập trình: hàm <code>get...</code> chỉ <em>lấy</em>, không <em>làm</em>. Tên trung thực hơn:
+	<code>observeMessagesForRoom(room)</code> — và nó nên huỷ đăng ký cũ trước khi mở đăng ký mới.</p>
+
+	<p><strong>3. Tài nguyên đồng bộ phải được giữ tham chiếu.</strong> Hai hàm của project gán subscription
+	vào biến cục bộ rồi kết thúc — biến mất tham chiếu, garbage collector dọn mất đăng ký, và app
+	<strong>im lặng ngừng nhận dữ liệu</strong>. Đây là bản tổng quát của cái bẫy "đường ống và chuông" ở
+	mục 3: mọi thứ bạn đăng ký với một sync engine là <em>tài nguyên sống</em>, phải nằm trong một field
+	có vòng đời rõ ràng. Ở app Room/Retrofit của bạn không gặp bẫy này vì Room query và Retrofit call là
+	hàm vô trạng thái — một khác biệt nền tảng nữa giữa "gọi khi cần" và "đăng ký lâu dài".</p>
+
+	<p><strong>4. Hợp đồng tầng dữ liệu rò rỉ kiểu SDK.</strong> Interface Repository — cái đáng lẽ trung
+	lập — có một tham số mang đúng kiểu của SDK sync. Tức là đổi sang engine khác thì <em>cả interface</em>
+	cũng phải sửa, không chỉ phần <code>Impl</code>: tầng dữ liệu biết về nhà cung cấp ở đúng chỗ không
+	nên biết. Cách sửa đúng tinh thần S5: interface dùng một kiểu riêng của app, <code>Impl</code> chịu
+	trách nhiệm dịch qua-lại với kiểu SDK — repository <em>dịch</em>, chứ không <em>chuyền tay</em>.</p>
+
+	<div class="callout diff">
+		<p>
+			<strong>Phiên bản cắt của app lớn.</strong> Project mẫu là bản lược từ một app chat đầy đủ hơn
+			(nhiều phòng, phòng riêng, mời bằng QR). Vết cắt để lại code chết: hàm đăng ký subscription không
+			giữ tham chiếu, hàm cho tính năng "quét QR" không ai gọi, vài field được gán mà không ai đọc.
+			Khi đọc code mẫu của bất kỳ giáo trình nào, hãy để ý kiểu "vết" này — chúng cho biết app thật
+			<em>đã từng</em> chứa gì, và thường là nguyên liệu của các thử thách.
+		</p>
+	</div>
+	<h2 id="duong-day">6. Đường dây end-to-end, và điều đáng nhớ nhất</h2>
+
+	<p>
+		Ghép mọi mảnh lại. Đường <strong>ghi</strong> (bạn gõ tin nhắn):
+	</p>
+
+	<ol class="chain">
+		<li>Người dùng bấm gửi → ViewModel dựng đối tượng <code>Message</code>, gọi xuống repository</li>
+		<li>→ repository gói thành document, ghi vào <strong>database cục bộ</strong> — hàm trả về ngay</li>
+		<li>→ (song song, phía sau) khâu đồng bộ lan document ra mesh; không ai trong app phải chờ bước này</li>
+	</ol>
+
+	<p>
+		Đường <strong>đọc</strong> — và nó <em>giống nhau</em> bất kể tin nhắn từ máy bạn hay máy khác:
+	</p>
+
+	<ol class="chain">
+		<li>Database cục bộ thay đổi (do bạn ghi, hoặc do peer gửi tới)</li>
+		<li>→ live query reo, nhận danh sách document mới</li>
+		<li>→ dịch document thành model app, gán vào <code>MutableStateFlow</code></li>
+		<li>→ ViewModel <code>combine</code> các flow lại (ghép tin nhắn với người gửi — chính JOIN của thế
+		giới reactive, đã dạy ở W1)</li>
+		<li>→ <code>collectAsStateWithLifecycle</code> (S4) → Compose vẽ lại</li>
+	</ol>
+
+	<div class="callout">
+		<p>
+			<strong>Điều đáng nhớ nhất của case study:</strong> không có dòng code nào tên là "refresh",
+			"reload", hay "updateUI". Bạn không <em>đẩy</em> dữ liệu lên UI; bạn <em>mô tả</em> UI phụ thuộc
+			vào cái gì, rồi để hệ thống tự chạy khi cái đó đổi. Đây chính là mô hình reactive mà toàn khoá
+			dựng từ S2 — chỉ khác ở chỗ "cái đó" bây giờ là một database đồng bộ tự điền dữ liệu. Kiến trúc
+			không đổi khi đổi nguồn: Retrofit ở W2, Room ở R3, sync engine ở đây — chỉ phần bên trong
+			<code>Impl</code> là khác.
+		</p>
+	</div>
+
+	<h2 id="khi-nao">7. Khi nào offline-first, khi nào không</h2>
+
+	<p>
+		Trở lại câu hỏi đầu bài. Mô hình này <strong>đáng dùng</strong> khi có đủ ba điều kiện:
+	</p>
+
+	<ul>
+		<li><strong>Mạng là tài nguyên không đáng tin.</strong> Người dùng phải làm việc được ở tầng hầm,
+		máy bay, vùng xa — không phải "chờ có sóng để sync".</li>
+		<li><strong>Độ trễ hiển thị là chất lượng sản phẩm.</strong> Ghi xong thấy ngay, không có vòng quay
+		loading trên thao tác ghi.</li>
+		<li><strong>Mất thời gian nhất quán chấp nhận được.</strong> Hai máy có thể thấy hai trạng thái khác
+		nhau trong vài giây; quan trọng là mọi máy rồi sẽ hội tụ về cùng một kết quả.</li>
+	</ul>
+
+	<p>
+		Và <strong>phức tạp thừa</strong> khi: app chủ yếu đọc nội dung (tin tức, catalogue) — một cache đơn
+		giản + Room đã đủ; thao tác ghi cần xác nhận server tức thời (thanh toán, tồn kho) — eventual
+		consistency là sai nghĩa; hay app chỉ chạy với một server duy nhất, không có khái niệm "nhiều peer".
+		Mang thêm cả một sync engine vào app dạng này nghĩa là bạn tự nhận thêm: quản lý vòng đời tài nguyên
+		đăng ký (mục 5.3), xung đột hợp nhất dữ liệu, một dependency lớn có vòng đời riêng. Không có gì sai
+		với lựa chọn "repository + REST + Room" — đó vẫn là kiến trúc mặc định của phần lớn app Android, và
+		là cái mà toàn khoá đã dựng cho bạn.
+	</p>
+
+	<div class="callout mental">
+		<strong>Hình dung để phân biệt: khách sạn và căn nhà.</strong>
+		<p>
+			Client–server giống ở khách sạn: mọi thứ nằm ở quầy, bạn xin gì nhận nấy, quầy đóng cửa thì bạn
+			chẳng làm được gì. Offline-first giống căn nhà của bạn: đồ đạc nằm ngay nhà, bạn dùng thoải mái
+			không cần hỏi ai; khi có khách tới thì hai nhà chép bổ sung cho nhau. Chọn mô hình = chọn nơi đồ
+			đạc của bạn nằm.
+		</p>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+
+	<div class="callout diff">
+		<p>
+			<strong>1. "Local-first" không phải "cache rồi sync lên server".</strong> Cache có một bản chính
+			ở đâu đó mà nó phản ánh — bản chính vẫn là server, mất mạng thì chỉ xem được, không ghi được.
+			Local-first không có bản chính: mỗi máy là bản đầy đủ và có quyền ghi. Hai mô hình đôi khi bị gộp
+			chung thành "có dữ liệu offline" — nhưng kiến trúc của chúng khác nhau tận gốc, và hệ quả khi
+			mất mạng cũng khác nhau.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>2. Cú pháp trong project mẫu là code lịch sử.</strong> Project khóa SDK 4.5.0 (2023);
+			từ đó toạ độ thư viện đổi tên, cách khởi tạo đổi sang dạng config, và bộ query builder kiểu
+			<code>collection().findAll().observeLocal()</code> đã bị đánh dấu deprecated thay bằng một ngôn
+			ngữ truy vấn kiểu SQL (DQL). Nếu bạn chạy được project và muốn đưa app lên thư viện hiện tại,
+			đừng nâng số version rồi trông mọi thứ giữ nguyên — phần lớn các dòng khởi tạo đều phải viết lại.
+			Bảng đối chiếu đầy đủ nằm ở <a href="/chapters/ditto-sdk-api/">AP2</a>; trường hợp tổng quát về
+			"đọc code lịch sử" đã dạy ở X2.
+		</p>
+	</div>
+
+	<div class="callout diff">
+		<p>
+			<strong>3. "Vì app chạy được nên kiến trúc đúng."</strong> Bốn thoả hiệp ở mục 5 đều không crash,
+			không log, không test đỏ: biến toàn cục phụ thuộc chuỗi điều kiện ngầm, getter đăng ký lặng lẽ,
+			subscription bị GC, interface rò rỉ kiểu SDK. Đơn vị kiểm chứng duy nhất của một quyết định kiến
+			trúc không phải "nó chạy" — mà là "nó vẫn đúng khi app to lên": thêm phòng thứ hai, thêm màn hình
+			thứ ba, đổi engine. Các quyết định ở mục 5 chết đúng ở những phép thử đó.
+		</p>
+	</div>
+
+	<h2 id="tom-tat">Tóm tắt</h2>
+
+	<ul class="keypoints">
+		<li><strong>Offline-first/local-first:</strong> mỗi thiết bị giữ một bản database đầy đủ; đọc–ghi
+		luôn cục bộ, luôn tức thời; khâu đồng bộ tự kéo–đẩy phía sau; cloud chỉ là một peer, không phải
+		nguồn sự thật.</li>
+		<li><strong>Ba vai trò của tầng dữ liệu sync:</strong> nguồn cục bộ, nguồn từ xa, khâu đồng bộ —
+		vai trò thứ ba là thứ mà kiến trúc REST của bạn không có.</li>
+		<li><strong>Repository giữ nguyên vị trí S5</strong> — che nguồn, dịch model, là nguồn đáng tin;
+		chỉ phần <code>Impl</code> đổi thành "mở đăng ký + bơm StateFlow".</li>
+		<li><strong>Subscription = đường ống (từ xa → local); live query = cái chuông (local → UI).</strong>
+		Cần cả hai; thiếu một nửa là app im lặng hỏng một nửa.</li>
+		<li><strong>Tài nguyên đăng ký là thứ sống:</strong> phải giữ tham chiếu trong field có vòng đời rõ
+		ràng, nếu không GC dọn mất và app im lặng ngừng nhận dữ liệu.</li>
+		<li><strong>Ghi trả về ngay:</strong> tin nhắn của bạn và của người khác đi cùng một con đường lên
+		UI — không optimistic update, không hai nhánh code.</li>
+		<li><strong>Schemaless vs schema:</strong> database không schema tiện lúc đầu nhưng dễ im lặng mất
+		dữ liệu — bù bằng hằng số tập trung; Room kéo kiểm tra schema vào lúc build. Mỗi bên trả một cái
+		giá.</li>
+		<li><strong>Đọc code cũ có phê phán:</strong> biến toàn cục thay DI, getter có tác dụng phụ, hợp
+		đồng rò rỉ kiểu SDK — cả ba đều "chạy được" và cả ba chết khi app to lên.</li>
+		<li><strong>Chọn mô hình theo ràng buộc sản phẩm</strong> (mạng không đáng tin · ghi-thấy-ngay ·
+		nhất quán chậm được chấp nhận), không theo trào lưu.</li>
+	</ul>
+
+	<h2 id="mo-rong">Mở rộng case study (nếu bạn chạy được project mẫu)</h2>
+
+	<p>
+		Ba thử thách của project gốc vẫn còn giá trị nếu bạn build được app — chúng là chỗ kiến trúc
+		<b>thiếu</b> một mảnh, và bạn phải tự bổ mảnh đó:
+	</p>
+
+	<ol>
+		<li>
+			<strong>Gửi kèm ảnh.</strong> ViewModel hiện lặng lẽ <em>vứt</em> tin nhắn có ảnh (một phép
+			<code>if</code> kiểm tra ảnh rồi không làm gì) — thất bại im lặng, kiểu bug tệ nhất cho người
+			dùng. Cần đọc bytes từ URI, tạo attachment theo đúng API của SDK (tham khảo
+			<a href="/chapters/ditto-sdk-api/">AP2</a>), và ít nhất hiện một thông báo nếu gửi thất bại.
+		</li>
+		<li>
+			<strong>Nhiều phòng chat.</strong> Nguyên liệu đã có trong repository nhưng chưa ai dùng. Trước
+			khi làm, nhớ lỗi "getter có tác dụng phụ" ở mục 5.2: bạn sẽ phải huỷ live query cũ trước khi mở
+			query mới, nếu không tin nhắn hai phòng lẫn vào nhau.
+		</li>
+		<li>
+			<strong>Lưu danh tính người dùng giữa các lần mở app.</strong> Danh tính hiện sinh mới mỗi lần
+			chạy, nên bạn "thành người khác" sau mỗi lần khởi động lại. Công cụ đúng cho một giá trị đơn lẻ
+			như thế này là DataStore — đã dạy ở <a href="/chapters/ch09-data-store-va-sharedpreferences/">D1</a>.
+		</li>
+	</ol>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<p class="src">
+		<strong>Giáo trình gốc:</strong> <code>content/book/ch07-advanced-architecture.md</code> — chương
+		"Advanced Architecture" của <em>Android Fundamentals by Tutorials</em> (Kodeco), app Kodeco Chat.
+	</p>
+	<p class="src">
+		<strong>Code thật:</strong> <code>aaf-materials/07-advanced-architecture/projects/&#123;starter,final&#125;/</code>
+		(app Kodeco Chat, SDK Ditto 4.5.0) — <code>data/repository/RepositoryImpl.kt</code>,
+		<code>data/repository/Repository.kt</code>, <code>viewmodel/MainViewModel.kt</code>,
+		<code>data/Constants.kt</code>, <code>data/model/DateExtensions.kt</code>. Các nhận định phê phán
+		(mục 5) được đối chiếu trực tiếp trên code này; chi tiết API và bảng drift phiên bản đã chuyển sang
+		AP2 và AP3.
+	</p>
+	<p class="src">
+		<strong>Tài liệu chính thức:</strong> Ditto release notes Kotlin
+		(<a href="https://docs.ditto.live/sdk/latest/release-notes/kotlin" target="_blank" rel="noopener">docs.ditto.live/sdk/latest/release-notes/kotlin</a>
+		— kiểm ngày 09/09/2026: dòng 5.x hiện hành, toạ độ <code>com.ditto:ditto-kotlin</code>, query
+		builder 4.x legacy) · Kotlin overload resolution
+		(<a href="https://kotlinlang.org/spec/overload-resolution.html" target="_blank" rel="noopener">kotlinlang.org/spec/overload-resolution.html</a>).
+	</p>
+	<p class="src">
+		<strong>Nội dung của chính khoá học:</strong> S5 (<code>kien-truc-ui-data-repository</code>) — tầng
+		UI/data, repository, nguồn đáng tin, Flow-vs-suspend · S4 — StateFlow, collectAsStateWithLifecycle ·
+		W1 — combine · W3 — trạng thái mạng · R2 — Room @Entity/DAO · D1 — DataStore · X2 — khung "code
+		lịch sử". Bảng "giáo trình nói vs code thật" 15 điểm của Ch07 →
+		<a href="/chapters/bang-tra-cuu-nhanh/">AP3</a> (mục Ch07).
+	</p>
+</article>

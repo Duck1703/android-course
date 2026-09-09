@@ -471,13 +471,17 @@ export const SECTIONS: SectionInfo[] = [
         stageId: "state",
       },
       {
-        number: 7,
-        slug: "ch07-advanced-architecture",
-        title: "Advanced Architecture",
-        summaryVi: "Repository pattern, đồng bộ dữ liệu P2P bằng Ditto SDK.",
+        // Workstream F (IMP-050): old Ch07 monolith retired → O1 (kế nhiệm REDUCE trực tiếp).
+        // Old slug ch07-advanced-architecture chết → redirect 1 đích sang O1 (astro.config.mjs)
+        // + SPLIT_MAP replace (progress.ts). stageId = optional theo registry §3/§11.
+        number: 0,
+        label: "O1",
+        slug: "ditto-offline-first-case-study",
+        title: "Case study: Ditto & offline-first (concepts)",
+        parentTitle: "Mở rộng",
+        summaryVi: "Offline-first mental model: nguồn cục bộ, nguồn từ xa, khâu đồng bộ; subscription vs live query; đọc project cũ có phê phán; khi nào kiến trúc này cần, khi nào là phức tạp thừa.",
         aafFolder: "07-advanced-architecture",
         hasProject: true,
-        // Stage DICH là optional (nội dung O1/AP2) dù route đang sống giữa ch06/ch08.
         stageId: "optional",
       },
       // Giai đoạn 5 (Mạng) — batch Stage 5: Ch08 monolith tách thành 3 bài (W1–W3) theo

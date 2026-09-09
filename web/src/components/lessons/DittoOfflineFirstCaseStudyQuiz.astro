@@ -1,0 +1,172 @@
+---
+// Quiz O1 — DittoOfflineFirstCaseStudyQuiz.astro — bám NỘI DUNG O1 (concepts) thôi.
+// Workstream F / IMP-050: không tái sử dụng mù 12 câu Ch07 cũ (ledger docs/drafts/
+// ch07-ownership-ledger.md §Ch07Quiz) — 10 câu viết mới theo ownership của O1:
+// offline-first mental model, local/remote/sync, subscription vs live query,
+// repository giữ nguyên vị trí, schemaless vs schema, đọc phê phán, khi nào dùng.
+// KHÔNG có câu Ditto-API-depth (DQL, toạ độ, lateinit...) — phạm vi AP2.
+// Harness chung: initQuiz + contract #quiz-score / #quiz-retry (quiz.css).
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		10 câu, chọn 1 đáp án mỗi câu rồi bấm "Kiểm tra đáp án". Phần giải thích hiện ra sau khi chấm —
+		đọc cả những câu bạn làm đúng, vì nhiều giải thích có thêm chi tiết không nằm trong bài.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>Điểm khác biệt CỐT LÕI giữa mô hình offline-first và một app "cache rồi sync lên server" là gì?</legend>
+			<label><input type="radio" name="q1" value="a" /> Offline-first tải dữ liệu nhanh hơn vì dùng Bluetooth thay vì Wi-Fi</label>
+			<label><input type="radio" name="q1" value="b" /> Offline-first nén dữ liệu trước khi lưu nên chiếm ít bộ nhớ hơn, và nhờ vậy hoạt động được cả khi không có mạng</label>
+			<label><input type="radio" name="q1" value="c" /> Cache có bản chính trên server; offline-first thì không</label>
+			<label><input type="radio" name="q1" value="d" /> Không có khác biệt nào, chỉ là hai cách gọi khác nhau cho cùng một kiến trúc</label>
+			<p class="explain" hidden>
+				Cache có một bản chính ở đâu đó mà nó phản ánh — mất mạng thì app chỉ <em>xem</em> được nội dung cũ,
+				không ghi được gì. Trong local-first, mỗi thiết bị giữ một bản database đầy đủ và có quyền ghi ngay cả
+				khi không có mạng; khi các máy gặp nhau chúng hợp nhất thay đổi ở mức từng trường dữ liệu. Hai mô hình
+				đôi khi bị gộp chung thành "có dữ liệu offline", nhưng kiến trúc và hệ quả khi mất mạng khác nhau tận gốc.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Trong một hệ đồng bộ offline-first, "subscription" và "live query" khác nhau ở câu hỏi nào?</legend>
+			<label><input type="radio" name="q2" value="a" /> Subscription dành cho dữ liệu văn bản, live query dành cho dữ liệu nhị phân như ảnh</label>
+			<label><input type="radio" name="q2" value="b" /> Subscription quyết định dữ liệu từ máy khác có kéo về database cục bộ không; live query reo khi dữ liệu cục bộ đổi</label>			<label><input type="radio" name="q2" value="c" /> Subscription chạy trên main thread còn live query chạy trên thread nền</label>
+			<label><input type="radio" name="q2" value="d" /> Subscription là phiên bản cũ, live query là phiên bản mới thay thế — chỉ cần dùng live query</label>
+			<p class="explain" hidden>
+				Hình dung: subscription là <em>đường ống</em> (từ xa → database cục bộ), live query là <em>cái chuông</em>
+				(database cục bộ → UI), hoạt động ở hai tầng khác nhau. Chỉ có đường ống: dữ liệu về máy nhưng UI không
+				biết. Chỉ có chuông: bạn thấy thay đổi của chính mình nhưng không bao giờ thấy của người khác. Cần cả hai,
+				và thiếu một nửa thì app <strong>không báo lỗi nào</strong> — chỉ hoạt động một nửa một cách im lặng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>Vì sao tầng repository của app offline-first trong case study không có trạng thái "đang tải" hay "lỗi mạng"?</legend>
+			<label><input type="radio" name="q3" value="a" /> Vì mọi đọc–ghi đều xảy ra ngay trên database cục bộ của máy</label>
+			<label><input type="radio" name="q3" value="b" /> Vì mạng peer-to-peer không bao giờ thất bại, khác với REST API</label>
+			<label><input type="radio" name="q3" value="c" /> Vì tác giả của project quên xử lý các trạng thái đó — đây là một lỗi cần vá</label>
+			<label><input type="radio" name="q3" value="d" /> Vì UI của app đơn giản nên không cần hiển thị trạng thái nào</label>
+			<p class="explain" hidden>
+				Hình dạng tầng dữ liệu do đặc tính của nguồn dữ liệu quyết định. Đọc–ghi cục bộ không có khái niệm
+				"chờ mạng", nên tập trạng thái cần biểu diễn mỏng hơn hẳn app REST của W3. Việc đồng bộ ra mesh xảy ra
+				song song phía sau và không ai phải chờ. Đây là khác biệt kiến trúc có chủ ý, không phải thiếu sót —
+				app khi đổi nguồn sang REST (Chương 8 của giáo trình) mới cần loading/error/retry.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>Khi người dùng bấm gửi tin nhắn trong app offline-first, điều gì xảy ra với tin nhắn của chính họ?</legend>
+			<label><input type="radio" name="q4" value="a" /> UI chờ xác nhận từ các thiết bị khác rồi mới hiện tin nhắn</label>
+			<label><input type="radio" name="q4" value="b" /> Tin nhắn đi một đường riêng nhanh hơn (optimistic update), khác với đường của tin nhắn đến từ máy khác</label>
+			<label><input type="radio" name="q4" value="c" /> Tin nhắn được xếp vào hàng đợi và chỉ hiện lên trên màn hình sau khi có ít nhất một thiết bị khác kết nối được</label>
+			<label><input type="radio" name="q4" value="d" /> Nó đi cùng một con đường với tin nhắn của người khác: ghi database cục bộ → dữ liệu đổi → UI cập nhật</label>
+			<p class="explain" hidden>
+				"Đường dây" này là một trong những lợi ích lớn nhất của local-first: ghi cục bộ trả về ngay, live query
+				reo, StateFlow phát giá trị mới, ViewModel combine lại, Compose vẽ lại. Không cần "optimistic update",
+				không có hai nhánh code cho "tin của tôi" và "tin của người khác". Việc sync sang thiết bị khác KHÔNG nằm
+				trong chuỗi này — engine lo song song phía sau, và UI vẫn cập nhật y hệt khi không có thiết bị nào ở gần.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Repository trong app offline-first khác phần nào so với repository tổng quát đã học ở S5?</legend>
+			<label><input type="radio" name="q5" value="a" /> Vị trí trong kiến trúc — giờ nó nằm ngay bên trong ViewModel, thay vì là một tầng riêng biệt</label>
+			<label><input type="radio" name="q5" value="b" /> Chỉ phần bên trong Impl: mở đăng ký đồng bộ và bơm dữ liệu cục bộ vào StateFlow</label>
+			<label><input type="radio" name="q5" value="c" /> Nó không còn là nguồn đáng tin (source of truth) nữa vì dữ liệu đến từ nhiều thiết bị</label>
+			<label><input type="radio" name="q5" value="d" /> Nó bỏ hẳn interface vì một sync engine không cần hợp đồng</label>
+			<p class="explain" hidden>
+				Repository giữ NGUYÊN vị trí của S5: vẫn là tầng đứng giữa, vẫn che nguồn, vẫn dịch model lưu trữ sang
+				model app, vẫn là nguồn đáng tin (nguồn đó bây giờ là database cục bộ). Chỉ phần cài đặt bên trong
+				<code>Impl</code> đổi. ViewModel dưới nó không hề biết dữ liệu đến từ một mesh — đó là bằng chứng cho
+				lời hứa "hình dáng kiến trúc không đổi khi đổi nguồn" (Retrofit ở W2, Room ở R3, sync engine ở đây).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>Trong case study, một hàm tên <code>getAllMessagesForRoom(...)</code> lại đăng ký thêm một live query mới mỗi lần được gọi. Vấn đề kiến trúc nằm ở đâu?</legend>
+			<label><input type="radio" name="q6" value="a" /> Hàm thiếu chữ <code>suspend</code> nên có thể chặn main thread</label>
+			<label><input type="radio" name="q6" value="b" /> Tên hàm quá dài, nên rút thành <code>getAll()</code> cho gọn</label>
+			<label><input type="radio" name="q6" value="c" /> Hàm <code>get...</code> theo quy ước chỉ nên "lấy" — việc đăng ký lặng lẽ không ai đoán được từ tên</label>
+			<label><input type="radio" name="q6" value="d" /> Không có vấn đề gì — một hàm được phép làm mọi thứ cần thiết cho lần đọc đầu tiên</label>
+			<p class="explain" hidden>
+				Đây là "getter có tác dụng phụ" (side-effecting getter). App hiện tại không lộ lỗi vì chỉ có một phòng
+				duy nhất — nhưng gọi hàm cho hai phòng là hai live query cùng ghi vào một StateFlow, tin nhắn lẫn nhau.
+				Tên trung thực hơn: <code>observeMessagesForRoom(room)</code>, và nó nên huỷ đăng ký cũ trước khi mở
+				đăng ký mới. Bài học: đơn vị kiểm chứng của một quyết định kiến trúc là "vẫn đúng khi app to lên", không
+				phải "nó đang chạy".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>Subscription được gán vào một biến cục bộ trong hàm rồi hàm kết thúc. Hậu quả?</legend>
+			<label><input type="radio" name="q7" value="a" /> Biến mất tham chiếu, GC dọn mất đăng ký — app im lặng ngừng nhận dữ liệu mới</label>
+			<label><input type="radio" name="q7" value="b" /> App crash ngay với NullPointerException</label>
+			<label><input type="radio" name="q7" value="c" /> Compiler báo lỗi ngay — subscription bắt buộc phải được khai báo là property của class, không được là biến cục bộ</label>
+			<label><input type="radio" name="q7" value="d" /> Không sao — subscription tự sống độc lập sau khi được tạo</label>
+			<p class="explain" hidden>
+				Mọi thứ bạn đăng ký với một sync engine là <em>tài nguyên sống</em>: phải giữ tham chiếu trong một field
+				có vòng đời rõ ràng. Gán vào biến cục bộ là để GC dọn — không exception, không log, app chỉ ngừng nhận
+				dữ liệu mới. Bạn không gặp bẫy này với Room/Retrofit vì query và call là hàm vô trạng thái — khác biệt
+				nền tảng giữa "gọi khi cần" và "đăng ký lâu dài". Project mẫu mắc đúng lỗi này ở một hàm thật.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>Interface Repository của case study có một tham số mang kiểu <code>DittoAttachment</code> (kiểu của SDK). Điều này vi phạm điều gì?</legend>
+			<label><input type="radio" name="q8" value="a" /> Quy tắc đặt tên hàm của Kotlin — tham số không được trùng tên thư viện</label>
+			<label><input type="radio" name="q8" value="b" /> Quy tắc hiệu năng — kiểu của SDK luôn chậm hơn kiểu thuần Kotlin</label>
+			<label><input type="radio" name="q8" value="c" /> Không vi phạm gì — interface đứng cạnh Impl nên dùng chung kiểu là hợp lý</label>
+			<label><input type="radio" name="q8" value="d" /> Ranh giới tầng dữ liệu: hợp đồng trung lập đã rò rỉ kiểu của nhà cung cấp</label>
+			<p class="explain" hidden>
+				Interface là hợp đồng của tầng dữ liệu với phần còn lại của app — nó không nên biết nhà cung cấp là ai.
+				Cách sửa đúng tinh thần S5: định nghĩa một kiểu riêng của app (ví dụ <code>AppAttachment</code>), interface
+				dùng kiểu đó, còn <code>Impl</code> chịu trách nhiệm dịch qua-lại với kiểu SDK. Repository <em>dịch</em>,
+				chứ không <em>chuyền tay</em> — đúng trách nhiệm "đổi model lưu trữ sang model domain" mà S5 liệt kê.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>Gõ sai tên một trường dữ liệu (<code>"crateedOn"</code> thay vì <code>"createdOn"</code>) khi ghi vào database KHÔNG schema của sync engine. Chuyện gì xảy ra?</legend>
+			<label><input type="radio" name="q9" value="a" /> Build thất bại ngay — schema không khớp</label>
+			<label><input type="radio" name="q9" value="b" /> Ghi thành công, đọc trả về rỗng — lỗi âm thầm trừ khi chuỗi đi qua hằng số</label>
+			<label><input type="radio" name="q9" value="c" /> Engine tự sửa lỗi chính tả dựa trên các trường đã có</label>
+			<label><input type="radio" name="q9" value="d" /> Runtime ném exception khi đọc document</label>
+			<p class="explain" hidden>
+				Đây là nhược điểm của database không schema: ghi cái gì lưu cái đó, không ai kiểm tra tên trường — lỗi
+				runtime im lặng, loại bug tệ nhất. Project bù bằng kỷ luật: gom mọi tên trường vào một file hằng số để
+				gõ sai thành lỗi biên dịch. Cùng tư tưởng với <code>stringPreferencesKey()</code> đã dạy ở D1: khi công
+				cụ buộc bạn dùng chuỗi, hãy đổi chuỗi thành ký hiệu sớm nhất có thể. Room thì kéo kiểm tra schema vào lúc
+				build bằng hệ thống kiểu (<code>@Entity</code>).
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>App nào dưới đây KHÔNG nên mang thêm một sync engine offline-first?</legend>
+			<label><input type="radio" name="q10" value="a" /> App ghi nhận kiểm kê cho nhân viên kho làm việc ở tầng hầm không sóng</label>
+			<label><input type="radio" name="q10" value="b" /> App bán hàng tại hội chợ nơi Wi-Fi thường sập giữa giờ cao điểm</label>
+			<label><input type="radio" name="q10" value="c" /> App thanh toán — mỗi giao dịch cần server xác nhận tức thời</label>
+			<label><input type="radio" name="q10" value="d" /> App ghi dữ liệu hành trình trên máy bay cho phi hành đoàn</label>
+			<p class="explain" hidden>
+				Ba điều kiện để offline-first đáng dùng: mạng là tài nguyên không đáng tin · ghi-thấy-ngay là chất lượng
+				sản phẩm · nhất quán chậm ("rồi sẽ hội tụ") chấp nhận được. App thanh toán vi phạm điều kiện thứ ba —
+				thao tác ghi cần xác nhận tức thời, không thể "hội tụ sau". Với app chủ yếu đọc (tin tức, catalogue),
+				một cache đơn giản + Room đã đủ; mang thêm sync engine nghĩa là tự nhận thêm quản lý vòng đời đăng ký,
+				xung đột hợp nhất, một dependency lớn có vòng đời riêng. "Repository + REST + Room" vẫn là kiến trúc
+				mặc định của phần lớn app Android.
+			</p>
+		</fieldset>
+
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	// Harness chung — chấm MCQ, "Câu x/N", retry ẩn→hiện→ẩn (IMP-001 contract, quiz.css).
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>

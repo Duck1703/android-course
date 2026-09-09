@@ -76,7 +76,21 @@ const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
 // trong batch này — cả hai bài kế nhiệm trực tiếp nội dung monolith theo mốc
 // D1/D2 START/END, credit chia đủ hai theo mapping khai báo. Redirect 1 đích
 // old → D1 (astro.config.mjs).
-const SCHEMA_VERSION = 12;
+// 11 = Stage 6: Ch09 monolith tách thành D1–D2 (registry §7 entry 7). Old slug
+// "ch09-data-store" chết → entry replace old → [D1, D2]. KHÔNG có bài NEW
+// trong batch này — cả hai bài kế nhiệm trực tiếp nội dung monolith theo mốc
+// D1/D2 START/END, credit chia đủ hai theo mapping khai báo. Redirect 1 đích
+// old → D1 (astro.config.mjs).
+// 12 = Stage 7: Ch11 monolith tách thành X1–X2 (registry §7 entry 8). Old slug
+// "ch11-advanced-storage" chết → entry replace old → [X1, X2].
+// 13 = Workstream F (IMP-050): old Ch07 monolith retired → O1
+// "ditto-offline-first-case-study" (registry §7 entry 5, REDUCE 1:1 — kế nhiệm
+// trực tiếp, chính sách §12.2 case B, bản chất giống ch04→A14). O1 là bài
+// OPTIONAL — credit thừa kế vào track "Mở rộng", không làm phình core progress
+// (core vẫn 39). Redirect 1 đích old → O1 (astro.config.mjs). KHÔNG có bài NEW
+// nào khác trong batch: O2–O6, AP1–AP3 là bài vật chất mới / reference — không
+// nhận completion từ storage cũ (no-fabricate §D).
+const SCHEMA_VERSION = 13;
 
 // Khi một chương lớn được tách thành nhiều chương nhỏ, slug cũ trong localStorage
 // của người học không còn ứng với trang nào — tiến độ của họ sẽ "bốc hơi".
@@ -195,6 +209,13 @@ const SPLIT_MAP: Record<string, string[]> = {
     "ch11-files-saf-va-backup",
     "ch11-keystore-sqlcipher-va-ma-hoa",
   ],
+  // IMP-050 (v13) — Workstream F: old Ch07 monolith dead-source REDUCE (registry §7 entry 5).
+  // Old slug CHẾT (route retired) → replace: O1 (ditto-offline-first-case-study) — kế nhiệm
+  // REDUCE trực tiếp (§12.2 case B, giống ch04→A14). O1 là bài OPTIONAL — credit chảy vào
+  // track "Mở rộng"; core progress KHÔNG đổi (39). O2–O6 + AP1–AP3 là bài vật chất mới /
+  // reference — cố ý KHÔNG nằm trong mảng này: no-fabricate §D. Redirect 1 đích old → O1
+  // (astro.config.mjs).
+  "ch07-advanced-architecture": ["ditto-offline-first-case-study"],
 };
 
 /** Đọc thô mảng slug, không chuyển đổi gì — dùng nội bộ để tránh gọi vòng. */
