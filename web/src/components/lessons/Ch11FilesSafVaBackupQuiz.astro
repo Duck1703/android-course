@@ -1,0 +1,186 @@
+---
+// Quiz cho X1 — "Files, SAF & Backup" (slug: ch11-files-saf-va-backup).
+// Tách từ quiz monolith Ch11Quiz.astro (19 câu) — batch Stage 7, bám nội dung
+// Ch11FilesSafVaBackup.astro (mục 1–8.5), KHÔNG bám mục 9–21 (X2 sở hữu mã hoá).
+// 10 câu MCQ: mỗi câu đúng 4 đáp án, đúng 1 đáp án đúng về ngữ nghĩa.
+// Chống bias (Stage-5 bài học): (a) value đáp án đúng phân bổ a/b/c/d đều —
+// 3/3/2/2; (b) vị trí HIỂN THỊ của đáp án đúng được xáo trộn thủ công khi soạn
+// (quiz_audit.mjs chỉ đọc value, không thấy thứ tự label — phải tự kiểm);
+// (c) rank độ dài: đáp án đúng không phải lựa chọn dài nhất quá 4/10 câu.
+// Chấm bài do harness chung web/src/scripts/quiz.ts (IMP-001) phụ trách qua initQuiz().
+---
+
+<section class="quiz" id="quiz">
+	<h2>Quiz nhanh</h2>
+	<p class="intro">
+		10 câu, chọn 1 đáp án cho mỗi câu, sau đó bấm "Kiểm tra đáp án". Giải thích sẽ hiện ra sau khi chấm — kể cả câu bạn
+		làm đúng, nên đọc hết. Câu hỏi bám bài học (mục 1–8.5): chọn chỗ lưu, SAF, và ba thuộc tính độc lập của dữ liệu.
+	</p>
+
+	<form id="quiz-form">
+		<fieldset data-answer="c">
+			<legend>1. Khác biệt quan trọng nhất giữa <code>filesDir</code> và <code>cacheDir</code> là gì?</legend>
+			<label><input type="radio" name="q1" value="a" /> <code>filesDir</code> cần quyền trong manifest, <code>cacheDir</code> thì không</label>
+			<label><input type="radio" name="q1" value="b" /> <code>cacheDir</code> app khác đọc được, còn <code>filesDir</code> thì riêng tư tuyệt đối</label>
+			<label><input type="radio" name="q1" value="c" /> Hệ thống được phép xoá nội dung <code>cacheDir</code> bất cứ lúc nào khi thiếu chỗ, còn <code>filesDir</code> thì không</label>
+			<label><input type="radio" name="q1" value="d" /> <code>cacheDir</code> được mã hoá sẵn, còn <code>filesDir</code> lưu plaintext</label>
+			<p class="explain" hidden>
+				Cả hai đều nằm trên đĩa, đều riêng tư với app của bạn, và đều không cần quyền gì. Khác biệt duy nhất — nhưng là khác
+				biệt quyết định — là <em>hợp đồng</em>: đặt file vào <code>cacheDir</code> nghĩa là bạn cam kết tạo lại được nó.
+				Hệ quả thực tế: luôn <code>if (!file.exists())</code> trước khi dùng lại file trong cache. Bug kiểu này chạy tốt lúc
+				test và hỏng ngẫu nhiên trên máy người dùng — loại bug tệ nhất để đi tìm. Hai đáp án còn lại sai về sự thật:
+				cả hai thư mục đều <em>không</em> được mã hoá (plaintext — mã hoá là chuyện của bài sau), và app khác <em>không</em>
+				đọc được <code>cacheDir</code> — sandbox áp dụng cho cả hai.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>2. App bạn lưu file bằng <code>File(context.getExternalStoragePublicDirectory(DIRECTORY_DOCUMENTS), "test.txt")</code>. Trên máy thật Android 10+ thì chuyện gì xảy ra?</legend>
+			<label><input type="radio" name="q2" value="a" /> Code chạy được trên emulator nhưng trên máy thật thường không ghi được — API này deprecated từ API 29 vì Scoped Storage</label>
+			<label><input type="radio" name="q2" value="b" /> Chạy bình thường trên mọi thiết bị, chỉ cần khai quyền <code>WRITE_EXTERNAL_STORAGE</code> trong manifest — thiếu quyền thì app bị crash ngay khi ghi file</label>
+			<label><input type="radio" name="q2" value="c" /> Chỉ chạy khi người dùng bật "cho phép truy cập bộ nhớ" lần đầu, sau đó app tự ghi thoải mái</label>
+			<label><input type="radio" name="q2" value="d" /> File được ghi vào thư mục riêng của app trên thẻ nhớ — và tự xoá khi gỡ app</label>
+			<p class="explain" hidden>
+				Đây là điểm lệch lớn nhất giữa tài liệu cũ và Android hiện tại (mục 6). <code>getExternalStoragePublicDirectory()</code>
+				ghi vào thư mục <em>chung</em> — cần quyền, và từ Android 10 thì Scoped Storage gần như chặn hẳn đường này trên máy
+				thật. Thay thế tuỳ mục đích: file riêng của app → <code>getExternalFilesDir()</code> (không cần quyền, tự xoá khi gỡ
+				app — đó là mô tả của đáp án d nhưng cho API khác); ảnh/video → MediaStore; tài liệu người dùng chọn → SAF.
+				Đáp án b sai vì quyền <code>WRITE_EXTERNAL_STORAGE</code> cũng không còn ăn gì từ API 29+.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>3. Vì sao Storage Access Framework (SAF) không cần khai quyền nào trong manifest?</legend>
+			<label><input type="radio" name="q3" value="a" /> Vì SAF chỉ đọc được file do chính app tạo ra, nên nằm trong sandbox sẵn có</label>
+			<label><input type="radio" name="q3" value="b" /> Vì giao diện chọn file thuộc hệ thống chứ không thuộc app; app không thấy thư mục, chỉ nhận về đúng một <code>Uri</code> người dùng đã chọn</label>
+			<label><input type="radio" name="q3" value="c" /> Vì quyền truy cập bộ nhớ đã được cấp sẵn cho mọi app từ API 29</label>
+			<label><input type="radio" name="q3" value="d" /> Vì SAF làm việc qua <code>ContentResolver</code>, mà ContentResolver miễn quyền</label>
+			<p class="explain" hidden>
+				Đây là điểm cốt lõi của SAF và cũng là chỗ dễ hiểu sai nhất. SAF <em>đổi câu hỏi</em>: thay vì "cho tôi quyền vào bộ
+				nhớ" (một vùng lớn), nó thành "người dùng chỉ cho tôi đúng file này". Người dùng bấm chọn trong giao diện của
+				<em>hệ thống</em> — app bạn không đọc được thư mục xung quanh, chỉ nhận một <code>Uri</code>. Không có quyền rải rác
+				nào để xin, nên không có gì để khai. Đáp án d nhầm mối quan hệ nhân quả: ContentResolver là <em>cách</em> làm việc
+				với Uri (mục 7.5), không phải lý do không cần quyền.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>4. Bạn đã lưu một <code>Uri</code> của SAF vào preference và gọi lại nó ở lần mở app sau. Vì sao có thể gặp <code>SecurityException</code>?</legend>
+			<label><input type="radio" name="q4" value="a" /> Vì Uri chỉ sống trong bộ nhớ RAM của phiên làm việc hiện tại, nên preference không thể giữ lại được chuỗi Uri khi process chết</label>
+			<label><input type="radio" name="q4" value="b" /> Vì Android tự thu hồi mọi Uri sau 24 giờ kể từ lúc cấp</label>
+			<label><input type="radio" name="q4" value="c" /> Vì quyền vào Uri mặc định chết theo process — phải gọi <code>takePersistableUriPermission</code> để giữ qua các lần mở app</label>
+			<label><input type="radio" name="q4" value="d" /> Vì Uri bị hệ thống đổi giá trị sau mỗi lần khởi động máy, nên chuỗi đã lưu trỏ sai chỗ</label>
+			<p class="explain" hidden>
+				Quyền truy cập một <code>Uri</code> của SAF là một loại quyền riêng, không phải quyền filesystem — và mặc định nó
+				chết cùng process (mục 7.4). Giữ được qua restart thì cần <code>takePersistableUriPermission</code> ngay lúc nhận
+				Uri. Nhưng đừng đọc quá chữ "persistable": quyền persist vẫn có thể mất — người dùng thu hồi, tài liệu bị xoá/đổi
+				tên, provider biến mất, hoặc vượt hạn mức ~128 Uri mỗi app. App thật phải xử lý được tình huống "Uri đã lưu không
+				còn hợp lệ" (hỏng thì nhờ người dùng chọn lại), không giả định vĩnh viễn.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>5. <code>use &#123; &#125;</code> trong <code>file.bufferedWriter().use &#123; ... &#125;</code> làm gì?</legend>
+			<label><input type="radio" name="q5" value="a" /> Tự động gọi <code>close()</code> khi khối kết thúc, kể cả khi có exception</label>
+			<label><input type="radio" name="q5" value="b" /> Chạy đoạn code bên trong trên background thread</label>
+			<label><input type="radio" name="q5" value="c" /> Bắt mọi exception xảy ra bên trong, giống <code>try/catch</code> nuốt lỗi</label>
+			<label><input type="radio" name="q5" value="d" /> Đảm bảo dữ liệu được đẩy từ buffer xuống đĩa trước khi hàm trả về</label>
+			<p class="explain" hidden>
+				<code>use</code> là try-with-resources của Kotlin: nó gọi <code>close()</code> trong khối <code>finally</code>.
+				Nó <strong>không</strong> bắt exception — exception vẫn bay ra ngoài, chỉ khác là file đã được đóng đúng cách trước
+				khi bay (mục 3.1). Về thread: <code>use</code> hoàn toàn không liên quan tới thread; code vẫn chạy trên luồng gọi —
+				gọi từ main thread thì vẫn đang ghi đĩa trên main thread (việc chuyển sang IO là chuyện của mục 3.2, khác <code>use</code>).
+				Quên <code>close()</code> gây rò rỉ file descriptor — lỗi tích tụ dần rồi crash ở chỗ chẳng liên quan.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>6. File <code>test.txt</code> của app nằm trong <code>filesDir</code>. Về mã hoá và backup, phát biểu nào ĐÚNG?</legend>
+			<label><input type="radio" name="q6" value="a" /> Vì nằm trong vùng riêng tư nên file được hệ điều hành mã hoá sẵn, và vì đã được mã hoá nên nó không được đưa vào backup nữa</label>
+			<label><input type="radio" name="q6" value="b" /> Không được mã hoá và không được backup — chỉ file trong external storage mới vào backup</label>
+			<label><input type="radio" name="q6" value="c" /> Được mã hoá bởi hệ điều hành và cũng được backup mặc định lên Drive</label>
+			<label><input type="radio" name="q6" value="d" /> Lưu plaintext trên đĩa (sandbox ≠ mã hoá) và vẫn được Auto Backup đưa lên cloud theo mặc định</label>
+			<p class="explain" hidden>
+				Ba thuộc tính là ba câu hỏi độc lập (mục 1, 8.5): <em>nằm ở đâu</em> trả lời bằng đường dẫn; <em>có mã hoá không</em>
+				trả lời bằng nội dung file — file trong <code>filesDir</code> là plaintext, sandbox chỉ là kiểm soát truy cập chứ
+				không phải mã hoá; <em>có backup không</em> trả lời bằng backup rules — mặc định Auto Backup mang đi files nội bộ
+				(≤ 25 MB/app). "Riêng tư" không hàm ý "được mã hoá", và "được mã hoá" không loại trừ "được backup" — phản ví dụ
+				chính là file mã hoá của bài sau.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="b">
+			<legend>7. Thư mục nào <em>không bao giờ</em> được Auto Backup mang đi, kể cả khi bạn cố <code>&lt;include&gt;</code>?</legend>
+			<label><input type="radio" name="q7" value="a" /> <code>getDatabasePath()</code> — database luôn bị loại trừ cứng</label>
+			<label><input type="radio" name="q7" value="b" /> Thư mục cache (<code>cacheDir</code> / code-cache / no-backup)</label>
+			<label><input type="radio" name="q7" value="c" /> <code>shared_prefs/</code> — preference phải tự xin mới được backup</label>
+			<label><input type="radio" name="q7" value="d" /> <code>getExternalFilesDir()</code> — external storage nằm ngoài tầm Auto Backup</label>
+			<p class="explain" hidden>
+				Mặc định được backup gồm: shared preferences, file nội bộ (<code>getFilesDir()</code>), database
+				(<code>getDatabasePath()</code>) và file external riêng của app (<code>getExternalFilesDir()</code>) — tối đa
+				25 MB mỗi app, lên Drive của người dùng (mục 8.5). Riêng thư mục cache/code-cache/no-backup bị loại trừ
+				<em>cứng</em>: kể cả cố tình <code>&lt;include&gt;</code> cũng không đưa lại được. Lý do thiết kế hợp lý: cache là
+				thứ app phải tự tạo lại được (mục 5) — backup nó chỉ tốn quota của người dùng.
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="a">
+			<legend>8. App target Android 12+ khai cả <code>dataExtractionRules</code> lẫn <code>fullBackupContent</code>. Thiết bị Android 11 đọc file nào?</legend>
+			<label><input type="radio" name="q8" value="a" /> <code>fullBackupContent</code> — định dạng <code>&lt;full-backup-content&gt;</code> cũ cho Android 11 trở xuống</label>
+			<label><input type="radio" name="q8" value="b" /> <code>dataExtractionRules</code> — vì đây là file mới nên thắng khi cả hai cùng tồn tại</label>
+			<label><input type="radio" name="q8" value="c" /> Không đọc file nào — Android 11 không hỗ trợ cấu hình backup qua XML</label>
+			<label><input type="radio" name="q8" value="d" /> Cả hai file được gộp lại: rule nào nghiêm hơn thì thắng</label>
+			<p class="explain" hidden>
+				Hai thế hệ rule cùng tồn tại trong manifest của project này (mục 8.5): Android 12+ (API 31+) đọc
+				<code>dataExtractionRules</code> với định dạng mới có phân kênh (<code>&lt;cloud-backup&gt;</code>,
+				<code>&lt;device-transfer&gt;</code>, <code>&lt;cross-platform-transfer&gt;</code>); Android 11 trở xuống đọc
+				<code>fullBackupContent</code> với định dạng cũ. Mỗi nhóm thiết bị đọc đúng một file của mình — không gộp, không
+				thắng-thua. Quên khai <code>fullBackupContent</code> thì máy cũ rơi về rule mặc định (backup mọi thứ trừ cache)
+				— một cạm bẫy thật khi bạn tưởng mình "đã loại rồi".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="d">
+			<legend>9. Trong <code>data_extraction_rules.xml</code>, một section <code>&lt;cloud-backup&gt;</code> chỉ khai <code>&lt;exclude&gt;</code> cho một file — không nhắc gì tới <code>&lt;device-transfer&gt;</code>. Điều gì đúng?</legend>
+			<label><input type="radio" name="q9" value="a" /> Exclude trong cloud-backup áp dụng cho mọi kênh, kể cả chuyển máy trực tiếp</label>
+			<label><input type="radio" name="q9" value="b" /> Thiếu device-transfer thì file XML bị coi là sai định dạng và cả hai kênh rơi về mặc định</label>
+			<label><input type="radio" name="q9" value="c" /> Không khai section device-transfer thì kênh chuyển máy trực tiếp bị tắt hoàn toàn đối với toàn bộ dữ liệu của app — không có file nào được copy qua cả</label>
+			<label><input type="radio" name="q9" value="d" /> Rule trong cloud-backup chỉ áp dụng cho backup lên Drive; chuyển máy trực tiếp vẫn copy file đó theo mặc định của kênh nó</label>
+			<p class="explain" hidden>
+				Mỗi section <em>chỉ</em> áp dụng cho kênh của nó (quy tắc 1 trong mục 8.5): khai thiếu
+				<code>&lt;device-transfer&gt;</code> thì backup cloud được loại nhưng chuyển máy trực tiếp (device-to-device) vẫn
+				copy theo mặc định. Đây là chỗ rất nhiều app thật sẹo: dev loại file khỏi "backup", test đổi máy bằng clone
+				cloud thấy ổn — nhưng người dùng chuyển bằng cáp/quy trình device-transfer thì file vẫn đi theo. Quy tắc còn lại:
+				<code>&lt;exclude&gt;</code> thắng <code>&lt;include&gt;</code>, và khai một <code>&lt;include&gt;</code> là tắt
+				mặc định "backup tất cả".
+			</p>
+		</fieldset>
+
+		<fieldset data-answer="c">
+			<legend>10. Cặp attribute nào trong manifest của project điều khiển backup, và trạng thái thật của rule trong project?</legend>
+			<label><input type="radio" name="q10" value="a" /> <code>android:backupAgent</code> + <code>android:restoreAnyVersion</code> — và project đã viết rule loại hết dữ liệu mã hoá</label>
+			<label><input type="radio" name="q10" value="b" /> <code>android:allowBackup</code> một mình là đủ — hai attribute kia chỉ dành cho app hệ thống; project để mặc định</label>
+			<label><input type="radio" name="q10" value="c" /> <code>allowBackup="true"</code> + <code>dataExtractionRules</code>/<code>fullBackupContent</code> — và cả hai file XML đều đang rỗng rule thực (mọi rule nằm trong comment)</label>
+			<label><input type="radio" name="q10" value="d" /> Backup của project do Firebase điều khiển — các attribute XML chỉ là khung chưa dùng tới</label>
+			<p class="explain" hidden>
+				Manifest thật của project (<code>AndroidManifest.xml</code> dòng 7–9) có <code>allowBackup="true"</code>,
+				<code>dataExtractionRules="@xml/data_extraction_rules"</code> và
+				<code>fullBackupContent="@xml/backup_rules"</code> (mục 8.5). Trạng thái thật: <strong>mọi rule đều nằm trong
+				comment</strong> — <code>data_extraction_rules.xml</code> chỉ có khung <code>&lt;cloud-backup&gt;</code> rỗng kèm
+				TODO, <code>backup_rules.xml</code> chỉ có sample bị comment. Nghĩa là mọi thứ được backup theo mặc định, không
+				loại trừ gì. Vô hại với preference thường — và là quả bom nổ chậm với dữ liệu mã hoá: bài sau chứng minh từng bước.
+			</p>
+		</fieldset>
+		<button type="submit">Kiểm tra đáp án</button>
+		<button type="button" id="quiz-retry" hidden>Làm lại</button>
+		<p id="quiz-score" role="status" aria-live="polite" hidden></p>
+	</form>
+</section>
+<script>
+	// IMP-001: chấm bài do harness chung phụ trách. Nhánh dữ liệu live Astro nhúng các module
+	// theo tham chiếu tĩnh, nên form này dùng trực tiếp helper initQuiz thay vì import phụ
+	// đã có side-effect riêng.
+	import { initQuiz } from "../../scripts/quiz.ts";
+
+	initQuiz();
+</script>
