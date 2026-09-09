@@ -10,7 +10,7 @@
 //   Activity đã là Compose sẵn) · câu 3 (chọn nhánh Stable / Beta / Canary) · câu 7 (Kotlin DSL so
 //   với Groovy, dấu hiệu nhận biết) · câu 8 (Gradle Sync in Progress nghĩa là gì) · câu 9 (hai vùng
 //   Editor + Project navigator).
-// Đáp án rải đều: a = câu 3, 6, 9 · b = câu 1, 5, 7 · c = câu 2, 4, 8.
+// Đáp án rải đều (sau sweep 2026-09): a = câu 1, 5 · b = câu 3, 7 · c = câu 2, 8 · d = câu 4, 6, 9.
 // Mọi chi tiết dưới đây đã tự mở file kiểm lại trong 02-getting-started-with-android-studio/projects/
 //   (thư mục này chỉ có final, không có starter):
 //   app/build.gradle.kts (69 dòng) — namespace dòng 7, compileSdk = 34 dòng 8, applicationId dòng 11,
@@ -27,8 +27,10 @@
 // Harness migration 2026-09: script chấm inline thay bằng harness chung web/src/scripts/quiz.ts (initQuiz
 //   + nút "Làm lại"); mỗi câu mở rộng 3 → 4 lựa chọn bằng một distractor d là nhầm lẫn thật của người mới
 //   (không đổi câu hỏi, đáp án đúng hay các lựa chọn cũ), phần giải thích phản biện luôn lựa chọn d mới.
-//   Vị trí đáp án đúng được bố trí lại khi thêm cột d: a = câu 1, 4, 7 · b = câu 2, 5, 8 · c = câu 3, 6, 9
-//   · d = câu 10; các đoạn giải thích kéo theo được cập nhật đúng theo vị trí mới.
+//   Vị trí đáp án đúng được bố trí lại khi thêm cột d: a = câu 1, 4, 5, 7 · b = câu 2, 8 ·
+//   c = câu 3, 6, 9; các đoạn giải thích kéo theo được cập nhật đúng theo vị trí mới.
+// Sweep editorial 2026-09 (IMP-061): sửa 4 miskey q1/q4/q5/q7 — data-answer trước đó trỏ vào
+//   distractor (lệch do batch thêm cột d); giải thích vốn chỉ đúng đáp án a nên không đổi.
 // Không có bài sắp thứ tự nên script chỉ chấm phần MCQ.
 
 const groovyBlock = `android {
@@ -52,13 +54,13 @@ const groovyBlock = `android {
 	</p>
 
 	<form id="quiz-form">
-		<fieldset data-answer="b">
+		<fieldset data-answer="a">
 			<legend>
 				1. Android Studio là một IDE được tuỳ biến dựa trên <strong>IntelliJ Platform</strong> của JetBrains. Câu đó giải
 				thích trực tiếp điều nào dưới đây?
 			</legend>
 			<label>
-				<input type="radio" name="q1" value="a" /> Vì sao phím tắt, cách tìm file và cách đổi tên biến hàng loạt của nó
+				<input type="radio" name="q1" value="a" /> Vì sao phím tắt, cách tìm file và cách đổi tên biến của nó
 				giống hệt IntelliJ IDEA hay PyCharm — thói quen dùng một IDE mang sang IDE kia gần như nguyên vẹn
 			</label>
 			<label>
@@ -124,18 +126,18 @@ const groovyBlock = `android {
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="a">
+		<fieldset data-answer="b">
 			<legend>
 				3. Trang tải có bản mặc định, cộng một mục <em>preview</em> dẫn tới hai nhánh khác. Người mới học nên tải nhánh
 				nào, và vì sao?
 			</legend>
 			<label>
-				<input type="radio" name="q3" value="a" /> <strong>Stable</strong> — vì trên nhánh mới hơn, lỗi có thể đến từ
-				code bạn viết, từ thư viện, hoặc từ chính IDE, và bạn chưa loại trừ được nguồn thứ ba
+				<input type="radio" name="q3" value="a" /> <strong>Canary</strong> — vì có tính năng mới nhất, và bản Stable
+				thiếu một số tính năng cần cho việc tạo project mới
 			</label>
 			<label>
-				<input type="radio" name="q3" value="b" /> <strong>Canary</strong> — vì có tính năng mới nhất, và bản Stable
-				thiếu một số tính năng cần cho việc tạo project mới
+				<input type="radio" name="q3" value="b" /> <strong>Stable</strong> — vì trên nhánh mới hơn, lỗi có thể đến từ
+				code bạn viết, từ thư viện, hoặc từ IDE, và bạn chưa loại được nguồn thứ ba
 			</label>
 			<label>
 				<input type="radio" name="q3" value="c" /> <strong>Beta</strong> — vì đây là nhánh Google khuyến nghị cho người
@@ -158,24 +160,24 @@ const groovyBlock = `android {
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="c">
+		<fieldset data-answer="d">
 			<legend>
 				4. Trong sáu ô của màn hình tạo project, vì sao ô <code>Package name</code> phải đúng
 				<code>com.kodeco.chat</code> tới <em>từng ký tự</em>?
 			</legend>
 			<label>
-				<input type="radio" name="q4" value="a" /> Vì nó vừa là danh tính duy nhất của app trên hệ Android và trên Google
-				Play, vừa quyết định đường dẫn thư mục chứa code của bạn
+				<input type="radio" name="q4" value="a" /> Vì Google Play chỉ chấp nhận package bắt đầu bằng <code>com.</code>, gõ khác đi thì lúc nộp app lên store sẽ bị từ chối ngay ở bước tải lên, kể cả khi app đã chạy tốt trên máy bạn
 			</label>
 			<label>
-				<input type="radio" name="q4" value="b" /> Vì Google Play chỉ chấp nhận package bắt đầu bằng <code>com.</code>, gõ khác đi thì lúc nộp app lên store sẽ bị từ chối ngay ở bước tải lên, kể cả khi app đã chạy tốt trên máy bạn
-			</label>
-			<label>
-				<input type="radio" name="q4" value="c" /> Vì nó là tên hiển thị dưới icon app trên máy, nên gõ sai là người
+				<input type="radio" name="q4" value="b" /> Vì nó là tên hiển thị dưới icon app trên máy, nên gõ sai là người
 				dùng thấy sai tên và bạn phải tạo lại project để sửa
-			</label>			<label>
-				<input type="radio" name="q4" value="d" /> Vì đó là tên tài khoản Google của người viết app — mỗi project cần
+			</label>
+			<label>
+				<input type="radio" name="q4" value="c" /> Vì đó là tên tài khoản Google của người viết app — mỗi project cần
 				một package riêng để Android Studio biết gửi log build của ai cho ai
+			</label>			<label>
+				<input type="radio" name="q4" value="d" /> Vì nó vừa là danh tính duy nhất của app trên hệ Android và trên Google
+				Play, vừa quyết định đường dẫn thư mục chứa code của bạn
 			</label>
 			<p class="explain" hidden>
 				Hai vai cùng lúc — đó là điều làm ô này khác năm ô còn lại. Vai thứ nhất: <strong>hai app không được trùng
@@ -191,7 +193,7 @@ const groovyBlock = `android {
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="b">
+		<fieldset data-answer="a">
 			<legend>5. Ô <code>Minimum SDK</code> khai báo điều gì?</legend>
 			<label>
 				<input type="radio" name="q5" value="a" /> Phiên bản Android <strong>thấp nhất</strong> mà app chịu cài — mọi máy cũ hơn con số này không cài được app
@@ -220,26 +222,26 @@ const groovyBlock = `android {
 				<code>targetSdk = 34</code> dòng 13, <code>compileSdk = 34</code> dòng 8.
 			</p>
 		</fieldset>
-		<fieldset data-answer="a">
+		<fieldset data-answer="d">
 			<legend>
 				6. Hướng dẫn tạo project nói chọn <code>Minimum SDK = API 28</code>, nhưng mở project mẫu ra thì thấy
 				<code>minSdk = 30</code>. Hệ quả thật của chênh lệch này là gì?
 			</legend>
 			<label>
-				<input type="radio" name="q6" value="a" /> Trên một máy Android 9 hoặc 10 thật, app <em>bạn tự tạo</em> thì cài
-				được, còn project mẫu tải về sẽ bị từ chối cài
-			</label>
-			<label>
-				<input type="radio" name="q6" value="b" /> Project mẫu không build được cho tới khi bạn hạ <code>minSdk</code>
+				<input type="radio" name="q6" value="a" /> Project mẫu không build được cho tới khi bạn hạ <code>minSdk</code>
 				xuống 28 cho khớp, vì Gradle đối chiếu giá trị trong file với con số bạn đã điền lúc tạo project
 			</label>
 			<label>
-				<input type="radio" name="q6" value="c" /> Không có hệ quả nào trong bất kỳ tình huống nào — 28 và 30 là hai cách
+				<input type="radio" name="q6" value="b" /> Không có hệ quả nào trong bất kỳ tình huống nào — 28 và 30 là hai cách
 				ghi cùng một mức tương thích
 			</label>
 			<label>
-				<input type="radio" name="q6" value="d" /> Google Play sẽ từ chối project có hai con số lệch nhau như vậy, nên
+				<input type="radio" name="q6" value="c" /> Google Play sẽ từ chối project có hai con số lệch nhau như vậy, nên
 				bạn bắt buộc phải sửa hướng dẫn hoặc project để chúng khớp trước khi đi tiếp
+			</label>
+			<label>
+				<input type="radio" name="q6" value="d" /> Trên một máy Android 9 hoặc 10 thật, app <em>bạn tự tạo</em> thì cài
+				được, còn project mẫu tải về sẽ bị từ chối cài
 			</label>
 			<p class="explain" hidden>
 				Chênh lệch này có thật và đã được kiểm bằng cách quét toàn bộ bộ project mẫu: <strong>19 file
@@ -262,12 +264,12 @@ const groovyBlock = `android {
 			</legend>
 			<pre class="quiz-code"><code>{groovyBlock}</code></pre>
 			<label>
-				<input type="radio" name="q7" value="a" /> Vì đó là cú pháp <strong>Groovy</strong> — không dấu <code>=</code>,
-				nháy đơn — còn file <code>.gradle.kts</code> cần cú pháp Kotlin DSL, tức phải có dấu <code>=</code> và nháy kép
+				<input type="radio" name="q7" value="a" /> Vì đoạn đó thiếu khối <code>defaultConfig</code> bắt buộc phải có
+				<code>versionCode</code>, thêm dòng đó vào là chạy
 			</label>
 			<label>
-				<input type="radio" name="q7" value="b" /> Vì đoạn đó thiếu khối <code>defaultConfig</code> bắt buộc phải có
-				<code>versionCode</code>, thêm dòng đó vào là chạy
+				<input type="radio" name="q7" value="b" /> Vì đó là cú pháp <strong>Groovy</strong> — không dấu <code>=</code>,
+				nháy đơn — còn file <code>.gradle.kts</code> cần cú pháp Kotlin DSL, tức phải có dấu <code>=</code> và nháy kép
 			</label>
 			<label>
 				<input type="radio" name="q7" value="c" /> Vì <code>namespace</code> và <code>compileSdk</code> không được đặt
@@ -329,26 +331,26 @@ const groovyBlock = `android {
 			</p>
 		</fieldset>
 
-		<fieldset data-answer="a">
+		<fieldset data-answer="d">
 			<legend>
 				9. Chương này chỉ yêu cầu bạn định vị được <strong>hai</strong> vùng của cửa sổ Android Studio. Hai vùng nào, và
 				mỗi vùng để làm gì?
 			</legend>
 			<label>
-				<input type="radio" name="q9" value="a" /> <strong>Editor</strong> ở giữa — nơi sửa code, có tô màu cú pháp, gợi
-				ý tên hàm, đặt được breakpoint; và <strong>Project navigator</strong> bên trái — hiện mọi file của project
-			</label>
-			<label>
-				<input type="radio" name="q9" value="b" /> <strong>Logcat</strong> ở đáy — nơi đọc log của app; và
+				<input type="radio" name="q9" value="a" /> <strong>Logcat</strong> ở đáy — nơi đọc log của app; và
 				<strong>Device Manager</strong> bên phải — nơi tạo và bật máy ảo
 			</label>
 			<label>
-				<input type="radio" name="q9" value="c" /> <strong>Editor</strong> ở giữa; và <strong>Compose Preview</strong>
+				<input type="radio" name="q9" value="b" /> <strong>Editor</strong> ở giữa; và <strong>Compose Preview</strong>
 				bên phải — nơi xem trước giao diện, vùng bạn sẽ dành phần lớn thời gian ở đó
 			</label>
 			<label>
-				<input type="radio" name="q9" value="d" /> <strong>Editor</strong> ở giữa; và <strong>Git</strong> ở đáy — nơi
+				<input type="radio" name="q9" value="c" /> <strong>Editor</strong> ở giữa; và <strong>Git</strong> ở đáy — nơi
 				xem lịch sử commit, vì làm việc với project thật thì luôn phải biết code ai sửa gì
+			</label>
+			<label>
+				<input type="radio" name="q9" value="d" /> <strong>Editor</strong> ở giữa — nơi sửa code, có tô màu cú pháp, gợi
+				ý tên hàm, đặt được breakpoint; và <strong>Project navigator</strong> bên trái — hiện mọi file của project
 			</label>
 			<p class="explain" hidden>
 				Hai vùng đó đủ cho toàn bộ Chương 2, và bạn sẽ ở lâu nhất trong <strong>Editor</strong>. Về Project navigator có

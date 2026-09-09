@@ -13,7 +13,7 @@
 		<fieldset data-answer="b">
 			<legend>1. Compose nghĩ về giao diện khác cách cũ (XML + findViewById) ở điểm nào?</legend>
 			<label><input type="radio" name="q1" value="a" /> Bạn tạo object giao diện, giữ tham chiếu tới chúng, rồi ra lệnh cho từng object thay đổi khi dữ liệu đổi</label>
-			<label><input type="radio" name="q1" value="b" /> Bạn mô tả giao diện tương ứng với dữ liệu hiện tại; Compose tự lo phần "phải sửa những gì"</label>
+			<label><input type="radio" name="q1" value="b" /> Bạn mô tả giao diện theo dữ liệu hiện tại; Compose tự lo phần "phải sửa những gì"</label>
 			<label><input type="radio" name="q1" value="c" /> Bạn viết file XML mô tả cây giao diện, rồi dùng Kotlin đi tìm từng view để gán dữ liệu</label>
 			<label><input type="radio" name="q1" value="d" /> Bạn vẽ giao diện trực tiếp lên một canvas bằng toạ độ pixel, giống cách dựng game 2D</label>
 			<p class="explain" hidden>
@@ -39,7 +39,7 @@
 			<label><input type="radio" name="q3" value="a" /> Vì <code>setContent</code> tự thêm <code>@Composable</code> vào mọi hàm bên trong nó lúc biên dịch</label>
 			<label><input type="radio" name="q3" value="b" /> Vì tham số <code>content</code> của <code>setContent</code> có kiểu <code>@Composable () -&gt; Unit</code> — khối lambda truyền vào đã là vùng composable</label>
 			<label><input type="radio" name="q3" value="c" /> Vì chỗ này viết sai — <code>@Composable</code> luôn bắt buộc, nên app sẽ không build được</label>
-			<label><input type="radio" name="q3" value="d" /> Vì <code>Column</code>, <code>Text</code>, <code>Button</code> không phải composable nên không cần nhãn — nhãn chỉ dành cho hàm bạn tự viết, còn những hàm này có sẵn của thư viện thì thư viện đã khai giúp</label>
+			<label><input type="radio" name="q3" value="d" /> Vì <code>Column</code>, <code>Text</code>, <code>Button</code> không phải composable nên không cần nhãn — hàm thư viện đã được khai giúp</label>
 
 			<p class="explain" hidden>
 				Nhãn <code>@Composable</code> nằm ngay trên <strong>kiểu của tham số</strong> trong định nghĩa <code>setContent</code> (đọc bằng Control-click vào định nghĩa gốc). Khối ngoặc nhọn bạn truyền vào là một lambda của Kotlin, và vì kiểu tham số yêu cầu composable nên khối đó <em>là</em> khối composable — không cần viết lại nhãn. Đáp án c sai về sự thật: app build và chạy bình thường.
@@ -87,7 +87,7 @@
 			<label><input type="radio" name="q7" value="a" /> Vì thiếu <code>@Composable</code> trên ba hàm đó, nên Compose không tìm thấy cây giao diện</label>
 			<label><input type="radio" name="q7" value="b" /> Vì project chưa khai dependency Material 3 trong Gradle</label>
 			<label><input type="radio" name="q7" value="c" /> Vì ba hàm rỗng không trả về gì cả, nên Activity kết thúc ngay</label>
-			<label><input type="radio" name="q7" value="d" /> Vì <code>TODO()</code> là một hàm Kotlin thật — nó <em>ném lỗi</em> khi được gọi</label>
+			<label><input type="radio" name="q7" value="d" /> Vì <code>TODO()</code> là một hàm Kotlin thật — nó <em>ném lỗi</em> ngay khi được gọi lần đầu trong lần chạy app đó</label>
 
 			<p class="explain" hidden>
 				<code>TODO(...)</code> là hàm có sẵn của Kotlin, thân nó ném exception khi chạy tới — nên build được, cài được, rồi app dừng ngay lúc hàm đó được gọi, còn lúc biên dịch thì không có gì báo lỗi. Muốn chạy thử phần đã xong thì đổi thành comment <code>// TODO - Implement</code>. Chi tiết của project mẫu: trong ba hàm sinh ra, <code>ChannelNameBar</code> <strong>không</strong> có <code>TODO()</code> vì bạn đã truyền tham số khi gọi, Android Studio coi hàm đã có phần khởi đầu.
@@ -97,7 +97,7 @@
 
 		<fieldset data-answer="a">
 			<legend>8. Sau khi tách giao diện thành nhiều composable nhỏ, <code>MainActivity</code> chỉ còn một lời gọi <code>ConversationContent()</code>. Lợi ích <strong>chủ đạo</strong> của việc tách này là gì?</legend>
-			<label><input type="radio" name="q8" value="a" /> Giao diện dễ đọc, sửa được từng mảnh, dùng lại được, xem trước được</label>
+			<label><input type="radio" name="q8" value="a" /> Giao diện dễ đọc, dễ sửa từng mảnh, dùng lại được, xem trước riêng được</label>
 			<label><input type="radio" name="q8" value="b" /> Bắt buộc — Compose không cho phép một hàm composable dài quá 50 dòng</label>
 			<label><input type="radio" name="q8" value="c" /> App chạy nhanh hơn vì Compose xử lý được ít code hơn mỗi khung hình</label>
 			<label><input type="radio" name="q8" value="d" /> Tách nhỏ giúp giảm dung lượng file APK khi đóng gói</label>
