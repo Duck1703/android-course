@@ -213,8 +213,9 @@
 
 	<p>
 		Vậy repository của S5 ngồi ở đâu? Ngồi <strong>nguyên vị trí</strong>: vẫn là tầng đứng giữa nguồn
-		dữ liệu và phần còn lại của app, vẫn che nguồn, vẫn dịch model lưu trữ sang model app, vẫn là nguồn
-		đáng tin. Chỉ có phần bên trong <code>Impl</code> là khác: thay vì gọi Retrofit hay mở Room query,
+		dữ liệu và phần còn lại của app, vẫn che nguồn, vẫn dịch model lưu trữ sang model app, vẫn
+		<em>xác định và kiểm soát đường vào</em> nguồn đáng tin (S5 mục 6) — nguồn đáng tin của app này là
+		database cục bộ, repository vẫn là biên giới. Chỉ có phần bên trong <code>Impl</code> là khác: thay vì gọi Retrofit hay mở Room query,
 		nó (1) mở các đăng ký đồng bộ và (2) bơm dữ liệu từ database cục bộ vào các StateFlow — chính pattern
 		"bên trong Mutable, bên ngoài read-only" mà S5 dạy. ViewModel ở dưới không hề biết rằng dữ liệu đến
 		từ một mesh.
@@ -286,7 +287,9 @@
 		ánh sang những app khác, không riêng app chat.
 	</p>
 
-	<p><strong>1. Biến toàn cục thay cho dependency injection.</strong> Engine sync được giữ trong một biến
+	<h3 id="doc-cu-1">5.1. Biến toàn cục thay cho dependency injection</h3>
+
+	<p> Engine sync được giữ trong một biến
 	tĩnh toàn cục, mọi nơi dùng thẳng. Đơn giản, và có một khoảng nguy hiểm thật: nếu có đường code nào đọc
 	biến đó <em>trước khi</em> nó được khởi tạo, app chết ngay với exception, không có giá trị "rỗng" nào
 	để xử lý. App thoát được nhờ một chuỗi điều kiện ngầm (composition chạy trễ, ViewModel khởi tạo lười,
@@ -295,21 +298,27 @@
 	được đưa từ ngoài vào" của S5 mục 14; compiler và DI framework lo thứ tự, không phải trí nhớ của bạn.
 	Khiếu nại cũng đến từ chính KDoc của project: "Better approach is to use Dependency Injection".</p>
 
-	<p><strong>2. Getter có tác dụng phụ.</strong> Hàm lấy danh sách tin nhắn theo phòng — tên gõ
+	<h3 id="doc-cu-2">5.2. Getter có tác dụng phụ</h3>
+
+	<p> Hàm lấy danh sách tin nhắn theo phòng — tên gõ
 	<code>get...</code> — lại <em>đăng ký</em> một live query mới mỗi lần được gọi, ghi đè lên đăng ký cũ.
 	App hiện tại không lộ lỗi vì nó chỉ có một phòng duy nhất; nhưng gọi hàm này cho hai phòng là tin nhắn
 	hai phòng lẫn vào một danh sách, và người đọc không hề đoán được điều đó từ cái tên. Quy ước ngầm trong
 	lập trình: hàm <code>get...</code> chỉ <em>lấy</em>, không <em>làm</em>. Tên trung thực hơn:
 	<code>observeMessagesForRoom(room)</code> — và nó nên huỷ đăng ký cũ trước khi mở đăng ký mới.</p>
 
-	<p><strong>3. Tài nguyên đồng bộ phải được giữ tham chiếu.</strong> Hai hàm của project gán subscription
+	<h3 id="doc-cu-3">5.3. Tài nguyên đồng bộ phải được giữ tham chiếu</h3>
+
+	<p> Hai hàm của project gán subscription
 	vào biến cục bộ rồi kết thúc — biến mất tham chiếu, garbage collector dọn mất đăng ký, và app
 	<strong>im lặng ngừng nhận dữ liệu</strong>. Đây là bản tổng quát của cái bẫy "đường ống và chuông" ở
 	mục 3: mọi thứ bạn đăng ký với một sync engine là <em>tài nguyên sống</em>, phải nằm trong một field
 	có vòng đời rõ ràng. Ở app Room/Retrofit của bạn không gặp bẫy này vì Room query và Retrofit call là
 	hàm vô trạng thái — một khác biệt nền tảng nữa giữa "gọi khi cần" và "đăng ký lâu dài".</p>
 
-	<p><strong>4. Hợp đồng tầng dữ liệu rò rỉ kiểu SDK.</strong> Interface Repository — cái đáng lẽ trung
+	<h3 id="doc-cu-4">5.4. Hợp đồng tầng dữ liệu rò rỉ kiểu SDK</h3>
+
+	<p> Interface Repository — cái đáng lẽ trung
 	lập — có một tham số mang đúng kiểu của SDK sync. Tức là đổi sang engine khác thì <em>cả interface</em>
 	cũng phải sửa, không chỉ phần <code>Impl</code>: tầng dữ liệu biết về nhà cung cấp ở đúng chỗ không
 	nên biết. Cách sửa đúng tinh thần S5: interface dùng một kiểu riêng của app, <code>Impl</code> chịu
@@ -437,8 +446,9 @@
 		nguồn sự thật.</li>
 		<li><strong>Ba vai trò của tầng dữ liệu sync:</strong> nguồn cục bộ, nguồn từ xa, khâu đồng bộ —
 		vai trò thứ ba là thứ mà kiến trúc REST của bạn không có.</li>
-		<li><strong>Repository giữ nguyên vị trí S5</strong> — che nguồn, dịch model, là nguồn đáng tin;
-		chỉ phần <code>Impl</code> đổi thành "mở đăng ký + bơm StateFlow".</li>
+		<li><strong>Repository giữ nguyên vị trí S5</strong> — che nguồn, dịch model, <em>xác định và kiểm
+		soát đường vào</em> nguồn đáng tin (S5 mục 6); trong app này nguồn đáng tin là <em>database cục bộ</em>,
+		repository vẫn là biên giới. Chỉ phần <code>Impl</code> đổi thành "mở đăng ký + bơm StateFlow".</li>
 		<li><strong>Subscription = đường ống (từ xa → local); live query = cái chuông (local → UI).</strong>
 		Cần cả hai; thiếu một nửa là app im lặng hỏng một nửa.</li>
 		<li><strong>Tài nguyên đăng ký là thứ sống:</strong> phải giữ tham chiếu trong field có vòng đời rõ

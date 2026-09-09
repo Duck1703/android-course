@@ -59,6 +59,8 @@ const destructiveCode = `// KHÔNG có addMigrations, KHÔNG fallback:
 // "cách chữa" nguy hiểm:
 Room.databaseBuilder(context, NotesDatabase::class.java, "notes.db")
   .fallbackToDestructiveMigration()   // không tìm thấy migration? XOÁ CẢ DATABASE
+  // (Room 2.6+: overload không tham số bị đánh dấu deprecated — bản mới là
+  // fallbackToDestructiveMigration(dropAllTables: Boolean); ý nghĩa destructive giữ nguyên)
   .build()`;
 
 const migrationTestCode = `@get:Rule
@@ -279,7 +281,7 @@ const autoMigrationCode = `@Database(
 	</p>
 
 	<p>
-		Về hai thế hệ Room: <strong>Room 2.x</strong> (bạn đang dùng qua R2) là dòng hiện hành ổn định;
+		Về hai thế hệ Room: <strong>Room 2.x</strong> (bạn đang dùng qua R2; 2.8.x — Google Maven ghi 2.8.5 theo metadata 09/09/2026) là dòng hiện hành ổn định;
 		<strong>Room 3</strong> (<code>androidx.room3:room3-*</code>) là thế hệ mới rebuild cho Kotlin
 		Multiplatform — đổi nền SQLite (<code>SQLiteDriver</code> bắt buộc, thay một số API cũ). Tư duy của
 		bài — version + migration + schema export + test — <strong>giữ nguyên ở cả hai</strong>; chỉ tên

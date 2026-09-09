@@ -61,13 +61,16 @@ fun ListDetailScaffold() {
 }`;
 
 const hoistingPhoneCode = `// Điện thoại (Compact): hai màn hình riêng — selectedNoteId nằm ở MÀN DANH SÁCH,
-// được "vận chuyển" sang màn chi tiết qua điều hướng (N1/N2)
-NavHost(navController, startDestination = "notes") {
-  composable("notes") {
-    NoteList(onNoteClick = { id -> navController.navigate("note/$id") })
+// được "vận chuyển" sang màn chi tiết qua điều hướng type-safe (N2)
+@Serializable object NotesRoute
+@Serializable data class NoteDetailRoute(val noteId: Long)
+
+NavHost(navController, startDestination = NotesRoute) {
+  composable<NotesRoute> {
+    NoteList(onNoteClick = { id -> navController.navigate(NoteDetailRoute(id)) })
   }
-  composable("note/{id}") { backStackEntry ->
-    NoteDetail(noteId = backStackEntry.arguments?.getString("id"))
+  composable<NoteDetailRoute> { entry ->
+    NoteDetail(noteId = entry.toRoute<NoteDetailRoute>().noteId)
   }
 }`;
 
@@ -79,8 +82,9 @@ Text(
 )`;
 
 const postureGlossCode = `// Nhận diện tư thế máy gập — mức "biết là có", không sâu hơn trong khoá này
-val windowInfo = rememberWindowInfoTracker()
-// FOLDED / HALF_OPENED (máy dựng hình chữ V) / FLAT / OPENED...
+// (entry point thật của androidx.window:)
+val tracker = WindowInfoTracker.getOrCreate(context)
+// FoldingFeature.State: FLAT / HALF_OPENED (máy dựng hình chữ V)...
 // HALF_OPENED: tránh đặt nút chính QUA CHUỒNG bản lề (fold/hinge)`;
 ---
 
@@ -141,14 +145,19 @@ val windowInfo = rememberWindowInfoTracker()
 		viết <code>Expanded</code> thì nghĩa của nó được bảo đảm giống nhau trên mọi app — và tài liệu, test,
 		discussion của cả hệ sinh thái cùng nói một ngôn ngữ. Chiều cao cũng có size class riêng
 		(<code>WindowHeightSizeClass</code>) — dùng khi bố cục nhạy chiều cao (máy gập dựng dọc); ở mức này,
-		hãy bắt đầu với chiều rộng, nó giải quyết phần lớn trường hợp.
+		hãy bắt đầu với chiều rộng, nó giải quyết phần lớn trường hợp. Hai bậc rộng hơn cho màn hình rất
+		lớn (<code>Large</code> 1200–1599, <code>Extra-large</code> ≥ 1600) cũng đã được định nghĩa trong tài
+		liệu hiện hành — khoá này dừng ở ba bậc đầu, đủ cho mọi ví dụ của mình.
 	</p>
 
 	<h3>1.1. Tính một lần, truyền xuống</h3>
 
 	<p>
-		Size class là thuộc tính của <strong>cửa sổ</strong> — không phải của một composable. Nên chỗ tính
-		đúng là Activity, tính một lần, rồi truyền xuống như một state bình thường:
+		Size class là thuộc tính của <strong>cửa sổ</strong> — không phải của một composable. Khuôn kinh điển
+		và vẫn dùng được rộng rãi: tính một lần ở Activity qua <code>calculateWindowSizeClass</code> rồi
+		truyền xuống. (Tài liệu hiện hành còn dẫn thêm cách mới hơn —
+		<code>currentWindowAdaptiveInfo()</code> của thư viện material3-adaptive, tính trong composable;
+		khuôn "tính một lần, truyền xuống" ở dưới vẫn là nền tảng tư duy của cả hai.)
 	</p>
 
 	<Code code={calculateCode} lang="kotlin" theme="github-dark" />

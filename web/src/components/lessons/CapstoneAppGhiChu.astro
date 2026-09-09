@@ -145,6 +145,40 @@ fun NoteDetailScreen(noteId: Long?, viewModel: NoteDetailViewModel) {
   }
 }`;
 
+const detailViewModelCode = `class NoteDetailViewModel(
+  private val repository: NotesRepository,
+  private val noteId: Long?,
+) : ViewModel() {
+
+  data class DetailUiState(
+    val title: String = "",
+    val body: String = "",
+    val isNew: Boolean = noteId == null,
+  )
+
+  private val _uiState = MutableStateFlow(DetailUiState())
+  val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
+
+  init {
+    // noteId != null → đang sửa: nạp ghi chú từ repository (mục "một màn cho cả hai mục đích")
+    if (noteId != null) {
+      viewModelScope.launch {
+        val note = repository.note(noteId)   // thêm 1 hàm đọc-một-lần vào NotesRepository
+        if (note != null) {
+          _uiState.update { it.copy(title = note.title, body = note.body) }
+        }
+      }
+    }
+  }
+
+  fun onTitleChange(title: String) = _uiState.update { it.copy(title = title) }
+  fun onBodyChange(body: String) = _uiState.update { it.copy(body = body) }
+
+  fun save() = viewModelScope.launch {
+    repository.save(Note(id = noteId ?: 0, title = _uiState.value.title, body = _uiState.value.body))
+  }
+}`;
+
 const navCode = `@Serializable object NotesRoute            // màn danh sách
 @Serializable data class NoteDetailRoute(val noteId: Long? = null)  // null = tạo mới
 
@@ -155,13 +189,15 @@ fun AppNavHost() {
     composable<NotesRoute> {
       NotesListScreen(
         onNoteOpen = { id -> navController.navigate(NoteDetailRoute(id)) },
-        viewModel = notesViewModel,
+        // ViewModel ở đây được tạo bằng viewModel(factory = ...) — khuôn cấp dependency
+        // qua factory đã thấy ở D2; với bản demo có thể dựng thẳng NotesViewModel(repo)
+        viewModel = notesViewModel(),
       )
     }
     composable<NoteDetailRoute> { entry ->
       NoteDetailScreen(
         noteId = entry.toRoute<NoteDetailRoute>().noteId,
-        viewModel = detailViewModel,
+        viewModel = noteDetailViewModel(entry.toRoute<NoteDetailRoute>().noteId),
       )
     }
   }
@@ -333,6 +369,15 @@ const buildSteps = [
 		callback <code>onNoteOpen(id)</code> — state hoisting (S3) áp cho điều hướng, composable giữ thuần
 		Kotlin/Compose, dễ preview, dễ test.
 	</p>
+
+	ViewModel của màn này cần nạp ghi chú cũ khi đang sửa — đây là phần khung còn thiếu của Bước 7,
+	được điền đủ ở đây (<code>noteId</code> tham chiếu chính tham số của màn; hàm
+	<code>repository.note(id)</code> là một hàm đọc-một-lần mới, thêm vào interface theo đúng quy ước
+	"ghi hoặc đọc-một-lần thì <code>suspend</code>" của S5):
+
+	<Code code={detailViewModelCode} lang="kotlin" theme="github-dark" />
+
+	Còn đây là màn hình — nó chỉ đọc state và gọi callback của ViewModel, không biết Room:
 
 	<Code code={detailScreenCode} lang="kotlin" theme="github-dark" />
 

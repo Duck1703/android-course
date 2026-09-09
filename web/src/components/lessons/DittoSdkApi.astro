@@ -29,8 +29,13 @@ val config = DittoConfig(
   // Connect.SmallPeersOnly → chỉ P2P, không cloud (khi đó ditto.auth == null)
 )
 val ditto = DittoFactory.create(config)
+
+// 5.x đổi HAI lệnh quen thuộc (migration guide chính thức):
+//   ditto.startSync()  → ditto.sync.start()
+//   ditto.auth?.login() → hàm suspend, đăng nhập qua DittoAuthenticationProvider +
+//     auth.expirationHandler (bật sync khi credentials có hiệu lực)
 ditto.auth?.login(BuildConfig.DITTO_TOKEN, DittoAuthenticationProvider.development())
-ditto.startSync()`;
+ditto.sync.start()`;
 
 const permissionsCode = `// 4.x (project mẫu):
 val missing = DittoSyncPermissions(this).missingPermissions()   // live.ditto.transports.*
@@ -108,7 +113,7 @@ ditto.store.execute(
 			<strong>"Playground" nghĩa là gì.</strong> Chế độ này cho <em>bất kỳ ai</em> có App ID + token đọc và
 			ghi <em>mọi</em> dữ liệu — không phân quyền, không xác thực người dùng thật. Chỉ dùng cho app học;
 			app production phải dùng identity kiểu <code>OnlineWithAuthentication</code> (v4) hoặc provider auth
-			thật (v5). Project mẫu không nói rõ điểm này.
+			thật (v5). Giáo trình gốc không nói rõ điểm này.
 		</p>
 	</div>
 
@@ -184,7 +189,8 @@ ditto.store.execute(
 		<li><code>observeLocal</code> nhận <strong>toàn bộ</strong> danh sách hiện tại mỗi lần reo (không phải
 		phần delta); tham số thứ hai là chi tiết thay đổi — project bỏ bằng <code>_</code>.</li>
 		<li><code>.sort(createdOnKey, DittoSortDirection.Ascending)</code> — sắp xếp cũ-nhất-trước; kết hợp với
-		<code>LazyColumn(reverseLayout = true)</code> của app tạo ra cặp <code>.asReversed()</code> mà O1 nhắc.</li>
+		<code>LazyColumn(reverseLayout = true)</code> của app là lý do danh sách bị đảo chiều khi hiển thị
+		(chiến lược hiển thị thuộc phần UI của project — C2 dạy LazyColumn).</li>
 		<li><code>.upsert(map)</code> — update+insert, ghi vào database <em>local</em> và trả về ngay (local-first).</li>
 		<li>Không ghi <code>_id</code> trong map khi upsert → Ditto tự sinh; id do client tạo bị <em>vứt đi</em>
 		(trong <code>createMessageForRoom</code> của project — biết để dùng khi cần "sửa/xoá tin vừa gửi").</li>
@@ -253,8 +259,9 @@ ditto.store.execute(
 			<strong>Dù giải thích được, đây là code nên sửa:</strong> (1) vô dụng — chỉ chuyển tiếp sang hàm thư
 			viện; (2) cực kỳ dễ vỡ — ai xoá dòng import ("remove unused import") là extension tự gọi chính nó →
 			<code>StackOverflowError</code> ở mọi tin nhắn; (3) <strong>không compile được với thư viện hiện
-			nay</strong> — kotlinx-datetime 0.8.0 đã bỏ hoàn toàn extension trên <code>String</code> (changelog
-			không nhắc — breaking change im lặng). Thay bằng <code>Instant.parse(this)</code>.
+			nay</strong> — kotlinx-datetime 0.7.0 đã bỏ extension trên <code>String</code> khi
+			<code>Instant</code> chuyển sang <code>kotlin.time.Instant</code> (changelog không nhắc riêng —
+			breaking change im lặng; 0.8.0 cũng vậy). Thay bằng <code>Instant.parse(this)</code>.
 		</p>
 	</div>
 
@@ -283,8 +290,8 @@ ditto.store.execute(
 	<h2 id="drift">8. Drift nền tảng đi kèm (project Ch07, bộ số 2023)</h2>
 
 	<ul>
-		<li><strong>AGP 8.2.0 → 9.x:</strong> từ AGP 9, hỗ trợ Kotlin tích hợp sẵn — không cần plugin
-		<code>org.jetbrains.kotlin.android</code> riêng.</li>
+		<li><strong>AGP 8.2.0 → 9.x:</strong> built-in Kotlin (thử nghiệm từ AGP 8.4, bắt buộc từ AGP 9) —
+		project mới không cần plugin <code>org.jetbrains.kotlin.android</code> riêng.</li>
 		<li><strong>Kotlin 1.9.10 → 2.x:</strong> Compose compiler thành plugin Kotlin — block
 		<code>composeOptions &#123; kotlinCompilerExtensionVersion = ... &#125;</code> không còn dùng, thay bằng
 		<code>org.jetbrains.kotlin.plugin.compose</code>. Đây là chỗ mọi project cũ vướng khi nâng Kotlin
