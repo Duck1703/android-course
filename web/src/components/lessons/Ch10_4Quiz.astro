@@ -68,7 +68,7 @@ const vmSnippet = `suspend fun getBookmarks() {
 			<label><input type="radio" name="q2" value="a" /> Là lỗi — lồng hai <code>withContext(Dispatchers.IO)</code> vào nhau gây deadlock, coroutine sẽ treo</label>
 			<label><input type="radio" name="q2" value="b" /> Là lỗi — luồng bên ngoài ghi đè luồng bên trong, nên truy vấn database cuối cùng chạy trên luồng chính</label>
 			<label><input type="radio" name="q2" value="c" /> Không phải dư — bọc ở cả hai tầng là phòng thủ hai lớp được khuyến nghị: sau này ViewModel có thể đổi, còn UI tự bọc thì luôn an toàn</label>
-			<label><input type="radio" name="q2" value="d" /> Không lỗi, chỉ <em>dư</em>: coroutine chuyển sang IO hai lần — quyết định chạy ở luồng nào nên nằm ở một tầng duy nhất là ViewModel, như <code>GroceryList.kt</code></label>
+			<label><input type="radio" name="q2" value="d" /> Không lỗi, chỉ <em>dư</em>: coroutine vào IO hai lần — quyết định luồng chạy nên thuộc về một tầng: ViewModel</label>
 			<p class="explain" hidden>
 				<code>withContext</code> lồng nhau hoàn toàn hợp lệ: cái bên trong thấy mình đã ở đúng dispatcher nên gần như
 				không tốn gì, và không có deadlock — <code>withContext</code> chỉ chuyển context, không giữ khoá (câu a sai).
@@ -102,7 +102,7 @@ const vmSnippet = `suspend fun getBookmarks() {
 			<legend>4. <code>RecipeDetails</code> nhận hai tham số id (<code>recipeId</code> và <code>databaseRecipeId</code>): vào từ kết quả tìm kiếm thì gọi mạng, vào từ bookmark thì đọc database. Điều đó minh hoạ lợi ích kiến trúc nào?</legend>
 			<label><input type="radio" name="q4" value="a" /> Rằng một Composable nên nhận càng nhiều tham số càng tốt để linh hoạt</label>
 			<label><input type="radio" name="q4" value="b" /> Rằng đọc database nhanh hơn gọi mạng, nên nên ưu tiên database</label>
-			<label><input type="radio" name="q4" value="c" /> Rằng hai nguồn dữ liệu hoàn toàn khác nhau vẫn dùng chung một đoạn UI: cả hai đường đều kết thúc bằng việc gán vào cùng một state, nên phần vẽ giao diện không cần biết dữ liệu tới từ đâu</label>
+			<label><input type="radio" name="q4" value="c" /> Rằng hai nguồn dữ liệu khác nhau vẫn dùng chung một UI: cả hai gán vào một state, phần vẽ không cần biết nguồn</label>
 			<label><input type="radio" name="q4" value="d" /> Rằng mỗi nguồn cần một state riêng để UI phân biệt khi vẽ — dùng chung một state thì hai đường sẽ ghi đè lẫn nhau</label>
 			<p class="explain" hidden>
 				Đây là ví dụ cụ thể nhất trong cả Chương 10 cho lợi ích của kiến trúc phân tầng ở Chương 10.1, mục 4. Hai
@@ -167,7 +167,7 @@ const vmSnippet = `suspend fun getBookmarks() {
 			<label><input type="radio" name="q7" value="a" /> Rằng project mẫu bị lỗi build, cần sửa cả 7 chỗ trước khi chạy được</label>
 			<label><input type="radio" name="q7" value="b" /> Rằng phần lý thuyết của Chương 10.1 và 10.2 sai, nên bỏ qua và chỉ đọc code</label>
 			<label><input type="radio" name="q7" value="c" /> Rằng 7 điểm lệch nghĩa là 7 bug chạy sai kết quả — phải sửa hết trước khi dùng code mẫu làm tài liệu</label>
-			<label><input type="radio" name="q7" value="d" /> Rằng phần được giải thích kỹ nhất chưa chắc đã chạy — hãy tìm <em>lời gọi</em> của nó trước khi tin nó hoạt động</label>
+			<label><input type="radio" name="q7" value="d" /> Rằng phần được giải thích kỹ nhất chưa chắc đã chạy — hãy tìm <em>lời gọi</em> của nó trước khi tin</label>
 			<p class="explain" hidden>
 				Không có điểm lệch nào làm project không build (câu a sai) — cả 7 chỗ đều chạy được, đó chính là lý do chúng
 				dễ bị bỏ qua. Và cũng không có điểm nào là bug chạy được sai kết quả (câu c sai): chúng là code chết, dư
@@ -186,7 +186,7 @@ const vmSnippet = `suspend fun getBookmarks() {
 			<legend>8. Bản Room mới đổi <code>fallbackToDestructiveMigration()</code> thành <code>fallbackToDestructiveMigration(dropAllTables = true)</code>, tức bắt buộc phải truyền tham số. Vì sao API lại đổi theo hướng bắt người viết gõ nhiều hơn?</legend>
 			<label><input type="radio" name="q8" value="a" /> Vì bản mới hỗ trợ nhiều loại database nên cần tham số để biết xoá loại nào</label>
 			<label><input type="radio" name="q8" value="b" /> Vì tham số cho phép xoá từng bảng một thay vì xoá toàn bộ — bản cũ xoá sạch quá mức cần kiểm</label>
-			<label><input type="radio" name="q8" value="c" /> Vì hàm này xoá sạch dữ liệu người dùng — tham số buộc người viết <em>nói ra</em> điều mình chấp nhận thay vì bật nhầm</label>
+			<label><input type="radio" name="q8" value="c" /> Vì hàm xoá sạch dữ liệu người dùng — tham số buộc người viết <em>nói rõ</em> điều mình chấp nhận</label>
 			<label><input type="radio" name="q8" value="d" /> Vì bản mới an toàn hơn: Room không còn tự xoá dữ liệu khi thiếu migration — tham số là cách bật lại hành vi cũ</label>
 			<p class="explain" hidden>
 				Chữ <em>destructive</em> nói đúng việc hàm làm: khi số <code>version</code> của database tăng mà không có
