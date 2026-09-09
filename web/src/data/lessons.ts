@@ -59,6 +59,23 @@ import NavigationBackStackTypeSafe from "../components/lessons/NavigationBackSta
 import NavigationBackStackTypeSafeQuiz from "../components/lessons/NavigationBackStackTypeSafeQuiz.astro";
 import DittoOfflineFirstCaseStudy from "../components/lessons/DittoOfflineFirstCaseStudy.astro";
 import DittoOfflineFirstCaseStudyQuiz from "../components/lessons/DittoOfflineFirstCaseStudyQuiz.astro";
+// Workstream F (IMP-051…055): O2–O6 — bài OPTIONAL hoàn toàn mới (no-fabricate, không
+// legacy credit). Mỗi bài có quiz riêng theo chuẩn 8–12 câu.
+import TestingViewModelVaComposeUi from "../components/lessons/TestingViewModelVaComposeUi.astro";
+import TestingViewModelVaComposeUiQuiz from "../components/lessons/TestingViewModelVaComposeUiQuiz.astro";
+import AdaptiveUiTabletFoldable from "../components/lessons/AdaptiveUiTabletFoldable.astro";
+import AdaptiveUiTabletFoldableQuiz from "../components/lessons/AdaptiveUiTabletFoldableQuiz.astro";
+import WorkManagerCongViecNen from "../components/lessons/WorkManagerCongViecNen.astro";
+import WorkManagerCongViecNenQuiz from "../components/lessons/WorkManagerCongViecNenQuiz.astro";
+import RoomMigrationDauTien from "../components/lessons/RoomMigrationDauTien.astro";
+import RoomMigrationDauTienQuiz from "../components/lessons/RoomMigrationDauTienQuiz.astro";
+import CapstoneAppGhiChu from "../components/lessons/CapstoneAppGhiChu.astro";
+import CapstoneAppGhiChuQuiz from "../components/lessons/CapstoneAppGhiChuQuiz.astro";
+// Workstream F (IMP-056…058): AP1–AP3 — PHỤ LỤC tham khảo, KHÔNG quiz (registry cột
+// quiz = "—"). Renderer [slug].astro chấp nhận entry không có Quiz → không fake quiz.
+import GradleNangCaoSigningKeystore from "../components/lessons/GradleNangCaoSigningKeystore.astro";
+import DittoSdkApi from "../components/lessons/DittoSdkApi.astro";
+import BangTraCuuNhanh from "../components/lessons/BangTraCuuNhanh.astro";
 import Ch08CoroutinesVaFlow from "../components/lessons/Ch08CoroutinesVaFlow.astro";
 import Ch08CoroutinesVaFlowQuiz from "../components/lessons/Ch08CoroutinesVaFlowQuiz.astro";
 import Ch08RetrofitMoshiJson from "../components/lessons/Ch08RetrofitMoshiJson.astro";
@@ -85,7 +102,9 @@ import Ch11KeystoreSqlcipherVaMaHoaQuiz from "../components/lessons/Ch11Keystore
 
 interface LessonEntry {
   Lesson: AstroComponentFactory;
-  Quiz: AstroComponentFactory;
+  // AP1–AP3 là reference zero-quiz — Quiz tuỳ chọn (registry §3 cột quiz = "—").
+  // [slug].astro render Lesson-only; stats quizQuestions = 0 là hành vi hợp lệ.
+  Quiz?: AstroComponentFactory;
 }
 
 export const LESSONS: Partial<Record<string, LessonEntry>> = {
@@ -169,6 +188,21 @@ export const LESSONS: Partial<Record<string, LessonEntry>> = {
     Lesson: DittoOfflineFirstCaseStudy,
     Quiz: DittoOfflineFirstCaseStudyQuiz,
   },
+  "testing-viewmodel-va-compose-ui": {
+    Lesson: TestingViewModelVaComposeUi,
+    Quiz: TestingViewModelVaComposeUiQuiz,
+  },
+  "adaptive-ui-tablet-foldable": {
+    Lesson: AdaptiveUiTabletFoldable,
+    Quiz: AdaptiveUiTabletFoldableQuiz,
+  },
+  "workmanager-cong-viec-nen": { Lesson: WorkManagerCongViecNen, Quiz: WorkManagerCongViecNenQuiz },
+  "room-migration-dau-tien": { Lesson: RoomMigrationDauTien, Quiz: RoomMigrationDauTienQuiz },
+  "capstone-app-ghi-chu": { Lesson: CapstoneAppGhiChu, Quiz: CapstoneAppGhiChuQuiz },
+  // Phụ lục: Lesson có, Quiz CỐ Ý không có (reference zero-quiz — registry §3 cột quiz "—").
+  "gradle-nang-cao-signing-keystore": { Lesson: GradleNangCaoSigningKeystore },
+  "ditto-sdk-api": { Lesson: DittoSdkApi },
+  "bang-tra-cuu-nhanh": { Lesson: BangTraCuuNhanh },
   // Giai đoạn 5 (batch Stage 5): Ch08 monolith tách thành W1–W3 theo mốc W1/W2/W3 START/END.
   // Old slug ch08-networking chết trong batch này → redirect 1 đích sang W1 (astro.config.mjs)
   // + SPLIT_MAP replace (progress.ts). Credit ch08 cũ chia cho cả ba bài kế nhiệm trực tiếp

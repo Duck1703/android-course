@@ -1,0 +1,315 @@
+---
+// AP2 — DittoSdkApi.astro — "Ditto SDK API deep-dive" (reference, không quiz).
+// Workstream F / IMP-057 (nội dung harvest từ O1 ledger — docs/drafts/ch07-ownership-ledger.md
+// các dòng đích AP2: #3, #4, #5, #8, #16, #19-part, #20, #26, #29, #30, #31-part).
+//
+// FRAMING (brief §20): project mẫu khóa Ditto 4.5.0 (2023) → HISTORICAL cho cú pháp 4.x;
+// dòng hiện hành 5.x (toạ độ com.ditto:ditto-kotlin, DittoConfig/DittoFactory, DQL) → CURRENT.
+// Mọi claim version đã kiểm 09/09/2026 qua release notes chính thức (O1 #nguon).
+// Trang KHÔNG có quiz (kind=appendix, registry cột quiz = "—").
+import { Code } from "astro:components";
+
+const v4SetupCode = `// PROJECT (sách/2023) — SDK 4.5.0: code lịch sử, đọc được, KHÔNG chép vào app mới
+implementation("live.ditto:ditto:4.5.0")
+
+val androidDependencies = DefaultAndroidDittoDependencies(applicationContext)
+DittoLogger.minimumLogLevel = DittoLogLevel.DEBUG
+ditto = Ditto(
+  androidDependencies,
+  DittoIdentity.OnlinePlayground(androidDependencies, appId, token)
+)
+ditto.startSync()`;
+
+const v5SetupCode = `// CURRENT (2026) — SDK 5.x: toạ độ + khởi tạo hoàn toàn khác
+implementation("com.ditto:ditto-kotlin:5.1.0")
+
+val config = DittoConfig(
+  databaseId = BuildConfig.DITTO_APP_ID,
+  connect = Connect.Server("your-app.cloud.ditto.live")
+  // Connect.SmallPeersOnly → chỉ P2P, không cloud (khi đó ditto.auth == null)
+)
+val ditto = DittoFactory.create(config)
+ditto.auth?.login(BuildConfig.DITTO_TOKEN, DittoAuthenticationProvider.development())
+ditto.startSync()`;
+
+const permissionsCode = `// 4.x (project mẫu):
+val missing = DittoSyncPermissions(this).missingPermissions()   // live.ditto.transports.*
+if (missing.isNotEmpty()) this.requestPermissions(missing, 0)
+// Project mẫu KHÔNG override onRequestPermissionsResult, KHÔNG gọi
+// refreshPermissions() — tài liệu Ditto hiện tại yêu cầu gọi ditto.refreshPermissions()
+// sau khi người dùng cấp quyền, nếu không sync trễ hoặc không bắt đầu.
+
+// 5.x: helper đổi package — com.ditto.kotlin.transports.DittoSyncPermissions`;
+
+const queryBuilderCode = `// LEGACY query builder (4.x — deprecated từ 4.12, dùng trong toàn bộ project mẫu):
+val collection = ditto.store.collection("users")
+val subscription = collection.findAll().subscribe()
+val liveQuery = collection.findAll().observeLocal { docs, _ ->
+  allUsers.value = docs.map { User(it) }
+}
+collection.upsert(mapOf("_id" to id, "firstName" to first))
+val one = ditto.store.collection("rooms").findById(roomId).exec()   // đọc một lần, nullable`;
+
+const dqlCode = `// CURRENT — DQL (giống SQL):
+ditto.sync.registerSubscription("SELECT * FROM users")
+ditto.store.registerObserver("SELECT * FROM users") { result ->
+  allUsers.value = result.items.map { /* tự parse JSON */ }
+}
+ditto.store.execute(
+  "INSERT INTO users DOCUMENTS (:doc) ON ID CONFLICT DO UPDATE",
+  mapOf("doc" to mapOf("_id" to id, "firstName" to first))
+)
+// SELECT * FROM messages ORDER BY createdOn ASC`;
+---
+
+<article class="lesson">
+	<div class="callout note">
+		<p>
+			<strong>Trang tham chiếu (Phụ lục) — không có quiz.</strong> Kế hoạch API của SDK Ditto gắn với
+			case study ở <a href="/chapters/ditto-offline-first-case-study/">O1</a>. Project mẫu khóa bản
+			<strong>4.5.0 (2023)</strong> — mọi cú pháp 4.x dưới đây là <em>code lịch sử</em>: đọc được project,
+			không chép vào app mới. Dòng hiện hành là <strong>5.x</strong>. Concept (sync engine, subscription
+			vs live query) nằm ở O1, không lặp lại ở đây.
+		</p>
+	</div>
+
+	<div class="callout goals">
+		<p><strong>Trang này giúp bạn:</strong></p>
+		<ul>
+			<li>Đọc và gỡ lỗi project Kodeco Chat (4.5.0) đúng ngữ cảnh — mỗi khối API 4.x có bản tương ứng hiện hành để đối chiếu.</li>
+			<li>Nắm bảng chuyển đổi 4.x → 5.x: toạ độ, khởi tạo, identity, permission helper, foreground service.</li>
+			<li>Hiểu DQL — ngôn ngữ truy vấn hiện hành thay cho legacy query builder, cùng ba cái bẫy khi chuyển.</li>
+			<li>Tra cứu troubleshooting: bảng triệu chứng/nguyên nhân khi "app không sync".</li>
+		</ul>
+	</div>
+
+	<h2 id="identity">1. Đăng ký app: App ID + Playground Token</h2>
+
+	<table class="api">
+		<thead>
+			<tr><th>Chuỗi</th><th>Là gì</th><th>Dùng ở đâu (4.x)</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td><code>App ID</code></td>
+				<td>Định danh app trong hệ Ditto. Hai thiết bị chỉ sync khi cùng App ID.</td>
+				<td><code>BuildConfig.DITTO_APP_ID</code></td>
+			</tr>
+			<tr>
+				<td><code>Playground Token</code></td>
+				<td>Chìa khoá xác thực kiểu "sân chơi": bỏ qua permission/identity thật để học nhanh.</td>
+				<td><code>BuildConfig.DITTO_TOKEN</code></td>
+			</tr>
+		</tbody>
+	</table>
+
+	<div class="callout diff">
+		<p>
+			<strong>"Playground" nghĩa là gì.</strong> Chế độ này cho <em>bất kỳ ai</em> có App ID + token đọc và
+			ghi <em>mọi</em> dữ liệu — không phân quyền, không xác thực người dùng thật. Chỉ dùng cho app học;
+			app production phải dùng identity kiểu <code>OnlineWithAuthentication</code> (v4) hoặc provider auth
+			thật (v5). Project mẫu không nói rõ điểm này.
+		</p>
+	</div>
+
+	<h2 id="setup">2. Khởi tạo: 4.x (project) vs 5.x (hiện hành)</h2>
+
+	<Code code={v4SetupCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Đọc từng mảnh của bản 4.x (để đối chiếu khi đọc project):
+	</p>
+
+	<ul>
+		<li><code>DefaultAndroidDittoDependencies(applicationContext)</code> — phần đặc thù nền tảng gói vào
+		một object "dependencies". Truyền <code>applicationContext</code> <strong>chứ không phải
+		<code>this</code></strong> — Ditto sống lâu hơn Activity, giữ Activity là memory leak.</li>
+		<li><code>DittoIdentity.OnlinePlayground(...)</code> — danh tính. <code>androidDependencies</code>
+		được truyền <em>hai lần</em> (cho Ditto và cho Identity) — hơi lặp, bản 5.x đã bỏ kiểu này.</li>
+		<li><code>ditto.startSync()</code> — trước dòng này, Ditto chỉ là database cục bộ; sau dòng này engine
+		bắt đầu quảng bá và dò peer.</li>
+	</ul>
+
+	<Code code={v5SetupCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Đáng chú ý ở 5.x: <code>ditto.auth</code> là <strong>nullable</strong> — cấu hình
+		<code>Connect.SmallPeersOnly</code> (chỉ P2P, không cloud) thì không có đối tượng auth nào. Kiểu dữ
+		liệu phản ánh đúng thực tế: chỉ P2P thì không cần đăng nhập.
+	</p>
+
+	<h3>2.1. Bảng đối chiếu 4.x → 5.x</h3>
+
+	<table class="cmp">
+		<thead>
+			<tr><th>Khái niệm</th><th>v4.5 (project mẫu — HISTORICAL)</th><th>v5.x (CURRENT)</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>Toạ độ Maven</td><td><code>live.ditto:ditto</code></td><td><code>com.ditto:ditto-kotlin</code> — đổi cả <code>module</code> trong toml, không chỉ số version</td></tr>
+			<tr><td>Tạo instance</td><td><code>Ditto(dependencies, identity)</code></td><td><code>DittoFactory.create(DittoConfig(...))</code></td></tr>
+			<tr><td>Định danh app</td><td><code>appId</code> trong <code>DittoIdentity.OnlinePlayground</code></td><td><code>databaseId</code> trong <code>DittoConfig</code></td></tr>
+			<tr><td>Chọn kết nối</td><td>Ngầm theo identity</td><td>Tường minh: <code>Connect.Server(url)</code> / <code>Connect.SmallPeersOnly</code></td></tr>
+			<tr><td>Xác thực</td><td>token nằm trong identity</td><td><code>ditto.auth?.login(token, provider)</code></td></tr>
+			<tr><td>Dependencies object</td><td><code>DefaultAndroidDittoDependencies(context)</code>, truyền 2 lần</td><td>Không còn</td></tr>
+			<tr><td>Permission helper</td><td><code>live.ditto.transports.DittoSyncPermissions</code></td><td><code>com.ditto.kotlin.transports.DittoSyncPermissions</code></td></tr>
+			<tr><td>Sau khi cấp quyền</td><td>Project không gọi gì (thiếu sót)</td><td><code>ditto.refreshPermissions()</code> — bắt buộc gọi</td></tr>
+			<tr><td>Yêu cầu tối thiểu</td><td>minSdk 30, compileSdk 34, AGP 8.2.0</td><td>minSdk 24, compileSdk 36, <strong>JDK 17</strong></td></tr>
+			<tr><td>Sync khi background</td><td>Không đề cập</td><td>Cần <code>DefaultDittoForegroundService</code> + <code>FOREGROUND_SERVICE</code>, <code>FOREGROUND_SERVICE_CONNECTED_DEVICE</code>, <code>POST_NOTIFICATIONS</code></td></tr>
+		</tbody>
+	</table>
+
+	<h2 id="permissions">3. Quyền: helper tự trả danh sách thiếu</h2>
+
+	<Code code={permissionsCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Helper này thể hiện một kiểu API tốt: thư viện <em>biết nhu cầu của chính nó</em> (danh sách permission
+		đổi theo API level), trả đúng phần <strong>còn thiếu trên thiết bị này</strong>, không đẩy việc đoán
+		<code>Build.VERSION.SDK_INT</code> cho người dùng thư viện. Khai báo manifest thì SDK đã tự khai qua
+		manifest merger — app không cần thêm thẻ <code>&lt;uses-permission&gt;</code> nào.
+	</p>
+
+	<h2 id="queries">4. Truy vấn: legacy query builder → DQL</h2>
+
+	<Code code={queryBuilderCode} lang="kotlin" theme="github-dark" />
+
+	<p>
+		Bốn mảnh của query builder cần hiểu để đọc project:
+	</p>
+
+	<ul>
+		<li><code>.findAll()</code> <strong>không phải lệnh đọc</strong> — nó là <em>mô tả truy vấn</em>; nối
+		<code>.subscribe()</code> (đăng ký nhận từ mesh), <code>.observeLocal {}</code> (quan sát local), hoặc
+		<code>.exec()</code> (đọc một lần, trả nullable).</li>
+		<li><code>observeLocal</code> nhận <strong>toàn bộ</strong> danh sách hiện tại mỗi lần reo (không phải
+		phần delta); tham số thứ hai là chi tiết thay đổi — project bỏ bằng <code>_</code>.</li>
+		<li><code>.sort(createdOnKey, DittoSortDirection.Ascending)</code> — sắp xếp cũ-nhất-trước; kết hợp với
+		<code>LazyColumn(reverseLayout = true)</code> của app tạo ra cặp <code>.asReversed()</code> mà O1 nhắc.</li>
+		<li><code>.upsert(map)</code> — update+insert, ghi vào database <em>local</em> và trả về ngay (local-first).</li>
+		<li>Không ghi <code>_id</code> trong map khi upsert → Ditto tự sinh; id do client tạo bị <em>vứt đi</em>
+		(trong <code>createMessageForRoom</code> của project — biết để dùng khi cần "sửa/xoá tin vừa gửi").</li>
+	</ul>
+
+	<p>
+		Từ SDK <strong>4.12</strong>, toàn bộ query builder bị đánh dấu deprecated và thay bằng
+		<strong>DQL</strong> — ngôn ngữ kiểu SQL:
+	</p>
+
+	<Code code={dqlCode} lang="kotlin" theme="github-dark" />
+
+	<table class="cmp">
+		<thead>
+			<tr><th>Việc cần làm</th><th>Query builder (project mẫu)</th><th>DQL (hiện hành)</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>Đăng ký nhận dữ liệu từ mesh</td><td><code>collection(k).findAll().subscribe()</code></td><td><code>ditto.sync.registerSubscription("SELECT * FROM k")</code></td></tr>
+			<tr><td>Theo dõi thay đổi cục bộ</td><td><code>.observeLocal &#123; docs, _ -> &#125;</code></td><td><code>ditto.store.registerObserver("SELECT * FROM k") &#123; result -> result.items &#125;</code></td></tr>
+			<tr><td>Ghi / cập nhật</td><td><code>collection.upsert(map)</code></td><td><code>ditto.store.execute("INSERT INTO k DOCUMENTS (:doc) ON ID CONFLICT DO UPDATE", ...)</code></td></tr>
+			<tr><td>Sắp xếp</td><td><code>.sort(key, Ascending)</code></td><td><code>ORDER BY ... ASC</code> trong câu query</td></tr>
+			<tr><td>Đọc một document</td><td><code>.findById(id).exec()</code></td><td><code>SELECT * FROM k WHERE _id = 'abc'</code></td></tr>
+		</tbody>
+	</table>
+
+	<div class="callout diff">
+		<p>
+			<strong>Ba cái bẫy khi chuyển sang DQL:</strong>
+		</p>
+		<ul>
+			<li>DQL dùng <strong>một</strong> dấu <code>=</code> để so sánh (không phải <code>==</code>); chuỗi
+			trong <strong>dấu nháy đơn</strong> <code>'abc'</code> — nháy kép dành cho tên field có ký tự đặc biệt.</li>
+			<li>DQL <strong>không tự map document sang model</strong>: trả về <code>QueryResultItem</code> (JSON),
+			phải tự parse — thường bằng kotlinx.serialization. Các constructor phụ
+			<code>Message(document: DittoDocument)</code> của project phải viết lại.</li>
+			<li>Vẫn phải <strong>giữ tham chiếu</strong> tới subscription và observer — cái bẫy "quên giữ → im
+			lặng ngừng nhận dữ liệu" (O1 mục 5) không mất đi khi đổi cú pháp.</li>
+		</ul>
+	</div>
+
+	<h2 id="models">5. Đọc model của project: secondary constructor từ document</h2>
+
+	<ul>
+		<li><code>constructor(document: DittoDocument) : this(...)</code> — constructor phụ bắt buộc gọi
+		constructor chính; chỉ rút field khỏi document rồi chuyền vào.</li>
+		<li><code>document[dbIdKey].stringValue</code> — accessor ép kiểu (<code>.stringValue</code>,
+		<code>.booleanValue</code>, <code>.intValue</code>, <code>.attachmentToken</code>...)
+		<strong>không ném exception khi key không tồn tại</strong> — trả giá trị mặc định (chuỗi rỗng, false).
+		Gõ sai tên key = dữ liệu rỗng im lặng. Đây là lý do file <code>Constants.kt</code> tồn tại (O1 mục 4).</li>
+		<li><code>dbIdKey = "_id"</code> — dấu gạch dưới đầu là quy ước "field hệ thống" (giống MongoDB), khoá
+		chính của document.</li>
+	</ul>
+
+	<h2 id="date-extensions">6. Đọc code cũ: extension tự gọi chính nó (kotlinx-datetime)</h2>
+
+	<p>
+		File <code>DateExtensions.kt</code> của project có một extension
+		<code>fun String.toInstant()</code> mà thân hàm gọi <code>this.toInstant()</code> — trông như đệ quy
+		vô hạn. App chạy được vì quy tắc phân giải overload của Kotlin xét <strong>extension import tường minh
+		trước extension cùng package</strong>: <code>import kotlinx.datetime.toInstant</code> (bản 0.4.0 của
+		project có <code>String.toInstant()</code>) thắng, nên lời gọi đi tới hàm thư viện.
+	</p>
+
+	<div class="callout diff">
+		<p>
+			<strong>Dù giải thích được, đây là code nên sửa:</strong> (1) vô dụng — chỉ chuyển tiếp sang hàm thư
+			viện; (2) cực kỳ dễ vỡ — ai xoá dòng import ("remove unused import") là extension tự gọi chính nó →
+			<code>StackOverflowError</code> ở mọi tin nhắn; (3) <strong>không compile được với thư viện hiện
+			nay</strong> — kotlinx-datetime 0.8.0 đã bỏ hoàn toàn extension trên <code>String</code> (changelog
+			không nhắc — breaking change im lặng). Thay bằng <code>Instant.parse(this)</code>.
+		</p>
+	</div>
+
+	<h2 id="troubleshooting">7. Troubleshooting: "app không sync"</h2>
+
+	<table class="api">
+		<thead>
+			<tr><th>Triệu chứng</th><th>Nguyên nhân thường gặp</th></tr>
+		</thead>
+		<tbody>
+			<tr><td>Gradle lỗi ngay khi mở project, chưa compile gì</td><td>Thiếu <code>keys.properties</code> ở gốc project (cả project Ch07 lẫn Ch04 đều đọc file này khi configure)</td></tr>
+			<tr><td>"Unresolved reference: BuildConfig"</td><td>Thiếu <code>buildConfig = true</code> trong <code>buildFeatures</code> (bắt buộc từ AGP 8), hoặc cần Clean Project</td></tr>
+			<tr><td>Build debug được, release lỗi</td><td>Khai <code>buildConfigField</code> ở <code>debug</code> mà quên <code>release</code> — mỗi build type sinh BuildConfig riêng</td></tr>
+			<tr><td>Crash <code>UninitializedPropertyAccessException</code></td><td>Có đường code đọc <code>ditto</code> (biến toàn cục lateinit) trước <code>setupDitto()</code> — chuyển khởi tạo lên tầng Application (O1 mục 5.1)</td></tr>
+			<tr><td>App chạy, ghi được, máy kia không thấy gì</td><td>Thiếu <code>startSync()</code>; quyền Bluetooth chưa cấp / thiếu <code>refreshPermissions()</code>; hai máy khác App ID; hoặc chỉ có <em>một</em> máy (cần ≥2 peer)</td></tr>
+			<tr><td>Thấy tin của mình, không thấy của người khác</td><td>Có live query nhưng thiếu <code>.subscribe()</code>, hoặc subscription bị GC vì không giữ tham chiếu (O1 mục 5.3)</td></tr>
+			<tr><td>Dữ liệu về nhưng UI không đổi</td><td>Thiếu <code>observeLocal</code>; hoặc hai instance của Repository (singleton bị tạo 2 lần); hoặc dùng <code>Flow</code> thường thay <code>StateFlow</code></td></tr>
+			<tr><td>Tin nhắn hiện đúng nhưng tên người gửi rỗng</td><td>Document user chưa sync về (bình thường trong P2P, sẽ tự đúng); hoặc gõ sai tên key → <code>.stringValue</code> trả chuỗi rỗng</td></tr>
+			<tr><td>Tin nhắn ngược thứ tự</td><td>Bỏ <code>.asReversed()</code> mà vẫn để <code>reverseLayout = true</code> (hoặc ngược lại)</td></tr>
+			<tr><td>Bấm gửi ảnh, không có gì xảy ra</td><td>Project mẫu lặng lẽ vứt tin nhắn có ảnh (<code>if (message.photoUri == null)</code> trong ViewModel) — thử thách số 1 của O1</td></tr>
+			<tr><td><code>StackOverflowError</code> mỗi khi có tin nhắn</td><td>Import <code>kotlinx.datetime.toInstant</code> trong <code>DateExtensions.kt</code> đã bị xoá — mục 6</td></tr>
+			<tr><td>Tin nhắn hai phòng lẫn vào nhau</td><td>Gọi <code>getAllMessagesForRoom()</code> cho nhiều phòng — getter có tác dụng phụ ghi đè cùng một StateFlow (O1 mục 5.2)</td></tr>
+		</tbody>
+	</table>
+
+	<h2 id="drift">8. Drift nền tảng đi kèm (project Ch07, bộ số 2023)</h2>
+
+	<ul>
+		<li><strong>AGP 8.2.0 → 9.x:</strong> từ AGP 9, hỗ trợ Kotlin tích hợp sẵn — không cần plugin
+		<code>org.jetbrains.kotlin.android</code> riêng.</li>
+		<li><strong>Kotlin 1.9.10 → 2.x:</strong> Compose compiler thành plugin Kotlin — block
+		<code>composeOptions &#123; kotlinCompilerExtensionVersion = ... &#125;</code> không còn dùng, thay bằng
+		<code>org.jetbrains.kotlin.plugin.compose</code>. Đây là chỗ mọi project cũ vướng khi nâng Kotlin
+		(bảng Ch06 của AP3 cũng ghi cùng dòng này).</li>
+		<li><strong>kotlinx-datetime 0.4.0 → 0.8.0:</strong> mục 6.</li>
+	</ul>
+
+	<p class="src">
+		<strong>Tài liệu chính thức:</strong> Ditto release notes Kotlin
+		(<a href="https://docs.ditto.live/sdk/latest/release-notes/kotlin" target="_blank" rel="noopener">docs.ditto.live/sdk/latest/release-notes/kotlin</a>
+		— kiểm 09/09/2026: 5.1.0 (18/08/2026); 5.0.0 (05/05/2026); deprecation query builder từ 4.12) ·
+		Ditto docs — <em>DQL</em>, <em>Foreground service</em>, <em>Authentication modes</em> · Kotlin spec —
+		<a href="https://kotlinlang.org/spec/overload-resolution.html" target="_blank" rel="noopener">overload resolution</a>.
+	</p>
+	<p class="src">
+		<strong>Code thật (project mẫu Ch07, bộ số SDK 4.5.0):</strong>
+		<code>aaf-materials/07-advanced-architecture/projects/final/</code> — <code>gradle/libs.versions.toml</code>
+		(dòng 7, 53), <code>app/build.gradle.kts</code> (43–45, 65–88, 127), <code>MainActivity.kt</code>
+		(60–103), <code>DittoHandler.kt</code> (39–43), <code>data/repository/RepositoryImpl.kt</code> (144–325),
+		<code>data/model/DateExtensions.kt</code> (37–50), <code>data/Constants.kt</code> (44–59).
+	</p>
+	<p class="src">
+		<strong>Liên quan trong khoá:</strong> <a href="/chapters/ditto-offline-first-case-study/">O1</a> —
+		concept sync engine/subscription/live-query, đọc phê phán · <a href="/chapters/bang-tra-cuu-nhanh/">AP3</a>
+		— bảng "giáo trình nói vs code thật" 15 điểm của Ch07 · W3 — khuôn keys.properties → BuildConfig ·
+		A14/X2 — phân biệt keystore ký app vs Android Keystore.
+	</p>
+</article>

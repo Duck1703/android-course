@@ -189,6 +189,18 @@ const FILE_KEY_PIN: Record<string, string> = {
   // O1 không va chạm bucket nào, NHƯNG fileKeyOf phải trả về CÙNG key với vòng quét file
   // (slug-bỏ-gạch) → ghim tường minh như S1/S5/N1/N2.
   "ditto-offline-first-case-study": "dittoofflinefirstcasestudy",
+  // Workstream F (IMP-051…055): O2–O6 — bài NEW không theo quy uoc ChNN (ten kebab→Pascal
+  // thuan, nhu F1/F2/S1/S5/N1/N2/O1) — key = slug bo gach, cung co che.
+  "testing-viewmodel-va-compose-ui": "testingviewmodelvacomposeui",
+  "adaptive-ui-tablet-foldable": "adaptiveuitabletfoldable",
+  "workmanager-cong-viec-nen": "workmanagercongviecnen",
+  "room-migration-dau-tien": "roommigrationdautien",
+  "capstone-app-ghi-chu": "capstoneappghichu",
+  // Workstream F (IMP-056…058): AP1–AP3 — reference zero-quiz, cung khong theo quy uoc ChNN.
+  // AP1/AP2 giam aafFolder (04/07) nhung FILE Khong mang so chuong nen van vao nhánh foundationKey.
+  "gradle-nang-cao-signing-keystore": "gradlenangcaosigningkeystore",
+  "ditto-sdk-api": "dittosdkapi",
+  "bang-tra-cuu-nhanh": "bangtracuunhanh",
 };
 // Bảng ngược cho vòng quét file: "Ch02DocProjectMau" → "02_2" v.v. (tên file
 // không đuôi, cả lesson lẫn quiz).

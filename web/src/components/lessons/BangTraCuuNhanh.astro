@@ -1,0 +1,214 @@
+---
+// AP3 — BangTraCuuNhanh.astro — "Bảng tra cứu nhanh" (reference, không quiz).
+// Workstream F / IMP-058. Nguồn: docs/drafts/ap3-version-drift.md (Ch06/08/09/11 — giữ
+// nguyên giá trị, chuẩn hoá) + mục Ch07 MỚI harvested từ bảng 15 điểm của monolith
+// (ledger #28) + bảng commands + glossary (spec §6: versions, commands, glossary).
+//
+// Quy tắc AP3 (brief §21/§22): trang này sở hữu bảng drift dài; các bài lõi giữ đủ
+// ngữ cảnh dạy concept, chỉ trỏ về đây. Không nhân đôi bảng trong core; thêm mục
+// mới theo chương, không sửa mục của chương khác.
+// Trước đó ghi chú khoá học có mốc "coroutines 1.11.x (08/2026)" — giữ đúng mốc.
+import { Code } from "astro:components";
+
+const composeOptionsCode = `// Khối Gradle bị ảnh hưởng (Ch06) — giữ nguyên văn để đối chiếu:
+composeOptions {
+  kotlinCompilerExtensionVersion = "1.5.3"
+}
+// Từ Kotlin 2.0: thay bằng plugin org.jetbrains.kotlin.plugin.compose`;
+---
+
+<article class="lesson">
+	<div class="callout note">
+		<p>
+			<strong>Trang tham chiếu (Phụ lục) — không có quiz.</strong> Bảng tra cứu nhanh của toàn khoá:
+			lệch phiên bản (giáo trình 2023 → hiện hành), lệnh thường gặp, glossary. Các bài lõi trỏ về đây
+			cho phần drift dài; nội dung đầy đủ của từng điểm nằm ở mục được trỏ trong bài, bảng này chỉ
+			tổng hợp để tra.
+		</p>
+	</div>
+
+	<nav class="toc-inline" aria-label="Mục lục trang">
+		<ul>
+			<li><a href="#ch06">Ch06 — State, ViewModel & StateFlow</a></li>
+			<li><a href="#ch08">Ch08 — Networking: Retrofit, Moshi/KSP & Coil</a></li>
+			<li><a href="#ch09">Ch09 — Data Store</a></li>
+			<li><a href="#ch11">Ch11 — Files/SAF/Backup & mã hoá</a></li>
+			<li><a href="#ch07">Ch07 — Ditto & offline-first (project Kodeco Chat)</a></li>
+			<li><a href="#commands">Lệnh thường gặp</a></li>
+			<li><a href="#glossary">Glossary</a></li>
+		</ul>
+	</nav>
+
+	<h2 id="ch06">Ch06 — State, ViewModel & StateFlow</h2>
+	<p class="src"><strong>Số liệu chốt:</strong> 2026-08-28 · <strong>Bài trỏ về đây:</strong> S4 (khối #cam-bay)</p>
+	<table class="api">
+		<thead><tr><th>Trong giáo trình gốc / code mẫu</th><th>Hiện tại</th><th>Nên theo cái nào</th></tr></thead>
+		<tbody>
+			<tr><td>Tên gọi "Android Architecture Components"</td><td>Đã gộp vào Jetpack; "Guide to app architecture" (UI/Domain/Data)</td><td>Tra theo tên mới; kỹ thuật không đổi</td></tr>
+			<tr><td><code>composeOptions &#123; kotlinCompilerExtensionVersion &#125;</code></td><td>Từ Kotlin 2.0: plugin <code>org.jetbrains.kotlin.plugin.compose</code></td><td>Plugin mới; project mới không còn khối composeOptions</td></tr>
+			<tr><td><code>autoCorrect</code> trong <code>KeyboardOptions</code></td><td>Deprecated, đổi tên <code>autoCorrectEnabled</code></td><td>Code cũ vẫn build, chỉ bị gạch trong IDE</td></tr>
+			<tr><td><code>lifecycle-runtime-compose</code> 2.6.2</td><td>2.9.x</td><td>Nâng số trong <code>[versions]</code>; artifact không đổi</td></tr>
+			<tr><td><code>collectAsStateWithLifecycle()</code></td><td>Vẫn là API khuyến nghị</td><td>Không cần làm gì</td></tr>
+			<tr><td><code>kotlinx.datetime.Instant</code></td><td>Từ 0.7 chuyển sang <code>kotlin.time.Instant</code> của stdlib</td><td>Nâng thư viện thì sửa import; logic không đổi</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Lệch giáo trình ↔ project (4.2): comment "chapter 8" lệch số (Data Store là chapter 9) ·
+		<code>KodecochatTheme</code> (thường `c`) vs <code>KodecoChatTheme</code> · điểm nghiêm trọng nhất:
+		văn bản in <code>authorId = content.user.id</code> nhưng project đúng là <code>authorId = authorId</code>
+		— làm theo văn bản thì mọi tin nhắn hiện như của bạn. Bản so từng file <code>starter ↔ final</code>
+		đầy đủ: draft gốc (docs/drafts/ap3-version-drift.md, mục Ch06 4–5).
+	</p>
+
+	<h2 id="ch08">Ch08 — Networking: Retrofit, Moshi/KSP & Coil</h2>
+	<p class="src"><strong>Số liệu chốt:</strong> 2026-09-06 · <strong>Bài trỏ về đây:</strong> W1/W2/W3</p>
+	<table class="api">
+		<thead><tr><th>Trong giáo trình gốc / code mẫu</th><th>Hiện tại</th><th>Nên theo cái nào</th></tr></thead>
+		<tbody>
+			<tr><td><code>kotlinx-coroutines</code> 1.7.2</td><td><strong>1.11.x</strong> (08/2026)</td><td>Không bắt buộc; API bài dùng không đổi</td></tr>
+			<tr><td><code>retrofit</code> 2.9.0</td><td>Nhánh 2.x kết ở <strong>2.12.0</strong>; bản ổn định mới <strong>3.0.0</strong> (05/2025) — không đổi API (vẫn <code>retrofit2</code>), kéo OkHttp 4.12</td><td>Nên lên 2.12.0 nếu tiện; <code>@GET/@Query/@Path</code> + suspend giữ nguyên</td></tr>
+			<tr><td><code>moshi</code> + codegen 1.15.0</td><td><strong>1.15.2</strong> (12/2024)</td><td>Nên đổi; annotation không đổi</td></tr>
+			<tr><td><code>coil-compose</code> 2.4.0</td><td>Coil 3 (<code>io.coil-kt.coil3</code>, ổn định <strong>3.6.x</strong>): đổi namespace, tách <code>coil-network-okhttp</code></td><td><code>AsyncImage</code> dùng như nhau; project mới theo Coil 3</td></tr>
+			<tr><td><code>timber</code> 5.0.1</td><td>5.0.1 — vẫn mới nhất (08/2021)</td><td>Không</td></tr>
+			<tr><td><code>kotlin</code> 1.9.10</td><td>2.4.x; compose compiler đi kèm plugin compose</td><td>Project mới: plugin compose</td></tr>
+			<tr><td><code>agp</code> 8.2.0</td><td>Dòng 8.x tiếp tục; AGP phải khớp Studio</td><td>AGP Upgrade Assistant tự nâng khi báo</td></tr>
+			<tr><td>Spoonacular free tier (ảnh chụp đăng ký)</td><td>Chính sách dịch vụ đổi thường xuyên hơn thư viện</td><td>Đăng ký theo ý nghĩa từng bước, không theo hình</td></tr>
+		</tbody>
+	</table>
+	<p>
+		Navigation trong project 08 khai 2.7.2 — các mốc Navigation (2.8.0 = ngưỡng type-safe; Navigation 3)
+		details ở N1/N2; "8 điểm lệch" của Ch08 đã sống ở đúng vị trí W1/W2/W3 — bảng ở đây chỉ là bản đồ
+		tra (draft gốc mục Ch08.3).
+	</p>
+
+	<h2 id="ch09">Ch09 — Data Store</h2>
+	<p class="src"><strong>Số liệu chốt:</strong> 2026-09-06 · <strong>Bài trỏ về đây:</strong> D1/D2</p>
+	<table class="api">
+		<thead><tr><th>Trong giáo trình gốc / code mẫu</th><th>Hiện tại</th><th>Nên theo cái nào</th></tr></thead>
+		<tbody>
+			<tr><td><code>datastore-preferences</code> 1.0.0</td><td>Nhánh 1.1.x rồi <strong>1.2.x</strong> — ổn định mới <strong>1.2.1</strong> (03/2026); 1.3.0 còn alpha</td><td>Nên 1.2.1 cho project mới; API (<code>preferencesDataStore</code>, <code>edit</code>, <code>data</code>) không đổi</td></tr>
+			<tr><td>Stack chung (coroutines/Kotlin/AGP/timber)</td><td>Xem mục Ch08</td><td>Không nhân đôi ở đây</td></tr>
+		</tbody>
+	</table>
+	<p>
+		"SharedPreferences đã deprecated?" — <strong>không</strong>: class của SDK chưa bị đánh dấu
+		<code>@Deprecated</code>; giáo trình (2023) nói chung chung. Google <em>khuyến nghị</em> DataStore cho
+		code mới. Chi tiết 7 điểm lệch + 13 TODO <code>// TODO: Add Prefs</code> (đủ chính tả lệch
+		<code>PRefs</code>) — draft gốc mục Ch09.
+	</p>
+
+	<h2 id="ch11">Ch11 — Files/SAF/Backup & mã hoá</h2>
+	<p class="src"><strong>Số liệu chốt:</strong> 2026-09-06 · <strong>Bài trỏ về đây:</strong> X1 (mục 8.5), X2 (mục 16/17)</p>
+	<table class="api">
+		<thead><tr><th>Trong giáo trình gốc / code mẫu</th><th>Hiện tại</th><th>Nên theo cái nào</th></tr></thead>
+		<tbody>
+			<tr><td><code>androidx.security:security-crypto</code> 1.0.0</td><td><strong>1.1.0 stable (30/07/2025)</strong> — toàn bộ API deprecated ở chính bản stable này; AndroidX: "no subsequent releases"</td><td><strong>HISTORICAL.</strong> Đọc được code cũ; không dùng cho app mới; DataStore không phải bản thay ESP về mã hoá</td></tr>
+			<tr><td><code>MasterKeys.getOrCreate(AES256_GCM_SPEC)</code></td><td>Deprecated trước cả khi sách ra → <code>MasterKey.Builder</code> → nay cả <code>MasterKey</code> deprecated</td><td>Keystore trực tiếp: <code>KeyGenParameterSpec.Builder</code> + <code>KeyGenerator</code> với AndroidKeyStore</td></tr>
+			<tr><td><code>net.zetetic:android-database-sqlcipher</code> 4.4.0</td><td><strong>EOL</strong> (Zetetic khuyến nghị chuyển từ 31/08/2023); kế thừa <code>net.zetetic:sqlcipher-android</code>, mới nhất <strong>4.18.0</strong> (18/08/2026)</td><td>Project mới dùng sqlcipher-android: package <code>net.zetetic.database.sqlcipher</code>, <code>SupportOpenHelperFactory</code> thay <code>SupportFactory</code>, <strong>tự gọi <code>System.loadLibrary("sqlcipher")</code></strong> (bỏ <code>loadLibs</code>), androidx.sqlite 2.7.0, minSdk 23</td></tr>
+			<tr><td>Lý do đổi SQLCipher artifact</td><td>Yêu cầu 16KB page size của Google Play buộc build lại native lib; <code>loadLibs</code> không tương thích <code>SplitInstallHelper</code></td><td>—</td></tr>
+			<tr><td>Room 2.5.2-kỷ + mã hoá qua <code>openHelperFactory</code></td><td>Room 2.x mới nhất <strong>2.8.4</strong> (19/11/2025) — <code>openHelperFactory</code> vẫn dùng được; 2.7.0 thêm <code>setDriver()</code>+KMP; <strong>Room 3</strong> = <code>androidx.room3:room3-*</code> <strong>3.0.2</strong> (26/08/2026): bỏ SupportSQLite/Cursor, bắt buộc <code>SQLiteDriver</code>, không còn <code>openHelperFactory</code></td><td>Room 2.x: đổi tên class <code>SupportOpenHelperFactory</code> + <code>password.toByteArray(Charsets.UTF_8)</code>. Room 3: <code>SQLCipherDriver</code> qua <code>setDriver()</code> — sqlcipher-android hỗ trợ cả hai từ 4.18.0</td></tr>
+			<tr><td><code>android:fullBackupContent</code></td><td>Chỉ Android ≤ 11 (API 30). 12+ đọc <code>android:dataExtractionRules</code> (sections <code>&lt;cloud-backup&gt;</code>/<code>&lt;device-transfer&gt;</code>/<code>&lt;cross-platform-transfer&gt;</code> từ Android 16)</td><td>Khai cả hai attribute; mỗi section áp đúng kênh; <code>&lt;exclude&gt;</code> thắng <code>&lt;include&gt;</code>; khai include = tắt mặc định "backup tất cả"; cache/code-cache/no-backup loại trừ cứng</td></tr>
+			<tr><td><code>Environment.getExternalStoragePublicDirectory()</code></td><td>Deprecated từ API 29 (Scoped Storage)</td><td><code>getExternalFilesDir()</code> / MediaStore / SAF</td></tr>
+			<tr><td><code>startActivityForResult</code></td><td>Deprecated</td><td>Activity Result API (<code>registerForActivityResult</code> + <code>CreateDocument/OpenDocument/OpenDocumentTree</code>)</td></tr>
+			<tr><td><code>KeyInfo.isInsideSecureHardware()</code></td><td>Sách in <code>isInsideSecurityHardware()</code> — không compile; deprecated ở API 31 thay bằng <code>getSecurityLevel()</code> (API 31+; ≤ 30 dùng hàm cũ). StrongBox: Android 9+, tuỳ thiết bị</td><td>Theo mốc API; kiểm hardware-backed lúc chạy, không giả định</td></tr>
+			<tr><td><code>SpoonacularService.kt</code> placeholder key</td><td>Không đổi trong project</td><td>Khuôn đúng: W3 keys.properties</td></tr>
+		</tbody>
+	</table>
+
+	<h2 id="ch07">Ch07 — Ditto & offline-first (project Kodeco Chat)</h2>
+	<p class="src"><strong>Số liệu chốt:</strong> 2026-09-09 · <strong>Bài trỏ về đây:</strong> O1 (#cam-bay + #nguon), AP2 (mục 8) · Chi tiết API 4.x↔5.x nằm ở <a href="/chapters/ditto-sdk-api/">AP2</a> — bảng này là bản đồ.</p>
+	<p>
+		Bảng 15 điểm "giáo trình nói vs code thật" của Ch07, chuẩn hoá (bản gốc: bài monolith Ch07 mục
+		#bang-khac-biet; hiện sống ở đây theo chính sách AP3):
+	</p>
+	<table class="api">
+		<thead><tr><th>#</th><th>Giáo trình / listing</th><th>Code thật trong <code>final</code></th><th>Nên theo cái nào</th><th>Phân loại</th></tr></thead>
+		<tbody>
+			<tr><td>1</td><td><code>val currentRoom = _currentChatRoom.asStateFlow()</code> (public)</td><td><code>private val currentRoom</code> — MainViewModel.kt:84</td><td><strong>Code thật</strong> — không gì ngoài ViewModel cần đọc</td><td>VALID</td></tr>
+			<tr><td>2</td><td><code>fun updateUserInfo(...)</code> (public)</td><td><code>private fun updateUserInfo</code> — :107</td><td><strong>Code thật</strong> — chỉ init gọi</td><td>VALID</td></tr>
+			<tr><td>3</td><td><code>init</code> lấy tên thiết bị làm tên user</td><td><code>val firstName = "My"</code> che property (102–103 vs 68–69)</td><td><strong>Sửa cả hai</strong> — bỏ <code>val</code> để gán vào property</td><td>BUG/RISK</td></tr>
+			<tr><td>4</td><td>Key Points: Repository giúp app độc lập nguồn dữ liệu</td><td><code>Repository.kt:41 import live.ditto.DittoAttachment</code> — hợp đồng rò rỉ kiểu SDK</td><td><strong>Sửa theo tinh thần sách</strong> — type riêng của app, Impl dịch (O1 mục 5.4)</td><td>VALID ALTERNATIVE</td></tr>
+			<tr><td>5</td><td>KDoc "Data Store in Chapter 8"</td><td>Data Store là chapter 9 (2 chỗ: RepositoryImpl.kt:155, MainViewModel.kt:61)</td><td>Ý đúng, số lệch</td><td>HISTORICAL</td></tr>
+			<tr><td>6</td><td>Không nhắc DateExtensions.kt</td><td><code>fun String.toInstant() = this.toInstant()</code> — chạy nhờ thứ tự phân giải; vỡ nếu xoá import</td><td><strong>Sửa code</strong> — <code>Instant.parse(this)</code> (AP2 mục 6)</td><td>BUG/RISK</td></tr>
+			<tr><td>7</td><td>Không nhắc scope</td><td><code>GlobalScope.launch</code> — RepositoryImpl.kt:139</td><td><strong>Đừng bắt chước</strong> — nhận CoroutineScope qua constructor</td><td>BUG/RISK</td></tr>
+			<tr><td>8</td><td>Không nhắc</td><td>Code chết: <code>addPrivateRoomSubscriptions</code> (243–261), <code>messagesDocs/usersDocs</code>, <code>Message.authorImage</code>, biến cục bộ trong <code>addSubscriptionForRoom</code></td><td>Bỏ qua khi đọc; xoá được nếu tự viết lại</td><td>REDUNDANT</td></tr>
+			<tr><td>9</td><td>"Tạo keys.properties"</td><td>File gitignored, không ship → Gradle lỗi ngay lúc configure</td><td>Tự tạo file trước khi mở project (mục keys.properties của AP1/A14)</td><td>BUG/RISK</td></tr>
+			<tr><td>10</td><td>Không nhắc</td><td><code>createMessageForRoom</code> không ghi <code>_id</code> (Ditto tự sinh) còn <code>addUser</code> có → id do ViewModel sinh bị vứt</td><td>Biết để dùng về sau — cần sửa nếu muốn sửa/xoá tin nhắn</td><td>VALID ALTERNATIVE</td></tr>
+			<tr><td>11</td><td>"code khung cho attachment"</td><td><code>if (message.photoUri == null)</code> — MainViewModel.kt:129 → tin có ảnh bị bỏ, không báo lỗi</td><td>Ít nhất hiện Toast; hoặc làm thử thách 1 của O1</td><td>BUG/RISK</td></tr>
+			<tr><td>12</td><td>Không nhắc manifest</td><td><code>final</code> xoá <code>android:label</code> khỏi &lt;activity&gt; (starter có :52)</td><td>Không quan trọng — thừa hưởng label của &lt;application&gt;</td><td>REDUNDANT</td></tr>
+			<tr><td>13</td><td>Gọi <code>requestPermissions(missing, 0)</code></td><td>Không có <code>onRequestPermissionsResult</code> / <code>refreshPermissions()</code></td><td><strong>Thêm vào</strong> — Ditto hiện tại yêu cầu refreshPermissions() sau khi cấp quyền (AP2 mục 3)</td><td>BUG/RISK</td></tr>
+			<tr><td>14</td><td><code>ditto.startSync()</code></td><td>Không có stopSync()/close()/onDestroy()</td><td>Thêm vào app thật, hoặc chuyển Ditto lên tầng Application</td><td>VALID ALTERNATIVE</td></tr>
+			<tr><td>15</td><td>Không nhắc</td><td>3 file khác nhau chỉ ở newline cuối; UserInput/Conversation/KodecochatIcon bị refactor mà sách không nói</td><td>Không cần lo</td><td>REDUNDANT</td></tr>
+		</tbody>
+	</table>
+
+	<h2 id="commands">Lệnh thường gặp</h2>
+	<table class="api">
+		<thead><tr><th>Mục đích</th><th>Lệnh</th></tr></thead>
+		<tbody>
+			<tr><td>Build/debug từ dòng lệnh</td><td><code>./gradlew assembleDebug</code> · <code>./gradlew installDebug</code></td></tr>
+			<tr><td>Build bản phát hành (AAB/APK)</td><td><code>./gradlew bundleRelease</code> · <code>./gradlew assembleRelease</code></td></tr>
+			<tr><td>Test</td><td><code>./gradlew test</code> (JVM) · <code>./gradlew connectedAndroidTest</code> (instrumented)</td></tr>
+			<tr><td>Dọn dẹp / sync</td><td><code>./gradlew clean</code> — sau khi đổi <code>buildConfigField</code> (BuildConfig là file sinh)</td></tr>
+			<tr><td>Quản lý Gradle wrapper</td><td><code>./gradlew wrapper --gradle-version X.Y</code></td></tr>
+			<tr><td>Gỡ file khỏi git (giữ trên đĩa)</td><td><code>git rm --cached keys.properties</code></td></tr>
+			<tr><td>ADB nhanh</td><td><code>adb devices</code> · <code>adb logcat</code> · <code>adb shell pm clear &lt;package&gt;</code> (xoá data — kiểm migration)</td></tr>
+			<tr><td>Kiểm migration Room thật</td><td>Cài bản cũ → tạo dữ liệu → cài đè bản mới (cùng applicationId) → kiểm dữ liệu còn</td></tr>
+		</tbody>
+	</table>
+
+	<h2 id="glossary">Glossary</h2>
+	<table class="api">
+		<thead><tr><th>Thuật ngữ</th><th>Nghĩa ngắn</th><th>Dạy ở</th></tr></thead>
+		<tbody>
+			<tr><td>Source of truth (nguồn đáng tin)</td><td>Chủ sở hữu duy nhất được sửa một loại dữ liệu; mọi nơi khác quan sát</td><td>S5, R3</td></tr>
+			<tr><td>UDF (unidirectional data flow)</td><td>State đi một chiều xuống UI, sự kiện đi ngược lên</td><td>S3</td></tr>
+			<tr><td>State hoisting</td><td>Đưa state ra composable cha để composable con thành stateless</td><td>S3</td></tr>
+			<tr><td>Cold / hot flow</td><td>Cold: chạy khi có người collect; hot (StateFlow): luôn có giá trị hiện tại, phát lại cho người muộn</td><td>S1, W1</td></tr>
+			<tr><td>combine</td><td>Ghép nhiều flow; chạy lại mỗi khi bất kỳ flow nào phát giá trị</td><td>W1</td></tr>
+			<tr><td>Repository</td><td>Tầng giữa nguồn dữ liệu và app: che nguồn, dịch model, nguồn đáng tin</td><td>S5, R3</td></tr>
+			<tr><td>Entity / DAO / Database</td><td>Ba khối của Room: bảng / API truy vấn / điểm nối DB</td><td>R2</td></tr>
+			<tr><td>Migration (Room)</td><td>Kế hoạch nâng schema N → N+1 trên dữ liệu có thật</td><td>O5</td></tr>
+			<tr><td>Type-safe navigation</td><td>Route là object/data class thay chuỗi — sai kiểu là lỗi compile</td><td>N2</td></tr>
+			<tr><td>Window size class</td><td>Hạng cỡ cửa sổ chuẩn: compact / medium / expanded</td><td>O3</td></tr>
+			<tr><td>WorkManager</td><td>Công việc nền trì hoãn được bảo đảm; tối thiểu định kỳ 15 phút</td><td>O4</td></tr>
+			<tr><td>Offline-first / local-first</td><td>Mỗi thiết bị một bản DB đầy đủ; đọc-ghi cục bộ; sync phía sau</td><td>O1</td></tr>
+			<tr><td>Subscription vs live query (Ditto)</td><td>Đường ống (mesh → local) vs cái chuông (local → UI); cần cả hai</td><td>O1, AP2</td></tr>
+			<tr><td>DQL</td><td>Ngôn ngữ truy vấn kiểu SQL của Ditto (thay query builder 4.x)</td><td>AP2</td></tr>
+			<tr><td>SAF</td><td>Storage Access Framework — người dùng chỉ thay vì app xin quyền</td><td>X1</td></tr>
+			<tr><td>Envelope encryption</td><td>Data key mã hoá dữ liệu; master key trong Keystore mã hoá data key</td><td>X2</td></tr>
+			<tr><td>R8 / minify</td><td>Shrink + obfuscate + optimize cho bản release</td><td>AP1</td></tr>
+			<tr><td>AAB</td><td>App Bundle — "bản gốc" cho Play Store, sinh APK tối ưu theo máy</td><td>AP1</td></tr>
+			<tr><td>HISTORICAL (nhãn của khoá)</td><td>API/cú pháp đọc được trong code cũ, không dùng cho app mới</td><td>X2, toàn khoá</td></tr>
+		</tbody>
+	</table>
+
+	<h2 id="cam-bay">Cạm bẫy khi dùng trang này</h2>
+
+	<div class="callout diff">
+		<p>
+			<strong>Mốc thời gian của số liệu.</strong> Mỗi mục ghi "số liệu chốt" riêng — đọc theo mục tương
+			ứng, không suy chéo giữa các chương (policy Spoonacular đổi nhanh hơn thư viện; Ditto đổi nhanh
+			hơn Room). Mọi mốc cuối cùng được kiểm: 09/09/2026.
+		</p>
+	</div>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
+	<p class="src">
+		<strong>Draft gốc của khoá:</strong> <code>docs/drafts/ap3-version-drift.md</code> — bảng Ch06/08/09/11
+		chuyển ra khỏi bài lõi theo chuẩn COURSE_CONTENT_STANDARD §11 (bài lõi không biến thành trang đính
+		chính); mục Ch07 tổng hợp từ bài monolith Ch07 (bảng 15 điểm) khi REDUCE thành O1.
+	</p>
+	<p class="src">
+		<strong>Tài liệu chính thức (mỗi mục theo số liệu chốt của nó):</strong> developer.android.com —
+		Room (release notes 2.8.4; room3 3.0.2), DataStore 1.2.1, security-crypto 1.1.0 (deprecation),
+		Jetpack Compose (Kotlin 2.0 plugin), Storage/SAF, WorkManager, Navigation ·
+		<code>docs.ditto.live</code> — Kotlin release notes (5.1.0, 18/08/2026) ·
+		<code>zetetic.net</code> — SQLCipher EOL + sqlcipher-android 4.18.0 · Maven Central / Google Maven —
+		artifact versions (truy vấn thủ công, kiểm 09/09/2026).
+	</p>
+	<p class="src">
+		<strong>Liên quan trong khoá:</strong> S2–S4, W1–W3, D1/D2, R1–R4, X1/X2, O1, O5, AP1, AP2 — từng bài
+		trỏ về đây từ khối #cam-bay / #nguon cho phần drift dài.
+	</p>
+</article>

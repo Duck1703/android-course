@@ -271,7 +271,7 @@ const buildSteps = [
 		<code>title</code>/<code>body</code> là nội dung; <code>done</code> phục vụ tick-xong;
 		<code>updatedAt</code> cho thứ tự "mới nhất trước" — mọi quyết định UI sau này (key, sort) đã được
 		chuẩn bị từ đây. Version bắt đầu là <strong>1</strong> với <code>exportSchema = true</code> — đúng
-		khuôn O5 để lần sửa schema đầu tiên không phải bổ hổ.
+		khuôn O5 để lần sửa schema đầu tiên không phải bổ nhào khi đã phát hành.
 	</p>
 
 	<Code code={daoCode} lang="kotlin" theme="github-dark" />
@@ -303,10 +303,10 @@ const buildSteps = [
 	<ul>
 		<li><strong>Một <code>StateFlow&lt;UiState&gt;</code> duy nhất</strong> — đúng khuyến nghị kiến trúc
 		hiện hành: UI không bao giờ thấy trạng thái nửa vời (list mới + query cũ). <code>visible</code> là
-		property tính toán — tìm kiếm chỉ là <em>phun lọc</em> trên state, không thêm nguồn dữ liệu nào.</li>
-		<li><code>_uiState.update { }</code> — cách ghi an toàn luồng: nó nhận state hiện tại rồi copy, không
+		property tính toán — tìm kiếm chỉ là <em>một phép lọc</em> trên state, không thêm nguồn dữ liệu nào.</li>
+		<li><code>_uiState.update &#123; &#125;</code> — cách ghi an toàn luồng: nó nhận state hiện tại rồi copy, không
 		ghi đè mù.</li>
-		<li><code>init { }</code> collect <code>observeNotes()</code> đúng một lần — Room đẩy list mới mỗi
+		<li><code>init &#123; &#125;</code> collect <code>observeNotes()</code> đúng một lần — Room đẩy list mới mỗi
 		khi dữ liệu đổi; ViewModel chỉ <em>đổ vào</em> UiState. Không có hàm "refresh" nào cả — mô hình
 		reactive như O1 đã phân tích.</li>
 	</ul>
@@ -328,7 +328,7 @@ const buildSteps = [
 	<Code code={listScreenCode} lang="kotlin" theme="github-dark" />
 
 	<p>
-		<code>LazyColumn</code> với <code>key = { it.id }</code> (C2) — key giúp Compose nhận ra dòng nào
+		<code>LazyColumn</code> với <code>key = &#123; it.id &#125;</code> (C2) — key giúp Compose nhận ra dòng nào
 		đổi, chứ không vẽ lại cả list. Màn danh sách <em>không biết</em> cách mở chi tiết: nó chỉ gọi
 		callback <code>onNoteOpen(id)</code> — state hoisting (S3) áp cho điều hướng, composable giữ thuần
 		Kotlin/Compose, dễ preview, dễ test.
