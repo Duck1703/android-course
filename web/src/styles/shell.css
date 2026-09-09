@@ -662,3 +662,42 @@ body.rail-open .rail-overlay {
 		border-radius: 0 0 var(--r-md) var(--r-md);
 	}
 }
+
+/* ------------------------------------- IMP-059: Mở rộng / Phụ lục ---------- */
+/* Track optional + appendix: vi nét đứt + nền nhạt — core luôn là đường chính.
+   Không đổi cấu trúc (details/summary/ul), chỉ thêm treatment trực quan. */
+.module-optional {
+	border-style: dashed;
+	border-color: var(--border);
+	background: color-mix(in srgb, var(--surface-2) 40%, var(--surface));
+}
+
+.module-optional > summary:hover {
+	background: color-mix(in srgb, var(--surface-2) 70%, var(--surface));
+}
+
+/* Huy hiệu nhỏ sau số thứ tự của từng bài optional/appendix trong rail */
+.ext-badge {
+	display: inline-block;
+	margin-left: 0.35rem;
+	padding: 0.05rem 0.4rem;
+	border-radius: var(--r-full);
+	border: 1px dashed var(--text-3);
+	color: var(--text-3);
+	font-size: 0.62rem;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+	vertical-align: middle;
+}
+
+.ext-badge.ext-appendix {
+	border-style: solid;
+	border-color: var(--outline-soft);
+	background: var(--surface-2);
+}
+
+.rail nav a[data-slug].active .ext-badge {
+	color: var(--on-primary-container);
+	border-color: var(--on-primary-container);
+}

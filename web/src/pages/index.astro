@@ -83,10 +83,10 @@ const first = ALL_CHAPTERS[0]!;
 						<span class="ms-val" id="ms-done">0</span><span class="ms-lbl">đã học</span>
 					</li>
 					<li>
-						<span class="ms-val" id="ms-left">{ALL_CHAPTERS.length}</span><span class="ms-lbl">còn lại</span>
+						<span class="ms-val" id="ms-left">{ALL_CHAPTERS.filter((c) => c.stageId !== "optional" && c.stageId !== "appendix").length}</span><span class="ms-lbl">còn lại</span>
 					</li>
 					<li>
-						<span class="ms-val">{ALL_CHAPTERS.length}</span><span class="ms-lbl">tổng số phần</span>
+						<span class="ms-val">{ALL_CHAPTERS.filter((c) => c.stageId !== "optional" && c.stageId !== "appendix").length}</span><span class="ms-lbl">tổng số phần</span>
 					</li>
 				</ul>
 			</div>
@@ -135,7 +135,7 @@ const first = ALL_CHAPTERS[0]!;
 							{mod.chapters.map((ch) => {
 								const st = getStats(ch.slug);
 								return (
-									<a class="card" href={`/chapters/${ch.slug}/`} data-slug={ch.slug}>
+									<a class="card" href={`/chapters/${ch.slug}/`} data-slug={ch.slug} data-track={ch.stageId === "optional" ? "optional" : ch.stageId === "appendix" ? "appendix" : "core"}>
 										<div class="card-top">
 											<span class="badge">{chapterLabel(ch)}</span>
 											<h3>{ch.title}</h3>
@@ -185,8 +185,11 @@ const first = ALL_CHAPTERS[0]!;
 	// --- Tom tat tien do (giu nguyen cau chu cu o #progress-summary) ---
 	// Dem theo the .card that su co tren trang, khong dem thang doneSlugs —
 	// tranh truong hop localStorage con slug cu khong con trong khoa hoc.
-	const total = cards.length;
-	const n = [...cards].filter((c) => c.classList.contains("done")).length;
+	// IMP-059 (brief §26/§28): tien do TOAN KHOA o hero + pcard = CORE ONLY;
+	// optional ("Mở rộng") va appendix KHONG đếm. Model B-lite (Workstream G) sẽ thay.
+	const coreCards = [...cards].filter((c) => (c.dataset.track ?? "core") === "core");
+	const total = coreCards.length;
+	const n = coreCards.filter((c) => c.classList.contains("done")).length;
 	const pct = total ? Math.round((n / total) * 100) : 0;
 
 	const summary = document.getElementById("progress-summary");

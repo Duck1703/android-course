@@ -60,7 +60,13 @@ const next = idx >= 0 && idx < ALL_CHAPTERS.length - 1 ? ALL_CHAPTERS[idx + 1] :
 
 			<header class="lesson-head">
 				<div class="lesson-eyebrow">
-					<span class="chip chip-primary">Module {sectionIndex + 1} · {moduleLabel}</span>
+					{chapter.stageId === "optional" && (
+						<span class="chip chip-ext">Mở rộng — không bắt buộc</span>
+					)}
+					{chapter.stageId === "appendix" && (
+						<span class="chip chip-appendix">Phụ lục — tham khảo</span>
+					)}
+					<span class="chip chip-primary">{(chapter.stageId !== "optional" && chapter.stageId !== "appendix") ? `Module ${sectionIndex + 1} · ${moduleLabel}` : moduleLabel || "Khoá học"}</span>
 					<span class="chip chip-plain">Chương {label} · {totalChapters} chương</span>
 					<span class="chip chip-done" id="lesson-status" hidden>
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

@@ -64,6 +64,9 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
     chapters,
     splitNumbers,
     open: stage.kind === "core" ? hasCurrent || currentPath === "/" : hasCurrent,
+    // IMP-059: track "Mở rộng" (optional) va Phụ lục (appendix) — thu tuong minh,
+    // core luon la duong chinh.
+    kind: stage.kind,
   };
 });
 ---
@@ -141,9 +144,9 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 				<ul id="search-results" role="listbox" aria-label="Kết quả tìm kiếm" hidden></ul>
 			</div>
 
-			<div class="topbar-progress" title="Tiến độ toàn khoá">
+			<div class="topbar-progress" title="Tiến độ lõi khoá học (không tính Mở rộng/Phụ lục)">
 				<span class="tp-track" aria-hidden="true"><span class="tp-fill" id="tp-fill"></span></span>
-				<span class="tp-label" id="tp-label">0/{ALL_CHAPTERS.length} phần</span>
+				<span class="tp-label" id="tp-label">0/{ALL_CHAPTERS.filter((c) => c.stageId !== "optional" && c.stageId !== "appendix").length} phần</span>
 			</div>
 
 			<button class="icon-btn" id="theme-toggle" type="button" aria-label="Đổi sáng/tối">
@@ -170,9 +173,9 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 							const { stage, chapters, splitNumbers, open } = group;
 							const slugs = chapters.map((c) => c.slug);
 							return (
-								<details class="module" open={open} data-mod={slugs.join(",")}>
-									<summary>
-										<span class="module-num" aria-hidden="true">{stage.order}</span>
+					<details class:list={["module", { "module-optional": group.kind !== "core" }]} open={open} data-mod={slugs.join(",")}>
+										<summary>
+											<span class="module-num" aria-hidden="true">{stage.order === 9 ? "M" : stage.order === 10 ? "P" : stage.order}</span>
 										<span class="module-meta">
 											<span class="module-title">{stage.label}</span>
 											<span class="module-sub">
@@ -197,9 +200,16 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 														href={`/chapters/${ch.slug}/`}
 														class={currentPath === `/chapters/${ch.slug}/` ? "active" : ""}
 														data-slug={ch.slug}
+														data-track={ch.stageId === "optional" ? "optional" : ch.stageId === "appendix" ? "appendix" : "core"}
 														aria-current={currentPath === `/chapters/${ch.slug}/` ? "page" : undefined}
 													>
 														<span class="num">{chapterLabel(ch)}</span>
+														{ch.stageId === "optional" && (
+															<span class="ext-badge" aria-label="Thuộc track Mở rộng">Mở rộng</span>
+														)}
+														{ch.stageId === "appendix" && (
+															<span class="ext-badge ext-appendix" aria-label="Tài liệu tham khảo">Tham khảo</span>
+														)}
 														{ch.title}
 														<svg class="check" role="img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Đã học">
 															<path d="M4 12.5l5 5L20 6.5"></path>
@@ -227,6 +237,7 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 																		href={href}
 																		class={active ? "active" : ""}
 																		data-slug={sub.slug}
+																		data-track={sub.stageId === "optional" ? "optional" : sub.stageId === "appendix" ? "appendix" : "core"}
 																		aria-current={active ? "page" : undefined}
 																	>
 																		<span class="num">{chapterLabel(sub)}</span>
@@ -303,9 +314,12 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 			a.classList.toggle("done", !!slug && done.has(slug));
 		});
 
-		// Thanh tien do tong o header
-		const total = links.length;
-		const n = [...links].filter((a) => a.classList.contains("done")).length;
+		// Thanh tien do o header = CORE ONLY (IMP-059 / brief §26+§28):
+		// optional ("Mở rộng") va appendix (Phụ lục) KHÔNG đếm vào tiến độ lõi.
+		// Model B-lite (IMP-070, Workstream G) sẽ thay cơ chế này — không pre-implement.
+		const coreLinks = [...links].filter((a) => (a.dataset.track ?? "core") === "core");
+		const total = coreLinks.length;
+		const n = coreLinks.filter((a) => a.classList.contains("done")).length;
 		const pct = total ? Math.round((n / total) * 100) : 0;
 		const fill = document.getElementById("tp-fill");
 		const label = document.getElementById("tp-label");
