@@ -217,6 +217,51 @@ const manifestBackupCode = `<application
 		mục 8.5). Riêng tư không loại trừ backup, và backup không hàm ý mã hoá.
 	</p>
 
+	<p>
+		Câu hỏi rất hợp lý ở đây: dữ liệu đã nằm trong thư mục riêng tư của app rồi, vậy mã hoá thêm để làm gì?
+		Vì "chỉ app của bạn đọc được" đúng <em>khi mọi thứ bình thường</em>. Hãy đếm những lúc nó không còn đúng:
+	</p>
+
+	<table class="cmp">
+		<thead>
+			<tr><th>Tình huống</th><th>Kẻ khác lấy được dữ liệu bằng cách nào</th><th>Mã hoá có cứu được không?</th></tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>Máy đã <strong>root</strong></td>
+				<td>Quyền root vượt qua toàn bộ phân tách user ID Linux — đọc thẳng file của mọi app</td>
+				<td><strong>Có.</strong> Đọc được file nhưng nội dung là rác, và khoá thì nằm trong Keystore chứ không nằm trong file</td>
+			</tr>
+			<tr>
+				<td>Backup / chuyển máy</td>
+				<td><code>allowBackup="true"</code> đưa file của app lên cloud hoặc sang máy mới</td>
+				<td>Một phần — xem mục 8.5; và với dữ liệu đã mã hoá, chỗ này mã hoá lại gây ra một vấn đề <em>mới</em> (bài sau, mục 15)</td>
+			</tr>
+			<tr>
+				<td>Máy mất / bị lấy khi đang mở khoá</td>
+				<td>Cắm máy vào máy tính, dùng ADB hoặc công cụ forensics</td>
+				<td><strong>Có</strong>, nếu khoá được gắn với thiết bị và không xuất ra được</td>
+			</tr>
+			<tr>
+				<td>Bản build <code>debug</code> lọt ra ngoài</td>
+				<td><code>android:debuggable="true"</code> cho phép <code>run-as</code> đọc thư mục riêng của app không cần root</td>
+				<td><strong>Có</strong> — và đây là lý do rất thực tế</td>
+			</tr>
+			<tr>
+				<td>Lỗi lập trình của chính bạn</td>
+				<td>Ghi nhầm dữ liệu nhạy cảm ra external storage, log, hoặc file cache</td>
+				<td>Không. Mã hoá không sửa được lỗi thiết kế</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<p class="hint">
+		<strong>Hãy nghĩ theo kiểu "tầng phòng thủ".</strong> Sandbox của Android là tầng một; mã hoá là tầng hai, tồn tại
+		để khi tầng một sập thì vẫn còn cái gì đó. Nhưng đừng kỳ vọng quá nhiều: nếu kẻ tấn công chạy được code
+		<em>với chính danh nghĩa app của bạn</em>, họ gọi được hàm đọc preference y như bạn, và mã hoá không cản được gì.
+		Mã hoá bảo vệ <em>dữ liệu ở trạng thái nghỉ</em> (data at rest), không bảo vệ app đang chạy.
+	</p>
+
 	<h2 id="ban-do-luu-tru">2. Bản đồ: Android có bao nhiêu chỗ để lưu file?</h2>
 
 	<p>
