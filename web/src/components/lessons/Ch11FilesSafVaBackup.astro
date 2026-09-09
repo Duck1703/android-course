@@ -598,9 +598,10 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 	<p class="src">Ví dụ do khoá học tự dựng cho nhánh <code>OpenDocumentTree</code>, dựa trên hai API tài liệu gốc nhắc tên (<code>{BOOK}</code> dòng 139–146).</p>
 
 	<p>
-		Mặc định, quyền vào <code>Uri</code> mà người dùng vừa chọn chỉ sống <strong>tới khi process của app chết</strong>.
-		Mở lại app, dùng lại cái <code>Uri</code> cũ đã lưu → <code>SecurityException</code>. Đây là lỗi rất hay gặp và rất
-		khó đoán, vì đường dẫn vẫn đúng, chỉ quyền là mất. Cách giữ:
+		Mặc định, quyền vào <code>Uri</code> mà người dùng vừa chọn chỉ sống <strong>tới khi thiết bị khởi động lại</strong> —
+		tài liệu chính thức ghi đúng như vậy (nó sống qua việc process của app bị kill, nhưng mất khi reboot). Mở lại app sau
+		khi máy đã tắt/bật, dùng lại cái <code>Uri</code> cũ đã lưu → <code>SecurityException</code>. Đây là lỗi rất hay gặp
+		và rất khó đoán, vì đường dẫn vẫn đúng, chỉ quyền là mất. Cách giữ:
 	</p>
 
 	<Code code={persistUriCode} lang="kotlin" theme="github-dark" />
@@ -613,8 +614,8 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 			chỉ xin đọc. Cờ bạn <em>take</em> phải là tập con của cờ hệ thống đã <em>grant</em>.</li>
 			<li><strong>Bạn vẫn phải tự lưu cái <code>Uri</code>.</strong> Hệ điều hành nhớ "app này có quyền vào Uri đó",
 			nhưng không nhớ hộ bạn <em>Uri đó là gì</em>. Lưu string của nó vào DataStore.</li>
-			<li><strong>Có giới hạn số lượng.</strong> Mỗi app chỉ giữ được một số lượng persisted URI nhất định (khoảng 128
-			trên nhiều bản Android). Giữ vô hạn thì cái cũ nhất bị đẩy ra. Dùng
+			<li><strong>Có giới hạn số lượng.</strong> Mỗi app chỉ giữ được một số lượng persisted URI nhất định — 512 ở các
+			bản Android hiện tại, 128 ở các bản cũ. Giữ quá hạn mức thì cái cũ nhất bị đẩy ra. Dùng
 			<code>contentResolver.releasePersistableUriPermission()</code> khi không cần nữa.</li>
 		</ul>
 	</div>
@@ -781,8 +782,9 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 				nhưng file rỗng (quên <code>use</code>), giật khung hình (ghi trên main thread), crash lúc hết đĩa (quên xử lý lỗi)
 				— ba bug phổ biến nhất của code ghi file.</li>
 			<li><strong><code>Uri</code> ≠ đường dẫn file.</strong> Làm việc với Uri qua <code>ContentResolver</code> (stream + use),
-				không qua <code>File</code>. Quyền vào Uri chết theo process; <code>takePersistableUriPermission</code> giữ được
-				quanh các lần mở app nhưng không phải vĩnh viễn — app thật phải xử lý được "Uri không còn hợp lệ".</li>
+				không qua <code>File</code>. Quyền vào Uri mặc định chỉ sống tới khi thiết bị khởi động lại;
+				<code>takePersistableUriPermission</code> giữ được quanh các lần mở app nhưng không phải vĩnh viễn — app thật phải
+				xử lý được "Uri không còn hợp lệ".</li>
 			<li><strong>Backup là một thuộc tính riêng:</strong> mặc định Auto Backup mang đi shared prefs + files + database +
 				external riêng (≤ 25 MB), cache bị loại cứng; Android 12+ đọc <code>dataExtractionRules</code>, Android 11 trở xuống
 				đọc <code>fullBackupContent</code> — hai thế hệ rule cùng tồn tại trong manifest của project này, và cả hai hiện
@@ -805,8 +807,9 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 		<strong>2. "Persistable" trong <code>takePersistableUriPermission</code> không nghĩa là "mãi mãi".</strong>
 		<p>
 			Quyền persist sống qua restart nhưng vẫn có thể mất: người dùng thu hồi, tài liệu bị xoá/đổi tên, provider (kể cả
-			tài khoản cloud) biến mất, hoặc vượt hạn mức ~128 Uri mỗi app khiến cái cũ bị đẩy ra. App thật phải xử lý được tình
-			huống "Uri đã lưu không còn hợp lệ" — nhờ người dùng chọn lại — thay vì giả định quyền vĩnh viễn (mục 7.4).
+			tài khoản cloud) biến mất, hoặc vượt hạn mức persisted grant mỗi app (512 ở các bản hiện tại, 128 ở bản cũ) khiến
+			cái cũ bị đẩy ra. App thật phải xử lý được tình huống "Uri đã lưu không còn hợp lệ" — nhờ người dùng chọn lại — thay
+			vì giả định quyền vĩnh viễn (mục 7.4).
 		</p>
 	</div>
 

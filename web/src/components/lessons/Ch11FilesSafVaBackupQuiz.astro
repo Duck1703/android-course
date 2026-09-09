@@ -67,15 +67,16 @@
 		<fieldset data-answer="c">
 			<legend>4. Bạn đã lưu một <code>Uri</code> của SAF vào preference và gọi lại nó ở lần mở app sau. Vì sao có thể gặp <code>SecurityException</code>?</legend>
 			<label><input type="radio" name="q4" value="a" /> Vì Uri chỉ sống trong bộ nhớ RAM của phiên làm việc hiện tại, nên preference không thể giữ lại được chuỗi Uri khi process chết</label>
-			<label><input type="radio" name="q4" value="b" /> Vì Android tự động thu hồi mọi Uri do SAF cấp ra sau đúng 24 giờ kể từ thời điểm người dùng chọn xong</label>
-			<label><input type="radio" name="q4" value="c" /> Vì quyền vào Uri mặc định chết theo process — phải gọi <code>takePersistableUriPermission</code> để giữ qua các lần mở app</label>
+			<label><input type="radio" name="q4" value="b" /> Vì Android tự động thu hồi mọi Uri do SAF cấp ra sau đúng 24 giờ kể từ thời điểm người dùng hoàn tất việc chọn, bất kể app có đang dùng hay không</label>
+			<label><input type="radio" name="q4" value="c" /> Vì quyền vào Uri mặc định chỉ sống tới khi thiết bị khởi động lại — phải gọi <code>takePersistableUriPermission</code> để giữ qua các lần mở app</label>
 			<label><input type="radio" name="q4" value="d" /> Vì Uri bị hệ thống đổi giá trị sau mỗi lần khởi động máy, nên chuỗi đã lưu trỏ sai chỗ</label>
 			<p class="explain" hidden>
 				Quyền truy cập một <code>Uri</code> của SAF là một loại quyền riêng, không phải quyền filesystem — và mặc định nó
-				chết cùng process (mục 7.4). Giữ được qua restart thì cần <code>takePersistableUriPermission</code> ngay lúc nhận
-				Uri. Nhưng đừng đọc quá chữ "persistable": quyền persist vẫn có thể mất — người dùng thu hồi, tài liệu bị xoá/đổi
-				tên, provider biến mất, hoặc vượt hạn mức ~128 Uri mỗi app. App thật phải xử lý được tình huống "Uri đã lưu không
-				còn hợp lệ" (hỏng thì nhờ người dùng chọn lại), không giả định vĩnh viễn.
+				chỉ sống tới khi thiết bị khởi động lại (mục 7.4). Giữ được qua các lần mở app thì cần
+				<code>takePersistableUriPermission</code> ngay lúc nhận Uri. Nhưng đừng đọc quá chữ "persistable": quyền persist
+				vẫn có thể mất — người dùng thu hồi, tài liệu bị xoá/đổi tên, provider biến mất, hoặc vượt hạn mức persisted grant
+				mỗi app (512 ở các bản hiện tại, 128 ở bản cũ). App thật phải xử lý được tình huống "Uri đã lưu không còn hợp lệ"
+				(hỏng thì nhờ người dùng chọn lại), không giả định vĩnh viễn.
 			</p>
 		</fieldset>
 
@@ -129,7 +130,7 @@
 			<label><input type="radio" name="q8" value="a" /> <code>fullBackupContent</code> — định dạng <code>&lt;full-backup-content&gt;</code> cũ cho Android 11 trở xuống</label>
 			<label><input type="radio" name="q8" value="b" /> <code>dataExtractionRules</code> — vì đây là file mới nên thắng khi cả hai cùng tồn tại</label>
 			<label><input type="radio" name="q8" value="c" /> Không đọc file nào — Android 11 không hỗ trợ cấu hình backup qua XML</label>
-			<label><input type="radio" name="q8" value="d" /> Cả hai file được gộp lại: rule nào nghiêm hơn thì thắng</label>
+			<label><input type="radio" name="q8" value="d" /> Cả hai file được hệ thống gộp lại với nhau khi đọc: rule nào nghiêm khắc hơn thì sẽ thắng trong trường hợp có mâu thuẫn</label>
 			<p class="explain" hidden>
 				Hai thế hệ rule cùng tồn tại trong manifest của project này (mục 8.5): Android 12+ (API 31+) đọc
 				<code>dataExtractionRules</code> với định dạng mới có phân kênh (<code>&lt;cloud-backup&gt;</code>,
