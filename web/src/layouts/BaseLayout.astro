@@ -1,5 +1,5 @@
 ---
-import { ALL_CHAPTERS, chapterLabel, groupChaptersByStage } from "../data/chapters";
+import { ALL_CHAPTERS, chapterLabel, groupChaptersByStage, stageName, stageKicker, stageContext } from "../data/chapters";
 import { getStats } from "../data/lessonStats";
 import "../styles/global.css";
 
@@ -14,31 +14,32 @@ const currentPath = Astro.url.pathname;
 
 // Index tim kiem — dung 100% du lieu da co: ten chapter, tom tat, va tung muc
 // <h2> that trong file lesson (lay qua lessonStats). Khong tao noi dung moi.
+// IMP-081: context = stage nhãn người học ("Jetpack Compose", "Mở rộng",
+// "Phụ lục") thay vì "Chương 5.1" — internal book numbering không còn là
+// danh tính chính trên UI (owner task sidebar/lesson-identity, cùng chuẩn).
 const searchIndex = ALL_CHAPTERS.flatMap((ch) => {
   const base = `/chapters/${ch.slug}/`;
-  const label = chapterLabel(ch);
+  const stage = groupChaptersByStage([ch])[0]?.stage;
+  const ctx = stage ? stageContext(stage) : "Khoá học";
+  const stageFull = stage ? `${ctx} · ${stageName(stage)}` : "Khoá học";
   const rows = [
     {
       t: ch.title,
-      c: `Chương ${label}`,
+      c: stageFull,
       u: base,
-      k: `${label} ${ch.title} ${ch.summaryVi} ${ch.parentTitle ?? ""}`.toLowerCase(),
+      k: `${ch.title} ${ch.summaryVi} ${ch.parentTitle ?? ""} ${chapterLabel(ch)}`.toLowerCase(),
     },
   ];
   for (const h of getStats(ch.slug).headings) {
     rows.push({
       t: h.text,
-      c: `Chương ${label} · ${ch.title}`,
+      c: `${stageFull} — ${ch.title}`,
       u: `${base}#${h.id}`,
-      k: h.text.toLowerCase(),
+      k: `${h.text} ${chapterLabel(ch)}`.toLowerCase(),
     });
   }
   return rows;
 });
-
-// So chuong lon — dung cho nhan "11 chuong" o dau rail. Cac chuong nho (10.1..10.4)
-// van la 4 trang rieng, nhung nguoi hoc dem chuong theo chuong lon.
-const totalChapters = new Set(ALL_CHAPTERS.map((c) => c.number)).size;
 
 // Sidebar theo STAGE (IMP-011): thu tu nhom doc tu STAGES, bai hoc doc tu
 // ALL_CHAPTERS qua groupChaptersByStage. Stage khong con bai live (foundation,
@@ -48,23 +49,9 @@ const totalChapters = new Set(ALL_CHAPTERS.map((c) => c.number)).size;
 const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
   const { stage, chapters } = group;
   const hasCurrent = chapters.some((c) => currentPath === `/chapters/${c.slug}/`);
-  // Nhom cha da tach (chuong lon co >= 2 chuong nho, vd 10.1..10.4): renderer
-  // se chen mot tieu de nho roi thut cac chuong nho vao duoi. Chuong nguyen khoi
-  // (Ch05, Ch08, Ch09, Ch11) render truc tiep, khong co tieu de con.
-  const seenNumbers = new Map<number, number>();
-  for (const c of chapters) {
-    seenNumbers.set(c.number, (seenNumbers.get(c.number) ?? 0) + 1);
-  }
-  const splitNumbers = new Set<number>();
-  for (const [num, count] of seenNumbers) {
-    if (count >= 2 && chapters.some((c) => c.number === num && c.subNumber !== undefined)) {
-      splitNumbers.add(num);
-    }
-  }
   return {
     stage,
     chapters,
-    splitNumbers,
     open: stage.kind === "core" ? hasCurrent || currentPath === "/" : hasCurrent,
     // IMP-059: track "Mở rộng" (optional) va Phụ lục (appendix) — thu tuong minh,
     // core luon la duong chinh.
@@ -148,7 +135,7 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 
 			<div class="topbar-progress" title="Tiến độ lõi khoá học (không tính Mở rộng/Phụ lục)">
 				<span class="tp-track" aria-hidden="true"><span class="tp-fill" id="tp-fill"></span></span>
-				<span class="tp-label" id="tp-label">0/{ALL_CHAPTERS.filter((c) => c.stageId !== "optional" && c.stageId !== "appendix").length} phần</span>
+				<span class="tp-label" id="tp-label">0/{ALL_CHAPTERS.filter((c) => c.stageId !== "optional" && c.stageId !== "appendix").length} bài</span>
 			</div>
 
 			<button class="icon-btn" id="theme-toggle" type="button" aria-label="Đổi sáng/tối">
@@ -167,21 +154,26 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 			<aside class="rail" id="rail" aria-label="Chương trình học">
 				<div class="rail-head">
 					<p class="rail-title">Chương trình học</p>
-					<span class="rail-count">{totalChapters} chương</span>
+					<span class="rail-count">{ALL_CHAPTERS.length} bài</span>
 				</div>
 				<nav>
 					{
 						stageGroups.map((group) => {
-							const { stage, chapters, splitNumbers, open } = group;
+							const { stage, chapters, open } = group;
 							const slugs = chapters.map((c) => c.slug);
 							return (
 					<details class:list={["module", { "module-optional": group.kind !== "core" }]} open={open} data-mod={slugs.join(",")}>
 										<summary>
-											<span class="module-num" aria-hidden="true">{stage.order === 9 ? "M" : stage.order === 10 ? "P" : stage.order}</span>
+											<span class="module-mark" aria-hidden="true">
+												<svg class="module-done-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+													<path d="M4 12.5l5 5L20 6.5"></path>
+												</svg>
+											</span>
 										<span class="module-meta">
-											<span class="module-title">{stage.label}</span>
+											<span class="module-kicker">{stageKicker(stage)}</span>
+											<span class="module-title">{stageName(stage)}</span>
 											<span class="module-sub">
-												<span class="mod-done">0</span>/{chapters.length} chương xong
+												{chapters.length} bài học · <span class="mod-done">0</span>/{chapters.length} hoàn thành
 											</span>
 											<span class="module-bar" aria-hidden="true"><span></span></span>
 										</span>
@@ -191,67 +183,32 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 									</summary>
 									<ul>
 										{chapters.map((ch) => {
-											// Chuong lon da tach (vd 10.1..10.4): dung CHINH chuong dau tien
-											// cua chuong lon de render tieu de nhom + toan bo cac chuong nho;
-											// cac chuong nho sau bo qua de khong bi render trung.
-											const isGroupHead = splitNumbers.has(ch.number) && ch.subNumber === 1;
-											if (splitNumbers.has(ch.number) && !isGroupHead) return null;
-											const rows = (
+											const active = currentPath === `/chapters/${ch.slug}/`;
+											return (
 												<li>
 													<a
 														href={`/chapters/${ch.slug}/`}
-														class={currentPath === `/chapters/${ch.slug}/` ? "active" : ""}
+														class={active ? "active" : ""}
 														data-slug={ch.slug}
 														data-track={ch.stageId === "optional" ? "optional" : ch.stageId === "appendix" ? "appendix" : "core"}
-														aria-current={currentPath === `/chapters/${ch.slug}/` ? "page" : undefined}
+														aria-current={active ? "page" : undefined}
 													>
-														<span class="num">{chapterLabel(ch)}</span>
-														{ch.stageId === "optional" && (
-															<span class="ext-badge" aria-label="Thuộc track Mở rộng">Mở rộng</span>
-														)}
-														{ch.stageId === "appendix" && (
-															<span class="ext-badge ext-appendix" aria-label="Tài liệu tham khảo">Tham khảo</span>
-														)}
-														{ch.title}
-														<svg class="check" role="img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Đã học">
-															<path d="M4 12.5l5 5L20 6.5"></path>
-														</svg>
+														<span class="li-mark" aria-hidden="true">
+															<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+																<path d="M4 12.5l5 5L20 6.5"></path>
+															</svg>
+															<span class="li-dot"></span>
+														</span>
+														<span class="li-title">
+															{ch.title}
+															{ch.stageId === "optional" && (
+																<span class="ext-badge" aria-label="Thuộc track Mở rộng">Mở rộng</span>
+															)}
+															{ch.stageId === "appendix" && (
+																<span class="ext-badge ext-appendix" aria-label="Tài liệu tham khảo">Tham khảo</span>
+															)}
+														</span>
 													</a>
-												</li>
-											);
-
-											if (!isGroupHead) return rows;
-
-											const siblings = chapters.filter((c) => c.number === ch.number);											return (
-												<li class="ch-group">
-													<p class="ch-group-head">
-														<span class="num">{ch.number}</span>
-														<span>{ch.parentTitle ?? ch.title}</span>
-														<span class="ch-group-count">{siblings.length} phần</span>
-													</p>
-													<ul class="ch-group-list">
-														{siblings.map((sub) => {
-															const href = `/chapters/${sub.slug}/`;
-															const active = currentPath === href;
-															return (
-																<li>
-																	<a
-																		href={href}
-																		class={active ? "active" : ""}
-																		data-slug={sub.slug}
-																		data-track={sub.stageId === "optional" ? "optional" : sub.stageId === "appendix" ? "appendix" : "core"}
-																		aria-current={active ? "page" : undefined}
-																	>
-																		<span class="num">{chapterLabel(sub)}</span>
-																		{sub.title}
-																		<svg class="check" role="img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Đã học">
-																			<path d="M4 12.5l5 5L20 6.5"></path>
-																		</svg>
-																	</a>
-																</li>
-															);
-														})}
-													</ul>
 												</li>
 											);
 										})}
@@ -318,7 +275,7 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 
 		// Thanh tien do o header = CORE ONLY (IMP-059 / brief §26+§28):
 		// optional ("Mở rộng") va appendix (Phụ lục) KHÔNG đếm vào tiến độ lõi.
-		// Model B-lite (IMP-070, Workstream G) sẽ thay cơ chế này — không pre-implement.
+		// Model B-lite semantics giữ nguyên — chỉ đổi nhãn hiển thị "phần"→"bài".
 		const coreLinks = [...links].filter((a) => (a.dataset.track ?? "core") === "core");
 		const total = coreLinks.length;
 		const n = coreLinks.filter((a) => a.classList.contains("done")).length;
@@ -326,9 +283,10 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 		const fill = document.getElementById("tp-fill");
 		const label = document.getElementById("tp-label");
 		if (fill) fill.style.width = `${pct}%`;
-		if (label) label.textContent = `${n}/${total} phần`;
+		if (label) label.textContent = `${n}/${total} bài`;
 
-		// Tien do tung module
+		// Tien do tung module + trang thai stage (IMP-070/H): data-state để
+		// .module-mark đổi hình dạng (tick/đốm/vành) — không chỉ dựa màu.
 		document.querySelectorAll<HTMLElement>(".module[data-mod]").forEach((mod) => {
 			const slugs = (mod.dataset.mod || "").split(",").filter(Boolean);
 			const d = slugs.filter((s) => done.has(s)).length;
@@ -336,6 +294,7 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 			if (cnt) cnt.textContent = String(d);
 			const bar = mod.querySelector<HTMLElement>(".module-bar span");
 			if (bar) bar.style.width = slugs.length ? `${(d / slugs.length) * 100}%` : "0%";
+			mod.dataset.state = d === slugs.length ? "done" : d > 0 ? "active" : "todo";
 		});
 	}
 

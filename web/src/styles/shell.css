@@ -298,7 +298,8 @@
 	color: var(--text-3);
 }
 
-/* Module (Section cua sach) */
+/* Module (stage group) — Workstream H: danh tính = trạng thái học, không phải
+   số chương sách. Kicker chữ ("Giai đoạn 2") + tên stage + "N bài học". */
 .module {
 	border: 1px solid var(--outline-soft);
 	border-radius: var(--r-md);
@@ -338,18 +339,54 @@
 	border-radius: var(--r-sm);
 }
 
-.module-num {
+/* Mark tròn trạng thái stage: tick khi cả stage hoàn thành (script gán
+   data-state="done"), vành primary khi đang học (data-state="active"). */
+.module-mark {
+	position: relative;
 	display: grid;
 	place-items: center;
-	width: 24px;
-	height: 24px;
+	width: 22px;
+	height: 22px;
 	flex-shrink: 0;
-	border-radius: var(--r-xs);
-	background: var(--primary-container);
-	color: var(--on-primary-container);
-	font-size: var(--fs-2xs);
+	border-radius: var(--r-full);
+	border: 2px solid var(--outline);
+	background: var(--surface);
+	transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.module-mark .module-done-ic {
+	display: none;
+	width: 12px;
+	height: 12px;
+	color: var(--on-accent-container);
+}
+
+.module[data-state="done"] .module-mark {
+	background: var(--accent-container);
+	border-color: var(--accent);
+}
+
+.module[data-state="done"] .module-mark .module-done-ic {
+	display: block;
+}
+
+.module[data-state="active"] .module-mark {
+	border-color: var(--primary);
+	box-shadow: inset 0 0 0 3px var(--surface), inset 0 0 0 9px var(--primary);
+}
+
+.module-kicker {
+	display: block;
+	font-size: 0.62rem;
 	font-weight: 700;
-	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--primary);
+	line-height: 1.2;
+}
+
+.module-optional .module-kicker {
+	color: var(--text-3);
 }
 
 .module-meta {
@@ -402,7 +439,9 @@
 	transition: width 0.3s ease;
 }
 
-/* Danh sach lesson trong 1 module */
+/* Danh sach lesson trong 1 module — Workstream H: trạng thái học là mark
+   (tick/đốm/vành), KHÔNG phải badge số "5.1". Trạng thái không chỉ dựa màu:
+   done = tick icon, current = vành + nền + đậm + aria-current, todo = đốm rỗng. */
 .module ul {
 	list-style: none;
 	margin: 0;
@@ -415,7 +454,7 @@
 
 .rail nav a[data-slug] {
 	display: grid;
-	grid-template-columns: 22px 1fr 16px;
+	grid-template-columns: 18px 1fr;
 	align-items: start;
 	gap: 0.5rem;
 	padding: 0.42rem 0.5rem;
@@ -427,17 +466,35 @@
 	transition: background 0.14s ease, color 0.14s ease;
 }
 
-.rail nav a[data-slug] .num {
+.rail nav a[data-slug] .li-mark {
 	display: grid;
 	place-items: center;
-	width: 22px;
-	height: 20px;
-	border-radius: var(--r-xs);
-	background: var(--surface-3);
-	color: var(--text-3);
-	font-size: var(--fs-2xs);
-	font-variant-numeric: tabular-nums;
-	font-weight: 600;
+	width: 16px;
+	height: 16px;
+	margin-top: 0.12rem;
+	border-radius: var(--r-full);
+	border: 2px solid var(--outline);
+	background: var(--surface);
+	box-sizing: border-box;
+}
+
+.rail nav a[data-slug] .li-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: var(--r-full);
+	background: var(--text-3);
+}
+
+.rail nav a[data-slug] .li-title {
+	min-width: 0;
+	display: block;
+}
+
+.rail nav a[data-slug] .check {
+	display: none;
+	width: 10px;
+	height: 10px;
+	color: var(--on-accent-container);
 }
 
 .rail nav a[data-slug]:hover {
@@ -445,7 +502,7 @@
 	color: var(--text);
 }
 
-/* Bai dang hoc — noi bat nhat trong rail */
+/* Bai dang hoc — noi bat nhat trong rail: vành trái + nền + đậm (không chỉ màu) */
 .rail nav a[data-slug].active {
 	background: var(--primary-container);
 	color: var(--on-primary-container);
@@ -453,94 +510,32 @@
 	box-shadow: inset 3px 0 0 var(--primary);
 }
 
-.rail nav a[data-slug].active .num {
-	background: var(--primary);
-	color: var(--on-primary);
+.rail nav a[data-slug].active .li-mark {
+	border-color: var(--primary);
+	box-shadow: inset 0 0 0 2px var(--primary-container);
 }
 
-/* Bai da hoc — dau check mau xanh Android */
-.rail nav a[data-slug] .check {
-	display: none;
-	width: 16px;
-	height: 16px;
-	margin-top: 0.15rem;
-	color: var(--accent);
+/* Bai da hoc — mark thành tick xanh Android */
+.rail nav a[data-slug].done .li-mark {
+	background: var(--accent-container);
+	border-color: var(--accent);
 }
 
 .rail nav a[data-slug].done .check {
 	display: block;
 }
 
-.rail nav a[data-slug].done:not(.active) {
-	color: var(--text-2);
+.rail nav a[data-slug].done .li-dot {
+	display: none;
 }
 
-.rail nav a[data-slug].done .num {
-	background: var(--accent-container);
-	color: var(--on-accent-container);
-}
-
-.rail nav a[data-slug].active.done .num {
+.rail nav a[data-slug].active.done .li-mark {
 	background: var(--primary);
+	border-color: var(--primary);
+}
+
+.rail nav a[data-slug].active.done .check {
 	color: var(--on-primary);
-}
-
-/* --- Nhom chuong nho (10.1 -> 10.4) ------------------------------------- */
-/* Chuong lon da tach: mot tieu de nhom khong bam duoc, roi cac chuong nho
-   thut vao duoi mot duong doc — de nguoi hoc thay chung thuoc cung mot chuong. */
-.ch-group {
-	margin: 0.3rem 0;
-}
-
-.ch-group-head {
-	display: grid;
-	grid-template-columns: 22px 1fr auto;
-	align-items: center;
-	gap: 0.5rem;
-	margin: 0;
-	padding: 0.32rem 0.5rem;
-	color: var(--text-2);
-	font-size: var(--fs-xs);
-	font-weight: 650;
-	line-height: 1.35;
-}
-
-.ch-group-head .num {
-	display: grid;
-	place-items: center;
-	width: 22px;
-	height: 20px;
-	border-radius: var(--r-xs);
-	background: var(--surface-3);
-	color: var(--text-3);
-	font-size: var(--fs-2xs);
-	font-variant-numeric: tabular-nums;
-	font-weight: 600;
-}
-
-.ch-group-count {
-	color: var(--text-3);
-	font-size: var(--fs-2xs);
-	font-weight: 500;
-	white-space: nowrap;
-}
-
-.ch-group-list {
-	list-style: none;
-	margin: 0.1rem 0 0;
-	padding: 0 0 0 0.55rem;
-	margin-left: 0.55rem;
-	border-left: 2px solid var(--border);
-}
-
-/* Chuong nho: so "10.1" dai hon so "9" nen o so phai rong hon mot chut. */
-.ch-group-list a[data-slug] {
-	grid-template-columns: 30px 1fr 16px;
-}
-
-.ch-group-list a[data-slug] .num {
-	width: 30px;
-	letter-spacing: -0.01em;
 }
 
 /* ------------------------------------------------------ vung noi dung ---- */
@@ -676,7 +671,7 @@ body.rail-open .rail-overlay {
 	background: color-mix(in srgb, var(--surface-2) 70%, var(--surface));
 }
 
-/* Huy hiệu nhỏ sau số thứ tự của từng bài optional/appendix trong rail */
+/* Huy hiệu nhỏ sau tiêu đề bài optional/appendix trong rail */
 .ext-badge {
 	display: inline-block;
 	margin-left: 0.35rem;
