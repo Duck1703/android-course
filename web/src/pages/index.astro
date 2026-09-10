@@ -364,7 +364,14 @@ const FOUNDATION_L = stageRows[0]!.lessons; // số bài Nền tảng (2) — su
 	const terminal = document.getElementById("terminal-card");
 	const resumeCard = document.getElementById("resume-card");
 
-	if (next) {
+	if (allCoreDone) {
+		// Terminal state tại 39/39 lõi — trước cả khi nextLesson() còn trả về
+		// bài optional: phần Mở rộng KHÔNG bao giờ được ép như bước tiếp theo.
+		if (resumeCard) resumeCard.hidden = true;
+		if (terminal) terminal.hidden = false;
+		if (heroCta) heroCta.textContent = "Xem lộ trình";
+		if (heroLink) heroLink.setAttribute("href", "#roadmap");
+	} else if (next) {
 		// Map slug → stage context cho nhãn resume (đọc từ data-slugs đã render).
 		let ctx = "";
 		document.querySelectorAll<HTMLElement>(".stage-card[data-stage][data-slugs]").forEach((el) => {
@@ -382,13 +389,6 @@ const FOUNDATION_L = stageRows[0]!.lessons; // số bài Nền tảng (2) — su
 		const label = started ? "Tiếp tục học" : "Bắt đầu học";
 		if (rcCta) rcCta.textContent = label;
 		if (heroCta) heroCta.textContent = label;
-	} else if (allCoreDone) {
-		// Terminal state: hết bài lõi chưa học (nextLesson rơi vào optional cũng
-		// không ép tiếp — terminal chỉ dựa core 39/39).
-		if (resumeCard) resumeCard.hidden = true;
-		if (terminal) terminal.hidden = false;
-		if (heroCta) heroCta.textContent = "Xem lộ trình";
-		if (heroLink) heroLink.setAttribute("href", "#roadmap");
 	}
 
 	// Stage hiện tại: chứa bài resume (kể cả khi 0 done — stage đầu người học sắp vào).
