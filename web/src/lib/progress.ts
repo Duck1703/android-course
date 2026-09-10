@@ -99,11 +99,6 @@ const ATTEMPTS_KEY = "hoc-android-tv:quiz-attempts";
 // trong batch này — cả hai bài kế nhiệm trực tiếp nội dung monolith theo mốc
 // D1/D2 START/END, credit chia đủ hai theo mapping khai báo. Redirect 1 đích
 // old → D1 (astro.config.mjs).
-// 11 = Stage 6: Ch09 monolith tách thành D1–D2 (registry §7 entry 7). Old slug
-// "ch09-data-store" chết → entry replace old → [D1, D2]. KHÔNG có bài NEW
-// trong batch này — cả hai bài kế nhiệm trực tiếp nội dung monolith theo mốc
-// D1/D2 START/END, credit chia đủ hai theo mapping khai báo. Redirect 1 đích
-// old → D1 (astro.config.mjs).
 // 12 = Stage 7: Ch11 monolith tách thành X1–X2 (registry §7 entry 8). Old slug
 // "ch11-advanced-storage" chết → entry replace old → [X1, X2].
 // 13 = Workstream F (IMP-050): old Ch07 monolith retired → O1
@@ -390,6 +385,12 @@ export function toggleDone(slug: string, hasQuiz = true): { done: boolean; ok: b
   } else {
     current.push(slug);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+  } catch {
+    // localStorage bị chặn (vd private mode): toggle chỉ không được lưu bền,
+    // trang vẫn chạy — cùng chuẩn resilience với migrateProgress/recordQuizAttempt.
+    return { done: current.includes(slug), ok: true };
+  }
   return { done: current.includes(slug), ok: true };
 }
