@@ -39,7 +39,7 @@ const prev = idx > 0 ? ALL_CHAPTERS[idx - 1] : undefined;
 const next = idx >= 0 && idx < ALL_CHAPTERS.length - 1 ? ALL_CHAPTERS[idx + 1] : undefined;
 ---
 
-<BaseLayout title={`Chương ${label}: ${chapter.title}`}>
+<BaseLayout title={`Chương ${label}: ${chapter.title}`} slug={chapter.slug}>
 	<div class="lesson-layout">
 		<div class="lesson-main">
 			<nav class="crumb" aria-label="Đường dẫn">
@@ -240,7 +240,9 @@ const next = idx >= 0 && idx < ALL_CHAPTERS.length - 1 ? ALL_CHAPTERS[idx + 1] :
 					)
 				}
 
-				<ProgressToggle slug={chapter.slug} />
+				{/* IMP-070: hasQuiz đăng ký rõ ràng — AP1–AP3 (entry không có Quiz) không
+				    bao giờ bị đòi nộp quiz; mọi bài instructional khác đi qua B-lite gate. */}
+				<ProgressToggle slug={chapter.slug} hasQuiz={Boolean(Quiz)} />
 
 				{
 					next ? (

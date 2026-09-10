@@ -22,6 +22,16 @@
 //   form#quiz-form > fieldset[data-answer] > legend + label>input[type=radio] + p.explain[hidden]
 //   p#quiz-score[hidden]   ·   button#quiz-retry[hidden] (tuỳ chọn)
 
+import { recordQuizAttempt } from "../lib/progress";
+
+// Model B-lite (IMP-070): identity của bài học hiện tại = data-page-slug trên
+// <main> (đăng ký bởi BaseLayout khi trang chapter truyền slug). KHÔNG suy
+// đoán slug từ text hiển thị/đánh số/URL badge — chỉ nhận slug đăng ký tường
+// minh, nên quiz trả về đúng slug registry của bài đang mở.
+function lessonSlug(): string {
+	return document.querySelector<HTMLElement>("main[data-page-slug]")?.dataset.pageSlug ?? "";
+}
+
 export function initQuiz(root: ParentNode = document): void {
 	const form = root.querySelector<HTMLFormElement>("form#quiz-form");
 	if (!form || form.dataset.quizBound === "true") return;
@@ -47,6 +57,18 @@ export function initQuiz(root: ParentNode = document): void {
 	form.addEventListener("submit", (e) => {
 		e.preventDefault();
 		let correct = 0;
+
+		// Model B-lite (IMP-070): một lần NỘP THẬT = một lượt quiz-attempt cho bài
+		// hiện tại. Tích hợp TẬP TRUNG ở đây — 45 quiz không cần sửa gì. Chỉ chạy
+		// khi form có slug identity (trang bài học qua BaseLayout data-page-slug);
+		// quiz ngoài context đó không tự bịa slug. Retry KHÔNG xoá flag này.
+		const slug = lessonSlug();
+		if (slug) {
+			recordQuizAttempt(slug);
+			// Báo cho progress UI đang mount (vd hint "Chưa làm quiz") cập nhật
+			// không cần reload — cùng pattern CustomEvent của "progress-changed".
+			document.dispatchEvent(new CustomEvent("quiz-attempted", { detail: slug }));
+		}
 
 		fieldsets.forEach((fs) => {
 			const answer = fs.getAttribute("data-answer");

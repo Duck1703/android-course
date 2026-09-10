@@ -1,38 +1,71 @@
 ---
 // Task 9 — nút đánh dấu "đã học" cho 1 chapter, lưu vào localStorage (không cần backend).
+// IMP-070 (Workstream G — Model B-lite): bài có quiz thì hoàn thành cần người học
+// TỰ XÁC NHẬN + đã NỘP quiz ít nhất MỘT lần (không có ngưỡng điểm). Bài không có
+// quiz (AP1–AP3 — reference, entry LESSONS không có Quiz) giữ hành vi toggle cũ —
+// không bịa yêu cầu quiz cho tài liệu tham khảo.
 interface Props {
 	slug: string;
+	hasQuiz?: boolean;
 }
-const { slug } = Astro.props;
+const { slug, hasQuiz = false } = Astro.props;
 ---
 
 <div class="progress-toggle">
-	<button id="progress-btn" data-slug={slug} type="button">Đánh dấu đã học chương này</button>
+	<button id="progress-btn" data-slug={slug} data-has-quiz={hasQuiz ? "true" : "false"} type="button">Đánh dấu đã học chương này</button>
+	<p id="quiz-hint" class="quiz-hint" role="status" aria-live="polite" hidden></p>
 </div>
 
 <script>
-	import { isDone, toggleDone } from "../lib/progress";
+	import { isDone, hasQuizAttempted, toggleDone } from "../lib/progress";
 
 	const btn = document.getElementById("progress-btn") as HTMLButtonElement | null;
+	const hint = document.getElementById("quiz-hint");
+
+	// Copy B-lite: không punitive, không ngụ ý điểm quan trọng, không "đạt/trượt".
+	const HINT_BEFORE_SUBMIT =
+		"Bạn chưa thử quiz. Hãy làm quiz ít nhất một lần trước khi đánh dấu bài đã học — không cần đúng hết.";
 
 	function render() {
 		if (!btn?.dataset.slug) return;
-		const done = isDone(btn.dataset.slug);
+		const slug = btn.dataset.slug;
+		const done = isDone(slug);
 		btn.textContent = done ? "Đã học — bấm để bỏ đánh dấu" : "Đánh dấu đã học chương này";
 		btn.classList.toggle("done", done);
 		btn.setAttribute("aria-pressed", String(done));
+
+		// Hint nhẹ (IMP-070 §12): chỉ khi CHƯA hoàn thành và CHƯA từng nộp quiz.
+		// attempted + chưa hoàn thành → không nhắc (người học được phép đánh dấu);
+		// đã hoàn thành → không nhắc. Không dựa vào màu riêng — role="status" đọc được.
+		if (hint) {
+			const needsHint =
+				btn.dataset.hasQuiz === "true" && !done && !hasQuizAttempted(slug);
+			hint.textContent = needsHint ? HINT_BEFORE_SUBMIT : "";
+			hint.hidden = !needsHint;
+		}
 	}
 
 	btn?.addEventListener("click", () => {
 		if (!btn.dataset.slug) return;
-		toggleDone(btn.dataset.slug);
+		const slug = btn.dataset.slug;
+		const result = toggleDone(slug);
+		if (!result.ok) {
+			// Chưa nộp quiz → chặn, hiện gợi ý nhẹ (không modal, không reload).
+			render();
+			return;
+		}
 		render();
 		document
-			.querySelectorAll<HTMLAnchorElement>(`nav a[data-slug="${btn.dataset.slug}"]`)
-			.forEach((a) => a.classList.toggle("done", isDone(btn.dataset.slug!)));
+			.querySelectorAll<HTMLAnchorElement>(`nav a[data-slug="${slug}"]`)
+			.forEach((a) => a.classList.toggle("done", isDone(slug)));
 
 		// Thông báo cho header/rail/chip trạng thái cùng cập nhật lại.
-		document.dispatchEvent(new CustomEvent("progress-changed", { detail: btn.dataset.slug }));
+		document.dispatchEvent(new CustomEvent("progress-changed", { detail: slug }));
+	});
+
+	// Quiz vừa được nộp → bỏ hint "chưa làm quiz" ngay không cần reload.
+	document.addEventListener("quiz-attempted", (e) => {
+		if (btn?.dataset.slug && (e as CustomEvent).detail === btn.dataset.slug) render();
 	});
 
 	render();

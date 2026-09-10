@@ -48,9 +48,32 @@
 //    thực thi — không gán cứng sẵn dãy version tương lai); 8 = Stage 2 (ch05
 //    monolith split → C1–C4); 9 = Stage 3 (ch06 monolith split → S2–S4);
 //    10 = Stage 5 (ch08 monolith split → W1–W3).
+//
+// ─── MODEL B-LITE (IMP-070, Workstream G) ───────────────────────────────────
+//
+// H. HOÀN THÀNH = người học TỰ XÁC NHẬN đã học VÀ đã NỘP quiz ít nhất MỘT lần.
+//    KHÔNG có ngưỡng điểm: nộp 0/N vẫn là một lần nộp. Model kiểm tra mức độ
+//    TƯƠNG TÁC, không kiểm tra mức độ thành thạo — không bao giờ "quiz đạt/
+//    trượt". Nộp bài không tự động đánh dấu đã học; bỏ đánh dấu (unmark) không
+//    xoá lịch sử đã nộp quiz; đánh dấu lại sau đó KHÔNG cần nộp lại.
+//
+// I. LƯU TRỮ RIÊNG: lượt nộp quiz nằm ở key `hoc-android-tv:quiz-attempts`
+//    (mảng slug đã nộp), KHÔNG trộn vào mảng done của `hoc-android-tv:progress`.
+//    Key mới này KHÔNG cần bump SCHEMA_VERSION — nó tách khỏi migration cấu
+//    trúc slug của done. Cùng chuẩn resilience với progress: thiếu key/JSON
+//    hỏng → coi như rỗng, không crash; dedupe; giữ nguyên entry lạ.
+//
+// J. GRANDFATHER SEED: bài ĐÃ nằm trong done (sau migrate — tức slug hiện tại
+//    được công nhận hoàn thành) được seed vào quiz-attempts một cách tất định,
+//    idempotent, CHẠY MỖI LẦN ĐỌC (union one-way done → attempts). Lý do: người
+//    học legacy hoàn thành trước khi có theo-dõi nộp quiz không đột ngột bị
+//    coi là "chưa thử quiz". Seed KHÔNG đụng vào done — không bài nào tự "đã
+//    học" vì được seed; không bài NEW nào nhận credit (no-fabricate §D vẫn
+//    chặn ở tầng SPLIT_MAP, seed chỉ đọc done nên không tạo credit mới).
 // ────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "hoc-android-tv:progress";
 const MIGRATION_KEY = "hoc-android-tv:progress-migrated";
+const ATTEMPTS_KEY = "hoc-android-tv:quiz-attempts";
 
 // Phiên bản cấu trúc chương hiện tại. Tăng lên 1 mỗi lần tách/gộp chương.
 // 7 = sửa lỗi typo entry ch01 monolith: con thứ 4 khai "ch01-4-gradle-ban-do"
@@ -219,10 +242,10 @@ const SPLIT_MAP: Record<string, string[]> = {
 };
 
 /** Đọc thô mảng slug, không chuyển đổi gì — dùng nội bộ để tránh gọi vòng. */
-function readRaw(): string[] {
+function readRaw(key: string = STORAGE_KEY): string[] {
   if (typeof localStorage === "undefined") return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === "string") : [];
   } catch {
@@ -287,14 +310,82 @@ export function isDone(slug: string): boolean {
   return getDoneSlugs().includes(slug);
 }
 
-export function toggleDone(slug: string): boolean {
+/**
+ * Model B-lite (IMP-070): seed one-way done → quiz-attempts.
+ *
+ * Mọi slug ĐÃ hoàn thành (sau migrate — slug hiện tại được công nhận) được bảo
+ * đảm có mặt trong quiz-attempts, để người học legacy không bị coi là "chưa
+ * thử quiz" dù hoàn thành trước khi có theo-dõi nộp bài. Tất định + idempotent:
+ * chạy bao nhiêu lần kết quả như nhau; chạy MỖI LẦN ĐỌC progress nên máy nào
+ * hoàn thành bài sau khi seed vẫn được bắt kịp ngay lần đọc kế tiếp.
+ *
+ * One-way (done → attempts, không ngược lại) nên KHÔNG bài nào tự "đã học"
+ * vì seed, và no-fabricate §D không bị va chạm (SPLIT_MAP đã chặn tầng credit).
+ * Slug lạ trong attempts đi qua nguyên vẹn — hợp đồng unknown-slug như done.
+ */
+function seedAttemptsFromDone(): void {
+  const done = readRaw();
+  if (done.length === 0) return;
+  const attempts = readRaw(ATTEMPTS_KEY);
+  const set = new Set(attempts);
+  let changed = false;
+  for (const slug of done) {
+    if (!set.has(slug)) {
+      set.add(slug);
+      changed = true;
+    }
+  }
+  if (changed) {
+    localStorage.setItem(ATTEMPTS_KEY, JSON.stringify([...set]));
+  }
+}
+
+/** Mảng slug ĐÃ NỘP quiz ít nhất một lần (Model B-lite, IMP-070). */
+export function getQuizAttemptedSlugs(): string[] {
+  migrateProgress();
+  seedAttemptsFromDone();
+  return readRaw(ATTEMPTS_KEY);
+}
+
+export function hasQuizAttempted(slug: string): boolean {
+  return getQuizAttemptedSlugs().includes(slug);
+}
+
+/** Ghi nhận MỘT lần nộp quiz (được harness gọi khi form submit). Idempotent. */
+export function recordQuizAttempt(slug: string): void {
+  if (typeof localStorage === "undefined" || !slug) return;
+  try {
+    const attempts = readRaw(ATTEMPTS_KEY);
+    if (!attempts.includes(slug)) {
+      attempts.push(slug);
+      localStorage.setItem(ATTEMPTS_KEY, JSON.stringify([...new Set(attempts)]));
+    }
+  } catch {
+    // localStorage bị chặn: lượt nộp chỉ không được lưu, trang vẫn chạy.
+  }
+}
+
+/**
+ * Toggle "đã học" theo Model B-lite (IMP-070).
+ *
+ * GATING: bài chưa nộp quiz ít nhất một lần thì KHÔNG thể đánh dấu — trả về
+ * `{ ok: false }` để UI hiện gợi ý nhẹ, KHÔNG đụng storage. Bài đã nộp thì
+ * toggle tự do như cũ (mark/unmark); unmark KHÔNG xoá lượt nộp đã ghi.
+ *
+ * Return: `{ done, ok }` — `ok=false` nghĩa là bị chặn (chưa nộp quiz).
+ */
+export function toggleDone(slug: string): { done: boolean; ok: boolean } {
   const current = getDoneSlugs();
   const idx = current.indexOf(slug);
+  if (idx < 0 && !hasQuizAttempted(slug)) {
+    // Chưa học + chưa từng nộp quiz → chặn trước khi ghi anything.
+    return { done: false, ok: false };
+  }
   if (idx >= 0) {
     current.splice(idx, 1);
   } else {
     current.push(slug);
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-  return current.includes(slug);
+  return { done: current.includes(slug), ok: true };
 }

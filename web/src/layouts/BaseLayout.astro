@@ -5,9 +5,11 @@ import "../styles/global.css";
 
 interface Props {
   title: string;
+  /** Slug hiện tại (trang bài học) — đăng ký identity cho quiz-attempt + progress UI. */
+  slug?: string;
 }
 
-const { title } = Astro.props;
+const { title, slug } = Astro.props;
 const currentPath = Astro.url.pathname;
 
 // Index tim kiem — dung 100% du lieu da co: ten chapter, tom tat, va tung muc
@@ -262,7 +264,7 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 			</aside>
 
 			<div class="rail-overlay" id="rail-overlay" aria-hidden="true"></div>
-			<main class="content" id="main">
+			<main class="content" id="main" data-page-slug={slug}>
 				<div class="content-inner">
 					<slot />
 				</div>
