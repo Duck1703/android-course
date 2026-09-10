@@ -12,22 +12,31 @@ interface Props {
 const { title, slug } = Astro.props;
 const currentPath = Astro.url.pathname;
 
-// Index tim kiem — dung 100% du lieu da co: ten chapter, tom tat, va tung muc
-// <h2> that trong file lesson (lay qua lessonStats). Khong tao noi dung moi.
+// Index tim kiem — dung 100% du lieu da co: ten chapter, tom tat, slug, va tung
+// muc <h2> that trong file lesson (lay qua lessonStats). Khong tao noi dung moi.
 // IMP-081: context = stage nhãn người học ("Jetpack Compose", "Mở rộng",
 // "Phụ lục") thay vì "Chương 5.1" — internal book numbering không còn là
 // danh tính chính trên UI (owner task sidebar/lesson-identity, cùng chuẩn).
+// Slug đưa vào key (kỹ thuật: "navigation-destination-nav-host" giúp từ khoá
+// tiếng Anh "navigation"/"workmanager" tìm ra bài dù prose Việt dùng "điều
+// hướng") — nhãn hiển thị vẫn chỉ stage + tiêu đề.
 const searchIndex = ALL_CHAPTERS.flatMap((ch) => {
   const base = `/chapters/${ch.slug}/`;
   const stage = groupChaptersByStage([ch])[0]?.stage;
-  const ctx = stage ? stageContext(stage) : "Khoá học";
-  const stageFull = stage ? `${ctx} · ${stageName(stage)}` : "Khoá học";
+  // Nhãn 2 phần "Mạng · Retrofit, JSON…" — bỏ phần sau khi trùng tên ngắn
+  // (stage name == context, vd "Jetpack Compose · Jetpack Compose" là nhiễu).
+  let stageFull = "Khoá học";
+  if (stage) {
+    const ctx = stageContext(stage);
+    const nm = stageName(stage);
+    stageFull = ctx === nm ? ctx : `${ctx} · ${nm}`;
+  }
   const rows = [
     {
       t: ch.title,
       c: stageFull,
       u: base,
-      k: `${ch.title} ${ch.summaryVi} ${ch.parentTitle ?? ""} ${chapterLabel(ch)}`.toLowerCase(),
+      k: `${ch.title} ${ch.summaryVi} ${ch.parentTitle ?? ""} ${chapterLabel(ch)} ${ch.slug}`.toLowerCase(),
     },
   ];
   for (const h of getStats(ch.slug).headings) {
@@ -412,6 +421,10 @@ const stageGroups = groupChaptersByStage(ALL_CHAPTERS).map((group) => {
 			return;
 		}
 		// Uu tien ket qua khop tu dau chuoi, roi moi den khop giua chuoi.
+		// IMP-081 cap decision: course đã 48 units / ~500 index rows — top-12
+		// vẫn là đúng Compromise: đủ chiều sâu cho 1 ý định tra cứu, không dump
+		// 48 rows. Query rộng (vd "compose") vẫn xử lý được bằng cách gõ cụm dài
+		// hơn; keyboard navigation + Enter giữ nguyên.
 		const scored: Array<{ h: Hit; s: number }> = [];
 		for (const h of INDEX) {
 			const pos = fold(h.k).indexOf(q);

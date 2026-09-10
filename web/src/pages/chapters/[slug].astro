@@ -2,7 +2,7 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import ProgressToggle from "../../components/ProgressToggle.astro";
 import CodeEnhance from "../../components/CodeEnhance.astro";
-import { ALL_CHAPTERS, SECTIONS, chapterLabel } from "../../data/chapters";
+import { ALL_CHAPTERS, stageById, stageContext, stageName } from "../../data/chapters";
 import { LESSONS } from "../../data/lessons";
 import { getStats } from "../../data/lessonStats";
 
@@ -14,16 +14,6 @@ export function getStaticPaths() {
 }
 
 const { chapter } = Astro.props;
-const sectionIndex = SECTIONS.findIndex((s) => s.chapters.some((c) => c.slug === chapter.slug));
-const section = SECTIONS[sectionIndex];
-const moduleLabel = section ? (section.title.split(": ")[1] ?? section.title) : "";
-
-// Nhãn chương: "10.2" khi chương lớn đã tách, "9" khi còn nguyên khối.
-const label = chapterLabel(chapter);
-
-// Đếm theo CHƯƠNG LỚN để con số ở chip không nhảy vọt khi tách chương:
-// "Chương 10.2 / 11 chương" chứ không phải "/ 14".
-const totalChapters = new Set(ALL_CHAPTERS.map((c) => c.number)).size;
 
 // Task 10 — registry: mỗi chapter đã có lesson đăng ký cặp {Lesson, Quiz} trong data/lessons.ts.
 // Chapter chưa có trong registry vẫn hiện placeholder — không cần sửa file này khi thêm lesson mới.
@@ -34,40 +24,48 @@ const Quiz = entry?.Quiz;
 // Số liệu + mục lục: đếm từ chính file lesson/quiz ở build time (data/lessonStats.ts).
 const stats = getStats(chapter.slug);
 
+// Workstream H (IMP-081): wayfinding theo STAGE — "Jetpack Compose · Bài 3/5".
+// Vị trí trong stage đọc từ lessonStats (stagePosition/stageTotal), KHÔNG suy
+// từ đánh số chương sách.
+const stage = stageById(chapter.stageId);
+const stageCtx = stageContext(stage);
+const stagePos = stats.stagePosition;
+const stageTotal = stats.stageTotal;
+
 const idx = ALL_CHAPTERS.findIndex((c) => c.slug === chapter.slug);
 const prev = idx > 0 ? ALL_CHAPTERS[idx - 1] : undefined;
 const next = idx >= 0 && idx < ALL_CHAPTERS.length - 1 ? ALL_CHAPTERS[idx + 1] : undefined;
 ---
 
-<BaseLayout title={`Chương ${label}: ${chapter.title}`} slug={chapter.slug}>
+<BaseLayout title={`${chapter.title}`} slug={chapter.slug}>
 	<div class="lesson-layout">
 		<div class="lesson-main">
 			<nav class="crumb" aria-label="Đường dẫn">
 				<a href="/">Khoá học</a>
 				<span class="sep" aria-hidden="true">/</span>
-				<span>Phần {sectionIndex + 1}</span>
-				{
-					chapter.parentTitle && (
-						<>
-							<span class="sep" aria-hidden="true">/</span>
-							<span>Chương {chapter.number} — {chapter.parentTitle}</span>
-						</>
-					)
-				}
+				<span>{stageCtx}</span>
 				<span class="sep" aria-hidden="true">/</span>
-				<span class="cur">Chương {label}</span>
+				<span class="cur">{chapter.title}</span>
 			</nav>
 
 			<header class="lesson-head">
 				<div class="lesson-eyebrow">
 					{chapter.stageId === "optional" && (
-						<span class="chip chip-ext">Mở rộng — không bắt buộc</span>
+						<span class="chip chip-ext">Không bắt buộc</span>
 					)}
 					{chapter.stageId === "appendix" && (
 						<span class="chip chip-appendix">Phụ lục — tham khảo</span>
 					)}
-					<span class="chip chip-primary">{(chapter.stageId !== "optional" && chapter.stageId !== "appendix") ? `Module ${sectionIndex + 1} · ${moduleLabel}` : moduleLabel || "Khoá học"}</span>
-					<span class="chip chip-plain">Chương {label} · {totalChapters} chương</span>
+					<span class="chip chip-primary">
+						{chapter.stageId === "appendix"
+							? "Tài liệu tra cứu"
+							: chapter.stageId === "optional"
+								? "Mở rộng — chọn theo nhu cầu"
+								: stageName(stage)}
+					</span>
+					{chapter.stageId !== "appendix" && (
+						<span class="chip chip-plain">Bài {stagePos}/{stageTotal}</span>
+					)}
 					<span class="chip chip-done" id="lesson-status" hidden>
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 							<path d="M4 12.5l5 5L20 6.5"></path>
@@ -134,7 +132,7 @@ const next = idx >= 0 && idx < ALL_CHAPTERS.length - 1 ? ALL_CHAPTERS[idx + 1] :
 											<path d="M4 12.5l5 5L20 6.5" />
 										</svg>
 										<span>
-											Nên học xong <a href={`/chapters/${prev.slug}/`}>Chương {chapterLabel(prev)} — {prev.title}</a>
+											Nên học xong <a href={`/chapters/${prev.slug}/`}>{prev.title}</a>
 										</span>
 									</li>
 								) : (
@@ -168,37 +166,37 @@ const next = idx >= 0 && idx < ALL_CHAPTERS.length - 1 ? ALL_CHAPTERS[idx + 1] :
 					</div>
 
 					<div class="overview-cell source">
-						<h2>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-								<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v18H6.5A2.5 2.5 0 0 1 4 18.5z" />
-								<path d="M8 7h7M8 11h7" />
-							</svg>
-							Nguồn tham chiếu
-						</h2>
-						<ul>
-							<li>
+							<h2>
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 									<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v18H6.5A2.5 2.5 0 0 1 4 18.5z" />
+									<path d="M8 7h7M8 11h7" />
 								</svg>
-								<span>
-									Sách <em>Android Fundamentals by Tutorials</em> (Kodeco) — chương {chapter.number}
-								</span>
-							</li>
-							<li>
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-									<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.2h7a1.5 1.5 0 0 1 1.5 1.5v7.8A1.5 1.5 0 0 1 17.5 19h-13A1.5 1.5 0 0 1 3 17.5z" />
-								</svg>
-								<span>
-									Project mẫu: <code>aaf-materials/{chapter.aafFolder}/</code>
-									{!chapter.hasProject && (
-										<span class="hint"> Chương này không có project Android thật.</span>
-									)}
-								</span>
-							</li>
-						</ul>
+								Nguồn tham chiếu
+							</h2>
+							<ul>
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+										<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v18H6.5A2.5 2.5 0 0 1 4 18.5z" />
+									</svg>
+									<span>
+										Sách <em>Android Fundamentals by Tutorials</em> (Kodeco) — chương {chapter.number}
+									</span>
+								</li>
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+										<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.2h7a1.5 1.5 0 0 1 1.5 1.5v7.8A1.5 1.5 0 0 1 17.5 19h-13A1.5 1.5 0 0 1 3 17.5z" />
+									</svg>
+									<span>
+										Project mẫu: <code>aaf-materials/{chapter.aafFolder}/</code>
+										{!chapter.hasProject && (
+											<span class="hint"> Chương này không có project Android thật.</span>
+										)}
+									</span>
+								</li>
+							</ul>
+						</div>
 					</div>
-				</div>
-			</section>
+				</section>
 
 
 			{
@@ -230,7 +228,7 @@ const next = idx >= 0 && idx < ALL_CHAPTERS.length - 1 ? ALL_CHAPTERS[idx + 1] :
 								</svg>
 								Chương trước
 							</span>
-							<span class="nav-title">{chapterLabel(prev)}. {prev.title}</span>
+							<span class="nav-title">{prev.title}</span>
 						</a>
 					) : (
 						<span class="nav-card prev empty">
@@ -253,7 +251,7 @@ const next = idx >= 0 && idx < ALL_CHAPTERS.length - 1 ? ALL_CHAPTERS[idx + 1] :
 									<path d="M5 12h13M13 6l6 6-6 6" />
 								</svg>
 							</span>
-							<span class="nav-title">{chapterLabel(next)}. {next.title}</span>
+							<span class="nav-title">{next.title}</span>
 						</a>
 					) : (
 						<span class="nav-card next empty">
