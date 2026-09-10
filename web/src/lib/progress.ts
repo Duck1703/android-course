@@ -303,6 +303,7 @@ export function getDoneSlugs(): string[] {
   // Chuyển đổi ngay tại chỗ đọc: mọi trang (trang chủ, sidebar, nút đánh dấu)
   // đều đi qua đây, nên không phụ thuộc thứ tự nạp script giữa các file.
   migrateProgress();
+  seedAttemptsFromDone();
   return readRaw();
 }
 
@@ -316,8 +317,10 @@ export function isDone(slug: string): boolean {
  * Mọi slug ĐÃ hoàn thành (sau migrate — slug hiện tại được công nhận) được bảo
  * đảm có mặt trong quiz-attempts, để người học legacy không bị coi là "chưa
  * thử quiz" dù hoàn thành trước khi có theo-dõi nộp bài. Tất định + idempotent:
- * chạy bao nhiêu lần kết quả như nhau; chạy MỖI LẦN ĐỌC progress nên máy nào
- * hoàn thành bài sau khi seed vẫn được bắt kịp ngay lần đọc kế tiếp.
+ * chạy bao nhiêu lần kết quả như nhau. Gọi từ getDoneSlugs() nên MỌI người đọc
+ * progress (trang chủ, sidebar, nút đánh dấu) đều kích seed — bài hoàn thành
+ * sau khi seed vẫn được bắt kịp ngay lần đọc kế tiếp, không phụ thuộc việc có
+ * ai hỏi hasQuizAttempted hay không.
  *
  * One-way (done → attempts, không ngược lại) nên KHÔNG bài nào tự "đã học"
  * vì seed, và no-fabricate §D không bị va chạm (SPLIT_MAP đã chặn tầng credit).
@@ -342,8 +345,7 @@ function seedAttemptsFromDone(): void {
 
 /** Mảng slug ĐÃ NỘP quiz ít nhất một lần (Model B-lite, IMP-070). */
 export function getQuizAttemptedSlugs(): string[] {
-  migrateProgress();
-  seedAttemptsFromDone();
+  getDoneSlugs(); // migrate + seed chạy trước để attempts luôn bắt kịp done
   return readRaw(ATTEMPTS_KEY);
 }
 
@@ -368,17 +370,19 @@ export function recordQuizAttempt(slug: string): void {
 /**
  * Toggle "đã học" theo Model B-lite (IMP-070).
  *
- * GATING: bài chưa nộp quiz ít nhất một lần thì KHÔNG thể đánh dấu — trả về
- * `{ ok: false }` để UI hiện gợi ý nhẹ, KHÔNG đụng storage. Bài đã nộp thì
- * toggle tự do như cũ (mark/unmark); unmark KHÔNG xoá lượt nộp đã ghi.
+ * GATING: bài INSTRUCTIONAL có quiz (hasQuiz=true) chưa nộp quiz ít nhất một
+ * lần thì KHÔNG thể đánh dấu — trả về `{ ok: false }` để UI hiện gợi ý nhẹ,
+ * KHÔNG đụng storage. Bài reference KHÔNG quiz (AP1–AP3, hasQuiz=false) giữ
+ * toggle tự do — không bịa yêu cầu quiz cho tài liệu tham khảo. Bài đã nộp
+ * thì toggle tự do như cũ (mark/unmark); unmark KHÔNG xoá lượt nộp đã ghi.
  *
  * Return: `{ done, ok }` — `ok=false` nghĩa là bị chặn (chưa nộp quiz).
  */
-export function toggleDone(slug: string): { done: boolean; ok: boolean } {
+export function toggleDone(slug: string, hasQuiz = true): { done: boolean; ok: boolean } {
   const current = getDoneSlugs();
   const idx = current.indexOf(slug);
-  if (idx < 0 && !hasQuizAttempted(slug)) {
-    // Chưa học + chưa từng nộp quiz → chặn trước khi ghi anything.
+  if (hasQuiz && idx < 0 && !hasQuizAttempted(slug)) {
+    // Bài instructional: chưa học + chưa từng nộp quiz → chặn trước khi ghi.
     return { done: false, ok: false };
   }
   if (idx >= 0) {

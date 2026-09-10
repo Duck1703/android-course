@@ -48,7 +48,7 @@ const { slug, hasQuiz = false } = Astro.props;
 	btn?.addEventListener("click", () => {
 		if (!btn.dataset.slug) return;
 		const slug = btn.dataset.slug;
-		const result = toggleDone(slug);
+		const result = toggleDone(slug, btn.dataset.hasQuiz === "true");
 		if (!result.ok) {
 			// Chưa nộp quiz → chặn, hiện gợi ý nhẹ (không modal, không reload).
 			render();
