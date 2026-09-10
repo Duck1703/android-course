@@ -1,26 +1,49 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { SECTIONS, ALL_CHAPTERS, chapterLabel } from "../data/chapters";
-import { COURSE_TOTALS, getStats } from "../data/lessonStats";
+import { ALL_CHAPTERS, STAGES, stageById, stageName, stageKicker, stageTitle, stageContext } from "../data/chapters";
+import { getStats, COURSE_TOTALS } from "../data/lessonStats";
 
-// Nhom module = dung 3 Section co san trong chapters.ts, khong tao syllabus moi.
-const modules = SECTIONS.map((s, i) => {
-  const parts = s.title.split(": ");
-  return {
-    index: i + 1,
-    label: parts.length > 1 ? parts.slice(1).join(": ") : s.title,
-    original: s.title,
-    chapters: s.chapters,
-    chapterCount: new Set(s.chapters.map((c) => c.number)).size,
-  };
+// ==========================================================================
+// IMP-080 — Homepage Roadmap v2.
+// Cấu trúc: Hero (số liệu suy từ registry) → "Bạn đang ở đâu" (dải stage +
+// resume) → Lộ trình lõi (Nền tảng + 7 giai đoạn, mỗi stage 1 card) →
+// Mở rộng (riêng, không bắt buộc) → Phụ lục (tham khảo).
+// Mọi con số ĐỀU suy từ registry/lessonStats — không khai tay (IMP-082).
+// ==========================================================================
+
+// --- Stage roadmap: chỉ stage CÓ bài, core trước (Nền tảng + 7 giai đoạn) ----
+const coreStages = STAGES.filter(
+	(st) => st.kind === "core" && ALL_CHAPTERS.some((c) => c.stageId === st.id)
+);
+const optionalStage = STAGES.find((st) => st.id === "optional")!;
+const optionalChapters = ALL_CHAPTERS.filter((c) => c.stageId === "optional");
+const appendixChapters = ALL_CHAPTERS.filter((c) => c.stageId === "appendix");
+
+const stageRows = coreStages.map((st) => {
+	const chapters = ALL_CHAPTERS.filter((c) => c.stageId === st.id);
+	return {
+		stage: st,
+		chapters,
+		lessons: chapters.length,
+		minutes: chapters.reduce((n, c) => n + getStats(c.slug).minutes, 0),
+		slugs: chapters.map((c) => c.slug).join(","),
+	};
 });
 
-// So chuong lon (11) khac so trang (14, vi Chuong 10 da tach thanh 10.1 -> 10.4).
-// Hero dem theo chuong lon; the .card va tien do dem theo trang.
-const totalChapters = new Set(ALL_CHAPTERS.map((c) => c.number)).size;
+// --- Hero: số liệu suy từ registry (không hardcode) --------------------------
+const coreLessons = ALL_CHAPTERS.filter((c) => stageById(c.stageId).kind === "core").length;
+const optionalLessons = optionalChapters.length;
+const coreMinutes = ALL_CHAPTERS.filter((c) => stageById(c.stageId).kind === "core").reduce(
+	(n, c) => n + getStats(c.slug).minutes,
+	0
+);
+const coreHours = Math.round(coreMinutes / 60);
+const mainStages = coreStages.length - 1; // trừ Nền tảng → "7 giai đoạn chính"
+const quizQuestions = COURSE_TOTALS.quizQuestions;
 
-const hours = Math.round((COURSE_TOTALS.minutes / 60) * 10) / 10;
+// Bài đầu tiên — mặc định CTA khi localStorage trống (client script sẽ override).
 const first = ALL_CHAPTERS[0]!;
+const FOUNDATION_L = stageRows[0]!.lessons; // số bài Nền tảng (2) — suy từ registry
 ---
 
 <BaseLayout title="Trang chủ">
@@ -36,17 +59,20 @@ const first = ALL_CHAPTERS[0]!;
 
 			<h1>Android Development with Jetpack Compose</h1>
 			<p>
-				Khoá học tiếng Việt cho người mới bắt đầu: {totalChapters} chương đi từ khái niệm → cách hoạt
-				động → code thật trong một app Android hoàn chỉnh. Mỗi chương đều có quiz, bài tập, và mục
-				cảnh báo những chỗ tài liệu cũ đã lỗi thời.
+				Khoá học tiếng Việt cho người mới bắt đầu: từ Kotlin nền tảng qua 7 giai đoạn chính đến app
+				Android hoàn chỉnh. Mỗi bài đều có quiz, bài tập, và mục cảnh báo những chỗ tài liệu cũ đã
+				lỗi thời.
 			</p>
 
 			<ul class="hero-stats">
-				<li><span class="st-val">{totalChapters}</span><span class="st-lbl">chương</span></li>
-				<li><span class="st-val">{COURSE_TOTALS.sections}</span><span class="st-lbl">mục kiến thức</span></li>
-				<li><span class="st-val">{COURSE_TOTALS.codeBlocks}</span><span class="st-lbl">khối code</span></li>
-				<li><span class="st-val">{COURSE_TOTALS.quizQuestions}</span><span class="st-lbl">câu hỏi</span></li>
-				<li class="st-hi"><span class="st-val" id="hero-pct">0%</span><span class="st-lbl">đã hoàn thành</span></li>
+				<li>
+					<span class="st-val">{FOUNDATION_L}:{mainStages}</span>
+					<span class="st-lbl">nền tảng + giai đoạn</span>
+				</li>
+				<li><span class="st-val">{coreLessons}</span><span class="st-lbl">bài học lõi</span></li>
+				<li><span class="st-val">{optionalLessons}</span><span class="st-lbl">bài mở rộng</span></li>
+				<li><span class="st-val">~{coreHours} giờ</span><span class="st-lbl">lõi</span></li>
+				<li class="st-hi"><span class="st-val" id="hero-pct">0%</span><span class="st-lbl">lõi đã hoàn thành</span></li>
 			</ul>
 
 			<div class="hero-actions">
@@ -56,40 +82,51 @@ const first = ALL_CHAPTERS[0]!;
 					</svg>
 					<span id="hero-continue-label">Bắt đầu học</span>
 				</a>
-				<a class="btn-ghost" href="#curriculum">Xem chương trình học</a>
+				<a class="btn-ghost" href="#roadmap">Xem lộ trình</a>
 			</div>
 
-			<p class="hero-resume" id="hero-resume">
-				Tổng thời lượng đọc khoảng <strong>{hours} giờ</strong> · {COURSE_TOTALS.exercises} bài tập thực hành
+			<p class="hero-sub">
+				Gồm {FOUNDATION_L} bài nền tảng Kotlin bắt buộc trước khi vào {mainStages} giai đoạn chính ·
+				{quizQuestions} câu hỏi ôn tập · tiến độ lưu ngay trên máy, không cần đăng nhập
 			</p>
 		</div>
 	</section>
 
-	<section class="dash-section">
-		<h2>Tiến độ của bạn <span class="sec-hint">lưu ngay trên máy bạn, không cần đăng nhập</span></h2>
-		<div class="progress-panel">
-			<div class="pcard">
-				<h3>Toàn khoá</h3>
-				<div class="big-bar">
-					<span class="bb-track" aria-hidden="true"><span class="bb-fill" id="bb-fill"></span></span>
-					<span class="bb-pct" id="bb-pct">0%</span>
-				</div>
-
-				<!-- id cu: script tien do dang ghi text vao day -->
-				<p id="progress-summary" hidden></p>
-
-				<ul class="mini-stats">
-					<li class="ms-done">
-						<span class="ms-val" id="ms-done">0</span><span class="ms-lbl">đã học</span>
-					</li>
-					<li>
-						<span class="ms-val" id="ms-left">{ALL_CHAPTERS.filter((c) => c.stageId !== "optional" && c.stageId !== "appendix").length}</span><span class="ms-lbl">còn lại</span>
-					</li>
-					<li>
-						<span class="ms-val">{ALL_CHAPTERS.filter((c) => c.stageId !== "optional" && c.stageId !== "appendix").length}</span><span class="ms-lbl">tổng số phần</span>
-					</li>
-				</ul>
-			</div>
+	{
+		// --- "BẠN ĐANG Ở ĐÂU" — dải tiến độ theo stage + resume ------------------
+		// Render tĩnh đủ 8 nấc (Nền tảng + 7 giai đoạn) để không layout-shift khi
+		// script client tô trạng thái; stage trống không tồn tại ở đây vì cả 8
+		// đều có bài. Thứ tự + số bài đọc từ registry, KHÔNG suy từ số đánh dấu.
+	}
+	<section class="dash-section" id="where-you-are" aria-labelledby="where-title">
+		<h2 id="where-title">Bạn đang ở đâu <span class="sec-hint">theo từng giai đoạn, cập nhật ngay trên máy bạn</span></h2>
+		<div class="where-panel">
+			<ol class="stage-strip" id="stage-strip" aria-label="Lộ trình lõi: Nền tảng rồi đến 7 giai đoạn chính">
+				{
+					stageRows.map((row) => {
+						const st = row.stage;
+						return (
+							<li
+								class="strip-step"
+								data-stage={st.id}
+								data-slugs={row.slugs}
+								data-total={row.lessons}
+							>
+								<span class="strip-mark" aria-hidden="true"></span>
+								<span class="strip-name">
+									<strong>{st.id === "foundation" ? "Nền tảng" : stageName(st)}</strong>
+									<span class="strip-count">
+										<span class="strip-done">0</span>/{row.lessons}
+									</span>
+								</span>
+								<span class="sr-only">
+									{stageKicker(st)} — <span class="strip-state">chưa bắt đầu</span>
+								</span>
+							</li>
+						);
+					})
+				}
+			</ol>
 
 			<article class="resume-card" id="resume-card">
 				<span class="rc-kicker">
@@ -98,7 +135,10 @@ const first = ALL_CHAPTERS[0]!;
 					</svg>
 					<span id="rc-kicker-label">Bắt đầu từ đây</span>
 				</span>
-				<h3 id="rc-title">Chương {chapterLabel(first)}: {first.title}</h3>
+				<p class="rc-stage" id="rc-stage">
+					{stageContext(stageById(first.stageId))} · {stageName(stageById(first.stageId))}
+				</p>
+				<h3 id="rc-title">{first.title}</h3>
 				<p id="rc-summary">{first.summaryVi}</p>
 				<a class="btn-cta" id="rc-link" href={`/chapters/${first.slug}/`}>
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -108,58 +148,153 @@ const first = ALL_CHAPTERS[0]!;
 				</a>
 			</article>
 		</div>
+
+		<!-- Trạng thái kết thúc: ẩn mặc định, script bật khi 39/39 lõi xong -->
+		<div class="terminal-card" id="terminal-card" hidden>
+			<h3>Bạn đã hoàn thành toàn bộ lộ trình lõi 🎉</h3>
+			<p>
+				Tất cả {coreLessons} bài lõi đều đã xong. Muốn đi tiếp? Track
+				<a href="#mo-rong">Mở rộng</a> (không bắt buộc), bài <a href={`/chapters/capstone-app-ghi-chu/`}>Capstone</a>
+				và <a href="#phu-luc">Phụ lục</a> là những hướng tốt — còn <a href={`/chapters/ch11-keystore-sqlcipher-va-ma-hoa/`}>X2 — Mã hoá</a>
+				là bài lõi cuối cùng nếu bạn muốn ôn lại.
+			</p>
+		</div>
 	</section>
 
+	{
+		// --- LỘ TRÌNH LÕI: Nền tảng + 7 stage cards ------------------------------
+	}
+	<section class="dash-section" id="roadmap" aria-labelledby="roadmap-title">
+		<h2 id="roadmap-title">
+			Lộ trình lõi <span class="sec-hint">học tuần tự — mỗi giai đoạn xây trên giai đoạn trước</span>
+		</h2>
 
-	<section class="dash-section" id="curriculum">
-		<h2>Chương trình học <span class="sec-hint">3 phần · {totalChapters} chương, học tuần tự từ trên xuống</span></h2>
-
-		{
-			modules.map((mod) => {
-				const totalMin = mod.chapters.reduce((n, c) => n + getStats(c.slug).minutes, 0);
-				return (
-					<div class="mod-group" data-mod={mod.chapters.map((c) => c.slug).join(",")}>
-						<div class="mod-group-head">
-							<span class="mod-group-num">{mod.index}</span>
-							<div class="mod-group-meta">
-								<h3>{mod.label}</h3>
-								<span class="mg-sub">
-									{mod.chapterCount} chương · khoảng {Math.round(totalMin / 60)} giờ ·{" "}
-									<span class="mg-done">0</span>/{mod.chapters.length} phần đã học
-								</span>
-							</div>
-							<span class="mod-group-bar" aria-hidden="true"><span></span></span>
+		{stageRows.map((row) => {
+			const st = row.stage;
+			const isFoundation = st.id === "foundation";
+			return (
+				<article
+					class="stage-card"
+					data-stage={st.id}
+					data-slugs={row.slugs}
+					data-total={row.lessons}
+					id={`stage-${st.id}`}
+				>
+					<div class="stage-head">
+						<div class="stage-meta">
+							<span class="stage-kicker">{stageKicker(st)}</span>
+							<h3>{stageTitle(st)}</h3>
+							<p class="stage-sub">
+								{row.lessons} bài học
+								{!isFoundation && ` · khoảng ${Math.round(row.minutes / 60)} giờ`} ·{" "}
+								<span class="stg-done">0</span>/{row.lessons} hoàn thành
+							</p>
 						</div>
-
-						<div class="card-grid">
-							{mod.chapters.map((ch) => {
-								const st = getStats(ch.slug);
-								return (
-									<a class="card" href={`/chapters/${ch.slug}/`} data-slug={ch.slug} data-track={ch.stageId === "optional" ? "optional" : ch.stageId === "appendix" ? "appendix" : "core"}>
-										<div class="card-top">
-											<span class="badge">{chapterLabel(ch)}</span>
-											<h3>{ch.title}</h3>
-										</div>
-										<p class="summary">{ch.summaryVi}</p>
-										<div class="card-meta">
-											<span class="m-sections">{st.sections} mục</span>
-											<span class="m-quiz">{st.quizQuestions} câu</span>
-											<span class="m-time">{st.minutes} phút</span>
-											<span class="card-state">
-												<span class="cs-todo">Chưa học</span>
-												<span class="cs-done">Đã học</span>
-											</span>
-										</div>
-									</a>
-								);
-							})}
-						</div>
+						<span class="stage-bar" aria-hidden="true"><span></span></span>
 					</div>
-				);
-			})
-		}
+
+					<ul class="stage-lessons">
+						{row.chapters.map((ch) => {
+							const s = getStats(ch.slug);
+							return (
+								<li>
+									<a class="lesson-row" href={`/chapters/${ch.slug}/`} data-slug={ch.slug}>
+										<span class="lr-mark" aria-hidden="true">
+											<svg class="lr-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+												<path d="M4 12.5l5 5L20 6.5"></path>
+											</svg>
+										</span>
+										<span class="lr-body">
+											<span class="lr-title">{ch.title}</span>
+											<span class="lr-meta">{s.sections} mục · {s.quizQuestions} câu · {s.minutes} phút</span>
+										</span>
+										<span class="lr-state">
+											<span class="lr-todo">Chưa học</span>
+											<span class="lr-done">Đã học</span>
+										</span>
+									</a>
+								</li>
+							);
+						})}
+					</ul>
+				</article>
+			);
+		})}
 	</section>
 
+	{
+		// --- MỞ RỘNG (optional) — section riêng, không trộn lộ trình lõi ----------
+	}
+	<section class="dash-section optional-section" id="mo-rong" aria-labelledby="opt-title">
+		<h2 id="opt-title">
+			Mở rộng <span class="sec-hint">không bắt buộc — chọn theo nhu cầu, không tính vào tiến độ lõi</span>
+		</h2>
+
+		<article class="stage-card stage-card-optional" data-stage="optional" data-slugs={optionalChapters.map((c) => c.slug).join(",")} data-total={optionalChapters.length} id="stage-optional">
+			<div class="stage-head">
+				<div class="stage-meta">
+					<span class="stage-kicker">{stageKicker(optionalStage)}</span>
+					<h3>{stageTitle(optionalStage)}</h3>
+					<p class="stage-sub">
+						{optionalChapters.length} bài học · khoảng{" "}
+						{Math.round(optionalChapters.reduce((n, c) => n + getStats(c.slug).minutes, 0) / 60)} giờ ·{" "}
+						<span class="stg-done">0</span>/{optionalChapters.length} hoàn thành
+					</p>
+				</div>
+				<span class="stage-bar" aria-hidden="true"><span></span></span>
+			</div>
+
+			<ul class="stage-lessons">
+				{optionalChapters.map((ch) => {
+					const s = getStats(ch.slug);
+					return (
+						<li>
+							<a class="lesson-row" href={`/chapters/${ch.slug}/`} data-slug={ch.slug}>
+								<span class="lr-mark" aria-hidden="true">
+									<svg class="lr-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+										<path d="M4 12.5l5 5L20 6.5"></path>
+									</svg>
+								</span>
+								<span class="lr-body">
+									<span class="lr-title">
+										{ch.title}
+										{ch.slug === "capstone-app-ghi-chu" && <span class="ext-badge" aria-label="Nên làm khi đã xong lộ trình lõi">Nên làm</span>}
+									</span>
+									<span class="lr-meta">{s.sections} mục · {s.quizQuestions} câu · {s.minutes} phút</span>
+								</span>
+								<span class="lr-state">
+									<span class="lr-todo">Chưa học</span>
+									<span class="lr-done">Đã học</span>
+								</span>
+							</a>
+						</li>
+					);
+				})}
+			</ul>
+		</article>
+	</section>
+
+	{
+		// --- PHỤ LỤC — reference, không phải bước học -----------------------------
+	}
+	<section class="dash-section appendix-section" id="phu-luc" aria-labelledby="apx-title">
+		<h2 id="apx-title">
+			Phụ lục <span class="sec-hint">tài liệu tra cứu — đọc khi cần, không có quiz</span>
+		</h2>
+		<ul class="ref-list">
+			{appendixChapters.map((ch) => {
+				const s = getStats(ch.slug);
+				return (
+					<li>
+						<a class="ref-row" href={`/chapters/${ch.slug}/`} data-slug={ch.slug}>
+							<span class="ref-title">{ch.title}</span>
+							<span class="ref-meta">{s.minutes} phút đọc</span>
+						</a>
+					</li>
+				);
+			})}
+		</ul>
+	</section>
 
 	<p class="dash-source">
 		<strong>Nguồn:</strong> khoá học được biên soạn dựa trên tài liệu <em>Android Fundamentals by Tutorials</em>
@@ -169,93 +304,116 @@ const first = ALL_CHAPTERS[0]!;
 </BaseLayout>
 
 <script>
-	// Tien do doc tu localStorage (key khong doi: "hoc-android-tv:progress").
-	// Danh sach bai + tieu de + tom tat lay tu chinh cac the .card da render,
-	// nen khong can nhan doi du lieu khoa hoc o phia client.
+	// ==========================================================================
+	// Trang chu v2 — client state (IMP-080). Nguon progress: lib/progress
+	// (Model B-lite, getDoneSlugs) + progressStages (nextLesson — resume đúng
+	// semantics: attempt chưa confirm vẫn là chưa hoàn thành).
+	// ==========================================================================
 	import { getDoneSlugs } from "../lib/progress";
+	import { coreProgress, nextLesson } from "../lib/progressStages";
+	import { STAGES } from "../data/chapters";
 
-	const doneSlugs = getDoneSlugs();
-	const done = new Set(doneSlugs);
-	const cards = document.querySelectorAll<HTMLAnchorElement>(".card[data-slug]");
+	const done = new Set(getDoneSlugs());
+	const lessonRows = document.querySelectorAll<HTMLAnchorElement>(".lesson-row[data-slug], .ref-row[data-slug]");
 
-	cards.forEach((card) => {
-		if (card.dataset.slug && done.has(card.dataset.slug)) card.classList.add("done");
+	lessonRows.forEach((a) => {
+		if (a.dataset.slug && done.has(a.dataset.slug)) a.classList.add("done");
 	});
 
-	// --- Tom tat tien do (giu nguyen cau chu cu o #progress-summary) ---
-	// Dem theo the .card that su co tren trang, khong dem thang doneSlugs —
-	// tranh truong hop localStorage con slug cu khong con trong khoa hoc.
-	// IMP-059 (brief §26/§28): tien do TOAN KHOA o hero + pcard = CORE ONLY;
-	// optional ("Mở rộng") va appendix KHONG đếm. Model B-lite (Workstream G) sẽ thay.
-	const coreCards = [...cards].filter((c) => (c.dataset.track ?? "core") === "core");
-	const total = coreCards.length;
-	const n = coreCards.filter((c) => c.classList.contains("done")).length;
-	const pct = total ? Math.round((n / total) * 100) : 0;
-
-	const summary = document.getElementById("progress-summary");
-	if (summary) {
-		summary.innerHTML = `Bạn đã đánh dấu đã học <strong>${n}/${total}</strong> phần.`;
-		summary.hidden = false;
-	}
-
+	// --- Hero + trạng thái stage ------------------------------------------------
+	const core = coreProgress();
+	const pct = core.total ? Math.round((core.done / core.total) * 100) : 0;
 	const setText = (id: string, v: string) => {
 		const el = document.getElementById(id);
 		if (el) el.textContent = v;
 	};
-
-	setText("bb-pct", `${pct}%`);
 	setText("hero-pct", `${pct}%`);
-	setText("ms-done", String(n));
-	setText("ms-left", String(Math.max(0, total - n)));
 
-	const bb = document.getElementById("bb-fill");
-	if (bb) bb.style.width = `${pct}%`;
-
-	// --- Tien do tung module ---
-	document.querySelectorAll<HTMLElement>(".mod-group[data-mod]").forEach((g) => {
-		const slugs = (g.dataset.mod || "").split(",").filter(Boolean);
+	// Tiến độ từng stage (strip + card cùng đọc data-slugs từ registry render).
+	const stageState = new Map<string, { done: number; total: number; state: "todo" | "active" | "done" }>();
+	document.querySelectorAll<HTMLElement>("[data-stage][data-slugs]").forEach((el) => {
+		const slugs = (el.dataset.slugs || "").split(",").filter(Boolean);
 		const d = slugs.filter((s) => done.has(s)).length;
-		const cnt = g.querySelector(".mg-done");
-		if (cnt) cnt.textContent = String(d);
-		const bar = g.querySelector<HTMLElement>(".mod-group-bar span");
-		if (bar) bar.style.width = slugs.length ? `${(d / slugs.length) * 100}%` : "0%";
+		const total = slugs.length;
+		const state: "todo" | "active" | "done" = d === total ? "done" : d > 0 ? "active" : "todo";
+		// Stage "active" = có bài done nhưng chưa xong hết; stage ĐANG HỌC (bài
+		// resume nằm trong đó) được script resume gán thêm dưới đây.
+		stageState.set(el.dataset.stage!, { done: d, total, state });
+		el.querySelectorAll(".stg-done, .strip-done").forEach((n) => (n.textContent = String(d)));
+		el.querySelectorAll(".stage-bar span").forEach((bar) => {
+			(bar as HTMLElement).style.width = total ? `${(d / total) * 100}%` : "0%";
+		});
 	});
 
-	// --- "Tiep tuc hoc": bai chua hoc dau tien theo thu tu khoa hoc ---
-	const ordered = [...cards];
-	const next = ordered.find((c) => !c.classList.contains("done"));
-	const allDone = !next && ordered.length > 0;
-	const target = next ?? ordered[ordered.length - 1];
+	// --- "Bạn đang ở đâu": stage hiện tại = stage chứa bài resume ----------------
+	const stageOrder = STAGES.filter((st) => stageState.has(st.id));
 
-	if (target) {
-		const title = target.querySelector("h3")?.textContent?.trim() ?? "";
-		const num = target.querySelector(".badge")?.textContent?.trim() ?? "";
-		const desc = target.querySelector(".summary")?.textContent?.trim() ?? "";
-		const href = target.getAttribute("href") ?? "/";
+	// --- RESUME — Model B-lite: nextLesson() = core trước, optional sau; attempt
+	// chưa confirm vẫn unfinished; appendix không bao giờ là target. --------------
+	const next = nextLesson();
+	const allCoreDone = core.done === core.total && core.total > 0;
 
-		const rcTitle = document.getElementById("rc-title");
-		if (rcTitle) rcTitle.textContent = `Chương ${num}: ${title}`;
-		setText("rc-summary", desc);
+	const rcStage = document.getElementById("rc-stage");
+	const rcTitle = document.getElementById("rc-title");
+	const rcSummary = document.getElementById("rc-summary");
+	const rcLink = document.getElementById("rc-link");
+	const rcCta = document.getElementById("rc-cta-label");
+	const rcKicker = document.getElementById("rc-kicker-label");
+	const heroLink = document.getElementById("hero-continue");
+	const heroCta = document.getElementById("hero-continue-label");
+	const terminal = document.getElementById("terminal-card");
+	const resumeCard = document.getElementById("resume-card");
 
-		const rcLink = document.getElementById("rc-link");
-		rcLink?.setAttribute("href", href);
-		const heroLink = document.getElementById("hero-continue");
-		heroLink?.setAttribute("href", href);
-
-		const started = n > 0;
-		const label = allDone ? "Xem lại chương cuối" : started ? "Tiếp tục học" : "Bắt đầu học";
-		setText("rc-cta-label", label);
-		setText("hero-continue-label", label);
-		setText(
-			"rc-kicker-label",
-			allDone ? "Bạn đã hoàn thành khoá học" : started ? "Tiếp tục học" : "Bắt đầu từ đây"
-		);
-
-		if (started && !allDone) {
-			const resume = document.getElementById("hero-resume");
-			if (resume) resume.innerHTML = `Chương tiếp theo của bạn: <strong>Chương ${num} — ${title}</strong>`;
-		}
+	if (next) {
+		// Map slug → stage context cho nhãn resume (đọc từ data-slugs đã render).
+		let ctx = "";
+		document.querySelectorAll<HTMLElement>(".stage-card[data-stage][data-slugs]").forEach((el) => {
+			if ((el.dataset.slugs || "").split(",").includes(next.slug)) {
+				ctx = el.querySelector(".stage-meta h3")?.textContent?.trim() ?? "";
+			}
+		});
+		const started = core.done > 0;
+		if (rcKicker) rcKicker.textContent = started ? "Tiếp tục học" : "Bắt đầu từ đây";
+		if (rcStage && ctx) rcStage.textContent = ctx;
+		if (rcTitle) rcTitle.textContent = next.title;
+		if (rcSummary) rcSummary.textContent = next.summaryVi;
+		rcLink?.setAttribute("href", `/chapters/${next.slug}/`);
+		heroLink?.setAttribute("href", `/chapters/${next.slug}/`);
+		const label = started ? "Tiếp tục học" : "Bắt đầu học";
+		if (rcCta) rcCta.textContent = label;
+		if (heroCta) heroCta.textContent = label;
+	} else if (allCoreDone) {
+		// Terminal state: hết bài lõi chưa học (nextLesson rơi vào optional cũng
+		// không ép tiếp — terminal chỉ dựa core 39/39).
+		if (resumeCard) resumeCard.hidden = true;
+		if (terminal) terminal.hidden = false;
+		if (heroCta) heroCta.textContent = "Xem lộ trình";
+		if (heroLink) heroLink.setAttribute("href", "#roadmap");
 	}
 
-</script>
+	// Stage hiện tại: chứa bài resume (kể cả khi 0 done — stage đầu người học sắp vào).
+	if (next) {
+		document.querySelectorAll<HTMLElement>("[data-stage][data-slugs]").forEach((el) => {
+			const slugs = (el.dataset.slugs || "").split(",").filter(Boolean);
+			if (slugs.includes(next.slug)) {
+				el.classList.add("current-stage");
+				// Stage chứa bài resume → đây là stage đang học.
+				el.querySelectorAll(".strip-state").forEach((n) => (n.textContent = "đang học"));
+			}
+		});
+	}
 
+	// Dải "Bạn đang ở đâu": đánh dấu các stage trước stage hiện tại là "done/active",
+	// stage sau là "sắp tới" — theo thứ tự STAGES, không suy từ số hiển thị.
+	const currentIdx = next ? stageOrder.findIndex((st) => {
+		const el = document.querySelector<HTMLElement>(`[data-stage="${st.id}"][data-slugs]`);
+		return el ? ((el.dataset.slugs || "").split(",").includes(next.slug)) : false;
+	}) : -1;
+	stageOrder.forEach((st, i) => {
+		const el = document.querySelector<HTMLElement>(`[data-stage="${st.id}"].strip-step`);
+		if (!el) return;
+		const info = stageState.get(st.id);
+		const state: "done" | "active" | "todo" =
+			info && info.done === info.total ? "done" : i === currentIdx ? "active" : i < currentIdx ? "done" : "todo";
+		el.dataset.state = state;
+	});</script>

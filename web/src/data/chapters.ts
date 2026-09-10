@@ -109,6 +109,48 @@ export function chapterLabel(ch: Pick<ChapterInfo, "number" | "subNumber" | "lab
   return ch.label ?? (ch.subNumber ? `${ch.number}.${ch.subNumber}` : String(ch.number));
 }
 
+// ---------------------------------------------------------------------------
+// Nhãn stage cho người học (Workstream H — IMP-080/081). Sách/registry đánh số
+// nội bộ (number/subNumber/label "5.1") KHÔNG còn là danh tính chính của bài
+// trên UI; stage là cấp định danh chính. Các helper dưới đây chỉ đọc STAGES —
+// an toàn dùng ở client script (KHÔNG import lessonStats vào file này).
+// ---------------------------------------------------------------------------
+
+export function stageById(id: StageId): StageInfo {
+  const st = STAGES.find((s) => s.id === id);
+  if (!st) throw new Error(`[chapters] stageId không tồn tại: ${id}`);
+  return st;
+}
+
+/** Tên stage ("Jetpack Compose", "Android cơ bản"); Nền tảng giữ tên dài dạy học. */
+export function stageName(st: StageInfo): string {
+  if (st.id === "foundation") return "Kotlin đủ để học Compose";
+  const sep = st.label.indexOf(" — ");
+  return st.kind === "core" && sep > 0 ? st.label.slice(sep + 3) : st.label;
+}
+
+/** Kicker nhỏ trên tên stage: "Nền tảng" / "Giai đoạn 2" / "Mở rộng" / "Phụ lục". */
+export function stageKicker(st: StageInfo): string {
+  if (st.id === "foundation") return "Nền tảng";
+  if (st.kind === "core") return `Giai đoạn ${st.order - 1}`;
+  return st.id === "optional" ? "Mở rộng" : "Phụ lục";
+}
+
+/** Tiêu đề nhóm: core = stageName; optional/appendix tự mang nghĩa track. */
+export function stageTitle(st: StageInfo): string {
+  if (st.kind === "optional") return "Không bắt buộc";
+  if (st.kind === "appendix") return "Tài liệu tham khảo";
+  return stageName(st);
+}
+
+/** Nhãn context ngắn (search/resume/crumb): "Nền tảng", "Mạng", "Mở rộng", "Phụ lục". */
+export function stageContext(st: StageInfo): string {
+  if (st.id === "appendix") return "Phụ lục";
+  if (st.kind === "optional") return "Mở rộng";
+  if (st.id === "foundation") return "Nền tảng";
+  return stageName(st);
+}
+
 /**
  * Gom danh sach chuong (phang) thanh cay 1 cap de hien thi:
  * chuong nguyen khoi ra mot dong, cac chuong nho cung `number` gom duoi mot
