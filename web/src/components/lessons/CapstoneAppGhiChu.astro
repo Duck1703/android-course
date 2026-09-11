@@ -398,11 +398,13 @@ fun Note.toEntity() = NoteEntity(id = id, title = title, body = body, done = don
 	</p>
 	<p>
 		<code>NoteRow</code> là composable <strong>bạn tự viết</strong> — một hàng ghi chú theo đúng khuôn
-		<code>Row</code> của C1: checkbox (<code>Checkbox(checked = note.done, onCheckedChange = { onToggleDone() })</code>)
-		+ <code>Text(note.title)</code> (đậm dần/gạch ngang khi done nếu muốn), cả hàng bọc trong
-		<code>Modifier.clickable { onOpen() }</code>. Về xoá-swipe: R4 đã dạy khuôn <code>SwipeToDismissBox</code>
-		(tên API hiện hành — <code>SwipeToDismiss</code> cũ đã deprecated); swipes gọi
-		<code>viewModel.delete(note.id)</code>. Làm theo đúng thứ tự bài: hàng cơ bản trước, swipe sau khi mọi thứ chạy.
+		<code>Row</code> của C1: checkbox (<code>Checkbox(checked = note.done, onCheckedChange = &#123; onToggleDone() &#125;</code>
+		với <code>onToggleDone</code> là tham số của NoteRow) + <code>Text(note.title)</code> (đậm dần/gạch ngang khi done nếu
+		muốn), cả hàng bọc trong <code>Modifier.clickable &#123; onOpen() &#125;</code> (<code>onOpen</code> là tham số còn lại
+		của NoteRow). Về xoá-swipe: R4 đã dạy khuôn
+		<code>SwipeToDismissBox</code> (tên API hiện hành — <code>SwipeToDismiss</code> cũ đã deprecated); swipe gọi
+		<code>viewModel.delete(note.id)</code> qua ViewModel của màn. Làm theo đúng thứ tự bài:
+		hàng cơ bản trước, swipe sau khi mọi thứ chạy.
 	</p>
 
 	ViewModel của màn này cần nạp ghi chú cũ khi đang sửa — đây là phần khung còn thiếu của Bước 7,

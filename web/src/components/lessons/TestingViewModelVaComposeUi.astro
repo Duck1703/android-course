@@ -105,6 +105,30 @@ const pureFunctionTestCode = `class NoteValidatorTest {
   }
 }`;
 
+// Snippet 9 — màn hình ví dụ để test UI (gộp snippet 6 vào một composable có tên)
+const screenShimCode = `// màn hình tối giản của BÀI NÀY — O6 dựng NotesListScreen riêng theo cùng khuôn
+@Composable
+fun NotesScreen(viewModel: CounterViewModel) {
+  val state by viewModel.notes.collectAsState()
+  var text by remember { mutableStateOf("") }
+
+  Column {
+    OutlinedTextField(
+      value = text,
+      onValueChange = { text = it },
+      modifier = Modifier.testTag("note-input")
+    )
+    Button(
+      onClick = {
+        viewModel.addNote(text)
+        text = ""
+      },
+      modifier = Modifier.testTag("add-button")
+    ) { Text("Thêm") }
+    state.forEach { Text(it) }
+  }
+}`;
+
 const uiTestCodeClean = `class NotesScreenTest {
 
   @get:Rule
@@ -290,8 +314,12 @@ const uiTestCodeClean = `class NotesScreenTest {
 
 	<p>
 		Test giao diện không kiểm logic — nó kiểm <em>luồng người dùng ngắn nhất</em>: gõ chữ, bấm nút, chữ
-		xuất hiện. Một cái là đủ cho mức này.
+		xuất hiện. Một cái là đủ cho mức này. Màn hình được test là composable nhỏ của bài này
+		(<code>NotesScreen</code> + <code>CounterViewModel</code> — tên riêng của ví dụ; O6 dựng
+		<code>NotesListScreen</code>/<code>NotesViewModel</code> theo <strong>cùng khuôn</strong>):
 	</p>
+
+	<Code code={screenShimCode} lang="kotlin" theme="github-dark" />
 
 	<Code code={uiTestCodeClean} lang="kotlin" theme="github-dark" />
 
