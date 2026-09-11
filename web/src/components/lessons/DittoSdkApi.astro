@@ -9,7 +9,7 @@
 // Trang KHÔNG có quiz (kind=appendix, registry cột quiz = "—").
 import { Code } from "astro:components";
 
-const v4SetupCode = `// PROJECT (sách/2023) — SDK 4.5.0: code lịch sử, đọc được, KHÔNG chép vào app mới
+const v4SetupCode = `// PROJECT MẪU (2023) — SDK 4.5.0: code lịch sử, đọc được, KHÔNG chép vào app mới
 implementation("live.ditto:ditto:4.5.0")
 
 val androidDependencies = DefaultAndroidDittoDependencies(applicationContext)
@@ -34,6 +34,8 @@ val ditto = DittoFactory.create(config)
 //   ditto.startSync()  → ditto.sync.start()
 //   ditto.auth?.login() → hàm suspend, đăng nhập qua DittoAuthenticationProvider +
 //     auth.expirationHandler (bật sync khi credentials có hiệu lực)
+// Lưu ý: tài liệu 5.x gắn login vào auth.expirationHandler để tự làm mới credentials
+// khi sắp hết hạn; gọi login một lần như dưới chỉ đăng nhập đúng một phiên.
 ditto.auth?.login(BuildConfig.DITTO_TOKEN, DittoAuthenticationProvider.development())
 ditto.sync.start()`;
 
@@ -60,6 +62,7 @@ ditto.sync.registerSubscription("SELECT * FROM users")
 ditto.store.registerObserver("SELECT * FROM users") { result ->
   allUsers.value = result.items.map { /* tự parse JSON */ }
 }
+// execute() trả kết quả trong scope tự đóng; biến thể thô là executeRaw() (5.1+)
 ditto.store.execute(
   "INSERT INTO users DOCUMENTS (:doc) ON ID CONFLICT DO UPDATE",
   mapOf("doc" to mapOf("_id" to id, "firstName" to first))

@@ -255,8 +255,9 @@ const recipeDetailsCollect = `if (recipeId != null) {
 		<code>kotlinx-coroutines-android</code> trong version catalog rồi tham chiếu qua <code>libs.*</code>. Chi tiết nhỏ
 		mà dễ quên: tên khai trong TOML dùng <strong>dấu gạch</strong> (<code>coroutines-android</code>) nhưng chỗ dùng là
 		<strong>dấu chấm</strong> (<code>libs.coroutines.android</code>) — Gradle tự chuyển, và nhờ vậy các thư viện liên
-		quan nhóm lại với nhau + có auto-complete. Project mẫu đã khai sẵn từ <code>starter</code>
-		(<code>{AAF_GRADLE}/gradle/libs.versions.toml</code> dòng 19 và 65):
+		quan nhóm lại với nhau + có auto-complete. Bản <code>final</code> của project mẫu đã khai sẵn
+		(<code>{AAF_GRADLE}/gradle/libs.versions.toml</code> dòng 19 và 65 — bản <code>starter</code> chưa có, thêm vào là
+		nhiệm vụ của giai đoạn này):
 	</p>
 	<Code code={tomlCoroutines} lang="toml" theme="github-dark" />
 	<Code code={gradleCoroutines} lang="kotlin" theme="github-dark" />
@@ -502,7 +503,7 @@ const recipeDetailsCollect = `if (recipeId != null) {
 	<p>
 		<strong>Cách 2 — khi mỗi lần state đổi cần <em>làm một việc</em>, chứ không chỉ vẽ lại:</strong>
 	</p>
-	<p class="src">Nguồn: <code>{AAF}/ui/recipes/RecipeList.kt</code> (dòng 57–93)</p>
+	<p class="src">Nguồn: <code>{AAF}/ui/recipes/RecipeList.kt</code> (dòng 67–80, trong hàm hiển thị danh sách)</p>
 	<Code code={collectBookSnippet} lang="kotlin" theme="github-dark" />
 	<p>Hai điều then chốt — cả hai đã có nền, giờ thấy nó hoạt động trong code thật:</p>
 	<ol>
@@ -616,7 +617,7 @@ const recipeDetailsCollect = `if (recipeId != null) {
 		một để <code>collect</code> (lắng nghe mãi mãi), một để <em>khởi động</em> lời gọi mạng. Viết nối tiếp trong một
 		<code>launch</code> thì lệnh gọi sẽ không bao giờ chạy, vì <code>collect</code> chặn ở trên:
 	</p>
-	<p class="src">Nguồn: <code>{AAF}/ui/RecipeDetails.kt</code> (dòng 94–117)</p>
+	<p class="src">Nguồn: <code>{AAF}/ui/RecipeDetails.kt</code> (dòng 94–116)</p>
 	<Code code={recipeDetailsCollect} lang="kotlin" theme="github-dark" />
 	<p class="hint">
 		<strong>Vì sao thứ tự là collect trước, gọi API sau?</strong> Vì <code>recipeState</code> là
@@ -731,8 +732,8 @@ const recipeDetailsCollect = `if (recipeId != null) {
 			<strong>Code thật</strong> (số dòng đã kiểm 2026-09-08):
 			<code>{AAF}/viewmodels/RecipeViewModel.kt</code> (dòng 73–83 — sáu StateFlow; dòng 95–111 —
 			<code>queryRecipes</code>; dòng 117–129 — <code>queryRecipe</code>), <code>{AAF}/ui/recipes/RecipeList.kt</code>
-			(dòng 57–93 — hai cách collect cùng lúc; dòng 55 — <code>PAGING_OFFSET</code>), <code>{AAF}/ui/RecipeDetails.kt</code>
-			(dòng 94–117 — hai <code>scope.launch</code>; dòng 180–191 — launch-then-<code>popBackStack</code>),
+			(dòng 67–80 — hai cách collect cùng lúc; dòng 55 — <code>PAGING_OFFSET</code>), <code>{AAF}/ui/RecipeDetails.kt</code>
+			(dòng 94–116 — hai <code>scope.launch</code>; dòng 180–191 — launch-then-<code>popBackStack</code>),
 			<code>{AAF_GRADLE}/gradle/libs.versions.toml</code> (dòng 19, 65 — coroutines).
 		</li>
 		<li>

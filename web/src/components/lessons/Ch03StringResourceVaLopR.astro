@@ -387,19 +387,19 @@ const buttonTextCode = `Text(text = stringResource(id = R.string.send_button))`;
 		mà dùng". Mô tả đó bỏ mất đúng cái làm nên khác biệt. Kịch bản kiểm được ngay trên app chat: người dùng đang mở
 		app, sang Settings đổi ngôn ngữ máy, quay lại. Android huỷ và dựng lại Activity, nên nhãn ô nhập (dòng 65) và
 		chữ nút Send (dòng 72) <strong>đổi</strong> sang ngôn ngữ mới vì chúng gọi <code>stringResource</code> mỗi lần
-		vẽ. Nhưng hai chuỗi mặc định của state (dòng 56, 57) <strong>không đổi</strong>, vì
-		<code>context.getString()</code> đã tính xong một lần và kết quả bị <code>remember</code> cất lại. Người dùng
-		thấy một màn hình dịch nửa vời, và không có lỗi nào để bạn đi tìm. Cách chữa khi bạn <em>cần</em> chuỗi trong
-		state cũng đổi theo: truyền chuỗi đó vào làm key của <code>remember</code> (bài kế tiếp) — đổi lại chữ người dùng
-		đang gõ dở sẽ bị xoá về mặc định. Nói cách khác đây là một đánh đổi phải chọn có ý thức, không phải hai gu viết
-		code. Nguyên tắc mặc định: ưu tiên <code>stringResource()</code>, chỉ dùng <code>context.getString()</code> khi
-		thật sự bị chặn. (Chính xác hơn: <code>remember</code> cất giá trị theo lần tính đầu tiên <em>của composable
-		chứa nó</em> — khi Android huỷ và dựng lại Activity, state được khởi tạo mới và <code>remember</code> tính lại
-		từ đầu, nên hai chuỗi này cũng sẽ nhận ngôn ngữ mới <em>nếu</em> việc tính lại dùng
-		<code>context.getString()</code> sau khi locale đã đổi. Điều thật sự giữ chúng ở ngôn ngữ cũ là trình tự: cấu
-		hình mới chỉ áp dụng cho lần tính sau, còn chuỗi đã được đọc — hoặc đã được lưu vào state tồn lâu hơn
-		<code>remember</code>, ví dụ qua ViewModel — thì không tự đổi. Điểm cần mang đi: chuỗi trong state không "sống
-		theo" locale như <code>stringResource</code>.)
+		vẽ. Vậy còn hai chuỗi mặc định của state (dòng 56, 57)? Ở <em>bản đầu</em> bạn sẽ thấy chúng "trơ" lại ngôn ngữ
+		cũ — nhưng không phải vì <code>remember</code> cô lập chúng khỏi locale. <code>remember</code> chỉ cất giá trị
+		trong phạm vi một lần dựng giao diện (composition) và theo dòng code: khi Android huỷ và dựng lại Activity, toàn
+		bộ state được tạo mới, <code>remember</code> tính lại từ đầu, và nếu việc tính đó gọi lại
+		<code>context.getString()</code> sau khi locale đã đổi thì chuỗi trong state <em>đổi theo</em> — cùng cơ chế mà
+		<code>stringResource</code> hưởng lợi. Vậy "màn hình dịch nửa vời" nhìn thấy trong project xuất hiện khi nào?
+		Khi chuỗi không còn là biểu thức tính trực tiếp nữa mà được <em>giữ tồn lâu hơn một lần dựng giao diện</em> — ví
+		dụ được đưa vào ViewModel (phần State &amp; kiến trúc sẽ dạy), nơi có vòng đời dài hơn Activity, hoặc được khôi
+		phục lại từ trạng thái đã lưu. Từ khoá để mang đi: <code>stringResource</code> đọc lại tài nguyên mỗi lần vẽ nên
+		tự "sống theo" locale; chuỗi đã tính rồi cất vào một nơi sống lâu hơn composition thì ngừng sống theo locale —
+		đó là lý do mặc định ưu tiên <code>stringResource()</code>, chỉ dùng <code>context.getString()</code> khi thật
+		sự bị chặn. (Bài kế tiếp sẽ cho bạn cách cố ý "khóa" chuỗi trong <code>remember</code> với key để chuỗi state
+		không đổi giữa các lần vẽ — một đánh đổi phải chọn có ý thức, không phải hai gu viết code.)
 	</p>
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<ul>

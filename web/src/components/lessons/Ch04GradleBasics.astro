@@ -14,10 +14,10 @@
 //     ở phần "Mạng và quản lý API key" (W3); A14 chỉ nói "cấu hình build có thể đọc giá trị cục bộ".
 //   • Voice: bỏ hết "sách/chapter/tác giả/tôi" khỏi thân bài; attribution gom 1 khối #nguon.
 //   • Kotlin DSL JIT gloss tối thiểu (khối-nhận-lệnh, =, chuỗi, val, +=) — không dạy Kotlin sâu.
-//   • Số dòng aaf-materials đã kiểm lại bằng lệnh thật (2026-09-05): starter/build.gradle.kts = 5 dòng
-//     (dòng 1 comment, 2–4 plugins, dòng 5 rỗng); starter/settings.gradle.kts = 17 dòng;
-//     starter/app/build.gradle.kts = 67 dòng (license 1–33 · plugins 35–38 · android 40–70 ·
-//     dependencies 72–88); final/libs.versions.toml = 47 dòng ([versions] 1–17 · [libraries] 19–36 ·
+//   • Số dòng aaf-materials đã kiểm lại bằng lệnh thật (2026-09-05, kiểm lại 2026-09-10): starter/app/build.gradle.kts
+//     = 67 dòng, KHÔNG có license header (plugins 1–4 · android 6–49 · buildTypes 22–30 ·
+//     dependencies 51–67 · BOM dòng 55 và 63); starter/settings.gradle.kts = 17 dòng;
+//     final/libs.versions.toml = 47 dòng ([versions] 1–17 · [libraries] 19–36 ·
 //     [plugins] 38–40 · [bundles] 42–47); final/build.gradle.kts = 5 dòng; final/app/build.gradle.kts
 //     = 75 dòng; gradle-wrapper.properties: distributionUrl ở dòng 36.
 //   • Quiz Ch04Quiz kiểm gì thì bài giữ đủ nội dung đó: file nào chứa gì, apply false, 3 số SDK,
@@ -298,7 +298,8 @@ const catalogDependenciesCode = `dependencies {
 ├── gradle/
 │   ├── wrapper/
 │   │   └── gradle-wrapper.properties  ← project dùng bản Gradle nào?
-│   └── libs.versions.toml    ← danh bạ version dùng chung (sẽ học ở mục 7)
+│   └── libs.versions.toml    ← danh bạ version dùng chung (sẽ học ở mục 7; bản starter
+│                                chưa có file này — nó xuất hiện ở bản final)
 └── app/                      ← MODULE (phần sinh ra app)
     ├── build.gradle.kts      ← module-level: cấu hình thật của app
     └── proguard-rules.pro    ← quy tắc rút gọn code cho bản release (chưa cần đụng)</pre>
@@ -415,7 +416,7 @@ const catalogDependenciesCode = `dependencies {
 	<p>
 		Còn mở file <code>app/build.gradle.kts</code> — bạn gặp lại <strong>đúng hai plugin đó</strong>:
 	</p>
-	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 35–38)</p>
+	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 1–4)</p>
 	<Code code={modulePluginsCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Vì sao khai hai lần? Vì hai file có hai nhiệm vụ khác nhau, và đây là điểm quan trọng nhất của
@@ -456,7 +457,7 @@ const catalogDependenciesCode = `dependencies {
 		nơi tập hợp mọi thiết lập build riêng của Android. Đây là phiên bản rút gọn của khối này trong
 		project <code>starter</code>, giữ đúng những dòng cần dạy:
 	</p>
-	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 40–70, đã lược vài khối phụ được bàn ở mục Cạm bẫy)</p>
+	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 6–49, đã lược vài khối phụ được bàn ở mục Cạm bẫy)</p>
 	<Code code={starterAndroidCoreCode} lang="kotlin" theme="github-dark" />
 	<ul>
 		<li>
@@ -531,7 +532,7 @@ const catalogDependenciesCode = `dependencies {
 		cùng project. Trong project mẫu, toàn bộ dependency đều thuộc loại thứ nhất — ví dụ
 		<code>androidx.core:core-ktx</code> là thư viện tiện ích Kotlin của AndroidX, hay được thêm nhất.
 	</p>
-	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 72–88, toàn bộ khối)</p>
+	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 51–67, toàn bộ khối)</p>
 	<Code code={starterDependenciesCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Điểm mấu chốt mà khối này dạy: bạn không chỉ khai "cần thư viện X" — bạn còn chọn
@@ -572,7 +573,7 @@ const catalogDependenciesCode = `dependencies {
 		<code>implementation("androidx.compose.ui:ui")</code> <strong>không có số version</strong>.
 		Đó là hệ quả của một dòng duy nhất — xuất hiện <strong>hai lần</strong> trong file:
 	</p>
-	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 75 và dòng 83)</p>
+	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 55 và dòng 63)</p>
 	<Code code={bomLinesCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Dòng này thêm <strong>Bill of Materials (BOM)</strong> của Compose làm dependency. BOM là một
@@ -596,7 +597,7 @@ const catalogDependenciesCode = `dependencies {
 		chỉ cần nhận ra BOM là gì khi gặp nó.
 	</p>
 	<p class="hint">
-		<strong>Chi tiết đáng để ý:</strong> chuỗi BOM bị viết lại lần thứ hai cho phần test (dòng 83).
+		<strong>Chi tiết đáng để ý:</strong> chuỗi BOM bị viết lại lần thứ hai cho phần test (dòng 63).
 		Đây chính là loại trùng lặp mà mục kế tiếp — Version Catalog — sinh ra để dẹp.
 	</p>
 
@@ -665,7 +666,7 @@ const catalogDependenciesCode = `dependencies {
 	<p>
 		Từ đó, khối dependency trong file module chuyển từ ghi chuỗi thẳng sang gọi tên từ danh bạ:
 	</p>
-	<p class="src">Nguồn: <code>{F}/app/build.gradle.kts</code> (dòng 63–75, lược phần test cho gọn)</p>
+	<p class="src">Nguồn: <code>{F}/app/build.gradle.kts</code> (dòng 63–75, lược phần test cho gọn) — bản thật dùng <code>libs.bundles.*</code> (xem hint cuối mục); snippet dưới viết dạng alias riêng để dễ đọc từng thư viện.</p>
 	<Code code={catalogDependenciesCode} lang="kotlin" theme="github-dark" />
 	<p class="hint">
 		<strong>Chuỗi BOM lặp hai lần nay gọn thành một biến:</strong> dòng
@@ -698,7 +699,7 @@ const catalogDependenciesCode = `dependencies {
 		variant đang được chọn lại là <strong><code>debug</code></strong> — một cái tên không hề xuất hiện
 		trong file. Vì sao?
 	</p>
-	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 44–52)</p>
+	<p class="src">Nguồn: <code>{S}/app/build.gradle.kts</code> (dòng 22–30)</p>
 	<Code code={starterBuildTypesCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Giải thích là chìa khoá của mục này: build system <strong>luôn</strong> có sẵn
@@ -736,7 +737,8 @@ const catalogDependenciesCode = `dependencies {
 		<code>com.kodeco.chat</code>. Lợi ích rất thực tế: khi nộp lên Play Store thấy ID có
 		<code>.debug</code> ở cuối là biết ngay mình vừa build nhầm bản; và vì ID khác nhau, Android coi
 		đây là hai app khác nhau nên bản debug và bản release <strong>cùng tồn tại trên một máy</strong>
-		không ghi đè nhau.
+		không ghi đè nhau. (Bản <code>final</code> của project đã khai sẵn khối này — mở ra đối chiếu được
+		ngay.)
 	</p>
 	<h3>Sync: bước nhỏ nhưng bỏ qua là mất thời gian vô ích</h3>
 	<p>
@@ -835,8 +837,8 @@ const catalogDependenciesCode = `dependencies {
 			Basics: A Look Behind the Curtain" (<code>content/book/ch04-gradle-basics-a-look-behind-the-curtain.md</code>).</li>
 		<li>Code thật bản <code>starter</code>: <code>{S}/settings.gradle.kts</code> (dòng 1–17),
 			<code>{S}/build.gradle.kts</code> (dòng 1–5),
-			<code>{S}/app/build.gradle.kts</code> (khối plugins dòng 35–38, khối android dòng 40–70,
-			khối dependencies dòng 72–88, buildTypes dòng 44–52).</li>
+			<code>{S}/app/build.gradle.kts</code> (khối plugins dòng 1–4, khối android dòng 6–49,
+			khối dependencies dòng 51–67, buildTypes dòng 22–30).</li>
 		<li>Code thật bản <code>final</code>: <code>{F}/gradle/libs.versions.toml</code> (47 dòng —
 			<code>[versions]</code> 1–17, <code>[libraries]</code> 19–36, <code>[plugins]</code> 38–40,
 			<code>[bundles]</code> 42–47); <code>{F}/build.gradle.kts</code> (dòng 1–5);

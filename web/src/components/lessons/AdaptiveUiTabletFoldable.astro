@@ -143,7 +143,8 @@ val tracker = WindowInfoTracker.getOrCreate(context)
 	<p>
 		Đọc bảng trên theo đúng nghĩa: ngưỡng là <strong>hợp đồng chung của cả hệ sinh thái</strong>. Khi bạn
 		viết <code>Expanded</code> thì nghĩa của nó được bảo đảm giống nhau trên mọi app — và tài liệu, test,
-		discussion của cả hệ sinh thái cùng nói một ngôn ngữ. Chiều cao cũng có size class riêng
+		discussion của cả hệ sinh thái cùng nói một ngôn ngữ. (Enum <code>WindowWidthSizeClass</code> là kiểu do
+		thư viện cung cấp — bạn chỉ <em>dùng</em>, không tự khai báo; snippet trên là mô tả giá trị.) Chiều cao cũng có size class riêng
 		(<code>WindowHeightSizeClass</code>) — dùng khi bố cục nhạy chiều cao (máy gập dựng dọc); ở mức này,
 		hãy bắt đầu với chiều rộng, nó giải quyết phần lớn trường hợp. Hai bậc rộng hơn cho màn hình rất
 		lớn (<code>Large</code> 1200–1599, <code>Extra-large</code> ≥ 1600) cũng đã được định nghĩa trong tài
@@ -155,7 +156,10 @@ val tracker = WindowInfoTracker.getOrCreate(context)
 	<p>
 		Size class là thuộc tính của <strong>cửa sổ</strong> — không phải của một composable. Khuôn kinh điển
 		và vẫn dùng được rộng rãi: tính một lần ở Activity qua <code>calculateWindowSizeClass</code> rồi
-		truyền xuống. (Tài liệu hiện hành còn dẫn thêm cách mới hơn —
+		truyền xuống. Hàm này nằm trong artifact riêng
+		<code>androidx.compose.material3:material3-window-size-class</code> — một dependency khác với
+		<code>material3</code> thường, phải khai thêm trong <code>build.gradle.kts</code> (qua version catalog,
+		theo A14). (Tài liệu hiện hành còn dẫn thêm cách mới hơn —
 		<code>currentWindowAdaptiveInfo()</code> của thư viện material3-adaptive, tính trong composable;
 		khuôn "tính một lần, truyền xuống" ở dưới vẫn là nền tảng tư duy của cả hai.)
 	</p>

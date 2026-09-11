@@ -164,7 +164,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 			lúc build để bắt lỗi SQL thay bạn — chỉ xảy ra nếu bạn viết đúng cấu trúc ba class đó.
 		</p>
 		<p>
-			<strong>Cần biết trước.</strong> <strong>bài "Vì sao cần database &amp; đưa Room vào project"</strong> — ba vai Entity/DAO/Database ở mức nhận diện,
+			<strong>Cần biết trước.</strong> <strong>Chương 10.1</strong> — ba vai Entity/DAO/Database ở mức nhận diện,
 			thư viện Room đã khai xong qua Version Catalog với <code>ksp(libs.room.compiler)</code>, và ẩn dụ nhà hàng
 			(thực đơn — bồi bàn — nhà hàng). <strong>S1</strong> — <code>suspend</code> nghĩa là gì và <em>không</em>
 			nghĩa là gì. <strong>Chương 8</strong> — annotation (<code>@GET</code>, <code>@Query</code>) và KSP. 
@@ -174,7 +174,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 
 	<h2 id="room-classes">7. Room Classes — Room biến class của bạn thành bảng như thế nào</h2>
 	<p>
-		Ở bài "Vì sao cần database &amp; đưa Room vào project" bạn đã có bức tranh lớn: SQLite là engine thật, Room là lớp bọc phía trên, và có ba vai cần viết.
+		Ở Chương 10.1 bạn đã có bức tranh lớn: SQLite là engine thật, Room là lớp bọc phía trên, và có ba vai cần viết.
 		Giờ là lúc viết code thật. Việc xảy ra sau hậu trường gói vào một câu: <strong>Room lấy cấu trúc class của bạn
 		và tạo ra một database SQLite kèm các bảng và định nghĩa cột tương ứng.</strong>
 	</p>
@@ -226,7 +226,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 			<tr>
 				<td>1</td>
 				<td><code>@Parcelize</code></td>
-				<td>Đã gặp ở bài "Vì sao cần database &amp; đưa Room vào project": annotation này bảo plugin <code>kotlin-parcelize</code> tự sinh phần cài đặt
+				<td>Đã gặp ở Chương 10.1: annotation này bảo plugin <code>kotlin-parcelize</code> tự sinh phần cài đặt
 					<code>Parcelable</code> — giao ước của Android để gói/mở object khi truyền giữa các thành phần của app.
 					<strong>Không liên quan gì tới Room.</strong></td>
 			</tr>
@@ -240,8 +240,9 @@ suspend fun getAllRecipes(): List<RecipeDb>
 			<tr>
 				<td>3</td>
 				<td><code>data class RecipeDb(...)</code></td>
-				<td>Constructor nhận đối số cho <em>tất cả</em> property, và các property đều <strong>có giá trị mặc
-					định</strong>. Lợi ích rất cụ thể: nhờ có mặc định, bạn tạo được một recipe chỉ với <em>một phần</em>
+				<td>Constructor nhận đối số cho <em>tất cả</em> property, và hầu hết property có <strong>giá trị mặc
+					định</strong> (riêng <code>id</code> và <code>title</code> thì không). Lợi ích rất cụ thể: nhờ có mặc
+					định, bạn tạo được một recipe chỉ với <em>một phần</em>
 					danh sách property. Chương 10.3, mục 11 sẽ cho thấy chỗ này được khai thác thật.</td>
 			</tr>
 			<tr>
@@ -355,7 +356,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 		Và đây là một câu rất cần nhớ: <strong>mọi truy cập tới dữ liệu recipe sẽ đi qua interface này.</strong> Bạn được
 		quyền đặt tên hàm tuỳ ý — sức mạnh thật nằm ở các <em>annotation</em>: <code>@Query</code>, <code>@Insert</code>,
 		<code>@Update</code>, <code>@Delete</code> cung cấp cho Room thông tin về thao tác, và Room dùng thông tin đó để
-		<em>sinh ra phần cài đặt</em> lúc biên dịch — đúng cơ chế KSP đã nói ở bài "Vì sao cần database &amp; đưa Room vào project". Lưu ý trạng thái "không có thân
+		<em>sinh ra phần cài đặt</em> lúc biên dịch — đúng cơ chế KSP đã nói ở Chương 10.1. Lưu ý trạng thái "không có thân
 		hàm" của mọi hàm trong interface: chúng là <em>khai báo</em>, không phải <em>bản cài đặt</em>.
 
 	</p>
@@ -511,7 +512,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 
 	<h2 id="database-class">10. Database — mảnh cuối, nối mọi thứ thành một cửa vào</h2>
 	<p>
-		Mảnh cuối để hoàn tất bộ class Room là chính lớp Database. Nếu giữ ẩn dụ nhà hàng của bài "Vì sao cần database &amp; đưa Room vào project": Entity là thực
+		Mảnh cuối để hoàn tất bộ class Room là chính lớp Database. Nếu giữ ẩn dụ nhà hàng của Chương 10.1: Entity là thực
 		đơn, DAO là bồi bàn, thì <strong><code>@Database</code> là cả nhà hàng</strong> — nơi biết có những bàn nào và giao
 		cho bạn đúng bồi bàn. Tạo <code>RecipeDatabase.kt</code> trong <code>data/database</code>:
 	</p>
@@ -646,9 +647,9 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 			<em>lỗi được phát hiện sớm hơn nhiều</em>.
 		</p>
 		<p>
-			Cùng cơ chế đó cũng bắt được lỗi lệch kiểu: viết
+			Cùng cơ chế đó cũng phát hiện lệch kiểu: viết
 			<code>@Query("SELECT * FROM recipes") suspend fun getAll(): RecipeDb</code> — câu SQL trả nhiều dòng nhưng hàm khai
-			trả một object — Room cũng cảnh báo. Đây chính là quy tắc "kiểu trả về cho biết một hay nhiều dòng" ở mục 9.3, nhưng
+			trả một object — Room sẽ báo lỗi hoặc cảnh báo tuỳ trường hợp. Đây chính là quy tắc "kiểu trả về cho biết một hay nhiều dòng" ở mục 9.3, nhưng
 			do compiler kiểm hộ.
 		</p>
 		<p>

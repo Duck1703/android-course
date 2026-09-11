@@ -209,9 +209,13 @@ const logcatCode = `Button(onClick = {
 	<p>
 		Vậy hai cách khác nhau ở đâu? Ở chỗ ai đọc lại chuỗi khi cấu hình thiết bị thay đổi. Với cách thứ hai,
 		<code>defaultEntry</code> là kết quả của một lời gọi Composable, nên khi người dùng đổi ngôn ngữ máy, giao diện
-		được dựng lại và <code>defaultEntry</code> nhận giá trị mới. Nhưng <code>remember</code> thì vẫn đang giữ giá trị
-		<em>cũ</em> mà nó đã cất từ lần dựng đầu tiên, vì lambda tính giá trị ban đầu không chạy lại. Muốn state cũng đổi
-		theo thì phải nói với <code>remember</code> rằng "nếu giá trị này đổi thì tính lại", bằng cách truyền nó vào làm
+		được dựng lại và <code>defaultEntry</code> nhận giá trị mới. Còn giá trị đang nằm trong
+		<code>remember</code>? Trong phạm vi <em>một lần dựng giao diện</em>, nó giữ nguyên — lambda tính giá trị ban
+		đầu không chạy lại giữa các lần vẽ, kể cả khi biểu thức bên ngoài đã đổi. Khi Android huỷ và dựng lại toàn bộ
+		Activity (đổi ngôn ngữ, xoay máy), state được tạo mới từ đầu nên <code>remember</code> tính lại và cũng nhận
+		ngôn ngữ mới. Điều đáng sợ bắt đầu khi chuỗi được giữ tồn lâu hơn một lần dựng giao diện — ví dụ đưa vào
+		ViewModel — lúc đó nó thật sự "trơ" lại ngôn ngữ cũ. Muốn state đổi theo một giá trị ngay trong lúc vẽ thì
+		phải nói với <code>remember</code> rằng "nếu giá trị này đổi thì tính lại", bằng cách truyền nó vào làm
 		<em>key</em>:
 	</p>
 	<Code code={rememberKeyCode} lang="kotlin" theme="github-dark" />
@@ -413,7 +417,7 @@ const logcatCode = `Button(onClick = {
 		là công thức tính giá trị ban đầu, và Compose chỉ chạy nó đúng một lần ở lần composition đầu tiên rồi không bao
 		giờ chạy lại. Đặt một Composable vào đó nghĩa là hứa với framework một điều nó không giữ được: Composable phải
 		chạy lại được mỗi khi có gì thay đổi. Nên trình biên dịch chặn ngay, thay vì để bạn phát hiện ra sáu tháng sau
-		khi app dịch nửa vời. Cách nhận ra trước khi gõ: hỏi "cặp ngoặc này chứa <em>giao diện</em> hay chứa <em>việc cần
+		khi thấy app hiển thị giá trị cũ. Cách nhận ra trước khi gõ: hỏi "cặp ngoặc này chứa <em>giao diện</em> hay chứa <em>việc cần
 		làm</em>?" — chứa việc cần làm (<code>remember</code>, <code>onClick</code>, hàm Kotlin thường) thì không gọi
 		Composable được. Và đừng học thuộc mẹo "thay bằng <code>LocalContext.current</code>": họ lỗi này còn gồm
 		<code>painterResource()</code>, <code>MaterialTheme.colorScheme</code> và nhiều thứ khác không có phiên bản

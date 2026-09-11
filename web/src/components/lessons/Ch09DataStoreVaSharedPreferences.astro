@@ -330,14 +330,14 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 	<p>
 		Class — kể cả <code>data class</code> — <em>không</em> lưu được, trừ khi tự tách ra lưu từng phần. (SharedPreferences
 		quen thuộc nhất với 5 kiểu trên, kèm thêm <code>Set&lt;String&gt;</code> qua <code>putStringSet</code>; DataStore
-		Preferences hiện đại hơn có thêm <code>Double</code> và <code>Set&lt;String&gt;</code>.) Giới hạn cốt lõi vẫn là:
+		Preferences cũng có <code>Set&lt;String&gt;</code> và có thêm <code>Double</code>.) Giới hạn cốt lõi vẫn là:
 		không có kiểu nào "đựng" được object tự định nghĩa. Điều này quyết định một phần của chương: muốn lưu
 		<em>danh sách</em> từ khoá (mục tiêu 1), bạn phải tự mã hoá nó thành một <code>String</code> — và ở D2 mục 17
 		sẽ thấy cái giá của phép mã hoá đó.
 	</p>
 	<p class="notice">
-		<strong>Chữ "deprecated" cần nói cho chính xác.</strong> Một số tài liệu — kể cả giáo trình gốc mà khoá này
-		đối chiếu — gọi <code>SharedPreferences</code> là <em>deprecated</em>. Tài liệu chính thức của Android hiện
+		<strong>Chữ "deprecated" cần nói cho chính xác.</strong> Một số tài liệu gọi <code>SharedPreferences</code> là
+		<em>deprecated</em>. Tài liệu chính thức của Android hiện
 		nay <strong>không đánh dấu class này <code>@Deprecated</code></strong>: nó vẫn chạy, vẫn có trong SDK. Điều
 		Google khuyến nghị là <strong>dùng DataStore cho code mới</strong>. Vậy tư thế của khoá: mọi cấu trúc lưu trữ
 		mới đều dựng trên DataStore; SharedPreferences chỉ cần <em>đọc được</em> khi gặp trong code cũ. (Bảng đối chiếu
@@ -787,8 +787,14 @@ context.dataStore.data.first()[k]</pre>
 		</li>
 		<li>
 			<strong>Tưởng <code>rememberSaveable</code> là persistence.</strong> Nó sống qua xoay máy và qua cả trường hợp
-			hệ thống thu hồi process, nhưng chết khi <em>người dùng</em> tự tắt app — và không bao giờ ghi đĩa (bảng bốn cơ
+			hệ thống thu hồi process, nhưng chết khi <em>người dùng</em> tự tắt app — và không bao giờ ghi đĩa (bảng ba cơ
 			chế ở D2 mục 18). Preference thật → DataStore.
+		</li>
+		<li>
+			<strong>Đọc <code>dataStore.data</code> mà không nghĩ tới IOException.</strong> Đọc có thể ném
+			<code>IOException</code> nếu file bị lỗi/đọc thất bại — và code mẫu của project không xử lý, app học chấp nhận
+			crash cho gọn. App thật nên bọc <code>.catch { }</code> quanh <code>data</code> (và phát hành lại giá trị mặc
+			định) thay vì để app chết khi file hỏng. Đây là mức "biết là có" — chi tiết xử lý Flow lỗi thuộc phần Mạng.
 		</li>
 		<li>
 			<strong>Đọc DataStore với mental model chặn.</strong> Mọi phép đọc là <code>suspend</code> + trả qua Flow —

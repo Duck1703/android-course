@@ -4,7 +4,9 @@
 // trước S2 (state trong Compose), S3, S4 (ViewModel & StateFlow) và S5 (kiến trúc).
 // Nguồn nội dung: docs/drafts/s1-coroutine-foundation.md (đã chấp nhận, đợt sửa S1B) — chỉ phần "Bài học".
 // Bài không dùng code từ aaf-materials: mọi đoạn code là ví dụ tối giản do khoá dựng (xem #nguon).
-// Đánh số mục 1–13 (bài NEW mở dãy số của giai đoạn); batch tách Ch06 → S2–S4 tiếp nối từ mục 14 (IMP-037).
+// Đánh số mục 1–13 (bài NEW mở dãy số riêng của giai đoạn; S2–S4 tách từ monolith dùng
+// dãy 1–19 riêng, S5 dùng dãy riêng — mỗi bài state là một trang độc lập, không chung
+// một chuỗi số liên tục như Ch08 W1–W3 — quyết định đã chốt tại Stage 3).
 import { Code } from "astro:components";
 
 const suspendSignatureCode = `suspend fun loadProfile(): Profile`;
@@ -171,7 +173,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 			<tr><td>Nó là gì?</td><td>Chỗ chạy do hệ thống cấp</td><td>Công việc được xếp để chạy nhờ thread</td></tr>
 			<tr><td>Khi phải "chờ" thì sao?</td><td>Thread bị chiếm — không làm được việc khác</td><td>Tạm dừng — <strong>không chặn thread</strong>; rồi tiếp tục sau</td></tr>
 			<tr><td>Có gắn cứng chỗ chạy không?</td><td>Nó <em>chính là</em> chỗ chạy</td><td>Không — dừng ở thread này, tiếp ở thread khác được</td></tr>
-			<tr><td>Bao nhiêu thì gọi là nhiều?</td><td>Vài nghìn đã là nhiều (mỗi thread cần vài MB bộ nhớ riêng)</td><td>Hàng chục nghìn vẫn bình thường</td></tr>
+			<tr><td>Bao nhiêu thì gọi là nhiều?</td><td>Vài nghìn đã là nhiều (mỗi thread cần ~1 MB bộ nhớ riêng cho stack)</td><td>Hàng chục nghìn vẫn bình thường</td></tr>
 		</tbody>
 	</table>
 	<p>
@@ -679,7 +681,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 		<li><strong>Chương 8</strong> — phần thread / dispatcher / <code>suspend</code> / Flow: vật liệu sư phạm được thu hoạch để dựng bài này.</li>
 		<li><strong>Chương 10.3</strong> — precision <code>suspend</code> ↔ <code>launch</code> và khuôn <code>suspend</code> + <code>withContext(Dispatchers.IO)</code>.</li>
 		<li><strong>Chương 6</strong> — bảng đối chiếu <code>suspend</code> / <code>Flow</code> / <code>StateFlow</code>.</li>
-		<li><strong>C4</strong> (trong <code>Ch05JetpackCompose.astro</code>, mục 18) — bốn điều chính xác về thời điểm <code>LaunchedEffect</code> chạy, và lời hẹn forward-reference mà bài này trả nợ.</li>
+		<li><strong>C4</strong> (trong <code>Ch05PreviewVaVongDoi.astro</code>, mục 18) — bốn điều chính xác về thời điểm <code>LaunchedEffect</code> chạy, và lời hẹn forward-reference mà bài này trả nợ.</li>
 		<li><strong>Về code trong bài:</strong> mọi đoạn code là ví dụ tối giản do khoá dựng, không trích <code>aaf-materials/</code>.</li>
 	</ul>
 </section>

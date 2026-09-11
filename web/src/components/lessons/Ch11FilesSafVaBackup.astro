@@ -660,7 +660,8 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 			<li><strong>Bạn vẫn phải tự lưu cái <code>Uri</code>.</strong> Hệ điều hành nhớ "app này có quyền vào Uri đó",
 			nhưng không nhớ hộ bạn <em>Uri đó là gì</em>. Lưu string của nó vào DataStore.</li>
 			<li><strong>Có giới hạn số lượng.</strong> Mỗi app chỉ giữ được một số lượng persisted URI nhất định — 512 ở các
-			bản Android hiện tại, 128 ở các bản cũ. Giữ quá hạn mức thì cái cũ nhất bị đẩy ra. Dùng
+			bản Android hiện tại, 128 ở các bản cũ. Trên Android 11 trở lên, giữ quá hạn mức thì cái cũ nhất bị đẩy ra; trên
+			các bản cũ hơn, <code>takePersistableUriPermission</code> văng <code>SecurityException</code> khi hết chỗ. Dùng
 			<code>contentResolver.releasePersistableUriPermission()</code> khi không cần nữa.</li>
 		</ul>
 	</div>
@@ -765,7 +766,7 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 				<td><code>res/xml/data_extraction_rules.xml</code></td>
 				<td><strong>Android 12+ (API 31+)</strong> — định dạng <code>&lt;data-extraction-rules&gt;</code> mới, có phân biệt
 					các kênh: <code>&lt;cloud-backup&gt;</code> (backup lên Drive), <code>&lt;device-transfer&gt;</code> (chuyển máy
-					trực tiếp máy-sang-máy), <code>&lt;cross-platform-transfer&gt;</code> (Android 16+).</td>
+					trực tiếp máy-sang-máy), <code>&lt;cross-platform-transfer&gt;</code> (từ Android 16 QPR2 — API 36.1).</td>
 			</tr>
 			<tr>
 				<td><code>android:fullBackupContent="@xml/backup_rules"</code></td>

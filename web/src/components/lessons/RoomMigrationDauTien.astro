@@ -70,7 +70,7 @@ val helper = MigrationTestHelper(
 )
 
 @Test
-fun migrate1To2_ginDuLieuCu() {
+fun migrate1To2_giuDuLieuCu() {
   // tạo DB ở version 1, ghi một dòng
   helper.createDatabase(TEST_DB, 1).use { db ->
     db.execSQL("INSERT INTO notes (id, title, body) VALUES (1, 'Mua sữa', '')")
@@ -155,8 +155,8 @@ const autoMigrationCode = `@Database(
 		giữa hai thế giới là số <code>version</code> trong <code>@Database</code>: Room lưu version của file
 		SQLite khi tạo (trong bảng metadata của chính SQLite). Khi app mới mở file <code>version = 1</code>
 		trong khi code khai <code>version = 2</code>, Room tra cứu danh sách migration được đăng ký — có
-		<code>MIGRATION_1_2</code> thì chạy nó; <strong>không có thì không mở database</strong> (crash lúc
-		<code>build()</code>/<code>use</code>).
+		<code>MIGRATION_1_2</code> thì chạy nó; <strong>không có thì không mở database</strong> — app crash ở lần đầu
+		mở database, khi truy vấn đầu tiên chạy.
 	</p>
 
 	<div class="callout note">
@@ -192,9 +192,17 @@ const autoMigrationCode = `@Database(
 	<Code code={databaseCode} lang="kotlin" theme="github-dark" />
 
 	<p>
-		<code>exportSchema = true</code> (đã có từ R2) giờ phát huy tác dụng thật: Room xuất file JSON của
+		<code>exportSchema = true</code> giờ phát huy tác dụng thật — lưu ý R2 để <code>exportSchema = false</code>
+		(vì project học chưa cần file schema); giờ đổi thành <code>true</code>. Room xuất file JSON của
 		mỗi version vào thư mục schema — đó là <em>bằng chứng lịch sử</em> để đối chiếu khi viết migration,
-		là đầu vào cho MigrationTestHelper, và cho phép auto-migration hoạt động (mục 5).
+		là đầu vào cho MigrationTestHelper, và cho phép auto-migration hoạt động (mục 5). Để Room biết ghi vào đâu, khai
+		vị trí schema bằng tham số KSP trong <code>app/build.gradle.kts</code> (khuôn khai plugin đã thấy ở A14, KSP ở W2):
+	</p>
+	<Code code={`ksp {
+  arg("room.schemaLocation", "$projectDir/schemas")
+}`} lang="kotlin" theme="github-dark" />
+	<p>
+		Không có tham số này, <code>exportSchema = true</code> chỉ sinh ra một build warning và không có file JSON nào.
 	</p>
 
 	<h2 id="destructive">3. fallbackToDestructiveMigration: nút xoá dữ liệu người dùng</h2>

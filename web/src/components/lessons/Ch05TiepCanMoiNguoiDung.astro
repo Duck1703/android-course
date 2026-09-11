@@ -352,7 +352,7 @@ fun KodecoChatIcon(contentDescription: String?, modifier: Modifier = Modifier) &
 		<li><strong>Mô tả lấy từ <code>strings.xml</code>,</strong> không gõ thẳng vào code ⇒ dịch được.</li>
 		<li><strong>Hai <code>Icon</code> bên trong đều <code>contentDescription = null</code>.</strong> Chúng là hai <em>lớp vẽ</em> của cùng một hình: nếu cả hai có mô tả, người dùng sẽ nghe hai lần. Mô tả duy nhất được đặt ở <strong>hộp bọc ngoài</strong>. Đây đúng là mẫu "phần bọc mang nghĩa, phần bên trong là trang trí".</li>
 	</ol>
-	<p>Chi tiết <code>role = Role.Image</code> chỉ cần <strong>nhận ra</strong>: <code>role</code> là chỗ nói <em>loại</em> thành phần cho dịch vụ hỗ trợ. Bạn không cần tự đặt <code>role</code> trong khoá này — component Material tự làm.</p>
+	<p>Chi tiết <code>role = Role.Image</code> chỉ cần <strong>nhận ra</strong>: <code>role</code> là chỗ nói <em>loại</em> thành phần cho dịch vụ hỗ trợ. Bạn không cần tự đặt <code>role</code> trong khoá này — component Material tự làm. (Còn cụm <code>modifier.then(semantics)</code>: <code>then()</code> nối thêm một chuỗi modifier có sẵn vào cuối chuỗi hiện có.)</p>
 	<p>Cùng khuôn hình đó còn xuất hiện ở bộ chọn emoji (<code>conversation/UserInput.kt</code> dòng 327–359): một <code>IconButton</code> đặt 56dp, mô tả lấy từ <code>strings.xml</code> là <code>"Show Emoji selector"</code> và <code>"Attach Photo"</code> — lại là <strong>tên hành động</strong>. Ở đây vùng chạm còn không phải nghĩ, vì <code>IconButton</code> đã giữ mức tối thiểu.</p>
 	<h3>Mẫu tốt 2 — gộp tên và thời gian (<code>conversation/Conversation.kt</code> dòng 265–289)</h3>
 	<Code code={`// Combine author and timestamp for author.
@@ -378,7 +378,7 @@ Row(modifier = Modifier.semantics(mergeDescendants = true) &#123;&#125;) &#123;
 		<li>Ở <strong>trạng thái hiện tại của chương</strong>, lời gọi <code>onAuthorClick</code> được truyền vào là một lambda <strong>rỗng</strong> (<code>Conversation.kt</code> dòng 171: <code>MessageUi(onAuthorClick = &#123; &#125;, …)</code>) — bấm vào không xảy ra gì. Toàn chương chỉ làm tầng giao diện. Với một ảnh <em>không</em> thật sự tương tác thì <code>null</code> là đúng.</li>
 		<li>Nhưng <code>Modifier.clickable</code> <strong>vẫn</strong> đăng ký thành phần đó là bấm được với dịch vụ hỗ trợ, dù việc bấm không làm gì. Nên hai cách sửa hợp lý: <strong>bỏ <code>clickable</code></strong> trong khi chức năng chưa có, <strong>hoặc</strong> cấp cho nó mô tả hành động thật (<code>"Ảnh đại diện của Ada, mở trang cá nhân"</code>) ngay lúc nối chức năng vào.</li>
 	</ul>
-	<p>Còn một chi tiết kích thước ở cùng chuỗi đó: <code>clickable</code> đứng đầu nên vùng chạm bao trọn phần đệm, ra <code>42 + 16 × 2 = 74dp</code> <strong>chiều ngang</strong> — nhưng <strong>chiều dọc vẫn chỉ 42dp</strong>, dưới mức 48dp. (Con số 74 này chính là con số của <code>Spacer(Modifier.width(74.dp))</code> ở dòng 222 mà chương 5.2, mục 7 đã tính.) Sửa nhỏ: thêm <code>sizeIn(minHeight = 48.dp)</code>, hoặc dùng đệm dọc thay vì chỉ đệm ngang.</p>
+	<p>Còn một chi tiết kích thước ở cùng chuỗi đó: <code>clickable</code> đứng đầu nên vùng chạm bao trọn phần đệm, ra <code>42 + 16 × 2 = 74dp</code> <strong>chiều ngang</strong> — nhưng <strong>chiều dọc vẫn chỉ 42dp</strong>, dưới mức 48dp. (Con số 74 này chính là con số của <code>Spacer(Modifier.width(74.dp))</code> ở dòng 222 mà chương 5.2, mục 8 đã tính.) Sửa nhỏ: thêm <code>sizeIn(minHeight = 48.dp)</code>, hoặc dùng đệm dọc thay vì chỉ đệm ngang.</p>
 	<h3>Chỗ đáng đặt câu hỏi 2 — mô tả đặt tên đồ vật thay vì việc làm (dòng 366–376)</h3>
 	<Code code={`Icon(
     imageVector = Icons.Outlined.Info,
@@ -415,7 +415,7 @@ Row(modifier = Modifier.semantics(mergeDescendants = true) &#123;&#125;) &#123;
 		</tbody>
 	</table>
 
-	<h2 id="luyen-tap">Luyện tập — soi một thanh thông báo nhỏ</h2>
+	<h2 id="luyen-tap">29. Luyện tập — soi một thanh thông báo nhỏ</h2>
 	<p>Dưới đây là một thanh thông báo "chưa gửi được tin" mà một người mới có thể viết. Nó <strong>compile được, chạy được, và trông tạm ổn</strong> trên máy của người viết. Tìm càng nhiều vấn đề accessibility càng tốt trước khi mở đáp án — mỗi vấn đề đều thuộc một mục bạn vừa đọc.</p>
 	<Code code={`@Composable
 fun ThongBaoLoi(soTin: Int, onDismiss: () -> Unit) &#123;
@@ -491,7 +491,7 @@ fun ThongBaoLoi(soTinChuaGui: Int, onDismiss: () -> Unit) &#123;
 &#125;`} lang="kotlin" theme="github-dark" />
 	<p>Bốn thay đổi đáng nói:</p>
 	<ol>
-		<li>Icon cảnh báo thành <strong>trang trí</strong> (<code>null</code>) — vì dòng chữ đã nói hết. Người dùng nghe <em>một</em> câu có nghĩa thay vì một câu vô nghĩa rồi mới tới câu có nghĩa.</li>
+		<li>Icon cảnh báo thành <strong>trang trí</strong> (<code>null</code>) — vì dòng chữ đã nói hết. Người dùng nghe <em>một</em> câu có nghĩa thay vì một câu vô nghĩa rồi mới tới câu có nghĩa. (<code>verticalAlignment = Alignment.CenterVertically</code> là tham số của <code>Row</code> — căn các con theo chiều dọc.)</li>
 		<li>Dòng chữ <strong>nói ra vấn đề</strong>, nên thông tin không còn phụ thuộc vào màu; <code>weight(1f)</code> (chương 5.2, mục 8) cho nó nhận phần chỗ còn lại và tự xuống dòng khi chữ to lên — thay cho <code>height</code> cứng.</li>
 		<li><code>IconButton</code> thay cho <code>Box</code> + <code>clickable</code>: <strong>ngắn hơn và đã có vùng chạm tối thiểu</strong> — đúng nguyên tắc mục 26, đừng tự dựng lại thứ Material đã làm.</li>
 		<li>Mọi màu là <strong>vai trò</strong>, nên bản này đúng ở cả chế độ sáng và tối, và cặp <code>errorContainer</code> / <code>onErrorContainer</code> giữ phần tương phản.</li>

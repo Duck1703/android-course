@@ -33,13 +33,12 @@ const counterViewModelCode = `class CounterViewModel(private val repository: Not
 
 // Snippet 2 — fake repository: cài interface bằng dữ liệu trong RAM, không DB, không mạng
 const fakeRepositoryCode = `class FakeNotesRepository : NotesRepository {
-  private val data = mutableListOf<String>()
+  private val backingFlow = MutableStateFlow<List<String>>(emptyList())
 
-  override fun notes(): StateFlow<List<String>> =
-    MutableStateFlow(data.toList())
+  override fun notes(): StateFlow<List<String>> = backingFlow
 
   override suspend fun addNote(text: String) {
-    data.add(text)
+    backingFlow.value = backingFlow.value + text
   }
 }`;
 
@@ -84,7 +83,12 @@ const testTagCode = `OutlinedTextField(
   value = text,
   onValueChange = onTextChange,
   modifier = Modifier.testTag("note-input")
-)`;
+)
+
+Button(
+  onClick = onAddClick,
+  modifier = Modifier.testTag("add-button")  // tag cho nút — dùng ở test UI phía dưới
+) { Text("Thêm") }`;
 
 // Snippet 7 — dependencies trong libs.versions.toml + module (mức nhận diện)
 const depsCode = `[libraries]
@@ -144,8 +148,8 @@ const uiTestCodeClean = `class NotesScreenTest {
 
 	<p class="hint">
 		<strong>Cần biết trước.</strong> ViewModel + StateFlow theo S4 (<code>_notes</code> private Mutable,
-		public read-only); interface repository và dependency "đưa từ ngoài vào" theo S5; testTag/semantics
-		theo C5; dependency khai qua version catalog theo A14. Bài KHÔNG dùng Hilt hay DI framework —
+		public read-only); interface repository và dependency "đưa từ ngoài vào" theo S5; semantics
+		theo C5 (testTag là API riêng — bài này dạy ở mục 5.1); dependency khai qua version catalog theo A14. Bài KHÔNG dùng Hilt hay DI framework —
 		fake được tiêm bằng constructor thuần Kotlin.
 	</p>
 
@@ -175,7 +179,7 @@ const uiTestCodeClean = `class NotesScreenTest {
 
 	<p>
 		Khuôn hành động: <strong>đẩy càng nhiều kiểm chứng càng tốt xuống tầng JVM</strong>, giữ test UI ở
-		mức "một cái, cho cái luồng quan trọng nhất". Chỉ có một `@Test` UI tốt vẫn hơn không; nhưng 50 test
+		mức "một cái, cho cái luồng quan trọng nhất". Chỉ có một <code>@Test</code> UI tốt vẫn hơn không; nhưng 50 test
 		UI chậm thì cả đội bỏ chạy test.
 	</p>
 

@@ -373,7 +373,8 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	<p class="notice">
 		<strong>Đừng gọi <code>Modifier</code> là "CSS của Compose".</strong> So sánh đó gợi ra hai ý sai. Thứ nhất, CSS là
 		một tệp quy tắc áp từ ngoài vào theo bộ chọn; <code>Modifier</code> là một tham số bạn truyền tay cho <em>đúng
-		một</em> composable. Thứ hai, CSS phần lớn không quan tâm thứ tự khai báo trong một khối; <code>Modifier</code> thì
+		một</em> composable. Thứ hai, với các thuộc tính khác nhau CSS không quan tâm thứ tự khai báo trong một khối
+		(riêng khi cùng ghi đè một thuộc tính thì bản sau thắng); <code>Modifier</code> thì
 		thứ tự quyết định kết quả — nội dung mục 6. Cứ giữ mô hình Compose thuần: một mô tả, truyền vào, áp lần lượt.
 	</p>
 	<h3><code>modifier</code> là tham số quy ước — và thường được truyền tiếp xuống</h3>
@@ -441,7 +442,10 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	</ul>
 	<h3>Chuỗi bảy bước trong app thật</h3>
 	<p>
-		Đây là chuỗi modifier của ảnh đại diện trong một dòng tin nhắn — ví dụ dài nhất trong app, và mỗi bước đều có lý do:
+		Đây là chuỗi modifier của ảnh đại diện trong một dòng tin nhắn — ví dụ dài nhất trong app, và mỗi bước đều có lý do.
+		(Phần ngoài chuỗi: <code>Image</code> + <code>painterResource</code> = vẽ một ảnh từ resource; <code>ContentScale.Crop</code>
+		= cắt ảnh cho vừa khung; <code>contentDescription = null</code> = ảnh thuần trang trí, trình đọc màn hình bỏ qua — chi tiết
+		ở chương 5.5.)
 	</p>
 	<p class="src">Nguồn: <code>{KT}/conversation/Conversation.kt</code> (dòng 207–219, trong <code>MessageUi</code>)</p>
 	<Code code={avatarChainCode} lang="kotlin" theme="github-dark" />
@@ -450,7 +454,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 		<li><code>.padding(horizontal = 16.dp)</code> — chèn 16dp trống ở hai bên.</li>
 		<li><code>.size(42.dp)</code> — ép phần còn lại thành hình vuông 42dp.</li>
 		<li><code>.border(1.5.dp, borderColor, CircleShape)</code> — viền trong, màu đổi theo người gửi.</li>
-		<li><code>.border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)</code> — viền ngoài lấy màu nền, tạo khe hở giữa hai viền.</li>
+		<li><code>.border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)</code> — viền ngoài lấy màu nền, tạo khe hở giữa hai viền. (<code>MaterialTheme.colorScheme.*</code> — bảng màu của app, đã gặp ở chương 5.1; chi tiết ở chương 5.3.)</li>
 		<li><code>.clip(CircleShape)</code> — cắt ảnh thành hình tròn.</li>
 		<li><code>.align(Alignment.Top)</code> — căn lên đỉnh của <code>Row</code> cha.</li>
 	</ol>
@@ -640,7 +644,8 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	<p>
 		Bên trong ngoặc nhọn của <code>LazyColumn</code> bạn không viết composable trực tiếp, mà gọi <code>item { }</code> —
 		mỗi lời gọi khai một item của danh sách. Lý do: <code>LazyColumn</code> cần <em>biết trước có bao nhiêu item</em> để
-		tính vùng cuộn, mà không phải dựng hết chúng ra.
+		tính vùng cuộn, mà không phải dựng hết chúng ra. (Tham số <code>messages</code> ở bản này chưa được dùng — ba item
+		vẫn ghi cứng; bản cuối ngay dưới đây mới đưa dữ liệu thật vào.)
 	</p>
 	<p class="hint">
 		<strong>Phân biệt hai thứ dễ lẫn.</strong> <code>Modifier.padding()</code> đệm <em>bên ngoài</em> vùng cuộn — vùng đó

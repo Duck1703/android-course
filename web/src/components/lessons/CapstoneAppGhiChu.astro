@@ -217,10 +217,10 @@ class ThemeRepository(private val context: Context) {
 }`;
 
 const buildSteps = [
-  ["Bước 1", "Dựng xương project", "Empty Activity (Compose), khai dependencies Room + Navigation + DataStore qua version catalog (A14)", "App chạy, màn hình trống, sync Gradle không lỗi"],
+  ["Bước 1", "Dựng xương project", "Empty Activity (Compose), khai dependencies Room + Navigation (≥2.8 + plugin serialization) + DataStore qua version catalog (A14, N2 mục 9)", "App chạy, màn hình trống, sync Gradle không lỗi"],
   ["Bước 2", "Tầng dữ liệu", "NoteEntity + NoteDao + NotesDatabase (R2), migration-ready: version = 1, exportSchema = true (O5)", "Build sinh ra NotesDatabase_Impl; không lỗi compile SQL"],
   ["Bước 3", "Repository", "NotesRepository interface + RoomNotesRepository (R3 — Entity → domain model)", "Compile; chưa nối UI"],
-  ["Bước 4", "ViewModel + UiState", "NotesViewModel với StateFlow + query filter (S4)", "Preview/Chạy: list trống hiển thị được (empty state)"],
+  ["Bước 4", "ViewModel + UiState", "NotesViewModel với StateFlow + query filter (S4)", "Compile + preview ViewModel chạy được (màn hình gắn ở Bước 5)"],
   ["Bước 5", "Màn danh sách", "NotesListScreen: OutlinedTextField tìm + LazyColumn với key (C2)", "Chạy app: list trống + ô tìm hiện ra"],
   ["Bước 6", "Điều hướng", "AppNavHost 2 destination, type-safe route (N2); detail nhận noteId nullable", "Chạm 1 dòng → mở màn trống; Back quay về list"],
   ["Bước 7", "Màn chi tiết/tạo", "NoteDetailScreen + NoteDetailViewModel; save qua repository", "Tạo ghi chú → Back → list hiện nó; sắp xếp mới-nhất-trước"],
@@ -298,7 +298,17 @@ const buildSteps = [
 		</p>
 	</div>
 
-	<h2 id="mo-hinh-du-lieu">2. Tầng dữ liệu: Entity → DAO → Repository</h2>
+	<h2 id="mo-hinh-du-lieu">2. Tầng dữ liệu: Entity → DAO → Database → Repository</h2>
+
+	<p class="hint">
+		<strong>Bước 1 — dependencies.</strong> Khai qua version catalog (A14): <code>room-runtime</code>,
+		<code>room-compiler</code> (qua <code>ksp</code> — khuôn W2), <code>navigation-compose</code>
+		(<strong>2.8.0 trở lên</strong> — điều kiện cho route type-safe, xem N2 mục 9; project mẫu ghim
+		2.7.2 nên app capstone cần bump), <code>datastore-preferences</code> (D1), và
+		<code>lifecycle-runtime-compose</code> (cho <code>collectAsStateWithLifecycle</code> — S4). Type-safe
+		route còn cần plugin <code>org.jetbrains.kotlin.plugin.serialization</code> + kotlinx-serialization-json
+		— N2 mục 9 đã liệt kê đủ.
+	</p>
 
 	<Code code={entityCode} lang="kotlin" theme="github-dark" />
 
@@ -318,14 +328,31 @@ const buildSteps = [
 		<code>@Upsert</code> là "có thì cập nhật, chưa có thì thêm" — một hàm phục vụ cả tạo mới lẫn sửa.
 	</p>
 
+	<p>
+		Mảnh cuối của tầng dữ liệu là lớp <code>Database</code> — dựng đúng khuôn <code>RecipeDatabase</code> của R2
+		(builder + singleton); ở đây chỉ có một entity nên nó gọn nhất có thể:
+	</p>
+	<Code code={`@Database(entities = [NoteEntity::class], version = 1, exportSchema = true)
+abstract class NotesDatabase : RoomDatabase() {
+  abstract fun noteDao(): NoteDao
+}`} lang="kotlin" theme="github-dark" />
+
 	<Code code={repositoryCode} lang="kotlin" theme="github-dark" />
 
 	<p>
 		<code>NotesRepository</code> là hợp đồng của tầng dữ liệu; <code>RoomNotesRepository</code> dịch
 		<code>NoteEntity</code> (của Room) sang <code>Note</code> (của app) — chính là trách nhiệm
-		"dịch model" của S5. ViewModel và UI chỉ thấy <code>Note</code>: sau này đổi Room sang cái khác,
+		"dịch model" của S5. Hai hàm dịch <code>it.toNote()</code> và <code>note.toEntity()</code> là
+		<strong>hàm bạn tự viết</strong> (khuôn hàm-mở-rộng của F2) — vài dòng như sau, đặt cạnh file entity:
+	</p>
+	<Code code={`fun NoteEntity.toNote() = Note(id = id, title = title, body = body, done = done, updatedAt = updatedAt)
+
+fun Note.toEntity() = NoteEntity(id = id, title = title, body = body, done = done, updatedAt = updatedAt)`} lang="kotlin" theme="github-dark" />
+	<p>
+		ViewModel và UI chỉ thấy <code>Note</code>: sau này đổi Room sang cái khác,
 		hợp đồng không đổi. Đây cũng là seam mà <code>FakeNotesRepository</code> của O2 cài vào — nếu bạn
-		làm Bước 10.
+		làm Bước 10 (lưu ý: fake của O2 cài một hợp đồng nhỏ hơn trong ví dụ của bài đó; bạn viết lại các
+		method của fake cho khớp hợp đồng 4 hàm của mình).
 	</p>
 
 	<h2 id="viewmodel">3. State: một UiState, một flow</h2>
@@ -369,11 +396,23 @@ const buildSteps = [
 		callback <code>onNoteOpen(id)</code> — state hoisting (S3) áp cho điều hướng, composable giữ thuần
 		Kotlin/Compose, dễ preview, dễ test.
 	</p>
+	<p>
+		<code>NoteRow</code> là composable <strong>bạn tự viết</strong> — một hàng ghi chú theo đúng khuôn
+		<code>Row</code> của C1: checkbox (<code>Checkbox(checked = note.done, onCheckedChange = { onToggleDone() })</code>)
+		+ <code>Text(note.title)</code> (đậm dần/gạch ngang khi done nếu muốn), cả hàng bọc trong
+		<code>Modifier.clickable { onOpen() }</code>. Về xoá-swipe: R4 đã dạy khuôn <code>SwipeToDismissBox</code>
+		(tên API hiện hành — <code>SwipeToDismiss</code> cũ đã deprecated); swipes gọi
+		<code>viewModel.delete(note.id)</code>. Làm theo đúng thứ tự bài: hàng cơ bản trước, swipe sau khi mọi thứ chạy.
+	</p>
 
 	ViewModel của màn này cần nạp ghi chú cũ khi đang sửa — đây là phần khung còn thiếu của Bước 7,
 	được điền đủ ở đây (<code>noteId</code> tham chiếu chính tham số của màn; hàm
 	<code>repository.note(id)</code> là một hàm đọc-một-lần mới, thêm vào interface theo đúng quy ước
-	"ghi hoặc đọc-một-lần thì <code>suspend</code>" của S5):
+	"ghi hoặc đọc-một-lần thì <code>suspend</code>" của S5 — cài đặt của nó là
+	<code>override suspend fun note(id: Long) = dao.noteById(id)</code> với một
+	<code>@Query("SELECT * FROM notes WHERE id = :id") suspend fun noteById(id: Long): NoteEntity?</code>
+	trong DAO). Sau <code>save()</code>, quay lại danh sách bằng nút Back của hệ thống — hoặc gọi
+	<code>navController.popBackStack()</code> qua callback, đúng quy tắc điều hướng của N2:
 
 	<Code code={detailViewModelCode} lang="kotlin" theme="github-dark" />
 
@@ -393,6 +432,20 @@ const buildSteps = [
 		Route type-safe của N2: <code>NotesRoute</code> là object; <code>NoteDetailRoute(noteId: Long? = null)</code>
 		đóng gói tham số — navigate bằng <code>NoteDetailRoute(id)</code>, đọc lại bằng
 		<code>entry.toRoute()</code>. Không string-route, không parse tay: sai kiểu là lỗi compile.
+	</p>
+	<p>
+		Hai hàm <code>notesViewModel()</code> / <code>noteDetailViewModel(...)</code> là <strong>hàm bạn tự viết</strong>
+		— dựng ViewModel kèm repository qua factory, đúng khuôn <code>viewModelFactory</code> của D2. Ví dụ:
+	</p>
+	<Code code={`fun NotesActivity.rememberNotesViewModel(): NotesViewModel {
+  val repo = (application as NotesApp).repository
+  return viewModel(factory = viewModelFactory {
+    initializer { NotesViewModel(repo) }
+  })
+}`} lang="kotlin" theme="github-dark" />
+	<p>
+		(Chỗ khởi tạo <code>NotesApp</code>/<code>repository</code> là chỗ duy nhất bạn nối tầng dữ liệu với Activity —
+		gán trong <code>Application</code> hoặc qua một biến thường; capstone không bắt buộc DI framework nào.)
 	</p>
 
 	<h3>4.1. Ai sở hữu state nào? — bảng quyết định</h3>
@@ -416,7 +469,8 @@ const buildSteps = [
 	<p>
 		Một switch, một giá trị — đúng công cụ D1: <code>preferencesDataStore</code> +
 		<code>stringPreferencesKey</code> + <code>edit</code> trong <code>suspend</code>. ViewModel của theme
-		collect <code>isDark</code> và truyền vào <code>AppTheme(darkTheme = ...)</code> — một đường dây
+		collect <code>isDark</code> và truyền vào hàm theme của project bạn (khuôn bọc <code>MaterialTheme</code>
+		đã dựng ở C3 — tên nó tuỳ bạn đặt, ví dụ <code>NotesTheme(darkTheme = ...)</code>) — một đường dây
 		reactive nữa đi qua cùng kiến trúc S5. Điểm mấu chốt: bạn vừa thêm một <em>source of truth thứ
 		hai</em> (DataStore cho cấu hình, Room cho ghi chú) mà không phá luật "một loại dữ liệu, một nguồn
 		đáng tin" — vì hai loại dữ liệu không giành nhau gì.
