@@ -202,13 +202,14 @@ node scripts-maintenance/progress_g_audit.mjs
 ## Findings
 
 - **blocker:** 0 found / 0 open
-- **major:** 0 found / 0 open
-- **minor:** 1 — preview-server instance cũ (4321, dist cũ) có thể gây nhầm khi QA thủ công; đã stop, không phải defect sản phẩm. Ghi nhận: `.git/info/exclude` chứa `.h-shots/` (local exclude, không share) — intentional, docs ghi ở trên.
+- **major:** 1 found (adversarial lượt 1: spec §25 stale cap row) / **1 fixed** @ `538bd28` / 0 open
+- **minor:** 7 found (adversarial lượt 1: README path, hero-sub space, S-register counts, hint-count note, MASTER_CONTEXT banner, CLAUDE.md pointer; +1 self-caused transient hint trong local QA script) / **7 fixed** @ `538bd28` + cùng commit / 0 open
+- Ghi nhận (không phải defect sản phẩm): preview-server instance cũ (4321, dist cũ) đã stop; `.git/info/exclude` chứa `.h-shots/` (local exclude — intentional).
 
 ## Final adversarial review
 
-Reviewer độc lập (fresh sub-agent, không inspect quiz, không re-review content), 35 vector tấn công §38. Kết quả: **FINAL_PROJECT_ADVERSARIAL_PASS — 0 BLOCKER / 0 MAJOR / 2 MINOR** (đã repair + re-verify: bảng số liệu plan "22 route thật" nằm trong mục lịch sử có nhãn rõ; README doc-table thêm QA_FINAL_REPORT). Chi tiết verdict trong log chat của reviewer; các vector 1–35 đều có bằng chứng đáp ứng ở các mục trên.
+Reviewer độc lập (fresh sub-agent, không inspect quiz, không re-review content), 35 vector tấn công §38. Lượt 1: verdict `FINAL_PROJECT_ADVERSARIAL_FAIL` — **1 MAJOR** (spec §25 vẫn liệt kê "zero core >30 min" là acceptance criterion trong khi registry §2 claim DONE cho §25 — docs-sync chưa trọn) + 6 MINOR (README path cũ `d:\book-course-vibe`; hero-sub thiếu space sau "·"; QA report S-register counts gồm dormant + hint "67 (= baseline)" cần verify lại; PROJECT_MASTER_CONTEXT + CLAUDE.md chưa có banner snapshot). Đã repair trong `538bd28`, re-verify độc lập 7/7 PASS (regression spot-check: check_counts PASS, progress_g_audit 79/79, hero stats không đổi). **Verdict cuối: `REPAIRED_ADVERSARIAL_PASS` — 0 BLOCKER / 0 MAJOR / 0 unresolved MINOR.**
 
 ## Final gate
 
-**FINAL PROJECT QA: GATE PASS @ commit close (xem git log).** Toàn bộ PASS conditions §42 đạt: RUNTIME ✓ · INTEGRITY (48/8/0 broken/registry-dist aligned/13/14) ✓ · RESPONSIVE ✓ · THEMES ✓ · ACCESSIBILITY ✓ · S-REGISTER ✓ · CLEANUP ✓ · DOCS ✓ · MAINTENANCE ✓ · QUIZ: NO QUIZ CONTENT AUDIT PERFORMED ✓ · BUILD ✓ (0/0/67) · ADVERSARIAL PASS (0B/0M) ✓ · GIT clean, not pushed ✓.
+**FINAL PROJECT QA: GATE PASS @ `538bd28` (+ gate-close docs commit sau đó).** Toàn bộ PASS conditions §42 đạt: RUNTIME ✓ · INTEGRITY (48/8/0 broken/registry-dist aligned/13/14) ✓ · RESPONSIVE ✓ · THEMES ✓ · ACCESSIBILITY ✓ · S-REGISTER ✓ · CLEANUP ✓ · DOCS ✓ · MAINTENANCE ✓ · QUIZ: NO QUIZ CONTENT AUDIT PERFORMED ✓ · BUILD ✓ (0/0/67) · ADVERSARIAL `REPAIRED_ADVERSARIAL_PASS` (0B/0M) ✓ · GIT clean, not pushed ✓.
