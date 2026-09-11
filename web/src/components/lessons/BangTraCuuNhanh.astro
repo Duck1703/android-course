@@ -40,14 +40,14 @@ composeOptions {
 	</nav>
 
 	<h2 id="ch06">Ch06 — State, ViewModel & StateFlow</h2>
-	<p class="src"><strong>Số liệu chốt:</strong> 2026-08-28 · <strong>Bài trỏ về đây:</strong> S4 (khối #cam-bay)</p>
+	<p class="src"><strong>Số liệu chốt:</strong> 2026-09-10 · <strong>Bài trỏ về đây:</strong> S4 (khối #cam-bay)</p>
 	<table class="api">
 		<thead><tr><th>Trong giáo trình gốc / code mẫu</th><th>Hiện tại</th><th>Nên theo cái nào</th></tr></thead>
 		<tbody>
 			<tr><td>Tên gọi "Android Architecture Components"</td><td>Đã gộp vào Jetpack; "Guide to app architecture" (UI/Domain/Data)</td><td>Tra theo tên mới; kỹ thuật không đổi</td></tr>
 			<tr><td><code>composeOptions &#123; kotlinCompilerExtensionVersion &#125;</code></td><td>Từ Kotlin 2.0: plugin <code>org.jetbrains.kotlin.plugin.compose</code></td><td>Plugin mới; project mới không còn khối composeOptions</td></tr>
 			<tr><td><code>autoCorrect</code> trong <code>KeyboardOptions</code></td><td>Deprecated, đổi tên <code>autoCorrectEnabled</code></td><td>Code cũ vẫn build, chỉ bị gạch trong IDE</td></tr>
-			<tr><td><code>lifecycle-runtime-compose</code> 2.6.2</td><td>2.9.x</td><td>Nâng số trong <code>[versions]</code>; artifact không đổi</td></tr>
+			<tr><td><code>lifecycle-runtime-compose</code> 2.6.2</td><td>2.11.0 (17/06/2026)</td><td>Nâng số trong <code>[versions]</code>; artifact không đổi</td></tr>
 			<tr><td><code>collectAsStateWithLifecycle()</code></td><td>Vẫn là API khuyến nghị</td><td>Không cần làm gì</td></tr>
 			<tr><td><code>kotlinx.datetime.Instant</code></td><td>Từ 0.7 chuyển sang <code>kotlin.time.Instant</code> của stdlib</td><td>Nâng thư viện thì sửa import; logic không đổi</td></tr>
 		</tbody>
@@ -76,7 +76,8 @@ composeOptions {
 		</tbody>
 	</table>
 	<p>
-		Navigation trong project 08 khai 2.7.2 — các mốc Navigation (2.8.0 = ngưỡng type-safe; Navigation 3)
+		Navigation trong project 08 khai 2.7.2 — các mốc Navigation (2.8.0 = ngưỡng type-safe; bản ổn định
+		hiện hành của Navigation 2.x là 2.9.8, 22/04/2026, chế độ bảo trì; Navigation 3 ổn định 1.1.4)
 		details ở N1/N2; "8 điểm lệch" của Ch08 đã sống ở đúng vị trí W1/W2/W3 — bảng ở đây chỉ là bản đồ
 		tra (draft gốc mục Ch08.3).
 	</p>
@@ -106,8 +107,8 @@ composeOptions {
 			<tr><td><code>MasterKeys.getOrCreate(AES256_GCM_SPEC)</code></td><td>Deprecated từ trước khi giáo trình xuất bản → <code>MasterKey.Builder</code> → nay cả <code>MasterKey</code> deprecated</td><td>Keystore trực tiếp: <code>KeyGenParameterSpec.Builder</code> + <code>KeyGenerator</code> với AndroidKeyStore</td></tr>
 			<tr><td><code>net.zetetic:android-database-sqlcipher</code> 4.4.0</td><td><strong>EOL</strong> (Zetetic khuyến nghị chuyển từ 31/08/2023); kế thừa <code>net.zetetic:sqlcipher-android</code>, <strong>4.18.0</strong> (18/08/2026; <strong>4.19.0</strong> đã có trên Maven Central theo metadata 09/09/2026)</td><td>Project mới dùng sqlcipher-android: package <code>net.zetetic.database.sqlcipher</code>, <code>SupportOpenHelperFactory</code> thay <code>SupportFactory</code>, <strong>tự gọi <code>System.loadLibrary("sqlcipher")</code></strong> (bỏ <code>loadLibs</code>), androidx.sqlite 2.7.0, minSdk 23</td></tr>
 			<tr><td>Lý do đổi SQLCipher artifact</td><td>Yêu cầu 16KB page size của Google Play buộc build lại native lib; <code>loadLibs</code> không tương thích <code>SplitInstallHelper</code></td><td>—</td></tr>
-			<tr><td>Room 2.5.2-kỷ + mã hoá qua <code>openHelperFactory</code></td><td>Room 2.x mới nhất <strong>2.8.5</strong> (09/09/2026; 2.8.4 — 19/11/2025) — <code>openHelperFactory</code> vẫn dùng được; 2.7.0 thêm <code>setDriver()</code>+KMP; <strong>Room 3</strong> = <code>androidx.room3:room3-*</code> <strong>3.0.2</strong> (26/08/2026): bỏ SupportSQLite/Cursor, bắt buộc <code>SQLiteDriver</code>, không còn <code>openHelperFactory</code></td><td>Room 2.x: đổi tên class <code>SupportOpenHelperFactory</code> + <code>password.toByteArray(Charsets.UTF_8)</code>. Room 3: <code>SQLCipherDriver</code> qua <code>setDriver()</code> — sqlcipher-android hỗ trợ cả hai từ 4.18.0</td></tr>
-			<tr><td><code>android:fullBackupContent</code></td><td>Chỉ Android ≤ 11 (API 30). 12+ đọc <code>android:dataExtractionRules</code> (sections <code>&lt;cloud-backup&gt;</code>/<code>&lt;device-transfer&gt;</code>/<code>&lt;cross-platform-transfer&gt;</code> từ Android 16)</td><td>Khai cả hai attribute; mỗi section áp đúng kênh; <code>&lt;exclude&gt;</code> thắng <code>&lt;include&gt;</code>; khai include = tắt mặc định "backup tất cả"; cache/code-cache/no-backup loại trừ cứng</td></tr>
+			<tr><td>Room 2.5.2-kỷ + mã hoá qua <code>openHelperFactory</code></td><td>Room 2.x mới nhất <strong>2.8.5</strong> (09/09/2026; 2.8.4 — 19/11/2025) — <code>openHelperFactory</code> vẫn dùng được; 2.7.0 thêm <code>setDriver()</code>+KMP; <strong>Room 3</strong> = <code>androidx.room3:room3-*</code> <strong>3.0.3</strong> (09/09/2026; 3.0.2 — 26/08/2026): bỏ SupportSQLite/Cursor, bắt buộc <code>SQLiteDriver</code>, không còn <code>openHelperFactory</code></td><td>Room 2.x: đổi tên class <code>SupportOpenHelperFactory</code> + <code>password.toByteArray(Charsets.UTF_8)</code>. Room 3: <code>SQLCipherDriver</code> qua <code>setDriver()</code> — sqlcipher-android hỗ trợ cả hai từ 4.18.0</td></tr>
+			<tr><td><code>android:fullBackupContent</code></td><td>Chỉ Android ≤ 11 (API 30). 12+ đọc <code>android:dataExtractionRules</code> (sections <code>&lt;cloud-backup&gt;</code>/<code>&lt;device-transfer&gt;</code>/<code>&lt;cross-platform-transfer&gt;</code> từ Android 16 QPR2 — API 36.1)</td><td>Khai cả hai attribute; mỗi section áp đúng kênh; <code>&lt;exclude&gt;</code> thắng <code>&lt;include&gt;</code>; khai include = tắt mặc định "backup tất cả"; cache/code-cache/no-backup loại trừ cứng</td></tr>
 			<tr><td><code>Environment.getExternalStoragePublicDirectory()</code></td><td>Deprecated từ API 29 (Scoped Storage)</td><td><code>getExternalFilesDir()</code> / MediaStore / SAF</td></tr>
 			<tr><td><code>startActivityForResult</code></td><td>Deprecated</td><td>Activity Result API (<code>registerForActivityResult</code> + <code>CreateDocument/OpenDocument/OpenDocumentTree</code>)</td></tr>
 			<tr><td><code>KeyInfo.isInsideSecureHardware()</code></td><td>Sách in <code>isInsideSecurityHardware()</code> — không compile; deprecated ở API 31 thay bằng <code>getSecurityLevel()</code> (API 31+; ≤ 30 dùng hàm cũ). StrongBox: Android 9+, tuỳ thiết bị</td><td>Theo mốc API; kiểm hardware-backed lúc chạy, không giả định</td></tr>
@@ -201,7 +202,7 @@ composeOptions {
 	</p>
 	<p class="src">
 		<strong>Tài liệu chính thức (mỗi mục theo số liệu chốt của nó):</strong> developer.android.com —
-		Room (release notes 2.8.4; room3 3.0.2), DataStore 1.2.1, security-crypto 1.1.0 (deprecation),
+		Room (release notes 2.8.5; room3 3.0.3), DataStore 1.2.1, security-crypto 1.1.0 (deprecation),
 		Jetpack Compose (Kotlin 2.0 plugin), Storage/SAF, WorkManager, Navigation ·
 		<code>docs.ditto.live</code> — Kotlin release notes (5.1.0, 18/08/2026) ·
 		<code>zetetic.net</code> — SQLCipher EOL + sqlcipher-android 4.18.0 · Maven Central / Google Maven —
