@@ -1,7 +1,9 @@
 # REVIEW_GATE_WORKSTREAM_H
 
 Verdict: **GATE PASS** (WORKSTREAM_H_ADVERSARIAL_PASS — 0 BLOCKER / 0 MAJOR)
-Date: 2026-09-10 · Reviewer: ZCode (long workstream execution) · HEAD at gate close: `1d76707`
+Date: 2026-09-10 · Reviewer: ZCode (long workstream execution) · HEAD at last content
+repair: `1d76707` · gate-close docs commit: `65830df` (this report was written at
+`1d76707` and then committed as its own chore commit — reconciled 2026-09-11).
 
 ## Scope / commits
 

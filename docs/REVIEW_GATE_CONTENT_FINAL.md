@@ -1,7 +1,7 @@
 # REVIEW_GATE_CONTENT_FINAL
 
 Verdict: **GATE PASS** (`CONTENT_FINAL_ADVERSARIAL_PASS` — 0 unresolved BLOCKER / 0 unresolved MAJOR)
-Date: 2026-09-10 · Reviewer: ZCode (fresh session, final content review) · HEAD at gate close: `9da0f9b`
+Date: 2026-09-10 (freshness reconciled 2026-09-11) · Reviewer: ZCode (fresh session, final content review) · HEAD at gate close: `9da0f9b` + reconciliation commit
 
 **QUIZ: NO QUIZ AUDIT PERFORMED.** Quiz content intentionally out of scope by owner decision — no quiz file inspected, edited, measured, or reported.
 
@@ -9,17 +9,24 @@ Date: 2026-09-10 · Reviewer: ZCode (fresh session, final content review) · HEA
 
 Final content review of the entire 48-unit live course (39 core + 6 optional + 3 appendix).
 Quiz frozen. Runtime code untouched. Review executed in 8 waves (A–H) + freshness pass +
-adversarial closure.
+adversarial closure + freshness reconciliation (2026-09-11).
 
 | commit | content |
 |---|---|
 | `7f278b4` | fix(content): final content review repairs — waves A–H (38 files, +288/−155) |
 | `e4036ac` | fix(content): freshness pass — nav 2.9.8/nav3 1.1.4, room 2.8.5/room3 3.0.3, lifecycle 2.11, work 2.11.2, Kotlin 2.4.20, AGP 9.3 (web-checked 2026-09-10) |
 | `9da0f9b` | fix(content): adversarial closure — O2 NotesScreen shim + AP3 AGP/WorkManager rows |
+| `a74802d` | chore: close final content review gate (docs: this report = GATE PASS) |
+| *(new)* | fix(content): reconcile final Android freshness claims — nav 2.10.1 / nav3 1.1.7 / AGP 9.4.0 (web-checked 2026-09-11) |
 
 ## Starting state
 
-- HEAD `65830df` (Workstream H gate pass), branch `main`, tree clean, not pushed.
+- HEAD `65830df` (Workstream H **gate-close docs commit**), branch `main`, tree clean, not pushed.
+  Reconciliation note (2026-09-11): the Workstream-H report names `1d76707` as its gate-close HEAD —
+  that is the last *content* commit of Workstream H; `65830df` is the immediately following chore
+  commit that adds `REVIEW_GATE_WORKSTREAM_H.md` itself (parent of `7f278b4`, verified via
+  `git log --format="%h %p"`). Both statements are correct at their own granularity; the H report
+  header has been amended to name both. No history rewritten.
 - 48 live units / 45 quizzes / SCHEMA_VERSION 13 / SPLIT_MAP 14 / redirects 8 / astro baseline 0 errors / 0 warnings / 67 hints — all verified before starting (truth-check `web/scripts/check_counts.mjs`: **TRUTH-CHECK PASS — 0 lệch**).
 
 ## Review methodology
@@ -37,19 +44,24 @@ adversarial closure.
 ## Web research methodology
 
 Web research targeted version-sensitive/deprecated/security-sensitive claims only
-(owner §3). Verified 2026-09-10 against developer.android.com + kotlinlang.org:
+(owner §3). Verified 2026-09-10 against developer.android.com + kotlinlang.org.
+**Freshness reconciliation 2026-09-11:** the 09-10 pass had relied on stale/cached
+Navigation + AGP pages (the N2 draft itself documents that non-`?hl=en` fetches of
+the navigation3 releases page served a cached table). All Navigation/Nav3/AGP claims
+re-verified against live official pages on 2026-09-11 and repaired; other rows
+re-checked and confirmed:
 
 | claim | verdict | action |
 |---|---|---|
-| Navigation stable 2.9.8 (22/04/2026); 2.10.0 still alpha; Nav 2 in maintenance mode | MAJOR drift (lessons said 2.10.0 stable) | repaired in N2 + AP3 + O6 |
-| Navigation 3 stable 1.1.4 (01/07/2026) — no 1.1.7 exists | MAJOR drift | repaired in N2 + AP3 |
-| Room 2.8.5 (09/09/2026) stable | repaired | AP3, X2, R4, O5 |
-| room3 3.0.3 (09/09/2026) stable | repaired | AP3, X2, R4, O5 |
-| lifecycle 2.11.0 stable (17/06/2026) | repaired | AP3 (was 2.9.x) |
-| work 2.11.2 stable (25/03/2026) | repaired | O4 frontmatter, AP3 row |
-| Kotlin 2.4.20 (07/09/2026) | repaired | A13 table (was 2.4.10) |
-| AGP 9.3.x stable, 9.4.0 alpha | repaired | A13 (kept 9.3.2 ✓), A14, AP3 |
-| Compose BOM 2026.08.00, activity 1.13.0, core 1.19.0, material3 1.4.0, compileSdk/targetSdk 36 | AGREE | no change |
+| Navigation stable 2.10.1 (09/09/2026; 2.10.0 stable 26/08/2026; 2.9.8 — 22/04/2026); Nav 2 in maintenance mode | **stale 09-10 pass (said 2.9.8 current, 2.10.0 alpha)** | repaired 2026-09-11 in N2 (mục 9 + nguon) + AP3 |
+| Navigation 3 stable 1.1.7 (26/08/2026); 1.2.0-rc01 (09/09/2026) exists — RC, not stable | **stale 09-10 pass (said 1.1.4 current, "no 1.1.7 exists")** | repaired 2026-09-11 in N2 + AP3 (RC explicitly labeled non-stable) |
+| AGP current stable 9.4.0 (release notes "September 2026"; gradle-api reference "Current Release 9.4"; 9.5 alpha preview); 9.3.x = past stable | **stale 09-10 pass (said 9.3.x current, 9.4 alpha)** | repaired 2026-09-11 in A13 table (9.3.2→9.4.0), A14 notice, AP3 row |
+| Room 2.8.5 (09/09/2026) stable | **AGREE (re-checked 2026-09-11)** | no change |
+| room3 3.0.3 (09/09/2026) stable | **AGREE (re-checked 2026-09-11)** | no change |
+| lifecycle 2.11.0 stable (17/06/2026; 2.12.0-alpha03 open) | **AGREE (re-checked 2026-09-11)** | no change |
+| work 2.11.2 stable (25/03/2026; 2.12.0-rc01 open) | **AGREE (re-checked 2026-09-11)** | no change |
+| Kotlin 2.4.20 (07/09/2026, stable tooling release) | **AGREE (re-checked 2026-09-11)** | no change |
+| Compose BOM 2026.08.00 (latest on bom-mapping), activity 1.13.0, core 1.19.0, material3 1.4.0, compileSdk/targetSdk 36 | **AGREE (re-checked 2026-09-11)** | no change |
 | DataStore 1.2.1 stable; Moshi 1.15.2; Retrofit 3.0.0 = 2.12.0 line-end; Coil 3.6.x; Timber 5.0.1 | AGREE | no change |
 
 PROJECT pins (2.7.2 nav, Room 2.5.2, Retrofit 2.9.0, BOM 2023.10.00, Kotlin 1.9.10…) preserved
@@ -116,7 +128,9 @@ no other lesson violates.
 Framing **PASS**: type-safe presented as current-recommended, string-routes honestly pinned
 as project vintage with "không dán vào project mẫu" warning; Nav3 = new library +
 maintenance-mode context, numbers deferred to AP3. Freshness pass updated 2.10.0→2.9.8,
-1.1.7→1.1.4 (web-verified). N2 sub-numbering convention documented, no harmful refs.
+1.1.7→1.1.4 (web-verified 09-10); **reconciliation 2026-09-11 corrected again to
+2.10.1 / 1.1.7** (the 09-10 web fetches hit stale page versions). N2 sub-numbering
+convention documented, no harmful refs.
 
 ## Network review (W1–W3)
 
@@ -201,8 +215,9 @@ Scope stays phone-first, no cloud/auth/AI. Every step has observable checkpoint.
   Ditto docs by wave reviewer (5.1.0 date, sync.start, coordinates, minSdk 24).
 - AP3: coroutines month self-contradiction (05/2026 vs 08/2026) → reconciled;
   `combine` glossary row re-pointed (W1 doesn't teach it; O1 mentions); lifecycle
-  2.11.0, work 2.11.2, AGP 9.3.x, Room 2.8.5/3.0.3, nav 2.9.8/Nav3 1.1.4 updated;
-  Room row now agrees with R4/O5/X2. AP1/AP2 structural variance (0 `cam-bay`
+  2.11.0, work 2.11.2, Room 2.8.5/3.0.3 updated; nav + AGP rows reconciled
+  2026-09-11 (nav 2.10.1, Nav3 1.1.7, AGP 9.4.0 — see methodology table); Room row
+  still agrees with R4/O5/X2. AP1/AP2 structural variance (0 `cam-bay`
   headings) reported, not failed — appendix reference structure.
 
 ## Used-before-taught audit
@@ -257,16 +272,30 @@ dormant drafts excluded by scope). X2's 7 leaks fixed. AP2 code-comment leak fix
   material3 1.4.0, compileSdk 36, DataStore 1.2.1, Moshi 1.15.2, Retrofit 3.0.0/2.12.0,
   Coil 3.6.x, Timber 5.0.1, ESP 1.1.0 deprecation, SQLCipher artifact move, SAF
   512/128+reboot, Keystore non-exportable/never-backed-up, WorkManager 15-min clamp.
-- MINOR (repaired): lifecycle 2.11.0, work 2.11.2 pin, Kotlin 2.4.20, AGP 9.3 wording,
+- AGREE on re-check 2026-09-11 (values changed by `e4036ac` that survived the narrow
+  recheck): Room 2.8.5, room3 3.0.3, lifecycle 2.11.0, work 2.11.2, Kotlin 2.4.20,
+  Compose BOM 2026.08.00 — left unchanged.
+- MINOR (repaired): lifecycle 2.11.0, work 2.11.2 pin, Kotlin 2.4.20, AGP wording,
   cross-platform-transfer QPR2 pin, eviction qualifier, Room 2.8.5/room3 3.0.3.
+- MINOR (repaired 2026-09-11): AGP current-stable cells in A13/A14/AP3 said 9.3.x —
+  now 9.4.0; A13 nguon "Mới nhất 2026-08" → "Mới nhất 2026-09".
 - MAJOR (repaired): Navigation 2.9.8-stable/2.10-alpha (was 2.10.0-stable), Nav3 1.1.4
   (was 1.1.7), W1 starter-claim, O5 exportSchema, X2 grant lifetime, A10/A11 locale trap.
+- MAJOR (repaired 2026-09-11, freshness-reconciliation): the 09-10 web pass itself
+  concluded from stale page versions — Navigation current is **2.10.1** (not 2.9.8;
+  2.10.0 went stable 26/08/2026), Nav3 current is **1.1.7** (not 1.1.4; "1.1.7 does
+  not exist" was a cache artifact), AGP current stable is **9.4.0** (not 9.3.x; 9.4
+  is not alpha). Repaired in N2 (mục 9 + nguon + frontmatter comment), AP3
+  (Ch08 paragraph + AGP row + nguon), A13 (table + nguon), A14 (notice). PROJECT
+  pins (2.7.2 nav etc.) untouched — verified by grep after repair.
 - BLOCKER: none found.
 
 ## Repairs
 
 38 files in wave commit `7f278b4`; 8 files freshness `e4036ac`; 3 files adversarial
-closure `9da0f9b`. All MAJORs fixed; worthwhile minors fixed (≈45); cosmetic-only minors
+closure `9da0f9b`; 4 files freshness reconciliation 2026-09-11 (N2, AP3, A13, A14 —
+Nav/Nav3/AGP current-version claims; O6's "≥2.8 + pin 2.7.2" wording needed no
+change). All MAJORs fixed; worthwhile minors fixed (≈45); cosmetic-only minors
 deferred (AP1/AP2 heading-structure variance — appendix reference pages, intentional).
 
 ## Final content adversarial
@@ -276,6 +305,10 @@ Independent reviewer, quiz explicitly excluded, 30 attack vectors. Verdict:
 `9da0f9b` and re-verified: O2 NotesScreen shim (test now targets a defined composable;
 O6 name divergence flagged as same-pattern), AP3 AGP 9.3.x cell + WorkManager 2.11.2 row.
 Post-repair build + truth-check re-run: PASS.
+Freshness re-review (2026-09-11, independent, scope = repaired claims only): verdict
+`FRESHNESS_RECONCILIATION_PASS` — 0 BLOCKER / 0 MAJOR / 2 MINOR (A13 nguon "2026-08"
+date-label lag repaired same day; A13 AGP cell 9.3.2→9.4.0 repaired; nav/nguon date
+stamps re-dated 2026-09-11).
 
 ## Route/link regression
 
@@ -304,13 +337,17 @@ Post-repair build + truth-check re-run: PASS.
 
 - blocker: 0 found / 0 open
 - major: 15 found / 15 fixed (A1, A10+A11, A12, A13×2, A14×2, C1, W1, R2-refs, X2, O5,
-  O6×5, AP1, AP3-coroutines; + freshness 2; + adversarial O2)
-- minor: ≈50 found / ≈45 fixed; 2–3 deferred (appendix structure, N2 numbering convention)
+  O6×5, AP1, AP3-coroutines; + freshness 2; + adversarial O2; + reconciliation 1:
+  stale-web-pass Navigation/Nav3/AGP conclusions)
+- minor: ≈50 found / ≈45 fixed; 2–3 deferred (appendix structure, N2 numbering convention);
+  +2 reconciliation minors repaired (A13 date-label, A13 AGP cell)
 
 ## Gate verdict
 
 **GATE PASS** — all PASS requirements met: 48/48 units reviewed, 39-core flow coherent,
 architecture doctrine consistent, capstone followable, optional stays optional, appendix
-useful, freshness verified against current web sources with PROJECT/CURRENT separation,
+useful, freshness verified against current web sources with PROJECT/CURRENT separation
+(reconciled 2026-09-11: nav 2.10.1 / Nav3 1.1.7 / AGP 9.4.0 — official pages, access
+date recorded in-file),
 0 unresolved BLOCKER / 0 unresolved MAJOR, internal links valid, build PASS,
 astro 0/0/67 (baseline), quiz untouched, git clean, not pushed.
