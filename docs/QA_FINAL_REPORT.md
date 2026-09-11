@@ -138,11 +138,11 @@ Feature-presence check (không re-review nội dung):
 | S-item | Bằng chứng |
 |---|---|
 | Tiếng Việt độc lập (voice) | content gate đã chốt; grep leak không regression |
-| Mental models | callout `mental` ×27 file live |
-| Cạm bẫy pedagogy | heading `#cam-bay` ×47 file live |
+| Mental models | callout `mental` ×23 file live (đếm trên 93 file registry; substring qua đĩa là ×27 vì gồm dormant — có chủ đích) |
+| Cạm bẫy pedagogy | heading `#cam-bay` ×46/48 live dist page (AP1/AP2 reference không heading này — deferred cosmetic của content gate) |
 | Code-copy UX | CodeEnhance bọc mọi pre (13/13 shell page đủ `.codeblock`), click → "Đã copy" feedback, fallback execCommand, 390px scroll nội bộ |
-| Source/provenance | `#nguon` ×49 file; src line-citations giữ nguyên (không đụng content) |
-| PROJECT/CURRENT drift apparatus | callout `diff` ×31 + bảng "nên theo" |
+| Source/provenance | `#nguon` ×47/48 live dist page (AP2 DittoSdkApi là reference không Nguồn h2 — deferred cosmetic của content gate); src line-citations giữ nguyên (không đụng content) |
+| PROJECT/CURRENT drift apparatus | callout `diff` ×20 file live (substring ×31 gồm dormant) + bảng "nên theo" |
 | Search | работает như trên (48 route, keyboard, fold dấu) |
 | Sidebar navigation | 10 stage groups, aria-current |
 | Progress + resume | state matrix §trên; nextLesson core-first |

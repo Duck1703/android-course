@@ -2,6 +2,10 @@
 
 File này cung cấp bối cảnh cho Claude Code khi làm việc trong repo này. Đọc file này **đầu tiên** trong mọi session mới.
 
+> **Trạng thái dự án (2026-09-11): REDESIGN COMPLETE — dự án đã đóng gate.** Đọc `docs/PROJECT_PLAN.md`
+> mục "TRẠNG THÁI CUỐI CÙNG" trước (48 unit, 39 lõi + 6 mở rộng + 3 phụ lục; final QA =
+> `docs/QA_FINAL_REPORT.md`). Khoá học KHÔNG còn "11 chương" — mọi số chương sách chỉ là metadata nội bộ.
+
 ## Project Identity
 
 - **Là gì:** website tĩnh (Astro) dạy Android/Kotlin/Jetpack Compose **bằng tiếng Việt cho người mới**, chạy local-first, dựng từ sách Kodeco + `aaf-materials/`. Chi tiết ở mục "Dự án này là gì" bên dưới.

@@ -1,5 +1,9 @@
 # Project Master Context
 
+> **⚠️ SNAPSHOT 2026-09-03 — TRƯỚC redesign 2026-09 (số liệu: 22 lessons, 23 pages, Astro 7.2.7 đều là lịch sử).**
+> Trạng thái hiện hành: `docs/PROJECT_PLAN.md` mục "TRẠNG THÁI CUỐI CÙNG" (48 unit, REDESIGN COMPLETE) +
+> `docs/QA_FINAL_REPORT.md`. File này giữ nguyên làm bằng chứng kiến trúc giai đoạn trước redesign.
+
 > Reverse-engineered audit of this repository (generated 2026-09-03). Evidence-based: every architecturally
 > important claim cites a file path. Labels: **VERIFIED** = directly demonstrated by code/config/content;
 > **INFERRED** = strongly implied; **POSSIBLE ISSUE** = evidence suggests a concern; **UNKNOWN** = cannot be

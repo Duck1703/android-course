@@ -454,7 +454,7 @@ Unchanged from v1: split-while-valuable churn (mitigated by §20 map + S-registe
 
 ## 25. Success Criteria
 
-Unchanged from v1 (10 criteria): quiz integrity (no axis >~40%, 4 options, 8–12 count, 100% explanations); wayfinding (TOC renders + highlights at all widths, "Mục x/y"); prerequisite discipline (zero used-before-taught without gloss); size discipline (zero core >30 min, one standard/template across 100% live); currency (security-crypto historical-only, codenames corrected, drift tables dated); voice coherence (no book-refs outside Nguồn); foundation payoff (S4 reads without surprise after F1/F2+S1); capstone feasibility (O6 followable without external searches); no-regression (S-01…S-16 verified unchanged); progress honesty (Model B-lite % + SPLIT_MAP v5 no credit loss).
+Unchanged from v1 (10 criteria): quiz integrity (no axis >~40%, 4 options, 8–12 count, 100% explanations); wayfinding (TOC renders + highlights at all widths, "Mục x/y"); prerequisite discipline (zero used-before-taught without gloss); size discipline (one standard/template across 100% live — giờ học chỉ là ước lượng planning, KHÔNG còn "zero core >30 min" hard cap: owner rule 2026-09 "không cắt vì dài", xem §3 principle 4); currency (security-crypto historical-only, codenames corrected, drift tables dated); voice coherence (no book-refs outside Nguồn); foundation payoff (S4 reads without surprise after F1/F2+S1); capstone feasibility (O6 followable without external searches); no-regression (S-01…S-16 verified unchanged); progress honesty (Model B-lite % + SPLIT_MAP v5 no credit loss). *(Wording "zero core >30 min" của v1 bị thay 2026-09-11 — historical label tại §3 principle 4.)*
 
 ---
 

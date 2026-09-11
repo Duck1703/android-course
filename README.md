@@ -20,11 +20,11 @@ Node.js là phần mềm giúp máy bạn chạy được website này.
 
 ### Bước 2: Mở cửa sổ dòng lệnh đúng thư mục
 
-1. Mở **File Explorer**, vào thư mục `d:\book-course-vibe\web`
+1. Mở **File Explorer**, vào thư mục `d:\vibe_coding\book-course-vibe\web`
 2. Bấm vào ô địa chỉ ở trên (chỗ hiện đường dẫn), gõ `cmd` rồi bấm **Enter**.
-3. Một cửa sổ đen (Command Prompt) mở ra, dòng đầu đã trỏ đúng vào `d:\book-course-vibe\web`.
+3. Một cửa sổ đen (Command Prompt) mở ra, dòng đầu đã trỏ đúng vào `d:\vibe_coding\book-course-vibe\web`.
 
-> Quan trọng: mọi lệnh dưới đây phải chạy **trong thư mục `web`**, không phải thư mục gốc `book-course-vibe`.
+> Quan trọng: mọi lệnh dưới đây phải chạy **trong thư mục `web`**, không phải thư mục gốc `vibe_coding/book-course-vibe`.
 
 ### Bước 3: Tải các thư viện cần thiết (chỉ làm 1 lần)
 
@@ -73,7 +73,7 @@ Quay lại cửa sổ đen, bấm **Ctrl + C**. Website tắt. Muốn học lạ
 | Hiện tượng | Cách xử lý |
 | --- | --- |
 | `'npm' is not recognized` | Node.js chưa cài, hoặc cài rồi mà chưa mở lại cửa sổ đen. Đóng cửa sổ đen, mở lại theo Bước 2. |
-| `Cannot find module` / `ENOENT` | Bạn đang đứng sai thư mục. Kiểm tra dòng lệnh có chữ `...\book-course-vibe\web>` ở đầu không. |
+| `Cannot find module` / `ENOENT` | Bạn đang đứng sai thư mục. Kiểm tra dòng lệnh có chữ `...\vibe_coding\book-course-vibe\web>` ở đầu không. |
 | Trình duyệt báo "không thể kết nối" | Cửa sổ đen đã tắt hoặc bạn vào sai số cổng. Xem lại dòng `Local` trong cửa sổ đen. |
 | Trang chủ mở được nhưng bài học trắng trang | Xem cửa sổ đen có dòng chữ đỏ không, chụp lại rồi nhờ hỗ trợ. |
 | Cài `npm install` báo lỗi đỏ | Xoá thư mục `web\node_modules` rồi chạy lại `npm install`. |
