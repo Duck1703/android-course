@@ -1,11 +1,16 @@
 # CHAPTER_SPLIT_MAP.md — bản đồ tách chương (Task 48)
 
+> **⚠️ SUPERSEDED (2026-09-11):** hợp đồng đặt tên/slug hiện hành là `docs/TARGET_REGISTRY_v5.md`
+> (48 unit, slug công khai đã khoá, SPLIT_MAP thật nằm trong `web/src/lib/progress.ts`).
+> Bảng dưới đây là **bản kế hoạch tách giai đoạn Task 48** — chỉ dùng để truy ngược lịch sử,
+> KHÔNG dùng làm chuẩn khi thêm/sửa bài học.
+
 Bản đồ này chốt **trước khi viết** nội dung, vì tham chiếu chéo giữa các chương
 (`Chương 8, mục 4` → `Chương 8.1, mục 4`) chỉ viết đúng được khi đã biết mọi số
 chương nhỏ. Nguồn sự thật cho tiến độ vẫn là `docs/PROJECT_PLAN.md`; file này chỉ
 là hợp đồng đặt tên + phân bổ mục.
 
-Chuẩn mẫu: Chương 10 (Task 47, 2026-08-30) — xem `web/src/components/lessons/Ch10_*.astro`.
+Chuẩn mẫu (lịch sử): Chương 10 (Task 47, 2026-08-30) — file Ch10_* era đó đã kế nhiệm thành các bài R1–R4 hiện hành (`Ch10_1RoomLaGi.astro`…).
 
 ## Quy ước (áp cho mọi chương nhỏ)
 

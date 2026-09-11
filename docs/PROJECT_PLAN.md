@@ -2,11 +2,24 @@
 
 > Đây là **nguồn sự thật về tiến độ** của dự án. Đọc file này trước khi trả lời `review plan`, `đang tới đâu rồi?`, `tiếp tục`, v.v. — xem quy tắc xử lý trong `CLAUDE.md`.
 
-**Cập nhật lần cuối:** 2026-08-31 — **PHASE 7 MỞ: khoá học phải đứng độc lập, không nói về sách + chương dài phải tách.** Task 47 (Chương 10 → 10.1–10.4) làm chuẩn mẫu **đã xong**. **Task 48 đang chạy:** đã áp chuẩn xong **Chương 1 (→ 1.1–1.4), Chương 2 (→ 2.1–2.3), Chương 3 (→ 3.1–3.4)** — cả ba đã tách, đã tách quiz, đã wiring, build sạch. Còn lại Ch04–Ch09 + Ch11. **User đang tạm dừng để tự khảo sát web trước khi cho ý kiến — không tự sang Chương 4.**
+**Cập nhật lần cuối:** 2026-09-11 — **REDESIGN: COMPLETE. FINAL CONTENT REVIEW: PASS. FINAL TECHNICAL QA: PASS.**
 
-## Trạng thái hiện tại
+## TRẠNG THÁI CUỐI CÙNG (2026-09-11) — DỰ ÁN ĐÃ ĐÓNG
 
-- **Phase:** 7 — **ĐANG MỞ** (chương độc lập + tách chương dài). Phase 1–6 đã đóng.
+- **Khoá học hiện hành:** 48 unit = **39 bài lõi** (2 nền tảng Kotlin + 7 giai đoạn: F, A×14, C×5, S×5, N×2, W×3, D×6, R×4, X×2) + **6 bài Mở rộng** (O1–O6, không bắt buộc) + **3 bài Phụ lục** tra cứu (AP1–AP3, không quiz). **8 redirect** cho URL cũ chết. SCHEMA_VERSION 13 · SPLIT_MAP 14 · ~22 giờ lõi (suy từ lessonStats, hiển thị trên trang chủ).
+- **Redesign 2026-09 (spec v2 + 63 task IMP) đã chạy xong toàn bộ workstream:** pilot Ch10 (R1–R4) → Stage 1–7 (tách monolith, F/S/N bài mới) → quiz sweep (40 quiz cũ, 0 orphan) → Workstream F (O1–O6 + AP1–AP3) → Workstream G (Model B-lite: hoàn thành = tự xác nhận ∧ đã nộp quiz ≥1 lần, không ngưỡng điểm) → Workstream H (homepage roadmap v2 + sidebar theo stage, bỏ đánh số 5.1 learner-facing) → final content review (GATE PASS @ a74802d, freshness reconcile @ d084eed/f24b63c: nav 2.10.1 / Nav3 1.1.7 / AGP 9.4.0, web-checked 2026-09-11) → **final technical QA (GATE PASS — xem `docs/QA_FINAL_REPORT.md`)**.
+- **Gate reports:** `docs/REVIEW_GATE_*.md` (mỗi workstream một file) + `docs/QA_FINAL_REPORT.md` (QA cuối). Quy tắc 30 phút cũ đã thay bằng chính sách quality-first — xem `docs/LESSON_TEMPLATE.md` đầu file.
+- **Còn lại (bảo trì tuỳ chọn, KHÔNG phải việc dở):** nếu Android phát hành version mới đáng kể → cập nhật các claim version-sensitive (AP3 là bảng tra cứu nhanh); không có task nào đang mở.
+
+---
+
+## LỊCH SỬ — Trạng thái tại thời điểm Task 48 (2026-08-31, giữ nguyên để truy ngược)
+
+**PHASE 7 MỞ: khoá học phải đứng độc lập, không nói về sách + chương dài phải tách.** Task 47 (Chương 10 → 10.1–10.4) làm chuẩn mẫu **đã xong**. **Task 48 đang chạy:** đã áp chuẩn xong **Chương 1 (→ 1.1–1.4), Chương 2 (→ 2.1–2.3), Chương 3 (→ 3.1–3.4)** — cả ba đã tách, đã tách quiz, đã wiring, build sạch. Còn lại Ch04–Ch09 + Ch11. **User đang tạm dừng để tự khảo sát web trước khi cho ý kiến — không tự sang Chương 4.**
+
+## Trạng thái hiện tại (lịch sử — snapshot 2026-08-31)
+
+- **Phase:** 7 — **ĐÃ ĐÓNG (lịch sử: từng "ĐANG MỞ" trước redesign 2026-09)**. Phase 1–6 đã đóng. Toàn bộ phạm vi Phase 7 + redesign spec v2 đã hoàn tất — xem "TRẠNG THÁI CUỐI CÙNG" ở đầu file.
 - **Task hiện tại:** **Task 48 đang chạy — TẠM DỪNG theo yêu cầu user** sau khi xong Chương 1/2/3. User muốn tự khảo sát web rồi cho ý kiến; **không tự động sang Chương 4**. Đã áp chuẩn Phase 7 xong cho Ch01 (→ 4 chương nhỏ), Ch02 (→ 3), Ch03 (→ 4). Chapter kế trong Task 48 khi được phép tiếp: **Ch04 Gradle**. (Xem mục Task 48 trong Phase 7 để biết trạng thái từng chapter + số đo.)
   - **LỆCH đã phát hiện & sửa 2026-08-31:** file plan này trước đó vẫn ghi "Task 48 chưa bắt đầu" (dòng 5 + dòng này), nhưng trên đĩa Ch01/Ch02/Ch03 **đã tách xong và đã wiring** từ các session trước — plan đã không được cập nhật lúc đó. Đã đối chiếu `lessons.ts` (22 route thật) + build sạch + đo lại giọng và ghi đúng trạng thái vào đây.
 - **Bối cảnh mở Phase 6 (2026-08-29):** user yêu cầu redesign UI/UX theo hướng "Android Developer Learning Platform + Jetpack Compose + Material Design 3", **giữ nguyên 100% nội dung khoá học và chức năng**. Đã làm xong ở Task 46 (chi tiết trong Roadmap), gồm design system 8 file CSS, header có search + progress + theme, curriculum sidebar 3 module, dashboard, lesson page mới, code block có copy button, light+dark theme, responsive 375/tablet/1440. Nội dung khoá học **đã chứng minh không đổi** (md5 `e688285a164f793a33abe66d475b42d6`). Audit đối kháng tìm ra **6 defect thật** (đã sửa hết) + 3 defect có sẵn từ trước.
@@ -288,7 +301,7 @@ Lý do mở phase này: Chapter 5 và 8 được viết ở Task 7/17, **trướ
     - **6 sửa đã áp + build lại:** Ch03_2Quiz (2: comment "bài tập 3"→"2"; cắt câu lỗi Compose về đúng phần có trong nguồn) · Ch03_3Quiz (4: sửa số liệu 11/12→7/15; nới phạm vi bài tập intro sang project Chương 8; "bốn khác biệt nội dung"→"3 nội dung + 1 hình thức"; tách chắc/không-chắc ở Câu 4 `<permission>`). Thêm note length-bias 10/10 vào frontmatter Ch03_4Quiz.
     - **Ghi nhận length-bias (chưa sửa):** tỉ lệ đáp-án-đúng-là-lựa-chọn-NGẮN-NHẤT: 3.1 = 5/11 · 3.2 = 7/15 · 3.3 = 8/11 · 3.4 = **10/10**. Đây là tín hiệu đoán được; nếu rà chất lượng quiz cả khoá thì Ch03_4 rồi Ch03_3 là nơi nới dài đáp án đúng trước tiên. Đã ghi trong frontmatter 2 file.
     - **Đã verify (chạy thật session này):** `astro check` → **0 error**, 0 warning, 64 hint (đều có sẵn từ trước) · `astro build` → **EXIT 0, Complete**, `dist/chapters/` có **22 route** gồm đủ 4 route `ch03-*`.
-  - **CÒN TỒN — cần user quyết (xoá file phải hỏi trước):**
+  - **CÒN TỒN — cần user quyết (xoá file phải hỏi trước)** *(giải quyết xong về sau: monolith Ch01/02/03 + quiz ORPHAN đã xoá ở batch Stage 1 của redesign — `b43d81f`; scratch `_t48_*` nằm trong `web/scripts/` gitignored, quyết định cuối 2026-09-11 = GIỮ trên máy, không track — xem `QA_FINAL_REPORT.md` mục cleanup)*:
     - **Monolith cũ còn trên đĩa, không ai tham chiếu** nhưng vẫn bị `lessonStats.ts` glob vào bucket "01"/"02"/"03" không chương nào nhận: `Ch01WelcomeToAndroidKotlin.astro` + `Ch01Quiz.astro`, `Ch02GettingStartedAndroidStudio.astro` + `Ch02Quiz.astro`, `Ch03AndroidFundamentals.astro` + `Ch03Quiz.astro`. (Ở Task 47, monolith Ch10 đã được xoá sau khi xác nhận git khôi phục được + bản mới là superset — Ch01/02/03 CHƯA làm bước này.)
     - **~67 file rác scratch `web/scripts/_t48_*`** + vài file `.txt`/`.css` tạm ở `web/` (`.checks*.txt`, `.styledump.*`, `.uibaseline-*`, `content-baseline.txt`…) từ quá trình audit — dọn được nhưng cần user đồng ý.
 

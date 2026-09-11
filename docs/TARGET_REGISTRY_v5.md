@@ -38,7 +38,7 @@ Planning totals (recorded for document compatibility only, never used as PASS/FA
 - optional planning total: **255 min** (~4 h 15 m)
 - appendix: no minutes (reference sections)
 
-**Docs-sync backlog:** the spec's old "30-min hard cap" wording (§3 principle 4, §12 hard parameters, §17, §21, §25) is stale against this owner rule and must be synchronized later.
+**Docs-sync backlog:** ~~the spec's old "30-min hard cap" wording (§3 principle 4, §12 hard parameters, §17, §21, §25) is stale against this owner rule and must be synchronized later.~~ **DONE 2026-09-11 (final QA docs sync):** spec §3 principle 4 / §12 hard parameters / §17 lesson-body row / §21 note / §25 rows now carry the quality-first owner rule ("không cắt vì dài — giờ học chỉ là ước lượng planning"); historical cap wording retained in-file as history.
 
 ---
 
@@ -213,11 +213,13 @@ The 14 preserved URLs (§5) carry **no** SPLIT_MAP entry. Entry #1 must use the 
 
 ## 12. Documentation-sync backlog (do NOT edit here; sync later)
 
-1. Spec v2 "30-min hard cap" wording (§3/§12/§17/§21/§25) — stale vs quality-first owner rule (§2 above).
-2. "15/22 URLs preserved" arithmetic anywhere it survives — superseded by the locked **14/22 + 8 dead** (§5).
-3. `docs/PROJECT_PLAN.md` — frozen at 2026-08-31 Task-48 state; unaware of the redesign batches already landed.
-4. `docs/CHAPTER_SPLIT_MAP.md` — pre-spec-v2 naming contract; superseded by this registry once integration starts.
-5. `web/src/data/chapters.ts` ch10-1 summaryVi still says "kiến trúc 5 lớp" — S5's two-region doctrine is the accepted owner.
+> **Trạng thái 2026-09-11 (final QA docs sync):** mục 1 ĐÃ sync (spec §3/§12/§17/§21/§25 — xem ghi chú ở §2). Mục 3 ĐÃ sync (PROJECT_PLAN.md cập nhật trạng thái redesign COMPLETE). Mục 4: CHAPTER_SPLIT_MAP.md được đánh dấu superseded bởi registry này. Mục 5 giữ nguyên như ghi nhận historical (nội dung đã được final content review chấp nhận). Mục 2 đã xử lý từ trước (arithmetic 14/22 + 8 dead chốt ở §5).
+
+1. ~~Spec v2 "30-min hard cap" wording (§3/§12/§17/§21/§25) — stale vs quality-first owner rule (§2 above).~~ DONE 2026-09-11.
+2. ~~"15/22 URLs preserved" arithmetic anywhere it survives — superseded by the locked **14/22 + 8 dead** (§5).~~ (arithmetic chốt, không còn bản ghi sống)
+3. ~~`docs/PROJECT_PLAN.md` — frozen at 2026-08-31 Task-48 state; unaware of the redesign batches already landed.~~ DONE 2026-09-11 (plan đã ghi REDESIGN COMPLETE + trỏ gate reports).
+4. ~~`docs/CHAPTER_SPLIT_MAP.md` — pre-spec-v2 naming contract; superseded by this registry once integration starts.~~ DONE 2026-09-11 (banner superseded added).
+5. `web/src/data/chapters.ts` ch10-1 summaryVi still says "kiến trúc 5 lớp" — S5's two-region doctrine is the accepted owner. *(historical note — content gate accepted; no change)*
 
 ---
 

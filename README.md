@@ -55,12 +55,12 @@ Mở trình duyệt, vào đúng địa chỉ hiện trong dòng `Local` đó �
 
 ### Bước 5: Học
 
-Trang chủ liệt kê **11 chapter**. Bấm vào chapter nào để mở bài học của chapter đó. Mỗi bài gồm:
+Trang chủ là **bảng lộ trình khoá học**: 2 bài nền tảng Kotlin + 7 giai đoạn chính (39 bài lõi), thêm 6 bài "Mở rộng" (không bắt buộc) và 3 bài "Phụ lục" tra cứu. Bấm vào bài nào để mở bài học của bài đó. Mỗi bài gồm:
 
 - Phần giải thích tiếng Việt
 - Code Kotlin **thật** lấy từ project mẫu, kèm ghi rõ file + số dòng để bạn tự mở ra đối chiếu
-- Ô "Ghi chú phiên bản" (nền vàng) — cho biết chỗ nào trong sách đã cũ so với Android hiện nay
-- Quiz 3–4 câu + 1 bài tập nhỏ ở cuối trang
+- Mục "Cạm bẫy & tài liệu lỗi thời" — cho biết chỗ nào trong sách đã cũ so với Android hiện nay
+- Quiz 8–12 câu (bài Phụ lục thì không có) + tiến độ lưu ngay trên máy: bài có quiz thì cần **làm quiz ít nhất một lần** trước khi bấm "Đánh dấu đã học" — không cần đúng hết.
 
 ### Bước 6: Tắt website
 
@@ -119,14 +119,26 @@ Các file trong `docs/`:
 | File | Nội dung |
 | --- | --- |
 | `PROJECT_PLAN.md` | **Tiến độ dự án** — đang làm task nào, đã xong gì, còn gì. Đọc file này trước nếu quay lại sau một thời gian. |
+| `QA_FINAL_REPORT.md` | **Báo cáo QA cuối cùng** — kết quả kiểm tra kỹ thuật/sản phẩm khi đóng dự án (2026-09-11). |
+| `COURSE_REDESIGN_SPEC_432cbf8_v2.md` | Hợp đồng thiết kế khoá học (cấu trúc 2 nền tảng + 7 giai đoạn, quiz, UI). |
+| `COURSE_REDESIGN_IMPLEMENTATION_PLAN.md` | Kế hoạch triển khai redesign (63 task IMP + gate). |
+| `TARGET_REGISTRY_v5.md` | **Sổ đăng ký 48 bài** — slug, file, quiz của toàn bộ khoá học hiện hành. |
+| `COURSE_CONTENT_STANDARD.md` | Chuẩn biên soạn một bài học (voice, cấu trúc, callout). |
 | `SOURCE_MAP.md` | Kết quả khảo sát sách + project Android mẫu |
 | `LEARNING_MAP.md` | Bản đồ: chapter → khái niệm → file code tương ứng |
+
+Lệnh kiểm tra khỏe của website (chạy trong `web/`, dành cho người sửa code):
+
+| Lệnh | Kiểm tra gì |
+| --- | --- |
+| `node scripts-maintenance/check_counts.mjs` | Số liệu trang chủ/sidebar khớp registry (39 lõi · 6 mở rộng · 3 phụ lục · 48 unit) — chạy sau `npm run build` |
+| `node scripts-maintenance/progress_g_audit.mjs` | Regression tiến độ: migration slug cũ → bài mới, Model B-lite (79 kiểm tra) |
 
 ---
 
 ## Phần 5 — Vài điều nên biết
 
-- **Website chạy hoàn toàn trên máy bạn.** Không gửi dữ liệu đi đâu, không lưu tiến độ học lên mạng. Quiz làm xong tải lại trang là mất kết quả — đúng như thiết kế, cho đơn giản.
+- **Website chạy hoàn toàn trên máy bạn.** Không gửi dữ liệu đi đâu, không lưu tiến độ học lên mạng. Tiến độ (bài đã học) và theme lưu bằng localStorage của trình duyệt — xoá dữ liệu trình duyệt là mất, đúng như thiết kế, cho đơn giản.
 - **Không tự sửa 2 chỗ này:** file `.epub` và thư mục `aaf-materials/`. Đó là nguồn gốc để đối chiếu; sửa vào là mất khả năng truy ngược "câu này trong sách ở đâu".
 - **Chỉ dùng cá nhân.** Nội dung dựa trên sách đã mua và project mẫu đi kèm, nên không đăng website này lên internet công khai.
 - **Muốn mở project Android mẫu để làm bài tập:** cần cài thêm **Android Studio** (https://developer.android.com/studio) — riêng việc đọc bài học trên website thì không cần.

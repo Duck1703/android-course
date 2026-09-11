@@ -62,7 +62,7 @@ Unchanged from v1 — 12 constraints for future implementation:
 1. **Concept before API** — mental model first, then the library/API that implements it.
 2. **Prerequisite before usage** — nothing appears earlier than its teaching lesson unless it carries an explicit JIT gloss / forward-reference; the build should eventually lint for "used-before-taught" identifiers.
 3. **One lesson = one coherent learning job** — 1–3 major concepts (typically 2).
-4. **Core lessons ≤ ~25–30 minutes** — 12–22 min guideline target; 30-min hard cap; above ⇒ split or move.
+4. **One lesson = one coherent learning job** — **chính sách owner hiện hành (thay "30-min hard cap" cũ, đồng bộ 2026-09-11):** giờ học là ước lượng planning, KHÔNG phải hạn mức — *"Không cắt vì dài. Chỉ cắt khi nội dung thừa, sai scope, trùng lặp, hoặc nên thuộc một lesson khác."* Thời lượng không tự động fail/split; wording cũ "≤ ~25–30 phút / hard cap" giữ ở đây như lịch sử. (Chi tiết: `docs/LESSON_TEMPLATE.md` đầu file + `TARGET_REGISTRY_v5.md` §2.)
 5. **Optional complexity leaves the main path** — optional track/appendix hold C/D-class depth.
 6. **Real code, but no unexplained dependencies** — sample-project code stays the spine; every API is taught or glossed at first use.
 7. **Learner always knows where they are** — stage → lesson → section (desktop TOC + active highlight + section counter) + stage/home progress.
@@ -122,11 +122,11 @@ Identical lesson set and order to v1 (no lesson added, removed, or reordered by 
 | A2 | 1 | Chương 1.2 — App components | Ch01_2AppComponent | KEEP | Core | 15 min | IoC |
 | A3 | 1 | Chương 1.3 — Manifest & resources | Ch01_3ManifestResources | KEEP | Core | 25 min | icon trace |
 | A4 | 1 | Chương 1.4 — Gradle & bản đồ học tập | Ch01_4GradleVaBanDo | KEEP+UPDATE | Core | 25 min | **roadmap table + version updates only** (no codename claim exists in Ch01.4 — verified) |
-| A5 | 1 | Chương 2.1 — Cài đặt & tạo project | Ch02_1CaiDatVaTaoProject | KEEP | Core | ~30 min (trim to cap) | **no codename correction needed — verified accurate (dessert naming past; animal naming present)** |
+| A5 | 1 | Chương 2.1 — Cài đặt & tạo project | Ch02_1CaiDatVaTaoProject | KEEP | Core | ~30 min (ước lượng) | **no codename correction needed — verified accurate (dessert naming past; animal naming present)** |
 | A6 | 1 | Chương 2.2a — Chạy thử: máy ảo & máy thật | Ch02_2 (first half) | SPLIT | Core | 25 min | MR-008 |
 | A7 | 1 | Chương 2.2b — Giải mã project mẫu | Ch02_2 (second half) | SPLIT | Core | 25 min | MR-008 |
 | A8 | 1 | Chương 2.3 — Chạy app & cập nhật | Ch02_3ChayAppVaCapNhat | KEEP+UPDATE | Core | 25 min | **the ONLY codename-correction site — Ch02.3 line 365 false claim** |
-| A9 | 1 | Chương 3.1 — Activity & giao diện | Ch03_1ActivityVaGiaoDien | KEEP | Core | ~30 min (trim) | setContent boundary |
+| A9 | 1 | Chương 3.1 — Activity & giao diện | Ch03_1ActivityVaGiaoDien | KEEP | Core | ~30 min (ước lượng) | setContent boundary |
 | A10 | 1 | Chương 3.2a — String resource & preview | Ch03_2 (first half) | SPLIT | Core | 25 min | MR-008 |
 | A11 | 1 | Chương 3.2b — Đọc lỗi & debug (compile-error pedagogy) | Ch03_2 (second half) | SPLIT | Core | 30 min | S-03 whole |
 | A12 | 1 | Chương 3.3 — Manifest, intent, permission | Ch03_3ManifestIntentPermission | KEEP | Core | 25 min | traps |
@@ -275,7 +275,7 @@ Unchanged from v1. Target anatomy (from the strongest split lessons — Ch10.2/C
 12. Nguồn tham khảo    single block: book chapter + aaf-materials paths + lines ONLY
 ```
 
-**Hard parameters (unchanged):** 15–25 min target, 30 min hard cap; 1–3 major concepts (2 typical); 3–8 code blocks, default snippet ≤ ~35 lines (≤ ~60 with explicit "why whole file"); ≤4 callouts per lesson; ≥1 checkpoint above ~1,200 words; exactly one Nguồn block; version-note callout whenever a shown API is not current, "nên theo" column retained; deprecated APIs use the Historical callout; Vietnamese-native standalone voice (no "sách nói…/chapter này/tác giả" outside Nguồn).
+**Hard parameters (updated 2026-09-11 — owner policy):** giờ học 15–25 min chỉ là **ước lượng planning** (không còn hard cap — "không cắt vì dài; chỉ cắt khi nội dung thừa, sai scope, trùng lặp, hoặc nên thuộc một lesson khác"); 1–3 major concepts (2 typical); 3–8 code blocks, default snippet ≤ ~35 lines (≤ ~60 with explicit "why whole file"); ≤4 callouts per lesson; ≥1 checkpoint above ~1,200 words; exactly one Nguồn block; version-note callout whenever a shown API is not current, "nên theo" column retained; deprecated APIs use the Historical callout; Vietnamese-native standalone voice (no "sách nói…/chapter này/tác giả" outside Nguồn).
 
 ---
 
@@ -322,7 +322,7 @@ Unchanged from v1, with the stage-count wording fixed (7 stages + foundation):
 | Sidebar | MODIFY | Stage groups replace flat module list; optional/appendix collapsed by default; keep states |
 | Lesson header | KEEP | Chips (stage, core/optional, time), H1, summary, stats |
 | Reading stats | MODIFY (minor) | Keep derived stats; add stage + "phần x/y" context |
-| Lesson body | MODIFY | §12 template + checkpoint; 30-min cap expressed in re-sliced pages |
+| Lesson body | MODIFY | §12 template + checkpoint; giờ học chỉ là ước lượng hiển thị (owner rule 2026-09: không cắt vì dài — không còn hard cap) |
 | TOC | MODIFY | Desktop sticky rail restored + active highlight + "Mục x/y" (§17); mobile card kept |
 | Code blocks | MODIFY (minor) | File path + line range in header; lang/copy/theme-safe dark kept; long-snippet expand/collapse; output variant (§18) |
 | Callouts | MODIFY | 6-family hierarchy (§19); caps on stacked warnings |
@@ -340,7 +340,7 @@ Unchanged from v1, with the stage-count wording fixed (7 stages + foundation):
 **Stage framing (corrected):** the homepage communicates **"NỀN TẢNG (2 bài, bắt buộc) + 7 GIAI ĐOẠN CHÍNH (37 bài)"** — the foundation is required preparation, not an eighth stage.
 
 **Homepage anatomy (corrected stats):**
-1. Hero: title + one-sentence promise; stat chips — **"Giai đoạn 7 · Bài học lõi 39 · Bài mở rộng 6 · Giờ học lõi ~17"**, with the sub-note "gồm 2 bài nền tảng Kotlin bắt buộc trước khi vào 7 giai đoạn chính".
+1. Hero: title + one-sentence promise; stat chips — **"2+7 nền tảng + giai đoạn · Bài học lõi 39 · Bài mở rộng 6 · Giờ học lõi ~22"**, with the sub-note "gồm 2 bài nền tảng Kotlin bắt buộc trước khi vào 7 giai đoạn chính". *(Số giờ luôn derive từ registry/lessonStats — hiện hành là ~22 giờ lõi (2026-09-11); "~17" ghi ở bảng reconcile mục 21 là ước lượng planning tại thời điểm viết spec, giữ như lịch sử.)*
 2. "Bạn đang ở đâu" — 7-segment stage progress strip (+ the foundation block shown completed once F2 done), current stage callout.
 3. Resume card: next un-done lesson with stage label ("Tiếp tục từ Stage 3 · S4 ViewModel & UI state"; or "Hoàn thành Nền tảng trước" for new learners).
 4. Roadmap: 7 stage cards in journey order, preceded by a small "Nền tảng" card (F1–F2); each lists lessons (core first, optional dashed); stage bar + N lessons + total minutes.
@@ -406,13 +406,13 @@ All §20 rows reconcile with §6 and §23.
 | Total units incl. appendix | 22 | **48** | 45 + 3 |
 | Core estimated time | ~12–17 h displayed | **~16h45m ≈ 16–17 h** | Σ core target times = 1005 min ✓ (v1 claim stands) |
 | Optional estimated time | — | **~4h15m ≈ 4–4.5 h** | Σ optional = 255 min (O1 30 + O2 45 + O3 30 + O4 30 + O5 30 + O6 90) — **corrected from v1's 2.5–3 h** |
-| Total estimated time | ~16.8 h displayed | **~21 h** | 1005 + 255 = 1260 min — **corrected from v1's 19–20 h** |
+| Total estimated time | ~16.8 h displayed | **~26 h** (core ~22 + optional ~4) | 2026-09-11 update từ lessonStats hiện hành (1005+255=1260 min là ước lượng spec-time — historical); lõi ~22 h là con số hiển thị trên sản phẩm |
 | Avg core lesson | — | **~26 min** | 1005/39 ≈ 25.8 — corrected from v1's "~24" |
-| Displayed hero phrasing | "11 chương / 22 / ~16.8 h" | "**2 bài nền tảng + 7 giai đoạn · 39 bài lõi · 6 mở rộng · ~17 giờ lõi** " | MR-021 resolution |
+| Displayed hero phrasing | "11 chương / 22 / ~16.8 h" | "**2 bài nền tảng + 7 giai đoạn · 39 bài lõi · 6 mở rộng · ~22 giờ lõi** " | MR-021 resolution; giờ updated 2026-09-11 từ lessonStats hiện hành (~17 là ước lượng planning spec-time — historical) |
 
 **Per-stage averages (verified):** F 25 · A 25 · C 24 · S 25 · N 25 · W 28 · D 30 · R 26 · X 30 — consistent with v1's stage profiles (W/D/R ≈ 27-28 was v1's wording; exact per-stage values above).
 
-**On the "42 pages" target:** the planning magnitude still holds — 45 learner-facing units (39 core + 6 optional) vs the book-derived 42-page split target; the +3 delta is the new foundation/navigation/architecture lessons offset by the splitting math. The invariant is unit coherence (≤30-min core), not count.
+**On the "42 pages" target:** the planning magnitude still holds — 45 learner-facing units (39 core + 6 optional) vs the book-derived 42-page split target; the +3 delta is the new foundation/navigation/architecture lessons offset by the splitting math. The invariant is unit coherence (một learning job trọn vẹn — giờ học chỉ là ước lượng, không phải hard cap; owner rule 2026-09), not count.
 
 ---
 
@@ -481,7 +481,7 @@ Why:
 | Total learning time | "total ≈ 19–20 h" | **total ≈ 21 h (1260 min)** | 1005 core + 255 optional — v1 mis-stated |
 | Average core lesson time | "core lessons average ~24 min" | **~26 min (1005/39 ≈ 25.8)** | Recalculated |
 | "45 units" phrasing | "45 units (39 core + 6 optional) + 3 appendix sections" | **45 learner-facing lessons = 39 core + 6 optional; 48 total units including 3 appendix reference sections** | Removed the ambiguous "units vs lessons" phrasing |
-| Homepage stat chips (§16/21) | "7 giai đoạn · 39 bài học lõi · 6 bài mở rộng · ~17 giờ" | **"2 bài nền tảng + 7 giai đoạn · 39 bài lõi · 6 mở rộng · ~17 giờ lõi"** with foundation sub-note | Stage-count fix + honest counts |
+| Homepage stat chips (§16/21) | "7 giai đoạn · 39 bài học lõi · 6 bài mở rộng · ~17 giờ" | **"2 bài nền tảng + 7 giai đoạn · 39 bài lõi · 6 mở rộng · ~22 giờ lõi"** with foundation sub-note (giờ updated 2026-09-11 từ lessonStats; "~17 giờ" ở cột trước là ước lượng planning — historical) | Stage-count fix + honest counts |
 | S5 source attribution (Ch07) | Ambiguous: "Ch07 concepts → S5 + O1" could read as S5 = Ch07 split | **S5 sourced from Ch10.1 five-layer doctrine + Ch10.3 repository WHY; Ch07's repository-vs-live-engine case study → O1; Ditto API → AP2** | §6/§10/§20 consistency; Ch07 depth reduction unchanged in effect |
 | Coil gloss location | "Coil (W2/C-era)" | **Single first-use gloss at W2** (recipe UI first contact) | One unambiguous teaching site |
 | Stage-average wording | "W/D/R ≈ 27" | Per-stage averages listed explicitly (F25, A25, C24, S25, N25, W28, D30, R26, X30) | Transparency; no material change |
