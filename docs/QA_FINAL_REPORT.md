@@ -212,4 +212,11 @@ Reviewer độc lập (fresh sub-agent, không inspect quiz, không re-review co
 
 ## Final gate
 
-**FINAL PROJECT QA: GATE PASS @ `538bd28` (+ gate-close docs commit sau đó).** Toàn bộ PASS conditions §42 đạt: RUNTIME ✓ · INTEGRITY (48/8/0 broken/registry-dist aligned/13/14) ✓ · RESPONSIVE ✓ · THEMES ✓ · ACCESSIBILITY ✓ · S-REGISTER ✓ · CLEANUP ✓ · DOCS ✓ · MAINTENANCE ✓ · QUIZ: NO QUIZ CONTENT AUDIT PERFORMED ✓ · BUILD ✓ (0/0/67) · ADVERSARIAL `REPAIRED_ADVERSARIAL_PASS` (0B/0M) ✓ · GIT clean, not pushed ✓.
+**FINAL PROJECT QA: GATE PASS.** Toàn bộ PASS conditions §42 đạt: RUNTIME ✓ · INTEGRITY (48/8/0 broken/registry-dist aligned/13/14) ✓ · RESPONSIVE ✓ · THEMES ✓ · ACCESSIBILITY ✓ · S-REGISTER ✓ · CLEANUP ✓ · DOCS ✓ · MAINTENANCE ✓ · QUIZ: NO QUIZ CONTENT AUDIT PERFORMED ✓ · BUILD ✓ (0/0/67) · ADVERSARIAL `REPAIRED_ADVERSARIAL_PASS` (0B/0M) ✓ · GIT clean, not pushed ✓.
+
+**Final gate commit record:**
+
+- Commit sửa findings cuối cùng (repair adversarial): **`538bd28`** — `fix(qa): adversarial repairs — spec §25 cap row + README path + hero-sub space`
+- Commit đóng gate QA (báo cáo này = GATE PASS): **`bd2d491`** — `chore: close final project qa gate (docs: QA_FINAL_REPORT = GATE PASS, REPAIRED_ADVERSARIAL_PASS)`
+- **FINAL HEAD** của dự án tại đóng gate: **`bd2d491`** (branch `main`, working tree clean, not pushed)
+- Bổ sung 2026-09-11 (docs-only reconciliation sau gate, không đổi findings/results): commit **`docs: reconcile final course time and close metadata`** (spec v2 time sums → HISTORICAL DESIGN ESTIMATE + FINAL VERIFIED COUNTS; chính final gate commit record này — không ghi hash tự tham chiếu vì amend đổi hash; hash chính xác xem `git log --oneline -1`). **FINAL HEAD của dự án = commit này** (branch `main`, tree clean, not pushed).

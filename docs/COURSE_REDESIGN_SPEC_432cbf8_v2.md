@@ -10,7 +10,7 @@
 
 ## 1. Target Vision
 
-A **Vietnamese-first, beginner-scoped, stage-structured course** in which every lesson respects the same editorial standard, every concept is taught before or at the moment it is used, every lesson fits a learner-session (~25 minutes), and a graduate can independently build a small phone-first Compose app — without the course becoming an "everything Android" encyclopedia.
+A **Vietnamese-first, beginner-scoped, stage-structured course** in which every lesson respects the same editorial standard, every concept is taught before or at the moment it is used, **every lesson = one coherent learning job** (một phiên học trọn vẹn — *duration is a planning signal only, not an acceptance gate*: "không cắt vì dài" owner rule 2026-09, §3 principle 4; the earlier "~25 minutes / 30-min cap" phrasing below is HISTORICAL DESIGN), and a graduate can independently build a small phone-first Compose app — without the course becoming an "everything Android" encyclopedia.
 
 **Structure language (corrected):** the course is delivered as **NỀN TẢNG (required preparation, 2 Kotlin lessons) + 7 GIAI ĐOẠN CHÍNH (37 lessons)**. The foundation is a mandatory preparation block but is *not* numbered as one of the seven main Android learning stages. Homepage, roadmap, progress, and summary wording all use this framing consistently (§16, §21).
 
@@ -114,7 +114,7 @@ Why this shape (unchanged rationale): stages mirror the existing strength block 
 
 Identical lesson set and order to v1 (no lesson added, removed, or reordered by this consistency pass — only wording about classification/time is corrected where noted). Prefixes: F (foundation), A/C/S/N/W/D/R/X (core stages 1–7), O (optional), AP (appendix).
 
-| Order | Stage | Lesson / Topic | Existing Source | Action | Core/Optional | Target Time | Why |
+| Order | Stage | Lesson / Topic | Existing Source | Action | Core/Optional | Target Time *(HISTORICAL DESIGN ESTIMATE — planning signal, not an acceptance gate; owner rule 2026-09 "không cắt vì dài", §3)* | Why |
 |---|---|---|---|---|---|---|---|
 | F1 | Foundation (prep) | Kotlin đủ để học Compose — Phần 1: biến, hàm, null safety, collections, lambda/function types | NEW (harvests Ch01–03 glosses) | NEW | Core (prep) | 25 min | MR-011 |
 | F2 | Foundation (prep) | Kotlin đủ để học Compose — Phần 2: data class, `by`, sealed-state concept, generics recognition | NEW (Ch03.2 `by`, Ch10 data class, Ch10.4 sealed note) | NEW | Core (prep) | 25 min | MR-011 |
@@ -167,7 +167,7 @@ Identical lesson set and order to v1 (no lesson added, removed, or reordered by 
 
 Notes: A4/A5 rows corrected per evidence (see Consistency Change Log row 3). C5 (a11y) is core-lite. Intentional reinforcement (not duplicates): LaunchedEffect intro at C4 → full depth at R4; repository concept taught at S5 → used at R3; keys.properties taught at W3 → forward-referenced at A14; `stateIn`/`collectAsStateWithLifecycle` taught at S4 → reinforced at W1/D1.
 
-**Time sum check (§21):** core min = 1005 (≈16h45m); optional min = 255 (≈4h15m); total ≈ 21h.
+**Time sum check (§21):** core min = 1005 (≈16h45m); optional min = 255 (≈4h15m); total ≈ 21h. **→ HISTORICAL DESIGN ESTIMATE** (tổng target-time mỗi unit tại thời điểm viết spec, KHÔNG phải thời gian đã verify trên sản phẩm). Current verified product time (derive từ lessonStats, hiển thị trên homepage): **lõi ≈ 22 giờ · tổng gồm optional ≈ 26 giờ** — xem FINAL VERIFIED COUNTS ở §21.
 
 ---
 
@@ -394,7 +394,7 @@ All §20 rows reconcile with §6 and §23.
 
 ## 21. Course Size & Learning-Time Estimate (counts verified)
 
-| Measure | Current (baseline) | Target (design) | Verification |
+| Measure | Current (baseline — HISTORICAL, pre-redesign snapshot) | Target (design — HISTORICAL DESIGN ESTIMATE) | Verification |
 |---|---|---|---|
 | Foundation lessons (prep) | 0 | **2** (F1–F2) | = F1+F2 |
 | Main stages | — | **7** | A, C, S, N, W, D+R, X |
@@ -404,13 +404,28 @@ All §20 rows reconcile with §6 and §23.
 | Appendix sections | 0 | **3** | AP1–AP3 ✓ |
 | Total learner-facing lessons | 22 | **45** | 39 core + 6 optional (appendix = reference sections, counted separately) |
 | Total units incl. appendix | 22 | **48** | 45 + 3 |
-| Core estimated time | ~12–17 h displayed | **~16h45m ≈ 16–17 h** | Σ core target times = 1005 min ✓ (v1 claim stands) |
-| Optional estimated time | — | **~4h15m ≈ 4–4.5 h** | Σ optional = 255 min (O1 30 + O2 45 + O3 30 + O4 30 + O5 30 + O6 90) — **corrected from v1's 2.5–3 h** |
-| Total estimated time | ~16.8 h displayed | **~26 h** (core ~22 + optional ~4) | 2026-09-11 update từ lessonStats hiện hành (1005+255=1260 min là ước lượng spec-time — historical); lõi ~22 h là con số hiển thị trên sản phẩm |
-| Avg core lesson | — | **~26 min** | 1005/39 ≈ 25.8 — corrected from v1's "~24" |
+| Core estimated time | ~12–17 h displayed | **~16h45m ≈ 16–17 h** — **HISTORICAL DESIGN ESTIMATE** (Σ core target times = 1005 min tại spec-time; KHÔNG phải verified product time) | Σ target times = 1005 min ✓ (v1 claim stands) — historical |
+| Optional estimated time | — | **~4h15m ≈ 4–4.5 h** — **HISTORICAL DESIGN ESTIMATE** (Σ optional = 255 min tại spec-time) | Σ optional = 255 min (O1 30 + O2 45 + O3 30 + O4 30 + O5 30 + O6 90) — **corrected from v1's 2.5–3 h**; historical |
+| Total estimated time | ~16.8 h displayed | Design: **~21 h (HISTORICAL)** · **CURRENT VERIFIED PRODUCT: ≈ 26 h tổng (lõi ≈ 22 + optional ≈ 4)** | 2026-09-11: con số sản phẩm derive từ lessonStats (lõi ~22 h hiển thị trên homepage; 1005+255=1260 min là ước lượng spec-time — historical) |
+| Avg core lesson | — | **~26 min** — HISTORICAL DESIGN ESTIMATE (1005/39 ≈ 25.8; product avg hiện hành ≈ 34 min = ~22h/39) | corrected from v1's "~24"; historical |
 | Displayed hero phrasing | "11 chương / 22 / ~16.8 h" | "**2 bài nền tảng + 7 giai đoạn · 39 bài lõi · 6 mở rộng · ~22 giờ lõi** " | MR-021 resolution; giờ updated 2026-09-11 từ lessonStats hiện hành (~17 là ước lượng planning spec-time — historical) |
 
-**Per-stage averages (verified):** F 25 · A 25 · C 24 · S 25 · N 25 · W 28 · D 30 · R 26 · X 30 — consistent with v1's stage profiles (W/D/R ≈ 27-28 was v1's wording; exact per-stage values above).
+**Per-stage averages (verified):** F 25 · A 25 · C 24 · S 25 · N 25 · W 28 · D 30 · R 26 · X 30 — consistent with v1's stage profiles (W/D/R ≈ 27-28 was v1's wording; exact per-stage values above). *(Các con số này là **HISTORICAL DESIGN ESTIMATE** — target-time đặt cho từng unit khi thiết kế, không phải đo sản phẩm.)*
+
+### FINAL VERIFIED COUNTS (current product truth — 2026-09-11, derive từ registry/lessonStats + verified bởi `web/scripts-maintenance/check_counts.mjs`)
+
+| Measure | Current verified value | Nguồn |
+|---|---|---|
+| Core lessons | **39** (F1–F2 + A×14 + C×5 + S×5 + N×2 + W×3 + D×6 + R×4 + X×2) | registry + check_counts PASS |
+| Optional lessons | **6** (O1–O6, "Mở rộng", không bắt buộc) | registry + check_counts PASS |
+| Appendix | **3** (AP1–AP3, reference, zero-quiz) | registry + check_counts PASS |
+| Total units | **48** · 45 quiz · **8 redirects** | registry + check_counts PASS |
+| Core learning time | **≈ 22 giờ** (hiển thị trên homepage hero, suy từ lessonStats) | lessonStats + check_counts |
+| Total learning time (incl. optional) | **≈ 26 giờ** (lõi ~22 + optional ~4) | lessonStats-derived |
+| SCHEMA_VERSION / SPLIT_MAP | **13 / 14** | web/src/lib/progress.ts |
+| Avg core lesson (product) | ≈ 34 min (ước lượng hiển thị, không phải acceptance gate) | lessonStats-derived |
+
+> **Phân biệt bắt buộc:** mọi giá trị "target time" / "Σ 1005 min" / "Σ 255 min" / "~21 h" / "~16h45" trong spec này là **HISTORICAL DESIGN ESTIMATE** (thiết kế 2026-09-04). Con số hiện hành của sản phẩm chỉ là bảng FINAL VERIFIED COUNTS ở trên — giờ học là ước lượng planning, không phải acceptance gate (owner rule 2026-09, §3 principle 4).
 
 **On the "42 pages" target:** the planning magnitude still holds — 45 learner-facing units (39 core + 6 optional) vs the book-derived 42-page split target; the +3 delta is the new foundation/navigation/architecture lessons offset by the splitting math. The invariant is unit coherence (một learning job trọn vẹn — giờ học chỉ là ước lượng, không phải hard cap; owner rule 2026-09), not count.
 
@@ -477,9 +492,9 @@ Why:
 | Stage count / framing | "Stage 0 Foundation … Stage 7" — 8 labeled stages; homepage "7 giai đoạn" | **NỀN TẢNG (2 lessons, required prep, unnumbered) + 7 GIAI ĐOẠN CHÍNH (37 lessons)**; architecture diagram, hero stats, roadmap, progress, summaries all updated | Resolve 8-vs-7 contradiction without moving any lesson |
 | Accessibility classification | "a11y = core-lite (C5)" in §6 but listed under OPTIONAL EXTENSION OUTCOME in §2 | a11y = **core outcome (C5, core-lite/small foundation)** everywhere; removed from optional outcome list; §11 wording fixed | Benchmark classification: a11y = CORE-LITE; testing/adaptive/WorkManager = optional |
 | Android Studio codename fix location | Correction associated with both A4 (Ch01.4) and A8 (Ch02.3) | Correction **A8 only**; A4 = roadmap/version updates only; A5 (Ch02.1) verified claim-free (dessert naming in the past is true; animal naming declared current) | Evidence re-check: the false "đã bỏ cách đặt tên động vật" claim exists **only** in Ch02_3 line 365; Ch01_4 has no codename content |
-| Optional learning time | "optional ≈ 2.5–3 h" | **optional ≈ 4–4.5 h (255 min)** | Σ O1–O6 = 30+45+30+30+30+90 = 255 min — v1 mis-stated |
-| Total learning time | "total ≈ 19–20 h" | **total ≈ 21 h (1260 min)** | 1005 core + 255 optional — v1 mis-stated |
-| Average core lesson time | "core lessons average ~24 min" | **~26 min (1005/39 ≈ 25.8)** | Recalculated |
+| Optional learning time | "optional ≈ 2.5–3 h" | **optional ≈ 4–4.5 h (255 min)** — HISTORICAL DESIGN ESTIMATE | Σ O1–O6 = 30+45+30+30+30+90 = 255 min — v1 mis-stated; product hiện hành ≈ 4 h |
+| Total learning time | "total ≈ 19–20 h" | **total ≈ 21 h (1260 min)** — HISTORICAL DESIGN ESTIMATE (product hiện hành ≈ 26 h: lõi ~22 + optional ~4) | 1005 core + 255 optional — v1 mis-stated |
+| Average core lesson time | "core lessons average ~24 min" | **~26 min (1005/39 ≈ 25.8)** — HISTORICAL DESIGN ESTIMATE (product avg hiện hành ≈ 34 min) | Recalculated |
 | "45 units" phrasing | "45 units (39 core + 6 optional) + 3 appendix sections" | **45 learner-facing lessons = 39 core + 6 optional; 48 total units including 3 appendix reference sections** | Removed the ambiguous "units vs lessons" phrasing |
 | Homepage stat chips (§16/21) | "7 giai đoạn · 39 bài học lõi · 6 bài mở rộng · ~17 giờ" | **"2 bài nền tảng + 7 giai đoạn · 39 bài lõi · 6 mở rộng · ~22 giờ lõi"** with foundation sub-note (giờ updated 2026-09-11 từ lessonStats; "~17 giờ" ở cột trước là ước lượng planning — historical) | Stage-count fix + honest counts |
 | S5 source attribution (Ch07) | Ambiguous: "Ch07 concepts → S5 + O1" could read as S5 = Ch07 split | **S5 sourced from Ch10.1 five-layer doctrine + Ch10.3 repository WHY; Ch07's repository-vs-live-engine case study → O1; Ditto API → AP2** | §6/§10/§20 consistency; Ch07 depth reduction unchanged in effect |
@@ -498,10 +513,11 @@ Why:
 * Optional lessons: **6** (O1–O6)
 * Appendix sections: **3** (AP1–AP3)
 * Total learner-facing lessons: **45** (core + optional; appendix reference sections counted separately — 48 total units if included)
-* Core estimated time: **~16 h 45 m (~16–17 h)**
-* Optional estimated time: **~4 h 15 m (~4–4.5 h)**
+* Core estimated time: **~16 h 45 m (~16–17 h)** — **HISTORICAL DESIGN ESTIMATE** (Σ target times 1005 min tại spec-time; KHÔNG phải verified product time)
+* Optional estimated time: **~4 h 15 m (~4–4.5 h)** — **HISTORICAL DESIGN ESTIMATE** (Σ 255 min)
+* **CURRENT PRODUCT TIME (2026-09-11, derive từ lessonStats + check_counts PASS): lõi ≈ 22 giờ · tổng gồm optional ≈ 26 giờ** — đây là con số hiển thị trên sản phẩm; các dòng "estimated" phía trên chỉ là lịch sử thiết kế
 
-**Status: `CONSISTENT_AND_READY_FOR_PROTOTYPE`** — all v1 internal inconsistencies resolved (stage count, a11y classification, time arithmetic, codename location, count phrasing); no structural conflict found; redesign direction and preserved decisions intact.
+**Status: `CONSISTENT_AND_READY_FOR_PROTOTYPE`** — all v1 internal inconsistencies resolved (stage count, a11y classification, time arithmetic, codename location, count phrasing); no structural conflict found; redesign direction and preserved decisions intact. *(2026-09-11: trạng thái này thuộc giai đoạn thiết kế — dự án đã đi hết implementation + final QA; current truth = PROJECT_PLAN "TRẠNG THÁI CUỐI CÙNG" + QA_FINAL_REPORT.md.)*
 
 ---
 
