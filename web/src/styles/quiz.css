@@ -397,6 +397,34 @@
 	margin: 0.35rem 0;
 }
 
+/* --- Danh dau muc "Luyen tap" cho MOI bai --------------------------------
+   Khong phai bai nao cung dung the .chal. Sau bai dung dinh dang bai tap khac
+   (chu thich mot doan code roi doi chieu dap an; hoac copy mot file that vao
+   project) nen khong co the nao de nhan ra. Neu chi dua vao the .chal thi khi
+   luot trang, nguoi hoc khong thay phan luyen tap o sau bai do.
+   Vi vay danh dau o CAP TIEU DE, ap dung cho ca 48 bai nhu nhau. Bieu tuong
+   dung lai but chi cua .chal de hai cho doc ra la cung mot loai noi dung.
+   Dung [id^=...] vi co bai dat ten #thu-thach thay vi #luyen-tap. */
+.lesson h2[id^="luyen-tap"],
+.lesson h2[id^="thu-thach"],
+.lesson h2[id^="bai-tap"] {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.lesson h2[id^="luyen-tap"]::before,
+.lesson h2[id^="thu-thach"]::before,
+.lesson h2[id^="bai-tap"]::before {
+	content: "";
+	flex: 0 0 auto;
+	width: 1.1rem;
+	height: 1.1rem;
+	background-color: var(--primary);
+	-webkit-mask: var(--ic-pencil) center / contain no-repeat;
+	mask: var(--ic-pencil) center / contain no-repeat;
+}
+
 /* --------------------------------- <details> = phan dap an mo/dong -------- */
 .quiz details,
 .lesson details {
