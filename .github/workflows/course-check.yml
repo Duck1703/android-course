@@ -1,12 +1,14 @@
 name: course-check
 
-# Kiem tra khoa hoc moi khi co thay doi. Sau tang, chay tu re den dat:
-#   1. cau truc bai hoc          (khong can build)
-#   2. chat luong khoi luyen tap (khong can build)
-#   3. audit progress B-lite     (khong can build)
-#   4. build tinh                (49 trang)
-#   5. doi chieu so lieu hien thi voi registry (can dist/)
-#   6. anchor noi bo tro toi dich that          (can dist/)
+# Kiem tra khoa hoc moi khi co thay doi. Tam tang, chay tu re den dat:
+#   1. cau truc bai hoc             (khong can build)
+#   2. kieu + code chet (astro check) (khong can build)
+#   3. chat luong khoi luyen tap    (khong can build)
+#   4. audit progress B-lite        (khong can build)
+#   5. build tinh                   (49 trang)
+#   6. doi chieu so lieu hien thi voi registry (can dist/)
+#   7. anchor noi bo tro toi dich that          (can dist/)
+#   8. redirect URL cu tro toi trang co that    (can dist/)
 #
 # Muc dich: lo hong luyen tap — va moi lo hong cau truc khac — khong the
 # lang le moc lai. Xem docs/COURSE_CONTENT_STANDARD.md §4 buoc 6.
@@ -52,17 +54,23 @@ jobs:
       - name: 1. Cau truc bai hoc (bat buoc co khoi luyen tap)
         run: pnpm run check:structure
 
-      - name: 2. Chat luong khoi luyen tap
+      - name: 2. Kieu + code chet (astro check)
+        run: pnpm run check:types
+
+      - name: 3. Chat luong khoi luyen tap
         run: python tools/audit-practice.py
 
-      - name: 3. Audit progress (Model B-lite)
+      - name: 4. Audit progress (Model B-lite)
         run: node scripts-maintenance/progress_g_audit.mjs
 
-      - name: 4. Build tinh
+      - name: 5. Build tinh
         run: pnpm run build
 
-      - name: 5. Doi chieu so lieu hien thi voi registry
+      - name: 6. Doi chieu so lieu hien thi voi registry
         run: node scripts-maintenance/check_counts.mjs
 
-      - name: 6. Moi lien ket noi bo tro toi dich that
+      - name: 7. Moi lien ket noi bo tro toi dich that
         run: python tools/check-anchors.py
+
+      - name: 8. Redirect URL cu tro toi trang co that
+        run: python tools/check-redirects.py
