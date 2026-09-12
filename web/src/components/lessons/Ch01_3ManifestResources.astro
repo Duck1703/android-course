@@ -218,7 +218,7 @@ const dataExtractionCode = `<data-extraction-rules>
 		pháp XML; file thật không có dấu đó.
 	</p>
 
-	<h3>6.2 — Đối chiếu: manifest thật của project trông thế nào</h3>
+	<h3 id="muc-6-2">6.2 — Đối chiếu: manifest thật của project trông thế nào</h3>
 	<p>
 		Đây là chỗ mở được code thật có giá trị. Dưới đây là <strong>toàn bộ</strong> file manifest của app mẫu (project "Kodeco
 		Chat" bạn sẽ tạo ở phần thực hành kế tiếp) — đủ 28 dòng, không lược:
@@ -333,11 +333,11 @@ const dataExtractionCode = `<data-extraction-rules>
 		</li>
 		<li>
 			<strong>Resource truy cập được resource khác.</strong> Câu ngắn nhất và dễ trôi qua nhất, nhưng nó chính là cái làm nên
-			mục 7.2 bên dưới.
+			<a href="#muc-7-2">mục 7.2</a> bên dưới.
 		</li>
 	</ol>
 
-	<h3>7.1 — Vì sao resource "thực sự quan trọng": thích ứng thiết bị và ngôn ngữ</h3>
+	<h3 id="muc-7-1">7.1 — Vì sao resource "thực sự quan trọng": thích ứng thiết bị và ngôn ngữ</h3>
 	<p>
 		Lý do resource đáng để có cả một hệ thống riêng: nó cho phép app Android <strong>thích ứng với nhiều thiết bị và nhiều ngôn
 		ngữ</strong> mà không phải viết lại code. Hai ví dụ điển hình:
@@ -399,7 +399,7 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 	<p>Ba loại XML tiêu biểu, mỗi loại một câu:</p>
 	<Code code={stringsCode} lang="xml" theme="github-dark" />
 	<p>
-		Đây chính là <code>@string/app_name</code> mà manifest ở mục 6.2 trỏ tới (dòng 10 và 18 của manifest). Muốn app có tên tiếng
+		Đây chính là <code>@string/app_name</code> mà manifest ở <a href="#muc-6-2">mục 6.2</a> trỏ tới (dòng 10 và 18 của manifest). Muốn app có tên tiếng
 		Việt, bạn không sửa manifest — bạn thêm <code>values-vi/strings.xml</code>.
 	</p>	<Code code={themesXmlCode} lang="xml" theme="github-dark" />
 	<p>
@@ -408,7 +408,7 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 		thật được tạo màu ở Kotlin chứ không ở XML. Theme XML này chỉ còn giữ đúng một việc: <code>NoActionBar</code> — bỏ thanh
 		tiêu đề mặc định của hệ thống để Compose tự vẽ toàn bộ màn hình.
 	</p>
-	<h3>7.2 — Lần theo một chuỗi tham chiếu 3 tầng trong code thật</h3>
+	<h3 id="muc-7-2">7.2 — Lần theo một chuỗi tham chiếu 3 tầng trong code thật</h3>
 	<p>
 		Câu "resource truy cập được resource khác" nghe rất mờ khi đứng một mình. Nhưng nó có một ví dụ hoàn hảo ngay trong project, và
 		lần theo ví dụ đó là cách tốt nhất để hiểu resource hoạt động ra sao. Bắt đầu từ manifest:
@@ -443,10 +443,10 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 		<strong>Để ý thư mục <code>mipmap-anydpi</code>:</strong> hậu tố <code>anydpi</code> nghĩa là "dùng cho mọi mật độ màn hình".
 		File XML vẽ vector nên phóng to nhỏ tuỳ ý không mờ — cần đúng một bản. Còn 10 file <code>.webp</code> ở
 		<code>mipmap-hdpi</code> đến <code>mipmap-xxxhdpi</code> là <em>ảnh bitmap</em>, mỗi mật độ một bản riêng, dùng cho máy Android
-		cũ chưa hỗ trợ adaptive icon. Cùng một tên <code>ic_launcher</code>, hệ thống chọn bản phù hợp — đúng cơ chế hậu tố ở mục 7.1.
+		cũ chưa hỗ trợ adaptive icon. Cùng một tên <code>ic_launcher</code>, hệ thống chọn bản phù hợp — đúng cơ chế hậu tố ở <a href="#muc-7-1">mục 7.1</a>.
 	</p>
 
-	<h3>7.3 — Hai nơi định nghĩa màu, và một trong hai là code chết</h3>
+	<h3 id="muc-7-3">7.3 — Hai nơi định nghĩa màu, và một trong hai là code chết</h3>
 	<p>
 		Project mẫu có <strong>hai</strong> nơi định nghĩa màu, và so hai nơi này giải thích được nhiều thứ về Android hiện tại.
 	</p>
@@ -500,7 +500,7 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 		Studio sinh ra cho project mới, và được giữ nguyên vì mục đích chỉ là "có chữ gì hiện lên màn hình". Trong app thật, mọi
 		chuỗi người dùng đọc được đều nên nằm ở <code>strings.xml</code> — nếu không thì lúc muốn dịch app sang tiếng Việt, bạn phải đi
 		sửa từng dòng code. Còn <code>@string/app_name</code> ở manifest thì <em>đã</em> làm đúng cách. Cùng một project, hai cách làm
-		— thêm một biểu hiện của chuyện "hai hệ cùng tồn tại" ở mục 7.3.
+		— thêm một biểu hiện của chuyện "hai hệ cùng tồn tại" ở <a href="#muc-7-3">mục 7.3</a>.
 	</p>
 	<p class="notice">
 		<strong>Và project tự dọn chuyện này dần về sau.</strong> Đã mở <code>strings.xml</code> của các project tiếp theo để kiểm:

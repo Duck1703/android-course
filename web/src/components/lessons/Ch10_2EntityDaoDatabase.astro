@@ -324,7 +324,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 				<strong>(a)</strong> Đúng một dòng — object là hình ảnh của một dòng, class là hình ảnh của cả bảng.
 				<strong>(b)</strong> Cả hai không thể cùng tồn tại: khoá chính <code>id</code> buộc giá trị không trùng, nên
 				lệnh insert thứ hai va vào ràng buộc khoá chính. Chuyện nó được xử lý thế nào (báo lỗi, bỏ qua, hay ghi đè) là
-				một <em>quyết định</em> — chính là chủ đề <code>onConflict</code> ở mục 9.2.
+				một <em>quyết định</em> — chính là chủ đề <code>onConflict</code> ở <a href="#muc-9-2">mục 9.2</a>.
 			</p>
 		</details>
 	</div>
@@ -376,7 +376,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 				<td>2</td>
 				<td><code>addRecipe()</code> dùng <code>@Insert</code>: lưu <em>một</em> object <code>RecipeDb</code> vào
 					database. Thuộc tính <code>onConflict</code> định nghĩa <em>chuyện gì xảy ra nếu đã tồn tại một bản ghi cùng
-					khoá chính</em> — chi tiết ở mục 9.2.</td>
+					khoá chính</em> — chi tiết ở <a href="#muc-9-2">mục 9.2</a>.</td>
 			</tr>
 			<tr>
 				<td>3</td>
@@ -448,7 +448,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		</p>
 	</div>
 
-	<h3>9.2. <code>onConflict</code> — một quyết định chính sách, không phải trang trí</h3>
+	<h3 id="muc-9-2">9.2. <code>onConflict</code> — một quyết định chính sách, không phải trang trí</h3>
 	<p>
 		<code>@Insert(onConflict = OnConflictStrategy.IGNORE)</code> trả lời câu hỏi từ kiểm tra nhanh ở <a href="#entities">mục 8</a>: khi lệnh
 		insert va vào ràng buộc khoá chính (đã có dòng cùng <code>id</code>), app <em>phải</em> làm gì? Đó là một
@@ -485,7 +485,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		nói lên ý định của người viết. (SQLite còn có vài chiến lược khác, trong đó hai cái đã bị đánh dấu deprecated; bạn
 		sẽ gặp chúng trong tài liệu chính thức nếu cần.)
 	</p>
-	<h3>9.3. <code>IngredientDao</code></h3>
+	<h3 id="muc-9-3">9.3. <code>IngredientDao</code></h3>
 	<p>
 		Tạo <code>IngredientDao.kt</code> cùng package. Về mặt cấu trúc nó lặp lại đúng khuôn của <code>RecipeDao</code>: một
 		<code>@Insert</code> với <code>onConflict = OnConflictStrategy.IGNORE</code>, các <code>@Query</code> để đọc, một
@@ -649,7 +649,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		<p>
 			Cùng cơ chế đó cũng phát hiện lệch kiểu: viết
 			<code>@Query("SELECT * FROM recipes") suspend fun getAll(): RecipeDb</code> — câu SQL trả nhiều dòng nhưng hàm khai
-			trả một object — Room sẽ báo lỗi hoặc cảnh báo tuỳ trường hợp. Đây chính là quy tắc "kiểu trả về cho biết một hay nhiều dòng" ở mục 9.3, nhưng
+			trả một object — Room sẽ báo lỗi hoặc cảnh báo tuỳ trường hợp. Đây chính là quy tắc "kiểu trả về cho biết một hay nhiều dòng" ở <a href="#muc-9-3">mục 9.3</a>, nhưng
 			do compiler kiểm hộ.
 		</p>
 		<p>

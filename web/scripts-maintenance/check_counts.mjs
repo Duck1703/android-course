@@ -16,8 +16,13 @@
 // ==========================================================================
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const WEB = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+// fileURLToPath, KHONG dung URL.pathname: pathname tra ve chuoi da ma hoa
+// phan tram, nen thu muc co dau cach (vd "WorkBuddy AI") thanh "WorkBuddy%20AI"
+// va moi readFileSync sau do deu ENOENT. fileURLToPath giai ma dung, ke ca
+// tren Windows co ky tu o dia.
+const WEB = fileURLToPath(new URL("..", import.meta.url));
 const DIST = join(WEB, "dist");
 
 let failures = 0;

@@ -671,7 +671,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 			thật sự lo việc đó.
 		</p>
 	</div>
-	<h3>12.1 Khuôn đó trong code mẫu</h3>
+	<h3 id="muc-12-1">12.1 Khuôn đó trong code mẫu</h3>
 	<Code code={realViewModelHeadCode} lang="kotlin" theme="github-dark" />
 	<p class="src">Nguồn: <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 59–68)</p>
 	<p>Đối chiếu từng dòng với khuôn vừa học:</p>
@@ -724,7 +724,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		có nhiều chỗ cùng cập nhật — lý do chi tiết thuộc <strong>W1</strong>. Ở đây chỉ cần <em>đọc được</em> cả hai dạng:
 	</p>
 	<Code code={uiStateUpdateBlockCode} lang="kotlin" theme="github-dark" />
-	<h3>13.1 Code mẫu dùng một dạng thứ ba — và nó có một cái bẫy thật</h3>
+	<h3 id="muc-13-1">13.1 Code mẫu dùng một dạng thứ ba — và nó có một cái bẫy thật</h3>
 	<Code code={finalSendFunctionsCode} lang="kotlin" theme="github-dark" />
 	<p class="src">Nguồn: <code>{FINAL}/viewmodel/MainViewModel.kt</code> (dòng 103–127)</p>
 	<p class="notice">
@@ -1098,7 +1098,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 	</p>
 	<h3>18.2 Một state public mà không nên public</h3>
 	<p>
-		Quay lại <code>var currentUserId = MutableStateFlow(userId)</code> ở mục 12.1. Lần theo bốn bước: nó
+		Quay lại <code>var currentUserId = MutableStateFlow(userId)</code> ở <a href="#muc-12-1">mục 12.1</a>. Lần theo bốn bước: nó
 		<em>có</em> chỗ đọc (giao diện dùng để biết tin nào là của mình), <em>có</em> tác động giao diện. Nhưng bước 1 sai khuôn:
 		vì nó là <code>MutableStateFlow</code> public, <strong>giao diện có thể ghi vào nó</strong>. Không ai làm vậy trong
 		project — nhưng "không ai làm" là một lời hứa, còn <code>StateFlow</code> chỉ-đọc là một <em>bảo đảm</em>. Đây đúng là
@@ -1346,7 +1346,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		</li>
 		<li>
 			<strong>Phơi <code>MutableStateFlow</code> ra public.</strong> Lúc đó giao diện ghi được vào state, và bạn mất khả năng
-			biết ai đổi ở đâu. Code mẫu có đúng một chỗ như vậy — đọc nó như một câu hỏi, không như khuôn mẫu (mục 12.1, 18.2).
+			biết ai đổi ở đâu. Code mẫu có đúng một chỗ như vậy — đọc nó như một câu hỏi, không như khuôn mẫu (<a href="#muc-12-1">mục 12.1</a>, 18.2).
 		</li>
 		<li>
 			<strong>Dùng <code>collectAsState()</code> làm mặc định trên Android.</strong> Nó không dừng khi app xuống nền. Hãy dùng
@@ -1355,7 +1355,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		<li>
 			<strong>Phát ra chính object đang giữ thay vì một bản mới.</strong> Dòng trạng thái không thông báo khi giá trị mới bằng
 			giá trị cũ. Code mẫu chạy đúng nhờ một cơ chế khác chồng lên — đó là chỗ khó giải thích, không phải chỗ nên bắt chước
-			(mục 13.1).
+			(<a href="#muc-13-1">mục 13.1</a>).
 		</li>
 		<li>
 			<strong>Chọn dispatcher theo tên việc.</strong> <code>launch(Dispatchers.Default)</code> cho một lời gọi thêm phần tử vào

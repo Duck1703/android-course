@@ -1,0 +1,53 @@
+name: course-check
+
+# Kiem tra khoa hoc moi khi co thay doi. Bon tang, chay tu re den dat:
+#   1. cau truc bai hoc        (khong can build)
+#   2. audit progress B-lite   (khong can build)
+#   3. build tinh              (49 trang)
+#   4. doi chieu so lieu hien thi voi registry (can dist/)
+#
+# Muc dich: lo hong luyen tap — va moi lo hong cau truc khac — khong the
+# lang le moc lai. Xem docs/COURSE_CONTENT_STANDARD.md §4 buoc 6.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # doc phien ban pnpm tu truong packageManager trong web/package.json
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Cai dependency
+        run: pnpm install --frozen-lockfile
+
+      - name: 1. Cau truc bai hoc (bat buoc co khoi luyen tap)
+        run: pnpm run check:structure
+
+      - name: 2. Audit progress (Model B-lite)
+        run: node scripts-maintenance/progress_g_audit.mjs
+
+      - name: 3. Build tinh
+        run: pnpm run build
+
+      - name: 4. Doi chieu so lieu hien thi voi registry
+        run: node scripts-maintenance/check_counts.mjs

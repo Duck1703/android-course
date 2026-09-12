@@ -18,6 +18,10 @@ const LESSONS_DIR = join(WEB, "src", "components", "lessons");
 const LESSONS_TS = join(WEB, "src", "data", "lessons.ts");
 
 const QUIET = process.argv.includes("--quiet");
+// Chuan noi dung §4 buoc 6: khoi luyen tap la BAT BUOC. Mac dinh thieu = ERROR,
+// de lo hong khong lang le moc lai o bai thu 49. Dung --allow-missing-practice
+// khi dang chuyen tiep va co y thuc.
+const ALLOW_MISSING_PRACTICE = process.argv.includes("--allow-missing-practice");
 
 // --- hang so quy tac ------------------------------------------------------
 const REQUIRED = ["cam-bay", "nguon"]; // dung 1 moi loai, bat buoc
@@ -139,8 +143,13 @@ for (const { route, name } of live) {
     }
   }
 
-  // 6. theo doi do phu luyen tap
-  if (practice.length === 0) missingPractice.push(route);
+  // 6. bat buoc: phai co khoi luyen tap (chuan §4 buoc 6)
+  if (practice.length === 0) {
+    missingPractice.push(route);
+    if (!ALLOW_MISSING_PRACTICE) {
+      errors.push(`${where}: thieu khoi luyen tap (chuan §4 buoc 6 bat buoc)`);
+    }
+  }
 
   // 7. gom so muc theo chuong de kiem lien tuc
   const chap = chapterOf(route);

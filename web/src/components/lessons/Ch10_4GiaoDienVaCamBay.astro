@@ -219,12 +219,12 @@ GHI — sự kiện quay lại (đường ngược):
 					<code>confirmValueChange</code> được tạo ra một lần lúc dựng <code>dismissState</code> rồi được giữ lại dùng
 					qua nhiều lần vẽ lại — <code>rememberUpdatedState</code> bảo đảm khi lambda chạy, nó đọc được
 					<em>giá trị mới nhất</em> của <code>recipe</code>, chứ không giữ mãi bản chụp lúc lambda được tạo. Chi tiết
-					ở mục 16.4.</td>
+					ở <a href="#muc-16-4">mục 16.4</a>.</td>
 			</tr>
 		</tbody>
 	</table>
 
-	<h3>16.2. <code>LaunchedEffect</code> ở mức đầy đủ: nó sống và chết thế nào</h3>
+	<h3 id="muc-16-2">16.2. <code>LaunchedEffect</code> ở mức đầy đủ: nó sống và chết thế nào</h3>
 	<p>
 		C4 đã chạm <code>LaunchedEffect</code> lần đầu với một nguyên tắc: thân hàm composable là chỗ trả lời
 		<em>"giao diện nên trông thế nào"</em>, còn việc có tác dụng ra ngoài (gọi mạng, ghi database, log) là
@@ -257,7 +257,7 @@ GHI — sự kiện quay lại (đường ngược):
 	</p>
 	<p>
 		Còn một đường viền cần nói đúng: ở đây khối <code>LaunchedEffect</code> <em>không</em> chạy việc gì trực tiếp — nó
-		phóng hai coroutine con vào <code>scope</code> (một <code>rememberCoroutineScope</code>, mục 16.4) rồi kết thúc ngay.
+		phóng hai coroutine con vào <code>scope</code> (một <code>rememberCoroutineScope</code>, <a href="#muc-16-4">mục 16.4</a>) rồi kết thúc ngay.
 		Việc tách hai coroutine con là bắt buộc vì <code>collect</code> không bao giờ trả về; còn việc phóng qua
 		<code>scope</code> thay vì dùng trực tiếp ngữ cảnh của effect là một cách viết <em>hợp lệ khác</em> — với key
 		<code>Unit</code> như ở đây, hai cách cho cùng hành vi (đều bị huỷ khi màn hình rời composition). Gặp code của người
@@ -288,7 +288,7 @@ GHI — sự kiện quay lại (đường ngược):
 		chạy lại liên tục dù chẳng có gì thật sự đổi. Chọn key bằng câu hỏi ở đầu mục này, cả ba bẫy đều tự lộ.
 	</p>
 
-	<h3>16.4. <code>rememberUpdatedState</code> và <code>rememberCoroutineScope</code></h3>
+	<h3 id="muc-16-4">16.4. <code>rememberUpdatedState</code> và <code>rememberCoroutineScope</code></h3>
 	<p>
 		Hai công cụ còn lại trong file này giải hai bài toán khác nhau — và rất dễ bị nhầm với <code>remember</code> và
 		<code>LaunchedEffect</code> tương ứng.
@@ -396,7 +396,7 @@ GHI — sự kiện quay lại (đường ngược):
 		</p>
 	</div>
 
-	<h3>16.6. Chỗ bọc <code>withContext</code> dư — bằng chứng và quy tắc</h3>
+	<h3 id="muc-16-6">16.6. Chỗ bọc <code>withContext</code> dư — bằng chứng và quy tắc</h3>
 	<p class="notice">
 		<strong>Một chỗ dư trong code mẫu, và cách chứng minh nó dư:</strong> hai chỗ trong file này bọc lời gọi ViewModel
 		trong <code>withContext(Dispatchers.IO) &#123; ... &#125;</code> — quanh <code>viewModel.getBookmarks()</code> và
@@ -412,7 +412,7 @@ GHI — sự kiện quay lại (đường ngược):
 		về thiết kế: <strong>quyết định "việc này chạy ở luồng nào" nên nằm ở một tầng duy nhất</strong> — ở đây là ViewModel.
 		UI tự bọc thêm là nhân đôi trách nhiệm: nếu ngày mai ViewModel đổi cách bố trí, UI của một màn hình vẫn bọc kiểu cũ
 		và bạn có hai chuẩn trong cùng một app. So sánh ngay trong project: <code>GroceryList.kt</code> viết gọn
-		<code>scope.launch &#123; viewModel.getIngredients() &#125;</code> (mục 18.3) — đúng khuôn "UI chỉ phóng, ViewModel
+		<code>scope.launch &#123; viewModel.getIngredients() &#125;</code> (<a href="#muc-18-3">mục 18.3</a>) — đúng khuôn "UI chỉ phóng, ViewModel
 		quyết định luồng".
 	</p>
 	<p class="notice">
@@ -490,7 +490,7 @@ GHI — sự kiện quay lại (đường ngược):
 		<code>// TODO: Add Repository</code>, thêm <code>val repository = LocalRepositoryProvider.current</code>, rồi cập nhật
 		chỗ tạo ViewModel thành <code>RecipeViewModel(prefs, repository)</code>.
 	</p>
-	<h3>18.2. Bốn <code>@Preview</code></h3>
+	<h3 id="muc-18-2">18.2. Bốn <code>@Preview</code></h3>
 	<p>
 		Đây là yêu cầu cuối cùng trước khi build và chạy: một số preview composable dùng <code>RecipeViewModel</code> nên
 		giờ cần repository. (<code>@Preview</code> là annotation cho Android Studio vẽ thử một Composable ngay trong IDE, không
@@ -511,7 +511,7 @@ GHI — sự kiện quay lại (đường ngược):
 		chỗ người mới hay tưởng mình làm sai.
 	</p>
 
-	<h3>18.3. Chạy thử — và Groceries</h3>
+	<h3 id="muc-18-3">18.3. Chạy thử — và Groceries</h3>
 	<p>
 		Luồng kiểm tra như sau: chạy app, tìm một món bạn thích, bấm vào ảnh để vào trang chi tiết, rồi bấm icon bookmark.
 		Bấm xong app trả bạn về danh sách. Bấm nút Bookmark ở phía trên để xem danh sách đã lưu. Muốn xoá thì quẹt trái hoặc
@@ -865,7 +865,7 @@ GHI — sự kiện quay lại (đường ngược):
 	<div class="callout warn">
 		<strong>2. <code>@Preview</code> chết vì CompositionLocal — và cách chữa</strong>
 		<p>
-			Sau khi bạn sửa bốn hàm <code>@Preview</code> ở mục 18.2 cho project build được, sẽ có một chuyện không ai báo
+			Sau khi bạn sửa bốn hàm <code>@Preview</code> ở <a href="#muc-18-2">mục 18.2</a> cho project build được, sẽ có một chuyện không ai báo
 			trước: <strong>preview trong Android Studio hiện lỗi thay vì hiện giao diện.</strong>
 		</p>
 		<p>
@@ -913,7 +913,7 @@ GHI — sự kiện quay lại (đường ngược):
 		<li><strong>Truy cập database phải ngoài luồng chính — và chỉ quyết định luồng ở một tầng.</strong> Hàm DAO là
 			<code>suspend</code> (Room tự đưa truy vấn suspend ra khỏi luồng chính); trong project này ViewModel là tầng
 			<em>chọn</em> bọc <code>withContext(Dispatchers.IO)</code> — một lựa chọn bố trí, không phải yêu cầu bắt buộc.
-			Bọc thêm ở UI là chuyển luồng hai lần: không lỗi, chỉ dư (mục 16.6). Không có kỷ luật luồng nào thì app đứng hình
+			Bọc thêm ở UI là chuyển luồng hai lần: không lỗi, chỉ dư (<a href="#muc-16-6">mục 16.6</a>). Không có kỷ luật luồng nào thì app đứng hình
 			khi database chậm.</li>
 		<li><strong>Repository là tầng ngăn cách:</strong> UI và ViewModel không bao giờ chạm DAO. Đổi từ Room sang thứ khác chỉ
 			cần sửa bên trong repository.</li>
@@ -924,7 +924,7 @@ GHI — sự kiện quay lại (đường ngược):
 			qua <code>StateFlow</code>. Một chiều nên khi sai bạn biết phải đi tìm ở đâu.</li>
 		<li><strong>Effect của Compose gắn với composition:</strong> <code>LaunchedEffect</code> vào composition thì chạy, key
 			đổi thì chạy lại (cái cũ bị huỷ), rời composition thì bị huỷ — việc phụ (gọi mạng, ghi database) có chỗ riêng là
-			vì thân composable chỉ trả lời "giao diện nên trông thế nào" (mục 16.2–16.3).</li>
+			vì thân composable chỉ trả lời "giao diện nên trông thế nào" (<a href="#muc-16-2">mục 16.2</a>–16.3).</li>
 		<li><strong>Xoá dữ liệu cha phải xoá dữ liệu con.</strong> Project không khai <code>foreignKeys</code>, nên không có
 			cascade delete tự động — <code>deleteRecipeIngredients()</code> phải tự tìm và xoá từng nguyên liệu. Quên là database
 			đầy dữ liệu mồ côi và trang Groceries hiện món của công thức đã xoá.</li>
@@ -965,7 +965,7 @@ GHI — sự kiện quay lại (đường ngược):
 	<div class="callout note">
 		<p class="src">
 			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 679–823 (Bookmarks · Recipe Details · cập nhật tham
-			chiếu · previews · Groceries · lựa chọn lưu trữ khác · tổng kết). Ảnh minh hoạ trong giáo trình gốc: <code>img124–126.png</code> (ảnh chụp màn hình luồng bookmark — bấm lưu, mở danh sách, quẹt xoá — đã được diễn giải thành chữ ở mục 18.3).
+			chiếu · previews · Groceries · lựa chọn lưu trữ khác · tổng kết). Ảnh minh hoạ trong giáo trình gốc: <code>img124–126.png</code> (ảnh chụp màn hình luồng bookmark — bấm lưu, mở danh sách, quẹt xoá — đã được diễn giải thành chữ ở <a href="#muc-18-3">mục 18.3</a>).
 		</p>
 		<p class="src">
 			<strong>Code thật</strong> (nguyên văn, chỉ rút gọn phần vẽ icon và state trung gian):
@@ -977,7 +977,7 @@ GHI — sự kiện quay lại (đường ngược):
 			<code>{AAF}/ui/groceries/GroceryList.kt</code> (dòng 53–79; so sánh dòng 68–70) ·
 			<code>{AAF}/MainActivity.kt</code> (dòng 89–105: hai route điền hai tham số id) ·
 			<code>{AAF}/viewmodels/RecipeViewModel.kt</code> (dòng 154–159, 215–224: thân hàm đã tự bọc IO — bằng chứng cho
-			mục 16.6).
+			<a href="#muc-16-6">mục 16.6</a>).
 		</p>
 		<p class="src">
 			<strong>Phiên bản đã ghim:</strong> <code>{AAF_GRADLE}/gradle/libs.versions.toml</code> (dòng 23, 79–81) và
@@ -987,8 +987,8 @@ GHI — sự kiện quay lại (đường ngược):
 			<strong>Phần bổ sung ngoài giáo trình:</strong> bảng 7 điểm lệch ở <a href="#lech">mục 20</a> (dựng bằng cách đọc từng file và
 			<code>diff</code> giữa <code>starter</code> và <code>final</code>, kèm cột phân loại) · cột "Hiện tại" của bảng
 			phiên bản ở <a href="#version">mục 21</a> (đối chiếu release notes chính thức của AndroidX Room và Compose Material 3, lẫn nguồn Room
-			2.8.4) · mô hình vòng đời <code>LaunchedEffect</code> và bảng <code>rememberCoroutineScope</code> ở mục 16.2–16.4 ·
-			phân tích chỗ bọc IO dư ở mục 16.6 · phân biệt local storage vs remote storage ở <a href="#alternatives">mục 19</a> · hai cảnh báo về
+			2.8.4) · mô hình vòng đời <code>LaunchedEffect</code> và bảng <code>rememberCoroutineScope</code> ở <a href="#muc-16-2">mục 16.2</a>–16.4 ·
+			phân tích chỗ bọc IO dư ở <a href="#muc-16-6">mục 16.6</a> · phân biệt local storage vs remote storage ở <a href="#alternatives">mục 19</a> · hai cảnh báo về
 			<code>@Preview</code> và <code>SwipeToDismiss</code> deprecated ở mục Cạm bẫy.
 		</p>
 	</div>
