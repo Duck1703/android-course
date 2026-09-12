@@ -31,15 +31,15 @@ Node.js là phần mềm giúp máy bạn chạy được website này.
 Gõ lệnh sau rồi Enter, và **đợi**. Lần đầu có thể mất 1–5 phút tuỳ mạng:
 
 ```
-npm install
+pnpm install
 ```
 
-Nếu ở cuối có vài dòng chữ vàng bắt đầu bằng `npm warn` → **bình thường, bỏ qua**. Chỉ khi có chữ `error` màu đỏ mới là có vấn đề (xem phần "Gặp lỗi" bên dưới).
+Nếu ở cuối có vài dòng chữ vàng bắt đầu bằng `pnpm warn` → **bình thường, bỏ qua**. Chỉ khi có chữ `error` màu đỏ mới là có vấn đề (xem phần "Gặp lỗi" bên dưới).
 
 ### Bước 4: Bật website
 
 ```
-npm run dev
+pnpm run dev
 ```
 
 Đợi vài giây, bạn sẽ thấy dòng chữ đại ý:
@@ -64,7 +64,7 @@ Trang chủ là **bảng lộ trình khoá học**: 2 bài nền tảng Kotlin +
 
 ### Bước 6: Tắt website
 
-Quay lại cửa sổ đen, bấm **Ctrl + C**. Website tắt. Muốn học lại thì làm **Bước 2 + Bước 4** (không cần `npm install` lại).
+Quay lại cửa sổ đen, bấm **Ctrl + C**. Website tắt. Muốn học lại thì làm **Bước 2 + Bước 4** (không cần `pnpm install` lại).
 
 ---
 
@@ -72,13 +72,13 @@ Quay lại cửa sổ đen, bấm **Ctrl + C**. Website tắt. Muốn học lạ
 
 | Hiện tượng | Cách xử lý |
 | --- | --- |
-| `'npm' is not recognized` | Node.js chưa cài, hoặc cài rồi mà chưa mở lại cửa sổ đen. Đóng cửa sổ đen, mở lại theo Bước 2. |
+| `'pnpm' is not recognized` | Chạy `corepack enable`, đóng cửa sổ đen, rồi mở lại theo Bước 2. Nếu vẫn lỗi, cài Node.js LTS rồi thử lại. |
 | `Cannot find module` / `ENOENT` | Bạn đang đứng sai thư mục. Kiểm tra dòng lệnh có chữ `...\vibe_coding\book-course-vibe\web>` ở đầu không. |
 | Trình duyệt báo "không thể kết nối" | Cửa sổ đen đã tắt hoặc bạn vào sai số cổng. Xem lại dòng `Local` trong cửa sổ đen. |
 | Trang chủ mở được nhưng bài học trắng trang | Xem cửa sổ đen có dòng chữ đỏ không, chụp lại rồi nhờ hỗ trợ. |
-| Cài `npm install` báo lỗi đỏ | Xoá thư mục `web\node_modules` rồi chạy lại `npm install`. |
+| Cài `pnpm install` báo lỗi đỏ | Xoá thư mục `web\node_modules` rồi chạy lại `pnpm install`. |
 
-Cách "sửa cho chắc" khi mọi thứ rối: đóng hết cửa sổ đen, mở lại theo Bước 2, chạy lần lượt `npm install` rồi `npm run dev`.
+Cách "sửa cho chắc" khi mọi thứ rối: đóng hết cửa sổ đen, mở lại theo Bước 2, chạy lần lượt `pnpm install` rồi `pnpm run dev`.
 
 ---
 
@@ -88,10 +88,10 @@ Chạy trong thư mục `web`:
 
 | Lệnh | Dùng khi |
 | --- | --- |
-| `npm run dev` | Bật website để học (dùng hằng ngày) |
-| `npm run build` | Tạo bản web tĩnh vào thư mục `web\dist\` — dùng nếu muốn đem web đi nơi khác |
-| `npm run preview` | Xem thử bản vừa `build` |
-| `npx astro check` | Kiểm tra code có lỗi không (dành cho người sửa website) |
+| `pnpm run dev` | Bật website để học (dùng hằng ngày) |
+| `pnpm run build` | Tạo bản web tĩnh vào thư mục `web\dist\` — dùng nếu muốn đem web đi nơi khác |
+| `pnpm run preview` | Xem thử bản vừa `build` |
+| `pnpm exec astro check` | Kiểm tra code có lỗi không (dành cho người sửa website) |
 
 ---
 
@@ -131,7 +131,7 @@ Lệnh kiểm tra khỏe của website (chạy trong `web/`, dành cho người 
 
 | Lệnh | Kiểm tra gì |
 | --- | --- |
-| `node scripts-maintenance/check_counts.mjs` | Số liệu trang chủ/sidebar khớp registry (39 lõi · 6 mở rộng · 3 phụ lục · 48 unit) — chạy sau `npm run build` |
+| `node scripts-maintenance/check_counts.mjs` | Số liệu trang chủ/sidebar khớp registry (39 lõi · 6 mở rộng · 3 phụ lục · 48 unit) — chạy sau `pnpm run build` |
 | `node scripts-maintenance/progress_g_audit.mjs` | Regression tiến độ: migration slug cũ → bài mới, Model B-lite (79 kiểm tra) |
 
 ---
