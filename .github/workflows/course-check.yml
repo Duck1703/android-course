@@ -1,10 +1,11 @@
 name: course-check
 
-# Kiem tra khoa hoc moi khi co thay doi. Bon tang, chay tu re den dat:
+# Kiem tra khoa hoc moi khi co thay doi. Nam tang, chay tu re den dat:
 #   1. cau truc bai hoc        (khong can build)
 #   2. audit progress B-lite   (khong can build)
 #   3. build tinh              (49 trang)
 #   4. doi chieu so lieu hien thi voi registry (can dist/)
+#   5. anchor noi bo tro toi dich that          (can dist/)
 #
 # Muc dich: lo hong luyen tap — va moi lo hong cau truc khac — khong the
 # lang le moc lai. Xem docs/COURSE_CONTENT_STANDARD.md §4 buoc 6.
@@ -37,6 +38,13 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
 
+      # tang 5 dung Python. Tren ubuntu-latest chi chac chan co `python3`,
+      # khong chac co `python` — khai bao tuong minh de khoi phu thuoc vao
+      # viec image co alias san hay khong.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Cai dependency
         run: pnpm install --frozen-lockfile
 
@@ -51,3 +59,6 @@ jobs:
 
       - name: 4. Doi chieu so lieu hien thi voi registry
         run: node scripts-maintenance/check_counts.mjs
+
+      - name: 5. Moi lien ket noi bo tro toi dich that
+        run: python tools/check-anchors.py
