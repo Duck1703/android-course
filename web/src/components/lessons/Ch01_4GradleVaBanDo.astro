@@ -465,6 +465,46 @@ distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip`;
 		được</em> từ đầu — thậm chí học được vài thứ nâng cao như phần thưởng thêm.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — lần theo bốn con số định vị</h2>
+
+	<p>Hai việc, làm trên project mẫu. Việc 1 dùng dòng lệnh, việc 2 chỉ đọc file.</p>
+
+	<div class="chal">
+		<h3>1. Chạy Gradle bằng dòng lệnh, không qua giao diện</h3>
+		<p>
+			Mở Terminal trong Android Studio (hoặc terminal ngoài, tại thư mục gốc project) và chạy:
+		</p>
+		<p><code>./gradlew tasks</code> (Windows: <code>gradlew.bat tasks</code>)</p>
+		<p>
+			<strong>Bạn phải thấy</strong> một danh sách các task, trong đó có <code>assembleDebug</code>,
+			<code>installDebug</code>, <code>clean</code>. Chạy tiếp <code>./gradlew assembleDebug</code> và
+			tìm file APK được sinh ra trong <code>app/build/outputs/apk/debug/</code>.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> nút Run trong Android Studio chỉ là một cách gọi Gradle. Hiểu điều này
+			giúp bạn đọc được log lỗi thật — dòng lỗi đỏ trong IDE hầu như luôn là một dòng Gradle.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Tìm bốn con số và giải thích quan hệ giữa chúng</h3>
+		<p>
+			Mở <code>app/build.gradle.kts</code>, tìm bốn giá trị: <code>compileSdk</code>,
+			<code>minSdk</code>, <code>targetSdk</code>, <code>versionCode</code>. Ghi chúng ra giấy.
+		</p>
+		<p>
+			<strong>Bạn phải trả lời được</strong> ba câu: vì sao <code>minSdk</code> nhỏ hơn
+			<code>targetSdk</code>? Nếu bạn hạ <code>minSdk</code> xuống nữa thì mất gì? Và
+			<code>versionCode</code> khác <code>versionName</code> ở chỗ nào? Nếu chưa trả lời được câu nào,
+			đọc lại <a href="#bon-so">mục 9</a>.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> bốn con số này không phải cấu hình cho vui. Chúng là bản khai báo app
+			của bạn chạy được trên những máy nào, dùng API nào, và là phiên bản thứ mấy — mọi thứ khác trong
+			build file chỉ phục vụ bốn con số đó.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Gradle là nơi tài liệu lỗi thời gây tốn thời gian nhất, vì lỗi build không chỉ ra dòng code nào của bạn sai. Bốn điểm dưới đây

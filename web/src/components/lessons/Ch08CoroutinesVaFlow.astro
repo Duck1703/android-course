@@ -667,6 +667,68 @@ const recipeDetailsCollect = `if (recipeId != null) {
 		</details>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — làm cho luồng chạy hiện ra trước mắt</h2>
+
+	<p>
+		Ba việc. Coroutine vốn vô hình; ba việc dưới đây biến nó thành thứ bạn <em>nhìn thấy</em> trong
+		Logcat.
+	</p>
+
+	<div class="chal">
+		<h3>1. In tên thread ở trong lời gọi mạng và ở chỗ thu kết quả</h3>
+		<p>
+			Mở <code>RecipeViewModel</code>. Trong hàm gọi mạng, thêm
+			<code>Log.d("luong", Thread.currentThread().name)</code> ngay trước lời gọi
+			<code>queryRecipes</code>. Ở chỗ <code>collect</code> state, thêm một dòng tương tự. Chạy app
+			và lọc Logcat theo thẻ <code>luong</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hai tên thread <em>khác nhau</em> — thường là
+			<code>DefaultDispatcher-worker-…</code> ở chỗ gọi mạng và <code>main</code> ở chỗ thu kết
+			quả. Bạn chưa hề viết <code>withContext</code> nào.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là bằng chứng cho tính <strong>main-safe</strong> của thư viện
+			mạng. Thư viện đã tự lo chuyện chuyển luồng; bạn chỉ cần <code>suspend</code>.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Hai chỗ thu, một nguồn — và điều xảy ra khi nguồn là <code>Flow</code> lạnh</h3>
+		<p>
+			Trong <code>viewModelScope</code>, thêm một <code>launch</code> thứ hai cũng
+			<code>collect</code> trên cùng một <code>StateFlow</code>. Mở Logcat và xem mỗi lần dữ liệu
+			đổi thì có mấy dòng.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> <em>hai</em> dòng cho mỗi lần phát — cả hai chỗ thu đều nhận
+			được. Sau đó đổi nguồn thành một <code>flow &#123; &#125;</code> dựng bằng tay và quan sát
+			điều gì khác đi.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>StateFlow</code> là <strong>nóng</strong> — nhiều chỗ thu cùng
+			nhận một dòng dữ liệu. <code>flow &#123; &#125;</code> là <strong>lạnh</strong> — mỗi chỗ thu
+			chạy lại khối thân từ đầu. Phân biệt hai loại này là điều kiện để đọc đúng code.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Bỏ <code>viewModelScope</code> để thấy job rò rỉ</h3>
+		<p>
+			Tạm thời đổi một <code>viewModelScope.launch</code> thành một scope tự tạo — ví dụ
+			<code>CoroutineScope(Dispatchers.Main).launch</code> — với một vòng lặp in log mỗi giây.
+			Chạy app, rồi <em>thoát</em> màn hình đó (back).
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> log vẫn tiếp tục in sau khi màn hình đã đóng. Đổi lại thành
+			<code>viewModelScope.launch</code>, chạy lại, thoát màn hình — log dừng đúng lúc.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>viewModelScope</code> tự huỷ khi ViewModel chết. Scope tự tạo
+			thì không ai huỷ — đó là <strong>rò rỉ</strong>. Chọn đúng scope không phải chuyện phong cách.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía trên.

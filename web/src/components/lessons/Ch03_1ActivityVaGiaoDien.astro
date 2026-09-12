@@ -585,6 +585,61 @@ chatInputText = ""              // 2. rồi mới xoá trắng ô nhập`;
 		màn hình vẽ lại mỗi lần gõ một ký tự — chủ đề phần State &amp; kiến trúc nói đúng.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — tự tay phá vòng đời Activity</h2>
+
+	<p>Ba việc, làm trên project của bạn. Việc 1 là việc quan trọng nhất của cả bài.</p>
+
+	<div class="chal">
+		<h3>1. Đặt log vào ba callback vòng đời rồi xoay màn hình</h3>
+		<p>
+			Trong <code>MainActivity.kt</code>, thêm ba dòng log — một ở <code>onCreate()</code>, một ở
+			<code>onStart()</code>, một ở <code>onDestroy()</code>. Chạy app, rồi <em>xoay màn hình máy ảo</em>
+			bằng nút xoay trên thanh công cụ.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> trong Logcat rằng <code>onDestroy</code> chạy <em>rồi</em>
+			<code>onCreate</code> chạy lại từ đầu. Nếu chỉ thấy <code>onCreate</code> một lần, bạn chưa xoay
+			đúng, hoặc máy ảo đang chặn xoay màn hình.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> Activity bị <strong>huỷ và tạo lại</strong> khi cấu hình đổi — đây là
+			lý do mọi thứ người dùng gõ vào phải được giữ ở chỗ khác ngoài Activity. Toàn bộ chương State và
+			ViewModel sau này tồn tại vì hành vi bạn vừa nhìn thấy.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Đổi giao diện bằng cách sửa code Compose</h3>
+		<p>
+			Tìm hàm <code>@Composable</code> đang vẽ màn hình chính. Thêm vào đó một
+			<code>Column</code> chứa hai <code>Text</code> khác nhau. Chạy lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hai dòng chữ xếp trên dưới. Nếu bạn thấy lỗi đỏ ở dòng
+			<code>Column</code>, kiểm tra import — <code>Column</code> nằm trong gói layout của Compose.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> giao diện trong Compose là <strong>hàm Kotlin</strong>, không phải file
+			XML. Bạn vừa đổi giao diện bằng cách viết code — đó là toàn bộ khác biệt so với cách cũ.
+		</p>
+		</div>
+
+	<div class="chal">
+		<h3>3. Đọc một file XML layout cũ để thấy vì sao Compose ra đời</h3>
+		<p>
+			Trong project mẫu của khoá, tìm một file trong <code>app/src/main/res/layout/</code>. Đọc nó và
+			đếm số dòng. Rồi so với hàm Compose vẽ màn hình tương đương.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> file XML dài hơn hẳn, và quan trọng hơn: nó <em>không</em> chứa
+			được điều kiện. Muốn ẩn/hiện một phần giao diện, XML phải nhờ tới code Kotlin ở chỗ khác.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> Compose thắng không phải vì ngắn hơn, mà vì nó cho phép <strong>điều
+			kiện và vòng lặp ngay trong chỗ mô tả giao diện</strong>. Đó là thứ XML về bản chất không làm được.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Bốn chỗ dưới đây là nơi người mới mất nhiều thời gian nhất trong phạm vi chương nhỏ này. Ba cái đầu là bẫy về

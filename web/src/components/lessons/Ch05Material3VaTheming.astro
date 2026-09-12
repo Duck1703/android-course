@@ -664,6 +664,62 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	</div>
 
 
+	<h2 id="luyen-tap">Luyện tập — đổi một màu, thấy cả app đổi theo</h2>
+
+	<p>
+		Ba việc. Việc 2 là việc bạn nên làm một lần cho mỗi project lạ: biết chắc theme nào đang thật
+		sự chạy.
+	</p>
+
+	<div class="chal">
+		<h3>1. Đổi <code>primary</code> trong <code>lightColorScheme</code></h3>
+		<p>
+			Mở file theme của project, tìm hàm tạo <code>lightColorScheme(...)</code>. Đổi
+			<code>primary</code> sang một màu khác hẳn — ví dụ <code>Color(0xFFB00020)</code>. Chạy app.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> <em>mọi</em> thứ lấy màu chủ đạo đổi cùng lúc: nút gửi, app
+			bar, con trỏ ô nhập. Bạn không sửa một dòng nào trong các component đó.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là toàn bộ giá trị của theming. Component hỏi theme, theme trả
+			lời. Sửa <strong>một chỗ khai báo</strong>, đổi <strong>mọi chỗ dùng</strong>.
+		</p>
+		</div>
+
+	<div class="chal">
+		<h3>2. Truy dấu: đang có hai hệ theme cùng tồn tại</h3>
+		<p>
+			Mở <code>AndroidManifest.xml</code> và tìm thuộc tính <code>android:theme</code> của
+			<code>&lt;application&gt;</code>. Ghi lại tên style. Rồi mở <code>MainActivity.kt</code>, tìm
+			hàm theme được gọi trong <code>setContent</code>. Ghi lại tên hàm đó.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hai cái tên <em>khác nhau</em> — một style XML và một hàm
+			Compose. Đặt cạnh nhau và tự trả lời: khi app đang chạy, cái nào quyết định màu?
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> project Android hiện đại thường mang <strong>hai hệ theme song
+			song</strong> trong lúc chuyển đổi. Nhầm hệ là lý do phổ biến khiến "sửa mãi không đổi màu".
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Ép dark theme mà không sửa component nào</h3>
+		<p>
+			Trong <code>setContent</code>, tìm chỗ gọi hàm theme và đổi tham số thành
+			<code>isDarkTheme = true</code>. Chạy app.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> nền tối, chữ sáng, và mọi component vẫn đọc được — kể cả khi
+			máy đang ở chế độ sáng. Đổi lại <code>false</code> và xác nhận nó trở về như cũ.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> vì component chỉ hỏi theme, bạn đổi được cả giao diện bằng
+			<strong>một tham số boolean</strong>. Đó là lý do không nên viết màu cứng trong component.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Ba chỗ dưới đây là những chỗ người mới hay mất thời gian nhất ở phần Material 3 &amp; theming, kèm khối "tài liệu lỗi thời" về phần cấu hình build.

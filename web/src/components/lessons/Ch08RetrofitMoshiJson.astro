@@ -728,6 +728,66 @@ fun RecipeCard(modifier: Modifier = Modifier, recipe: Recipe) {
 		</details>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — thêm một endpoint rồi tự phá bản dịch JSON</h2>
+
+	<p>
+		Ba việc. Việc 2 dạy bạn điều mà tài liệu thường nói qua loa: khi JSON không khớp data class,
+		Moshi <em>không</em> báo lỗi.
+	</p>
+
+	<div class="chal">
+		<h3>1. Thêm một endpoint mới có tham số đường dẫn</h3>
+		<p>
+			Mở <code>SpoonacularService.kt</code>. Thêm một hàm <code>suspend</code> mới dùng
+			<code>@GET("recipes/&#123;id&#125;/information")</code> với một tham số
+			<code>@Path("id") id: Int</code>. Khai một data class cho kết quả trả về. Rồi gọi nó từ
+			ViewModel với một id bất kỳ.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> dữ liệu hiện lên mà bạn <em>không viết một dòng phân tích
+			JSON nào</em>. Đổi <code>id</code> sang một giá trị khác và thấy kết quả đổi theo.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> Retrofit biến một <strong>interface thành lời gọi mạng</strong>.
+			Annotation là bản mô tả API; thân hàm không tồn tại.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Đổi tên một field để JSON không còn khớp</h3>
+		<p>
+			Trong data class kết quả, đổi tên một field cho khác với khoá JSON — ví dụ đổi
+			<code>title</code> thành <code>tenMonAn</code> — và tạm bỏ annotation
+			<code>@Json(name = "title")</code> nếu có. Chạy app và gọi lại endpoint.
+		</p>
+			<p>
+				<strong>Bạn phải thấy</strong> app <em>không crash</em>, nhưng field đó mang giá trị
+				<code>null</code>. Đó là hành vi nguy hiểm nhất: hỏng âm thầm. Rồi thêm lại
+				<code>@Json(name = "title")</code> và xác nhận giá trị trở về.
+			</p>
+		<p>
+			<em>Bài học đi kèm:</em> Moshi ánh xạ theo <strong>tên</strong>, và tên không khớp thì mặc
+			định là <code>null</code> chứ không phải lỗi. <code>@Json(name = …)</code> là chỗ bạn nói rõ
+			tên thật trên dây.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Tải ảnh bằng <code>AsyncImage</code> với một URL sai</h3>
+		<p>
+			Thêm một <code>AsyncImage</code> vào màn hình, truyền vào một URL ảnh lấy từ kết quả API.
+			Chạy app và xác nhận ảnh hiện. Sau đó cố tình sửa URL thành một địa chỉ không tồn tại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app <em>không crash</em>: chỗ ảnh trống hoặc hiện trạng thái
+			lỗi, phần còn lại của màn hình vẫn dùng được. Ghi lại điều đó.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> tải ảnh là một <strong>lời gọi mạng</strong> và cũng có thể hỏng.
+			Thư viện xử lý nó như một trạng thái, không như một ngoại lệ — đó là mầm của bài tiếp theo.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía trên.

@@ -505,6 +505,62 @@ const gradleRootCode = `plugins {
 		được Activity trên Android bản mới nhất mà không phải học lại gì.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — lần theo một màu từ XML tới màn hình</h2>
+
+	<p>Ba việc, làm trên project mẫu của khoá. Đây là bài luyện đọc code phê phán.</p>
+
+	<div class="chal">
+		<h3>1. Đổi màu primary và tìm xem nó hiện ra ở đâu</h3>
+		<p>
+			Trong <code>app/src/main/res/values/themes.xml</code>, tìm thuộc tính màu chính của theme (thường
+			có tên <code>colorPrimary</code>). Đổi nó sang một màu đỏ rõ rệt, build và chạy app.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> màu đỏ xuất hiện ở ít nhất một chỗ (thanh trên cùng, màu nút, hoặc
+			màu nhấn). Nếu <em>không</em> thấy chỗ nào đổi, ghi lại — đó là dấu hiệu app đang dùng theme của
+			Compose chứ không đọc theme XML.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là cách nhanh nhất để biết một giá trị giao diện đang được đọc từ
+			đâu. Đổi thử một chỗ rồi quan sát — nhanh hơn nhiều so với đọc hết các file theme.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Đổi máy ảo sang chế độ tối và so hai theme</h3>
+		<p>
+			Trên máy ảo: <em>Settings ▸ Display ▸ Dark theme</em>. Mở lại app. Rồi tìm trong project xem có
+			thư mục <code>values-night/</code> không, và mở file theme trong đó.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app đổi màu nền, và nếu có <code>values-night/</code> thì bạn đọc
+			được đúng bộ màu mà hệ thống đã dùng. Nếu app <em>không</em> đổi, ghi lại — đó là một khuyết điểm
+			thật của project.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> chế độ tối không phải một tuỳ chọn giao diện — nó là một <strong>cấu
+			hình hệ thống</strong> mà app phải đọc. Cách Android làm việc này là chọn bộ resource khác, đúng
+			cơ chế bạn vừa học ở bài 3.2.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Tìm hàm theme không còn ai gọi</h3>
+		<p>
+			Bài này chỉ ra rằng project mẫu có một hàm theme đã bị bỏ quên. Hãy tự tìm nó: mở file định nghĩa
+			theme Compose, rồi dùng <em>Find Usages</em> trên từng hàm public trong đó.
+		</p>
+		<p>
+			<strong>Bạn phải tìm được</strong> ít nhất một hàm không có chỗ gọi tới. Đối chiếu với <a href="#theme-mo-cua">mục 24</a>
+			để xác nhận. Sau đó tự trả lời: xoá nó đi thì có gì vỡ không?
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> code chết không gây lỗi, nên không ai xoá nó. Đọc code mẫu bằng đầu phê
+			phán nghĩa là <strong>không giả định mọi thứ trong đó đều cần thiết</strong> — kể cả khi nó do
+			người có kinh nghiệm viết.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Cột "nên theo cái nào" của bảng ở <a href="#tong-hop-lech">mục 26</a> đã gom năm chỗ lệch thuộc phạm vi chương này; ở đây là ba chỗ bổ sung

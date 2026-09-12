@@ -427,6 +427,67 @@ LaunchedEffect(loadMore) {
 		</details>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — mô phỏng mạng hỏng và kiểm tra ranh giới API key</h2>
+
+	<p>
+		Ba việc. Việc 1 và 2 nên làm cùng nhau: bạn sẽ thấy một anti-pattern biến lỗi thành vẻ ngoài
+		thành công.
+	</p>
+
+	<div class="chal">
+		<h3>1. Tắt mạng máy ảo rồi gọi API</h3>
+		<p>
+			Chạy app, mở màn hình danh sách. Rồi tắt mạng của máy ảo (kéo thanh trạng thái xuống và tắt
+			Wi-Fi/dữ liệu, hoặc bật chế độ máy bay). Quay lại app và kéo để tải lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app <em>không crash</em> và Logcat có ngoại lệ mạng — thường
+			là <code>Failed to connect to api.spoonacular.com</code>. Ghi lại thông báo đầy đủ trước khi
+			bật mạng lại.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> mạng hỏng là trạng thái <strong>bình thường</strong>, không phải sự
+			cố hiếm. Một request có ít nhất bốn kết cục, không phải hai.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Sửa anti-pattern <code>catch</code> trả về danh sách rỗng</h3>
+		<p>
+			Tìm trong <code>RecipeViewModel</code> chỗ bắt lỗi đang gán
+			<code>_recipeListState.value = listOf()</code> (hoặc
+			<code>catch (…) &#123; emptyList() &#125;</code>). Sửa nó thành một trạng thái lỗi thật — có
+			thông báo cho người dùng. Chạy lại app <em>trong lúc vẫn tắt mạng</em>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> màn hình nói rõ đang có lỗi, thay vì hiện danh sách trống như
+			thể mọi thứ đều ổn. Đây là khác biệt giữa "không có dữ liệu" và "không lấy được dữ liệu".
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> nuốt ngoại lệ và trả về giá trị rỗng là cách <strong>biến lỗi thành
+			vẻ ngoài thành công</strong>. Người dùng không biết đường nào mà lần, và bạn cũng vậy.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Chứng minh <code>keys.properties</code> không nằm trong git</h3>
+		<p>
+			Mở terminal ở thư mục <code>web</code> của project và chạy hai lệnh:
+			<code>git check-ignore -v app/keys.properties</code> và
+			<code>git log --oneline -- app/keys.properties</code>. Ghi lại kết quả cả hai.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lệnh đầu in ra dòng quy tắc trong <code>.gitignore</code> đã
+			chặn file, và lệnh thứ hai <em>không in gì cả</em> — nghĩa là file chưa từng được commit.
+			Nếu lệnh thứ hai có in ra commit, đó là sự cố cần xử lý ngay.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đưa key vào <code>keys.properties</code> chỉ là <strong>nửa việc</strong>.
+			Nửa còn lại là chứng minh nó không lọt vào lịch sử git — và kiểm tra được bằng hai lệnh
+			trên.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía trên.

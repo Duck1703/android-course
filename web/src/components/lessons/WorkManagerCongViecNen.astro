@@ -288,6 +288,68 @@ WorkManager.getInstance(context).enqueueUniquePeriodicWork(
 		WorkManager. Còn lại là biến thể của hai câu đó.
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — làm cho công việc nền chạy, rồi bắt nó thử lại</h2>
+
+	<p>
+		Ba việc. Việc 1 và 3 cần mở <em>WorkManager Inspector</em> trong Android Studio để quan sát
+		trạng thái.
+	</p>
+
+	<div class="chal">
+		<h3>1. Một worker trả <code>retry()</code> rồi <code>success()</code></h3>
+		<p>
+			Viết một <code>CoroutineWorker</code> đọc <code>runAttemptCount</code>: nếu là 0 thì trả
+			<code>Result.retry()</code>, nếu lớn hơn thì trả <code>Result.success()</code>. Đặt
+			backoff kiểu <code>EXPONENTIAL</code> với thời gian ngắn nhất. Đưa nó vào hàng đợi.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> trong Inspector, cùng một công việc chạy <em>hai lần</em>:
+			lần đầu kết thúc ở trạng thái thử lại, lần sau mới thành công. Đọc cả thời điểm chạy lại
+			để thấy khoảng chờ tăng dần.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>retry()</code> là cách nói <strong>"việc này hỏng tạm
+			thời, hãy thử lại"</strong>. Nó khác <code>failure()</code> ở chỗ có thử lại hay không — và
+			đó là quyết định của bạn, không phải của hệ thống.
+		</p>
+		</div>
+
+	<div class="chal">
+		<h3>2. <code>enqueueUniqueWork</code> với <code>KEEP</code> rồi đổi sang <code>REPLACE</code></h3>
+		<p>
+			Đưa một công việc vào hàng đợi bằng <code>enqueueUniqueWork("sync-drafts", KEEP, ...)</code>.
+			Gọi lệnh đó lần thứ hai. Quan sát Inspector. Rồi đổi <code>KEEP</code> thành
+			<code>REPLACE</code> và làm lại y hệt.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hai hành vi khác nhau: với <code>KEEP</code>, lần gọi thứ hai
+			<em>không</em> tạo công việc mới; với <code>REPLACE</code>, nó <em>thay</em> công việc đang
+			chờ bằng bản mới. Đếm số entry trong Inspector ở mỗi lần.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> tên duy nhất là cách bạn <strong>khử trùng</strong> công việc.
+			Không có nó, mỗi lần người dùng vào màn hình lại thêm một việc nữa vào hàng đợi.
+		</p>
+		</div>
+
+	<div class="chal">
+		<h3>3. Buộc công việc chờ mạng</h3>
+		<p>
+			Thêm ràng buộc <code>NetworkType.CONNECTED</code> cho công việc. <em>Tắt mạng</em> máy ảo,
+			rồi đưa việc vào hàng đợi. Quan sát Inspector. Sau đó bật mạng lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> công việc đứng ở trạng thái chờ suốt lúc mất mạng, và
+			<em>chỉ chạy</em> sau khi mạng trở lại — dù bạn không mở app. Ghi lại trạng thái trước và
+			sau.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> ràng buộc là <strong>điều kiện chạy</strong>, không phải gợi ý.
+			Đây là thứ khiến WorkManager khác một coroutine thường: nó giữ việc lại cho tới khi chạy
+			được, kể cả qua lần khởi động lại máy.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 
 	<div class="callout diff">

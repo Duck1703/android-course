@@ -748,6 +748,66 @@ context.dataStore.data.first()[k]</pre>
 		</details>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — cùng một giá trị, hai cách đọc, và một khác biệt không thể bỏ qua</h2>
+
+	<p>
+		Ba việc. Việc 2 và 3 là hai chỗ mà người mới hay gộp làm một và trả giá sau đó.
+	</p>
+
+	<div class="chal">
+		<h3>1. Đọc cùng một giá trị bằng cả hai công cụ</h3>
+		<p>
+			Trong project, tìm một giá trị đang lưu bằng <code>SharedPreferences</code>. Đọc nó ra bằng
+			<code>getString</code> (cách cũ). Rồi đọc cùng giá trị đó bằng DataStore với
+			<code>data.first()</code>. In cả hai ra Logcat.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hai giá trị <em>giống nhau</em> nhưng ở hai ngữ cảnh khác
+			nhau: một lời gọi <em>chặn</em> luồng, một lời gọi <code>suspend</code> buộc bạn phải ở
+			trong coroutine. Thử gọi <code>data.first()</code> từ một hàm thường và đọc lỗi.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> DataStore không đổi <em>dữ liệu</em>, nó đổi <strong>cách bạn được
+			phép đọc</strong>. Chữ <code>suspend</code> trong chữ ký là điểm khác biệt thật.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Ghi bằng <code>edit &#123; &#125;</code> rồi thử gọi nó ở sai chỗ</h3>
+		<p>
+			Ghi một giá trị bằng <code>dataStore.edit &#123; … &#125;</code> từ trong một
+			<code>LaunchedEffect</code>. Rồi thử gọi đúng dòng đó từ trong <code>onCreate</code> của
+			Activity. Build.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lỗi biên dịch: <code>edit</code> là hàm <code>suspend</code>
+			nên không gọi được từ hàm thường. Đọc lỗi, rồi chuyển lời gọi vào
+			<code>rememberCoroutineScope().launch</code> và xác nhận nó chạy.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>edit &#123; &#125;</code> là <strong>nguyên khối</strong>: đọc
+			và ghi nằm trong cùng một giao dịch. Đó là lý do nó bắt buộc phải <code>suspend</code> —
+			không thể là giao dịch nếu bị cắt ngang.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Phân biệt "key chưa có" với "giá trị mặc định"</h3>
+		<p>
+			Đọc một key <em>chưa từng được ghi</em> bằng <code>data.first()</code> và in kết quả. Sau đó
+			đọc lại chính key đó nhưng có xử lý giá trị mặc định — ví dụ <code>?: ""</code>. In cả hai.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lần đầu là <code>null</code>, lần sau là chuỗi rỗng. Tự trả
+			lời trước khi đọc tiếp: cái nào là sự thật, cái nào là quyết định của bạn?
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>null</code> là <strong>tín hiệu</strong> — "chưa có gì". Giá
+			trị mặc định là <strong>quyết định</strong> — "người dùng chưa chọn thì dùng cái này". Gộp
+			hai thứ lại là mất một bit thông tin không lấy lại được.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng

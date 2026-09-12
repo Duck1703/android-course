@@ -484,6 +484,66 @@ fun Counter() {
 		</ol>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — tự tay tạo ra một lần recomposition</h2>
+
+	<p>
+		Ba việc. Việc 1 bạn đã gặp ở Chương 5 mà chưa biết; việc 2 và 3 là hai câu hỏi mà ai học Compose
+		cũng từng hỏi.
+	</p>
+
+	<div class="chal">
+		<h3>1. Viết bản "không chạy" rồi sửa nó thành bản chạy</h3>
+		<p>
+			Trong màn hình chat, thêm một biến đếm bình thường: <code>var count = 0</code>, một
+			<code>Text("$count")</code> và một <code>Button</code> gọi <code>count++</code>. Chạy app và
+			bấm nút vài lần. Sau đó đổi khai báo thành
+			<code>var count by remember &#123; mutableStateOf(0) &#125;</code> và bấm lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> bản đầu <em>im lặng hoàn toàn</em> — số không đổi dù nút vẫn
+			được bấm và biến vẫn tăng. Bản sau thì số nhảy. Chỉ khác đúng một dòng khai báo.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> Compose không theo dõi biến Kotlin. Nó chỉ vẽ lại khi một
+			<strong>đối tượng state</strong> đổi. Biến thường không phải state.
+		</p>
+		</div>
+
+	<div class="chal">
+		<h3>2. Đếm xem thân composable chạy lại bao nhiêu lần</h3>
+		<p>
+			Đặt một dòng <code>Log.d("recomp", "vẽ lại")</code> ngay dòng đầu của composable màn hình
+			chat, và một dòng nữa trong một composable <em>con</em> không dùng <code>count</code>. Mở
+			Logcat, bấm nút đổi state năm lần, đếm số dòng của mỗi thẻ.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> composable màn hình chạy lại mỗi lần, còn composable con
+			<em>không</em> chạy lại — hoặc chạy ít hơn hẳn. Số đếm hai bên không bằng nhau.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> recomposition là <strong>cục bộ</strong>. Compose chạy lại đúng
+			những hàm đọc giá trị đã đổi, không chạy lại cả cây. Đây là điều làm Compose nhanh.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Xoay máy: <code>remember</code> mất, <code>rememberSaveable</code> còn</h3>
+		<p>
+			Gõ vài chữ vào ô nhập đang dùng <code>remember</code>, rồi xoay máy ảo. Sau đó đổi ô nhập
+			sang <code>rememberSaveable</code> (nếu cần, dùng
+			<code>rememberSaveable(stateSaver = TextFieldValue.Saver)</code>) và xoay lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lần đầu chữ <em>biến mất</em> sau khi xoay; lần sau chữ
+			<em>còn nguyên</em>. Cùng một thao tác, chỉ khác hàm lưu.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>remember</code> sống theo composition;
+			<code>rememberSaveable</code> sống theo <strong>trạng thái được lưu của Activity</strong>.
+			Cần giữ qua xoay máy thì phải chọn đúng cái thứ hai.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía trên.

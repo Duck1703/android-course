@@ -533,6 +533,64 @@ const serviceTagCode = `<service
 		hàm không còn ai gọi. Sau đó dựng lại toàn bộ chuỗi việc xảy ra khi bạn bấm nút Send, rồi khép Chương 3 bằng việc
 		đọc lại toàn bộ code bằng đầu phê phán.
 	</p>
+	<h2 id="luyen-tap">Luyện tập — khai báo, gọi, và xin quyền</h2>
+
+	<p>Ba việc, làm trên project của bạn. Việc 1 và 2 đi liền nhau; việc 3 là chỗ dễ quên nhất.</p>
+
+	<div class="chal">
+		<h3>1. Thêm một Activity thứ hai — rồi cố mở nó khi chưa khai báo</h3>
+		<p>
+			Tạo một Activity mới trong project (<em>New ▸ Activity ▸ Empty Activity</em>). Trong
+			<code>AndroidManifest.xml</code>, <strong>xoá tạm</strong> thẻ <code>&lt;activity&gt;</code> mà IDE
+			vừa thêm cho nó. Từ màn hình chính, thêm một nút gọi <code>startActivity</code> tới Activity đó.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app crash khi bấm nút, và trong Logcat có dòng
+			<code>ActivityNotFoundException</code> kèm tên lớp bị thiếu. Khai báo lại thẻ đó, app chạy bình
+			thường.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> manifest là <strong>sổ đăng ký với hệ thống</strong>. Lớp Kotlin tồn tại
+			trong code không có nghĩa hệ thống biết tới nó — và lỗi này chỉ lộ ra lúc chạy.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Mở Activity đó bằng một Intent tường minh</h3>
+		<p>
+			Thay vì gọi thẳng lớp, tạo một <code>Intent</code> trỏ tới Activity đích và truyền kèm một chuỗi
+			bằng <code>putExtra</code>. Ở Activity đích, đọc chuỗi đó bằng <code>intent.getStringExtra</code>
+			rồi hiển thị lên màn hình.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> chuỗi bạn gửi hiện ra ở màn hình thứ hai. Nếu bạn thấy
+			<code>null</code>, kiểm tra xem tên key ở hai đầu có <em>giống hệt nhau</em> không — kể cả chữ hoa
+			chữ thường.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> Intent là <strong>dữ liệu</strong>, không phải lời gọi hàm. Nó không có
+			kiểu kiểm tra hộ bạn, nên gõ sai tên key là lỗi bạn phải tự phát hiện.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Xin một quyền runtime và tự kiểm hai trạng thái</h3>
+		<p>
+			Khai một quyền nguy hiểm trong manifest — ví dụ <code>POST_NOTIFICATIONS</code> (Android 13+).
+			Viết một nút gọi API xin quyền lúc chạy, và một dòng log ghi lại kết quả người dùng chọn.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hộp thoại hệ thống hiện ra, và log ghi <em>hai trường hợp khác
+			nhau</em>: người dùng đồng ý, và người dùng từ chối. Thử cả hai. Xong rồi vào Settings thu hồi
+			quyền và bấm nút lần nữa.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> khai trong manifest chỉ là <strong>xin phép được hỏi</strong>. Quyền
+			thật chỉ có sau khi người dùng bấm đồng ý, và họ có thể thu hồi bất cứ lúc nào — nên code phải
+			kiểm tra quyền ở chỗ dùng, không phải chỉ một lần lúc mở app.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Sáu chỗ dưới đây là nơi tài liệu trên mạng, hoặc chính cấu trúc project, dễ dẫn bạn đi lệch. Ba chỗ đầu là kiến

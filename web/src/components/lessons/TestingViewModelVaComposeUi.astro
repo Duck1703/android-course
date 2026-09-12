@@ -435,6 +435,63 @@ const uiTestCodeClean = `class NotesScreenTest {
 		</p>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — viết một test thật, rồi tự tay làm nó đỏ</h2>
+
+	<p>
+		Ba việc. Việc 2 là việc bạn nên làm một lần để biết mặt thông báo lỗi khi thiếu dispatcher.
+	</p>
+
+	<div class="chal">
+		<h3>1. Test một quy tắc nghiệp vụ bằng repository giả</h3>
+		<p>
+			Trong <code>app/src/test/</code>, viết một lớp <code>FakeNotesRepository</code> giữ dữ liệu
+			trong RAM, cùng chữ ký với repository thật. Rồi viết một test dùng nó: thêm một ghi chú,
+			kiểm tra danh sách có đúng một phần tử.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> test chạy xanh trong <em>vài mili giây</em> và
+			<em>không</em> cần máy ảo hay thiết bị. Chạy nó mười lần và xác nhận thời gian không đổi.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> repository giả là <strong>cùng hợp đồng, khác cài đặt</strong>. Nhờ
+			vậy test được quy tắc nghiệp vụ mà không kéo theo database hay mạng.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Bỏ dispatcher rule và đọc thông báo lỗi</h3>
+		<p>
+			Tạm xoá chỗ đăng ký <code>MainDispatcherRule</code> (hoặc
+			<code>Dispatchers.setMain(...)</code>) khỏi test vừa viết. Chạy lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> test <em>đỏ</em> với thông báo nói rằng Main dispatcher chưa
+			được khởi tạo. Chép nguyên văn câu đó, rồi thêm lại rule và xác nhận nó xanh.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là lỗi phổ biến nhất khi mới test ViewModel. Nguyên nhân không
+			phải code bạn sai — mà là <strong>không có luồng Main trong môi trường test</strong>.
+			<code>Dispatchers.Main</code> là điểm nối duy nhất bạn phải xử lý.
+		</p>
+		</div>
+
+	<div class="chal">
+		<h3>3. Viết một test UI Compose</h3>
+		<p>
+			Trong <code>app/src/androidTest/</code>, dùng <code>createComposeRule()</code> và
+			<code>setContent</code> để dựng màn hình danh sách với dữ liệu giả. Rồi khẳng định một dòng
+			chữ cụ thể đang hiển thị bằng <code>onNodeWithText(...).assertIsDisplayed()</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> test này cần <em>thiết bị hoặc máy ảo</em> và chậm hơn hẳn
+			test ở việc 1. Đo và ghi lại hai con số thời gian cạnh nhau.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> hai loại test có <strong>hai mức giá khác nhau</strong>. Đặt test
+			nghiệp vụ ở loại rẻ, chỉ để lại loại đắt cho những gì thật sự cần vẽ ra màn hình.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 
 	<div class="callout diff">

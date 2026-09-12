@@ -367,6 +367,51 @@ const mainActivityCode = `class MainActivity : ComponentActivity() {
 		resource 3 tầng lần theo trong code thật.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — chỉ ra bốn component trong một app thật</h2>
+
+	<p>Hai việc, làm trên project mẫu của khoá. Không cần sửa code.</p>
+
+	<div class="chal">
+		<h3>1. Kiểm kê component trong <code>AndroidManifest.xml</code></h3>
+		<p>
+			Mở <code>app/src/main/AndroidManifest.xml</code> của project mẫu. Đếm xem có bao nhiêu thẻ
+			<code>&lt;activity&gt;</code>, <code>&lt;service&gt;</code>, <code>&lt;receiver&gt;</code>,
+			<code>&lt;provider&gt;</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> đúng một <code>&lt;activity&gt;</code> và không có thẻ nào trong
+			ba loại còn lại. Nếu bạn thấy nhiều activity, bạn đang mở nhầm project — khoá học cố ý dùng
+			app một activity.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> bốn app component là <strong>mô hình của hệ thống</strong>, không phải
+			danh sách bạn phải dùng hết. Biết bốn loại để đọc được app của người khác; chỉ cần một loại để
+			viết app của mình.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Chỉ ra entry point — rồi xoá nó đi</h3>
+		<p>
+			Trong cùng file manifest, tìm thẻ <code>&lt;intent-filter&gt;</code> chứa
+			<code>android.intent.action.MAIN</code> và <code>android.intent.category.LAUNCHER</code>.
+			Đó là entry point — chỗ hệ thống dùng để biết bấm icon thì mở màn hình nào.
+		</p>
+		<p>
+			Bây giờ <em>xoá tạm</em> thẻ <code>&lt;intent-filter&gt;</code> đó, build lại, rồi tìm app trên
+			launcher của máy ảo.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app vẫn cài được nhưng <em>biến mất</em> khỏi launcher — không có
+			cách nào mở nó bằng tay. Thêm thẻ trở lại, app quay về.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> entry point là một <strong>hợp đồng với hệ thống</strong>, không phải
+			thuộc tính của code. Code của bạn không đổi một dòng nào, nhưng app từ "mở được" thành "không
+			mở được".
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Ba chỗ dưới đây là nơi tài liệu bạn đọc trên mạng dễ dẫn bạn đi lệch. Đọc trước để khỏi học một kiến trúc đã bị thay thế.

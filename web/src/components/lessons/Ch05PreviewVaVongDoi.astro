@@ -509,6 +509,67 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	</div>
 
 
+	<h2 id="luyen-tap">Luyện tập — soi composable mà không cần chạy app</h2>
+
+	<p>
+		Ba việc. Việc 3 là việc đáng làm nhất: bạn sẽ <em>nhìn thấy</em> vòng đời composition thay vì
+		tin vào lời giải thích.
+	</p>
+
+	<div class="chal">
+		<h3>1. Thêm <code>@Preview</code> cho một composable có tham số</h3>
+		<p>
+			Chọn <code>KodecochatAppBar</code> trong project. Viết thêm một hàm mới ngay dưới nó, có
+			<code>@Preview(showBackground = true)</code>, và bên trong gọi
+			<code>KodecochatAppBar()</code> với một giá trị <code>title</code> viết cứng.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> khung xem trước hiện ra app bar với đúng chữ bạn truyền vào,
+			mà <em>không</em> cần chạy máy ảo. Rồi thử gọi nó mà không truyền tham số và xem preview báo
+			lỗi đỏ như thế nào.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>@Preview</code> chỉ là một <strong>chỗ gọi hàm</strong> do IDE
+			chạy. Nó cần tham số y như mọi chỗ gọi khác — nên nó buộc bạn thiết kế composable nhận được
+			dữ liệu.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Dùng <code>@PreviewParameter</code> để xem ba trạng thái cùng lúc</h3>
+		<p>
+			Viết một lớp kế thừa <code>PreviewParameterProvider</code> trả về ba giá trị khác nhau (ví
+			dụ: chuỗi ngắn, chuỗi dài, chuỗi rỗng). Gắn
+			<code>@PreviewParameter(TenLop::class)</code> vào tham số của hàm preview.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> <em>ba</em> khung xem trước xuất hiện cùng lúc, mỗi khung một
+			giá trị. Đây là lúc bạn phát hiện chuỗi dài bị tràn mà chưa từng chạy app.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> preview nhiều trạng thái là cách rẻ nhất để <strong>thấy trước</strong>
+			các trường hợp biên. Sửa ở đây tốn vài giây; sửa sau khi app đã chạy tốn vài lần build.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Nhìn thấy vòng đời composition bằng <code>LaunchedEffect</code></h3>
+		<p>
+			Thêm vào một composable đang hiển thị: <code>LaunchedEffect(Unit) &#123; Log.d("vong-doi",
+			"vao composition") &#125;</code>. Chạy app, mở Logcat và lọc theo thẻ <code>vong-doi</code>.
+			Sau đó <em>xoay</em> máy ảo.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> dòng log xuất hiện lại sau mỗi lần xoay. Đếm số dòng trước và
+			sau khi xoay. Điều đó nghĩa là composable đã <em>rời</em> composition rồi vào lại.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> composition không tồn tại suốt vòng đời Activity. Xoay máy là
+			<strong>tạo lại</strong>. Đây là lý do <code>remember</code> mất giá trị — và là lý do
+			<code>rememberSaveable</code> tồn tại.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Ba chỗ dưới đây là những chỗ người mới hay mất thời gian nhất ở phần Preview &amp; vòng đời composable.

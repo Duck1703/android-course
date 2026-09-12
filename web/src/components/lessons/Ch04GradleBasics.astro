@@ -750,6 +750,69 @@ const catalogDependenciesCode = `dependencies {
 		đổi file Gradle.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — tự tay phá rồi sửa ba dòng cấu hình</h2>
+
+	<p>
+		Ba việc, làm trên project đang mở. Việc 2 và 3 là loại việc bạn sẽ phải làm thật khi tách bản
+		thử nghiệm khỏi bản chính.
+	</p>
+
+	<div class="chal">
+		<h3>1. Hạ <code>minSdk</code> xuống dưới mức máy ảo đang chạy</h3>
+		<p>
+			Mở <code>app/build.gradle.kts</code>, đọc ba con số <code>compileSdk</code>,
+			<code>minSdk</code>, <code>targetSdk</code> đang có. Ghi lại <code>minSdk</code>. Sau đó
+			hạ nó xuống <code>21</code> — thấp hơn nhiều so với máy ảo bạn đang dùng. Bấm <em>Sync Now</em>,
+			rồi chạy app.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> buổi sync đi qua bình thường — vì <code>minSdk</code> thấp
+			<em>không</em> gây lỗi build. Đó chính là điều đáng chú ý: Gradle không hề cảnh báo bạn vừa
+			hứa với Play Store rằng app chạy được trên những máy mà nó chưa từng được thử.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>minSdk</code> không phải một dòng cấu hình kỹ thuật, nó là
+			<strong>một lời hứa</strong>. Không có công cụ nào kiểm tra lời hứa đó thay bạn.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Bỏ dòng BOM rồi đọc thông báo lỗi</h3>
+		<p>
+			Trong <code>dependencies</code>, tìm dòng khai BOM Compose (thường là
+			<code>implementation(platform(libs.androidx.compose.bom))</code>). Comment nó lại. Bấm
+			<em>Sync Now</em>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lỗi sync nêu <em>đích danh</em> một thư viện Compose thiếu
+			version. Đọc to tên thư viện đó một lần. Sau đó mở lại dòng BOM, sync lại, và xác nhận lỗi
+			biến mất.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là câu trả lời cho câu hỏi "vì sao thư viện Compose không có số
+			version". BOM là thứ <strong>cấp số</strong> cho cả nhóm. Không có nó thì không có gì cấp.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Cài hai bản app song song bằng <code>applicationIdSuffix</code></h3>
+		<p>
+			Trong khối <code>buildTypes</code>, ở nhánh <code>debug</code>, thêm
+			<code>applicationIdSuffix = ".dev"</code>. Sync, rồi chạy bản debug. Sau đó đổi
+			<em>Build Variants</em> sang <code>release</code> và chạy tiếp (nếu chưa ký được release thì
+			dùng tạm <code>debug</code> với suffix khác).
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> <em>hai icon</em> trên màn hình chính, không phải một icon bị
+			ghi đè. Mở phần thông tin ứng dụng của cả hai: chúng có <code>applicationId</code> khác nhau
+			và dữ liệu riêng.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>applicationId</code> là <strong>danh tính</strong> của app
+			trên máy và trên store, không phải cái tên hiển thị. Đổi nó là đổi một app khác.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>Những chỗ làm mất thời gian của người mới nhất khi chạm vào tầng build.</p>
 	<div class="notice">

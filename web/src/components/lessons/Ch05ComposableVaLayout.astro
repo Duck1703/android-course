@@ -605,6 +605,66 @@ const KT_STARTER = `${STARTER}/java/com/kodeco/chat`;
 	</div>
 
 
+	<h2 id="luyen-tap">Luyện tập — viết composable đầu tiên rồi tự tay phá nó</h2>
+
+	<p>
+		Ba việc. Việc 2 là việc quan trọng nhất: bạn tự tạo ra lỗi để đọc thông báo, thay vì chờ gặp
+		nó trong lúc code thật.
+	</p>
+
+	<div class="chal">
+		<h3>1. Tự viết một composable và gọi nó từ <code>setContent</code></h3>
+		<p>
+			Mở <code>MainActivity.kt</code>. Viết thêm một hàm mới ngay dưới <code>onCreate</code>:
+			<code>@Composable fun ChaoBanDoc()</code> — bên trong gọi <code>Text("Chào bạn đọc")</code>.
+			Rồi trong <code>setContent</code>, gọi <code>ChaoBanDoc()</code> thay cho nội dung cũ.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> dòng chữ "Chào bạn đọc" hiện trên màn hình máy ảo. Bạn vừa
+			định nghĩa một mảnh giao diện và ghép nó vào cây — không có XML nào tham gia.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> một composable chỉ là <strong>hàm trả về giao diện</strong>. Nó
+			không vẽ gì cả; nó <em>mô tả</em>. Compose đọc mô tả đó rồi vẽ.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Cố tình gọi composable từ một hàm thường — rồi đọc lỗi</h3>
+		<p>
+			Viết thêm một hàm <em>không</em> có chữ <code>@Composable</code>:
+			<code>fun chao()</code> — và bên trong nó gọi <code>ChaoBanDoc()</code>. Rồi gọi
+			<code>chao()</code> từ <code>onCreate</code>. Bấm Build.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lỗi biên dịch nói rằng chỉ có thể gọi
+			<code>@Composable</code> từ bên trong một <code>@Composable</code> khác. Đọc kỹ thông báo đó,
+			rồi xoá hàm <code>chao()</code> đi.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> dấu <code>@Composable</code> là <strong>một hợp đồng với trình biên
+			dịch</strong>, không phải một nhãn trang trí. Chính hợp đồng đó cho phép Compose biết chỗ nào
+			cần vẽ lại.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Bọc chữ trong <code>Surface</code> để lấy màu từ theme</h3>
+		<p>
+			Bọc <code>Text("Chào bạn đọc")</code> trong một <code>Surface</code> với
+			<code>color = MaterialTheme.colorScheme.primary</code>, và thêm
+			<code>contentColor = MaterialTheme.colorScheme.onPrimary</code>. Chạy lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> một khối nền xanh có chữ trắng đọc được — bạn chưa hề viết mã
+			màu nào. Đổi <code>primary</code> thành <code>secondary</code> và xem nền đổi theo.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>Surface</code> là chỗ giao diện <strong>xin màu từ theme</strong>.
+			Đây là mầm của Chương 5.3 — bạn sẽ không sửa một component nào mà cả app vẫn đổi màu.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Hai chỗ dưới đây là những chỗ người mới hay mất thời gian nhất ở phần composable &amp; layout. Chỗ nào bạn chưa học tới thì bỏ qua, quay lại sau.

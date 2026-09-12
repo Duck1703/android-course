@@ -481,6 +481,59 @@ const onCreateCode = `override fun onCreate(savedInstanceState: Bundle?) {
 		</ul>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — chạy, sửa, cập nhật</h2>
+
+	<p>Ba việc, làm trên project của bạn. Việc 3 là việc bạn sẽ phải làm lại nhiều lần trong đời.</p>
+
+	<div class="chal">
+		<h3>1. Đo thời gian build lần đầu và lần sau</h3>
+		<p>
+			Xoá thư mục build (<em>Build ▸ Clean Project</em>), bấm Run và bấm đồng hồ. Sau khi app chạy,
+			sửa một chữ trên màn hình, bấm Run lần nữa và bấm đồng hồ lần hai.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lần thứ hai nhanh hơn lần đầu rõ rệt — thường là vài lần. Nếu hai
+			lần gần bằng nhau, có thể bạn đang sửa vào file cấu hình build thay vì file code.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> Gradle chỉ làm lại phần đã đổi. Biết điều này giúp bạn chọn <em>sửa gì
+			trước</em> khi đang thử nghiệm — đổi chữ thì nhanh, đổi thư viện thì chậm.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Kiểm tra phiên bản SDK mà project đang thực sự dùng</h3>
+		<p>
+			Mở <em>SDK Manager</em>, ghi lại API level đang cài. Rồi mở
+			<code>app/build.gradle.kts</code> và ghi lại <code>compileSdk</code>. So hai con số.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> chúng khớp nhau. Nếu không khớp, build sẽ báo lỗi ngay lần sau —
+			và thông báo lỗi sẽ nhắc đúng tên platform còn thiếu.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>compileSdk</code> trong build file và platform đã cài trên máy là
+			hai thứ phải khớp. Đây là nguyên nhân phổ biến nhất của "máy tôi chạy được, máy bạn thì không".
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Nâng một phiên bản thư viện và xem điều gì vỡ</h3>
+		<p>
+			Trong <code>gradle/libs.versions.toml</code>, nâng phiên bản của một thư viện lên bản mới hơn
+			một chút (ví dụ Compose BOM). Sync và build.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> một trong hai kết quả: hoặc build xanh và bạn vừa học được rằng
+			nâng bản nhỏ thường an toàn; hoặc có lỗi, và thông báo lỗi chỉ ra API nào đã đổi. Đọc kỹ nó rồi
+			quay về bản cũ.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> nâng phiên bản là việc <strong>bình thường</strong>, không phải việc đáng
+			sợ. Cách duy nhất để hết sợ là làm nó thường xuyên, mỗi lần một ít.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Bốn chỗ dưới đây là nơi tài liệu nhập môn Android trên mạng dễ dẫn bạn đi lệch, hoặc nơi chính project mẫu không khớp

@@ -821,6 +821,68 @@ fun chatScreen() {
 		biến chưa có giá trị ngay (<code>val x: Int</code>) — và <code>class</code>/<code>data class</code> — F2 sẽ nối tiếp.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — để trình biên dịch dạy bạn ba lần</h2>
+
+	<p>
+		Ba việc, mỗi việc cố tình viết <em>sai</em> trước rồi sửa. Đọc thông báo lỗi là kỹ năng
+		chính của bài này.
+	</p>
+
+	<div class="chal">
+		<h3>1. Khai bằng <code>val</code> rồi thử gán lại</h3>
+		<p>
+			Trong <code>MainActivity.kt</code>, viết <code>val score = 10</code> rồi ngay dòng dưới viết
+			<code>score = 15</code>. Bấm Build.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lỗi biên dịch nói rằng <code>val</code> không thể gán lại.
+			Đọc nguyên văn câu đó. Sau đó đổi <code>val</code> thành <code>var</code> và xác nhận lỗi
+			biến mất.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>val</code> và <code>var</code> khác nhau <strong>đúng một
+			điều</strong>: cho gán lại hay không. Không liên quan tới <code>const</code>, không liên quan
+			tới "hằng số".
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Gọi thẳng một giá trị có thể null</h3>
+		<p>
+			Viết <code>var name: String? = null</code> rồi gọi <code>name.length</code>. Build. Sau đó
+			sửa thành <code>name?.length</code>, và cuối cùng là <code>name?.length ?: 0</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> <em>hai</em> lỗi khác nhau ở hai bước: lần đầu trình biên dịch
+			chặn vì có thể null; sau khi thêm <code>?.</code> thì kiểu trả về thành <code>Int?</code> và
+			bạn vẫn phải xử lý tiếp bằng <code>?:</code>. Ghi lại cả hai câu lỗi.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>?.</code> chỉ <strong>đẩy khả năng null đi tiếp</strong>, không
+			xoá nó. <code>?:</code> mới là chỗ bạn quyết định giá trị thay thế.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Đếm số lần lambda được gọi</h3>
+		<p>
+			Tạo một <code>List</code> năm cái tên. Viết một chuỗi xử lý:
+			<code>filter &#123; it.length &gt; 3 &#125;</code> rồi
+			<code>map &#123; it.uppercase() &#125;</code> rồi
+			<code>joinToString(", ")</code>. Trong lambda của <code>filter</code>, thêm một dòng đếm số
+			lần nó chạy.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lambda của <code>filter</code> chạy đúng <em>năm</em> lần —
+			một lần cho mỗi phần tử — bất kể có bao nhiêu phần tử thoả điều kiện. Còn lambda của
+			<code>map</code> chỉ chạy trên những phần tử đã lọt qua.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> lambda là <strong>khối code được truyền đi</strong> và được gọi
+			nhiều lần, mỗi lần một phần tử. Biết nó chạy bao nhiêu lần là biết code mình nhanh hay chậm.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p class="notice">
 		<strong>1. Nhầm <code>val</code> với "object không bao giờ đổi".</strong> <code>val</code> chỉ cấm <em>gán lại

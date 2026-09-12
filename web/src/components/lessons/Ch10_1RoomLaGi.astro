@@ -580,6 +580,66 @@ dependencies {
 		tất cả thành một cửa vào duy nhất. Và bạn sẽ thấy chính tay mình gõ sai một câu SQL — mà trình biên dịch bắt ngay,
 		không đợi app chạy.
 	</p>
+	<h2 id="luyen-tap">Luyện tập — dựng bảng đầu tiên và tự tay viết SQL</h2>
+
+	<p>
+		Ba việc. Việc 2 là việc nên làm một lần để hiểu Room <em>không</em> che SQL — nó chỉ viết hộ.
+	</p>
+
+	<div class="chal">
+		<h3>1. Thêm Room vào project và xem KSP sinh ra gì</h3>
+		<p>
+			Thêm hai dependency Room (<code>room-runtime</code> và <code>room-compiler</code>) vào
+			<code>gradle/libs.versions.toml</code>, rồi khai trong <code>app/build.gradle.kts</code> —
+			nhớ dùng <code>ksp(...)</code> cho compiler, không dùng <code>implementation</code>. Sync.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> KSP bật lên trong quá trình build. Sau khi build xong, tìm
+			trong thư mục sinh tự động một file tên có đuôi <code>_Impl</code>. Mở nó ra đọc vài dòng.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> Room <strong>sinh code lúc biên dịch</strong>. Đó là lý do nó báo
+			lỗi sớm hơn các thư viện ORM chạy bằng phản chiếu — và lý do phải dùng KSP chứ không phải
+			<code>implementation</code>.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Viết một câu SQL bằng tay rồi viết lại bằng <code>@Query</code></h3>
+		<p>
+			Mở <em>Database Inspector</em> khi app đang chạy. Chạy câu
+			<code>SELECT * FROM recipes WHERE id = 715538</code> trực tiếp. Ghi lại kết quả. Rồi viết
+			một hàm DAO có <code>@Query</code> tương đương và gọi nó từ code.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hai kết quả <em>giống hệt nhau</em>. Nếu câu SQL của bạn sai
+			cú pháp, Room báo lỗi ngay lúc build — không phải lúc chạy.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> Room là <strong>lớp bọc trên SQLite</strong>, không phải một
+			database mới. Bạn vẫn đang viết SQL; Room chỉ kiểm tra nó lúc biên dịch và ánh xạ kết quả
+			sang đối tượng Kotlin.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Liệt kê ba việc Room <em>không</em> làm</h3>
+		<p>
+			Không viết code. Lấy giấy, kẻ hai cột: "Room làm" và "Repository làm". Điền vào cột thứ hai
+			ít nhất ba việc mà <a href="#room-trong-kien-truc">mục 4</a> nói Room không đảm nhiệm.
+		</p>
+		<p>
+			<strong>Bạn phải kể được</strong> tối thiểu ba việc thuộc về repository, và với mỗi việc
+			chỉ ra được <em>một dòng code</em> trong project minh hoạ nó. Nếu không chỉ ra được dòng
+			code nào, bạn đang nhớ định nghĩa chứ chưa hiểu ranh giới.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> Room <strong>chỉ biết cái bảng</strong>. Nó không biết UI model,
+			không biết gộp nhiều nguồn, không biết chính sách. Nhầm ranh giới này là lý do nhiều project
+			đẩy logic vào DAO rồi không test được.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Hai chỗ dưới đây là nơi tài liệu bạn đọc trên mạng dễ dẫn bạn đi lệch. Đọc trước để khỏi mất buổi tối đi tìm lỗi

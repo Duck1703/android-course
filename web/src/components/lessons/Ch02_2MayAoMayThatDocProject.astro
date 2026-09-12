@@ -249,6 +249,65 @@ const FINAL = "aaf-materials/02-getting-started-with-android-studio/projects/fin
 		</p>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — dựng một máy ảo, cắm một máy thật</h2>
+
+	<p>Ba việc. Việc 1 không cần điện thoại; việc 2 và 3 cần một máy Android thật.</p>
+
+	<div class="chal">
+		<h3>1. Tạo AVD và chạy app trên đó</h3>
+		<p>
+			<em>Device Manager ▸ Create Device</em>. Chọn một profile máy (ví dụ Pixel), một API level, rồi
+			tải system image nếu IDE yêu cầu. Khởi động máy ảo, chạy app của bạn lên đó.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app chạy trong cửa sổ máy ảo và hiện trong danh sách thiết bị ở
+			thanh trên cùng của Android Studio. Nếu máy ảo không khởi động, kiểm tra xem máy tính đã bật ảo
+			hoá phần cứng chưa.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> máy ảo cho bạn sự <strong>tái lập</strong> — xoá sạch, cài lại, thử lại
+			từ đầu bất cứ lúc nào. Đó là thứ máy thật không cho bạn.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Bật USB Debugging và xác nhận máy đã kết nối</h3>
+		<p>
+			Trên máy thật: <em>Settings ▸ About phone</em>, bấm liên tục vào <em>Build number</em> cho tới khi
+			hiện thông báo đã bật Developer options. Vào <em>Developer options</em>, bật <em>USB debugging</em>.
+			Cắm cáp, chấp nhận hộp thoại "Allow USB debugging?".
+		</p>
+		<p>
+			Mở Terminal và chạy <code>adb devices</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> tên máy của bạn kèm chữ <code>device</code> ở cuối dòng. Nếu thấy
+			<code>unauthorized</code>, hộp thoại trên máy chưa được chấp nhận. Nếu thấy
+			<code>no permissions</code> trên Linux, cần thêm rule udev.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> USB Debugging cho phép máy tính chạy lệnh tuỳ ý trên điện thoại của bạn.
+			Đó là lý do nó phải bật bằng tay, và nên tắt khi không dùng.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Tự gây ra lỗi <code>unauthorized</code> rồi sửa</h3>
+		<p>
+			Trên máy thật, vào <em>Developer options ▸ Revoke USB debugging authorizations</em>. Rút và cắm
+			lại cáp. Chạy <code>adb devices</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> máy chuyển thành <code>unauthorized</code> và app không cài được
+			nữa. Chấp nhận lại hộp thoại trên điện thoại, chạy lại lệnh và thấy nó về <code>device</code>.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> uỷ quyền USB là một <strong>khoá lưu trên máy</strong>, không phải một
+			trạng thái của cáp. Gặp lỗi này ở máy người khác thì nguyên nhân hầu như luôn là hộp thoại chưa
+			được bấm.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Bài này là bài "bấm chuột" nhiều nhất của Chương 2, nên cũng là chỗ dễ lệch nhất theo thời gian: Android Studio đổi

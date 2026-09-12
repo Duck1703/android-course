@@ -525,6 +525,63 @@ fun Note.toEntity() = NoteEntity(id = id, title = title, body = body, done = don
 		</p>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — tự dựng lại capstone theo mười bước</h2>
+
+	<p>
+		Ba việc. Việc 1 là trục chính của cả bài; việc 2 và 3 là hai chỗ hay hỏng nhất.
+	</p>
+
+	<div class="chal">
+		<h3>1. Đi hết mười bước, dừng lại sau mỗi bước</h3>
+		<p>
+			Làm theo bản đồ mười bước ở <a href="#checkpoint">mục 6</a>. Sau <em>mỗi</em> bước, dừng lại và chạy app —
+			không gộp hai bước làm một.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app chạy được ở <em>mọi</em> điểm dừng, kể cả khi tính năng
+			chưa xong. Nếu có bước nào app không chạy nổi, bạn đã gộp bước hoặc bỏ qua một checkpoint.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là cách làm việc thật của một app nhiều tầng:
+			<strong>luôn ở trạng thái chạy được</strong>. Một bước lớn không chạy được thì không gỡ ra
+			được để tìm lỗi.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Thêm một trường vào entity rồi migration</h3>
+		<p>
+			Tạo vài ghi chú trước. Rồi thêm một trường mới vào entity (ví dụ độ ưu tiên), tăng
+			<code>version</code> của database, và viết migration tương ứng.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> ghi chú cũ <em>vẫn còn</em> sau khi cập nhật, và trường mới
+			mang giá trị mặc định. Đây là bài kiểm tra cuối cùng cho tầng dữ liệu của capstone.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> capstone chỉ <strong>thật sự chạy</strong> khi bạn đổi được schema
+			mà không mất dữ liệu. Đây là điều phân biệt một bài tập với một sản phẩm.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Cố tình phá luật "một chủ sở hữu state"</h3>
+		<p>
+			Trong một màn hình con, thay vì nhận state từ trên xuống, hãy tạo một bản sao bằng
+			<code>remember</code> ở chính chỗ đó. Rồi sửa giá trị ở màn hình cha và quan sát màn hình
+			con.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hai màn hình <em>bất đồng</em>: cha đổi mà con không đổi.
+			Đó là hình dạng của bug mà luật UDF ngăn chặn. Sửa lại bằng cách đưa state lên cha.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> hai bản sao của cùng một sự thật thì sớm muộn cũng
+			<strong>lệch nhau</strong>. Luật "một chủ sở hữu" không phải để code đẹp — nó để loại bỏ
+			cả một họ bug.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 
 	<div class="callout diff">

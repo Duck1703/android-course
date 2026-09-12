@@ -944,6 +944,67 @@ fun PreviewChipRow() {
 		một vai).
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — nối dây, rồi thử đổi hợp đồng xem ai gãy</h2>
+
+	<p>
+		Ba việc. Việc 3 là việc quan trọng nhất: bạn sẽ <em>đếm</em> được cái giá của một thay đổi
+		nhỏ trong chữ ký hàm.
+	</p>
+
+	<div class="chal">
+		<h3>1. Dời chỗ tạo <code>Prefs</code> vào <code>Application</code></h3>
+		<p>
+			Tìm khai báo toàn cục kiểu <code>lateinit var prefs</code> (hoặc biến ở cấp file). Viết
+			một lớp kế thừa <code>Application</code>, khởi tạo <code>Prefs</code> ở đó, và khai lớp đó
+			trong <code>AndroidManifest.xml</code>. Xoá biến toàn cục.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app vẫn chạy y như trước, nhưng không còn biến toàn cục nào
+			giữ <code>Prefs</code>. Grep lại tên biến cũ: phải không còn kết quả trong
+			<code>src/main</code>.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>Application</code> là chỗ hợp lý để sở hữu một đối tượng
+			sống suốt vòng đời app. "Dependency injection" chỉ nghĩa là <strong>ai đó tạo hộ và đưa
+			vào</strong>, không phải một thư viện.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Cấp giá trị xuống cây bằng <code>CompositionLocal</code></h3>
+		<p>
+			Khai một <code>CompositionLocal</code> cho <code>Prefs</code>. Bọc cây giao diện bằng
+			<code>CompositionLocalProvider</code> ngay trong <code>setContent</code>. Rồi ở một
+			composable <em>sâu</em> ba tầng, đọc giá trị đó trực tiếp.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> composable sâu đọc được <code>Prefs</code> mà chữ ký của nó
+			<em>không</em> có tham số nào truyền xuống. Đếm số tầng phải sửa: đúng bằng không.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>CompositionLocal</code> xuyên qua cây theo
+			<strong>ngữ cảnh</strong>, không theo tham số. Dùng đúng thì bỏ được "prop drilling"; dùng
+			sai thì nó thành biến toàn cục trá hình — đó là ranh giới ở <a href="#khong-phai-service-locator">mục 14</a>.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Đổi constructor của <code>Prefs</code> rồi đếm chỗ gãy</h3>
+		<p>
+			Thêm một tham số vào constructor của <code>Prefs</code> — ví dụ một tham số
+			<code>Context</code> thứ hai hoặc một cờ. Build và <em>đếm</em> số lỗi biên dịch ở mọi
+			<code>viewModelFactory</code> và mọi chỗ dựng <code>ViewModel</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> nhiều hơn một chỗ gãy, rải ở nhiều file. Sửa hết, build lại
+			cho xanh, rồi tự trả lời: nếu đây là app thật có 50 màn hình thì sao?
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đổi constructor là <strong>đổi hợp đồng</strong>. Trình biên dịch
+			liệt kê hộ bạn mọi chỗ phụ thuộc — nhưng chỉ khi bạn không giấu chúng sau biến toàn cục.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng

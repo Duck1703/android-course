@@ -779,6 +779,82 @@ fun notesScreen() {
 		bài riêng.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — bốn tính chất, chứng minh bằng hành vi</h2>
+
+	<p>
+		Bốn việc ngắn. Mỗi việc chứng minh một tính chất mà nếu chỉ đọc thì rất dễ nhớ nhầm.
+	</p>
+
+	<div class="chal">
+		<h3>1. Đổi <code>data class</code> thành <code>class</code> và so sánh lại</h3>
+		<p>
+			Khai một <code>data class</code> có hai trường. Tạo hai đối tượng với cùng giá trị, rồi in
+			kết quả <code>a == b</code>. Sau đó bỏ chữ <code>data</code> đi, chạy lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lần đầu in ra <code>true</code>, lần sau in ra
+			<code>false</code> — dù dữ liệu bên trong y hệt nhau. Đó là toàn bộ khác biệt.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>data class</code> so sánh theo <strong>giá trị</strong>;
+			<code>class</code> thường so sánh theo <strong>địa chỉ</strong>. Mọi thứ Compose làm với
+			state đều dựa vào tính chất thứ nhất.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. <code>copy()</code> rồi kiểm tra bản gốc còn nguyên không</h3>
+		<p>
+			Từ một đối tượng <code>message</code>, tạo
+			<code>val khac = message.copy(body = "nội dung mới")</code>. In cả hai ra Logcat.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> bản gốc vẫn giữ nội dung cũ, và hai đối tượng có hai giá trị
+			khác nhau. Đổi luôn một trường của <code>khac</code> và xác nhận <code>message</code> không
+			đổi theo.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>copy()</code> tạo <strong>bản mới</strong>, không sửa bản cũ.
+			Đây là lý do Compose phát hiện được thay đổi: đối tượng cũ và mới là hai thứ khác nhau.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Phân biệt <code>by</code> với <code>.value</code> bằng hành vi</h3>
+		<p>
+			Trong một composable, viết hai biến cạnh nhau: một biến
+			<code>val a = state.value</code> và một biến <code>val b by state</code>. Hiển thị cả hai
+			lên màn hình. Rồi bấm một nút làm <code>state</code> đổi giá trị.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> chỉ <code>b</code> cập nhật trên màn hình. <code>a</code>
+			đứng yên vì nó chỉ là một giá trị chép ra một lần. Đây là khác biệt bạn không thể đoán ra
+			nếu chỉ đọc cú pháp.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>by</code> là <strong>uỷ quyền đọc</strong> — mỗi lần đọc là
+			một lần hỏi lại đối tượng gốc. Gán vào <code>val</code> thường là chép giá trị ra và cắt
+			đứt liên hệ đó.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>4. Đọc một <code>sealed</code> và liệt kê hết các nhánh</h3>
+		<p>
+			Tìm một <code>sealed</code> trong project. Viết một <code>when</code> trên nó mà chỉ xử lý
+			<em>một</em> nhánh, không có <code>else</code>. Build.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lỗi biên dịch liệt kê đúng những nhánh còn thiếu. Đó là lợi
+			ích thật của <code>sealed</code>: trình biên dịch <em>đếm hộ</em> bạn.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>sealed</code> biến một họ trạng thái thành
+			<strong>tập đóng</strong>. Thêm nhánh mới là mọi <code>when</code> thiếu nhánh đó gãy lúc
+			build — thay vì lỗi lúc chạy.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p class="notice">
 		<strong>1. Coi <code>copy(...)</code> là "sửa bản gốc".</strong> <code>copy</code> luôn tạo giá trị mới; bản gốc nguyên vẹn. Nhầm hai

@@ -404,6 +404,66 @@
 		</p>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — chạy được, rồi đọc code cũ bằng con mắt phê phán</h2>
+
+	<p>
+		Ba việc. Việc 1 cần chạy được project mẫu; việc 2 và 3 chỉ cần đọc — nhưng đọc theo cách
+		khó hơn nhiều.
+	</p>
+
+	<div class="chal">
+		<h3>1. Tắt mạng rồi gửi một tin nhắn</h3>
+		<p>
+			Chạy project mẫu trên hai máy ảo (hoặc hai instance). Rồi <em>tắt mạng</em> của một máy, và
+			gửi một tin nhắn mới từ máy đó. Quan sát màn hình máy kia. Sau đó bật mạng lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> tin nhắn hiện ra <em>ngay</em> trên máy gửi dù không có mạng,
+			và chỉ xuất hiện trên máy kia <em>sau khi</em> bật mạng. Thứ tự này là toàn bộ ý nghĩa của
+			offline-first.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> offline-first nghĩa là <strong>ghi vào sổ của mình trước</strong>,
+			đồng bộ sau. Không có bước "chờ server trả lời" nào chặn người dùng.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Tìm chỗ pattern bị thoả hiệp: biến toàn cục thay cho DI</h3>
+		<p>
+			Mở <code>data/Constants.kt</code>. Tìm biến được khai ở cấp file và bị <em>nhiều</em> nơi
+			đọc thẳng. Đếm xem có bao nhiêu file dùng nó.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> ít nhất một biến toàn cục bị đọc từ nhiều file khác nhau, và
+			biến đó <em>không</em> được truyền vào qua tham số hay constructor. Ghi lại tên biến và số
+			file phụ thuộc.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là <strong>service locator trá hình</strong>. Nó chạy được,
+			nhưng bạn không thể thay thế nó trong test — và không ai nhìn vào chữ ký hàm mà biết được
+			phụ thuộc.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Tìm getter có tác dụng phụ</h3>
+		<p>
+			Đọc các file trong <code>data/</code> và tìm một thuộc tính có kiểu <code>get()</code> —
+			nghĩa là mỗi lần <em>đọc</em> nó lại <em>chạy code</em>. Xác định nó tạo ra hoặc khởi động
+			thứ gì.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> ít nhất một chỗ mà đọc thuộc tính là đã khởi tạo thứ gì đó.
+			Tự trả lời: nếu nó bị đọc hai lần thì sao?
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> trong Kotlin, <code>val</code> có <code>get()</code> tuỳ biến
+			<strong>không hề rẻ</strong> như một trường dữ liệu. Đọc code phê phán là phân biệt được
+			hai thứ trông giống hệt nhau.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 
 	<div class="callout diff">

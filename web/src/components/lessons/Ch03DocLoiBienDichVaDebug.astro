@@ -402,6 +402,59 @@ const logcatCode = `Button(onClick = {
 		<code>&lt;intent-filter&gt;</code>, <code>Intent</code> là gì, permission khai ở đâu kèm một cái bẫy tên thẻ rất
 		hay gặp, và <code>Service</code> chạy việc khi người dùng không nhìn vào app.
 	</p>
+	<h2 id="luyen-tap">Luyện tập — tự tạo ba loại lỗi rồi tự sửa</h2>
+
+	<p>Ba việc. Bạn sẽ <strong>cố ý</strong> làm sai — đó là cách duy nhất để nhận ra lỗi khi nó vô tình xảy ra.</p>
+
+	<div class="chal">
+		<h3>1. Tạo một lỗi biên dịch và đọc thông báo từ trên xuống</h3>
+		<p>
+			Trong <code>MainActivity.kt</code>, xoá một dấu đóng ngoặc <code>)</code> ở giữa file. Build.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> một danh sách lỗi, nhưng lỗi <em>đầu tiên</em> mới là lỗi thật —
+			những lỗi phía sau thường chỉ là hệ quả. Đọc lỗi đầu tiên, sửa dấu ngoặc, build lại và thấy cả
+			danh sách biến mất.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> trình biên dịch không thông minh như bạn tưởng — nó báo lỗi ở chỗ
+			<em>phát hiện</em> vấn đề, không phải chỗ gây ra vấn đề. Sửa lỗi từ trên xuống, mỗi lần một lỗi.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Đặt breakpoint và đọc giá trị một biến lúc chạy</h3>
+		<p>
+			Bấm vào lề trái của một dòng trong hàm <code>onCreate()</code> để đặt breakpoint (chấm đỏ). Bấm
+			<em>Debug</em> thay vì <em>Run</em>. Khi app dừng lại, xem bảng <em>Variables</em>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> chương trình dừng đúng dòng đó và bạn đọc được giá trị thật của
+			biến — thứ mà <code>Log</code> không cho bạn thấy nếu bạn không in nó ra. Bấm nút <em>Resume</em>
+			để chạy tiếp.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> debug khác chạy ở chỗ bạn <strong>dừng được thời gian</strong>. Với lỗi
+			"tại sao giá trị này lại là null", đây là công cụ nhanh nhất.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Tìm dòng log của chính mình giữa hàng nghìn dòng log</h3>
+		<p>
+			Thêm một dòng <code>Log.d("THU_NGHIEM", "den day roi")</code> vào một hàm. Chạy app. Trong cửa sổ
+			Logcat, gõ <code>THU_NGHIEM</code> vào ô tìm kiếm.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> đúng dòng log của bạn, và chỉ nó. Nếu bạn thấy hàng nghìn dòng
+			khác, hãy dùng bộ lọc theo package: chọn package của app ở dropdown phía trên Logcat.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> log chỉ hữu ích khi <strong>lọc được</strong>. Đặt tag riêng cho từng
+			nhóm log ngay từ đầu — nó rẻ lúc viết và cứu bạn lúc gỡ lỗi.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Hai chỗ dưới đây là nơi người mới mất nhiều thời gian nhất trong phạm vi bài này: một luật của Compose bị hiểu

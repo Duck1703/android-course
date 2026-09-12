@@ -699,6 +699,64 @@ GHI:  UI (sự kiện) → ViewModel → (Conversions dịch model → RecipeDb)
 		<code>@Preview</code>.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — ba họ model, một biên giới, và một khai báo chết</h2>
+
+	<p>
+		Ba việc. Việc 2 dạy bạn một kỹ năng đọc code mà không công cụ nào làm hộ.
+	</p>
+
+	<div class="chal">
+		<h3>1. Lần theo một đối tượng qua ba họ model</h3>
+		<p>
+			Chọn một công thức có trong database. Lần theo nó từ <code>RecipeDb</code> (model Room)
+			qua <code>Recipe</code> (model nghiệp vụ) tới model mà giao diện dùng. Ghi lại tên hàm
+			chuyển đổi ở mỗi chặng.
+		</p>
+		<p>
+			<strong>Bạn phải chỉ ra được</strong> ít nhất hai hàm chuyển đổi trong
+			<code>Conversions.kt</code>, và chứng minh rằng <em>không</em> có kiểu nào của Room xuất
+			hiện trong tầng giao diện. Grep tên kiểu Room trong thư mục UI: phải không có kết quả.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> ba họ model song song nghe như thừa, nhưng đó chính là thứ giữ cho
+			biên giới kín. Đổi cấu trúc bảng không được kéo theo đổi giao diện.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Tìm một khai báo không ai gọi</h3>
+		<p>
+			Mở <code>RecipeRepository.kt</code> và <code>RecipeViewModel.kt</code>. Với từng hàm
+			<code>public</code>, dùng <em>Find Usages</em> (hoặc Ctrl+Click vào tên hàm) để xem có ai
+			gọi không.
+		</p>
+		<p>
+			<strong>Bạn phải tìm được</strong> ít nhất một hàm <em>không có chỗ gọi nào</em> — <a href="#doc-lai">mục 15</a>
+			nói trước là sẽ có. Đối chiếu với mục đó để xác nhận bạn tìm đúng.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> code khai mà không dùng <strong>không gây lỗi</strong>, nên không
+			ai xoá. Đọc code mẫu phê phán nghĩa là không giả định mọi thứ trong đó đều cần thiết.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Thêm một hàm repository và gọi nó từ ViewModel</h3>
+		<p>
+			Thêm vào <code>RecipeRepository</code> một hàm mới — ví dụ đếm số công thức đã lưu. Cài đặt
+			nó trong lớp thực thi, gọi từ ViewModel, và đẩy kết quả ra state. Nhớ đặt lời gọi database
+			trên <code>Dispatchers.IO</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> con số hiện lên giao diện và Logcat in tên thread khác
+			<code>main</code>. Nếu thấy <code>main</code>, bạn đang chạm database trên luồng giao diện.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> repository là <strong>biên giới</strong>: một bên là database,
+			một bên là ViewModel. Mọi lời gọi vượt biên đều phải qua đó — và phải qua đúng luồng.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Gom lại các cảnh báo trong chương này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía

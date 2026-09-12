@@ -692,6 +692,67 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		ViewModel gọi Repository, và cuối cùng là chỗ database được tạo thật rồi phát xuống toàn bộ giao diện.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — khai bảng, truy vấn, và tự tay phá singleton</h2>
+
+	<p>
+		Ba việc. Việc 3 là việc thú vị nhất: bạn tạo ra một lỗi tranh chấp mà bình thường rất khó
+		tái hiện.
+	</p>
+
+	<div class="chal">
+		<h3>1. Khai một <code>@Entity</code> rồi đối chiếu với bảng thật</h3>
+		<p>
+			Khai một <code>data class</code> với <code>@Entity(tableName = "recipes")</code>, có
+			<code>@PrimaryKey</code> và khoảng năm trường. Build, chạy app, rồi mở <em>Database
+			Inspector</em> và xem định nghĩa bảng.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> mỗi trường trong data class thành một cột, và trường có
+			<code>@PrimaryKey</code> thành khoá chính. Đối chiếu từng cột một, không bỏ sót.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>@Entity</code> là <strong>bản khai báo bảng</strong> viết
+			bằng Kotlin. Không có file SQL nào bạn phải tự viết — nhưng bảng thật vẫn đúng như bạn
+			khai.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Thêm một <code>@Query</code> có tham số và gọi nó</h3>
+		<p>
+			Trong DAO, thêm một hàm có <code>@Query</code> dùng tham số đặt tên —
+			<code>WHERE id = :id</code>. Gọi nó từ repository với một id có thật trong bảng.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hàm trả về <em>đúng một</em> đối tượng, không phải danh
+				sách. Rồi gọi với một id <em>không</em> tồn tại và xác nhận kết quả là <code>null</code>.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> kiểu trả về quyết định hành vi: trả <code>List</code> thì rỗng là
+			bình thường; trả một đối tượng thì không có là <code>null</code>. Chọn kiểu là chọn cách
+			bạn sẽ phải xử lý trường hợp không có dữ liệu.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Bỏ <code>synchronized</code> rồi tạo ra hai instance</h3>
+		<p>
+			Trong hàm lấy singleton của database, thêm một <code>delay</code> nhỏ (hoặc một dòng log)
+			ngay giữa chỗ kiểm tra <code>null</code> và chỗ gán giá trị. Tạm bỏ
+			<code>synchronized</code>. Rồi gọi hàm đó từ <em>hai</em> coroutine chạy đồng thời và in
+			ra <code>hashCode()</code> của hai kết quả.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hai giá trị hash <em>khác nhau</em> — hai database được mở
+			cùng lúc. Thêm lại <code>synchronized</code>, chạy lại, và thấy hai hash giống nhau.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là <strong>race condition</strong> thật, và bạn vừa tái hiện nó
+			có kiểm soát. <code>@Volatile</code> lo phần nhìn thấy giá trị; <code>synchronized</code>
+			lo phần chỉ một luồng được vào. Thiếu một trong hai là hỏng.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Bốn mục dưới đây là những chỗ mà code thật lệch khỏi cách nó thường được giải thích, hoặc chỗ mà một dòng code trông vô

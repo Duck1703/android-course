@@ -439,6 +439,60 @@ const kotlinDslSnippet = `android {
 		Chương 2.2b mở <em>từng file</em> trong project vừa sinh ra — <code>MainActivity.kt</code>, <code>AndroidManifest.xml</code>, ba
 		file trong <code>ui/theme/</code>, hai file Gradle — và giải thích mỗi file làm gì.
 	</p>
+	<h2 id="luyen-tap">Luyện tập — chạy được app đầu tiên</h2>
+
+	<p>Ba việc. Đây là bài chặn: chưa làm xong việc 1 thì chưa đi tiếp khoá học được.</p>
+
+	<div class="chal">
+		<h3>1. Tạo project Empty Activity và chạy nó</h3>
+		<p>
+			<em>New Project ▸ Empty Activity</em>. Đặt tên tuỳ ý, chọn ngôn ngữ Kotlin, chọn <code>minSdk</code>
+			theo gợi ý của IDE. Đợi Gradle sync xong, chọn một máy ảo, bấm Run.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> màn hình hiện chữ "Hello Android" (hoặc tương tự), và cửa sổ
+			<em>Logcat</em> <strong>không có dòng nào màu đỏ</strong>. Nếu build lỗi, đọc thông báo ở cửa sổ
+			Build — gần như luôn là thiếu SDK hoặc chưa chấp nhận license.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> "chạy được app đầu tiên" là cột mốc thật, không phải thủ tục. Mọi bài
+			sau đều giả định bạn đã qua được bước này.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Đổi chữ trên màn hình và đo xem mất bao lâu</h3>
+		<p>
+			Mở file Kotlin của màn hình chính (thường là <code>MainActivity.kt</code>), tìm chuỗi đang hiển
+			thị, đổi thành tên bạn. Bấm <em>Run</em> lần thứ hai và để ý thời gian build.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> chữ đổi trên màn hình, và lần build thứ hai <em>nhanh hơn hẳn</em>
+			lần đầu. Bạn <em>không</em> phải bấm "Sync Project with Gradle Files".
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> sửa chữ không phải sửa cấu trúc build, nên Gradle không cần chạy lại
+			toàn bộ. Phân biệt được hai loại thay đổi này sẽ tiết kiệm cho bạn rất nhiều thời gian chờ.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Tìm lại sáu thông tin bạn đã chọn lúc tạo project</h3>
+		<p>
+			Lúc tạo project, IDE hỏi bạn sáu thứ (tên app, package, ngôn ngữ, <code>minSdk</code>, build
+			config, …). Bây giờ hãy tìm lại <strong>tất cả</strong> chúng trong
+			<code>app/build.gradle.kts</code> và <code>AndroidManifest.xml</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> mỗi thông tin đã chọn đều xuất hiện ở một trong hai file đó. Nếu
+			có thông tin không tìm thấy, ghi lại — nó có thể nằm trong <code>settings.gradle.kts</code>.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> wizard chỉ là giao diện ghi hộ bạn vào file. Hiểu điều này thì mọi câu
+			hỏi "đổi X ở đâu" đều có cùng một câu trả lời: tìm file mà wizard đã ghi.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Hướng dẫn cài đặt là loại tài liệu hết hạn nhanh nhất trong lập trình Android: code viết ba năm trước vẫn chạy, nhưng

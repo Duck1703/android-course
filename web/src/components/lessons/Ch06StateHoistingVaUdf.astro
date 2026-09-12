@@ -373,6 +373,66 @@ const hoistedCallCode = `UserInputText(
 		</ol>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — hoist state rồi thu lấy lợi ích</h2>
+
+	<p>
+		Ba việc. Việc 2 là <em>bằng chứng</em> rằng hoisting không phải một quy tắc hình thức — nó mở
+		ra những việc trước đó không làm được.
+	</p>
+
+	<div class="chal">
+		<h3>1. Hoist một ô nhập đang tự giữ state</h3>
+		<p>
+			Viết một composable <code>NameField</code> đang tự giữ state bên trong:
+			<code>var name by remember &#123; mutableStateOf("") &#125;</code>. Rồi sửa chữ ký của nó thành
+			nhận hai tham số <code>value: String</code> và <code>onNameChange: (String) -> Unit</code>,
+			và chuyển chỗ giữ state lên composable cha.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> ô nhập vẫn gõ được y như trước — hành vi không đổi. Nhưng giờ
+			composable cha <em>đọc được</em> giá trị đang gõ.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> hoisting là <strong>chuyển quyền sở hữu state lên trên</strong>, và
+			trả lại quyền đó qua một callback. Con không còn giữ gì; con chỉ báo lên.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Thêm nút "Xoá" ở cha — việc trước đó không làm được</h3>
+		<p>
+			Ở composable cha, thêm một <code>Button</code> có nhãn "Xoá", gọi
+			<code>onNameChange("")</code>. Chạy app, gõ gì đó, bấm Xoá.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> ô nhập trắng trở lại ngay. Tự kiểm chứng: với phiên bản
+			<em>trước</em> khi hoist, không có cách nào để cha xoá được nội dung của con.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là lợi ích thật của hoisting. State ở một chỗ thì
+			<strong>nhiều chỗ điều khiển được nó</strong> — cha, anh em, và cả màn hình.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Đọc <code>UserInputText</code> thật và gán nhãn từng tham số</h3>
+		<p>
+			Mở file <code>UserInput.kt</code> trong project và tìm composable
+			<code>UserInputText</code>. Chép chữ ký của nó ra giấy. Với mỗi tham số, tự gán nhãn:
+			đây là <em>state đi vào</em> hay <em>sự kiện đi ra</em>.
+		</p>
+		<p>
+			<strong>Bạn phải phân loại được</strong> hết các tham số, không sót cái nào. Tham số kiểu
+			<code>T</code> là state vào; tham số kiểu <code>(T) -> Unit</code> là sự kiện ra. Nếu có
+			tham số nào không rơi vào hai loại đó, ghi lại và tự hỏi vì sao.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đọc chữ ký là kỹ năng chính của chương này. Khi mọi tham số đều
+			rơi vào "state vào" hoặc "sự kiện ra", bạn đang đọc <strong>luồng dữ liệu một chiều</strong>
+			— không cần đọc thân hàm.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng phía trên.

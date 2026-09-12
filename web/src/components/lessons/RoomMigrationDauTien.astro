@@ -297,6 +297,68 @@ const autoMigrationCode = `@Database(
 		<a href="/chapters/bang-tra-cuu-nhanh/">AP3</a>.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — đổi schema mà không mất dữ liệu, rồi tự tay làm mất</h2>
+
+	<p>
+		Ba việc. Việc 2 và 3 cố tình phá dữ liệu để bạn biết chính xác cái giá của từng lựa chọn.
+	</p>
+
+	<div class="chal">
+		<h3>1. Thêm một cột bằng <code>ALTER TABLE</code></h3>
+		<p>
+			Trước tiên, chạy app và <em>tạo vài ghi chú</em> — bạn cần dữ liệu cũ để kiểm chứng. Rồi
+			thêm trường <code>pinned</code> vào entity, tăng <code>version</code> từ 1 lên 2, viết
+			<code>MIGRATION_1_2</code> dùng
+			<code>ALTER TABLE notes ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0</code>, và đăng ký nó
+			bằng <code>addMigrations(...)</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app mở lên bình thường và <em>những ghi chú cũ vẫn còn
+			nguyên</em>, với cột mới mang giá trị mặc định. Đây là định nghĩa của một migration đúng.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>version</code> là con số Room dùng để <strong>đối chiếu</strong>
+			giữa schema trong code và schema trong máy người dùng. Tăng nó mà không viết migration là
+			tự bắn vào chân mình.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Bỏ đăng ký migration rồi đọc ngoại lệ</h3>
+		<p>
+			Tạm xoá dòng <code>addMigrations(...)</code>. Chạy lại app — vẫn trên máy đang có database
+			phiên bản 1.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app <em>crash</em> với một ngoại lệ nói rằng Room không
+			kiểm chứng được tính toàn vẹn của dữ liệu và không tìm thấy đường migration. Chép nguyên
+			văn câu đó ra.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là hành vi <strong>đúng</strong>, không phải lỗi. Room từ chối
+			mở database hơn là mở với schema sai và làm hỏng dữ liệu âm thầm.
+		</p>
+		</div>
+
+	<div class="chal">
+		<h3>3. Thay bằng <code>fallbackToDestructiveMigration</code> rồi xem cái giá</h3>
+		<p>
+			Thay chỗ <code>addMigrations(...)</code> bằng
+			<code>fallbackToDestructiveMigration()</code>. Chạy app trên máy vẫn còn dữ liệu cũ. Rồi
+			mở danh sách ghi chú.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app mở lên <em>không crash</em> — nhưng mọi ghi chú cũ đã
+			biến mất. Đó là lý do hàm này có chữ <em>destructive</em> trong tên. Xoá nó đi và trả lại
+			migration thật.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>fallbackToDestructiveMigration()</code> biến một lỗi ồn ào
+			thành một <strong>mất mát im lặng</strong>. Nó chấp nhận được lúc prototype và không chấp
+			nhận được khi đã có người dùng thật.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 
 	<div class="callout diff">

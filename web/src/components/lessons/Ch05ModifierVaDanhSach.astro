@@ -778,6 +778,65 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	</div>
 
 
+	<h2 id="luyen-tap">Luyện tập — thứ tự Modifier, cái bug app bar, và cái <code>key</code></h2>
+
+	<p>
+		Ba việc trên màn hình chat. Việc 1 là thí nghiệm nhỏ nhất trong cả chương nhưng giải thích
+		được nhiều bug nhất.
+	</p>
+
+	<div class="chal">
+		<h3>1. Đảo thứ tự ba modifier rồi đo vùng bấm được</h3>
+		<p>
+			Trong màn hình chat, tìm ô nhập. Viết hai biến thể cạnh nhau:
+			<code>Modifier.size(64.dp).clickable &#123; &#125;.padding(16.dp)</code> và
+			<code>Modifier.padding(16.dp).size(64.dp).clickable &#123; &#125;</code>. Chạy app, rồi mở
+			<em>Layout Inspector</em> và đo vùng bấm được của từng biến thể.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hai vùng bấm <em>khác nhau</em>: bản thứ nhất bấm được cả phần
+			đệm, bản thứ hai thì không. Cùng ba modifier, chỉ đổi thứ tự.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> Modifier là <strong>một chuỗi bọc nhau từ ngoài vào trong</strong>,
+			không phải một danh sách thuộc tính. Đọc chuỗi theo thứ tự là đọc được kết quả.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Sửa bug app bar đè lên ô nhập</h3>
+		<p>
+			Trong <code>ConversationContent</code>, tìm chỗ đặt <code>fillMaxSize()</code>. Bỏ nó khỏi
+			chỗ đang làm hỏng bố cục, và thêm <code>Modifier.weight(1f)</code> cho <code>LazyColumn</code>
+			— để danh sách nhận hết chỗ trống còn lại thay vì đòi hết màn hình.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> ba vùng rõ ràng: app bar trên cùng, danh sách cuộn ở giữa, ô
+			nhập nằm dưới cùng và <em>không</em> bị che. Cuộn danh sách và xác nhận app bar đứng yên.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>weight</code> chỉ có nghĩa bên trong một container có trục phân
+			chia chỗ trống (<code>Column</code>/<code>Row</code>). Đặt nó ở sai cha thì nó vô nghĩa.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Thêm <code>key</code> rồi chèn tin nhắn mới lên đầu danh sách</h3>
+		<p>
+			Trong <code>LazyColumn</code>, thêm <code>key = &#123; it.id &#125;</code> cho <code>items</code>.
+			Chạy app, gõ vài tin nhắn, cuộn xuống giữa danh sách. Rồi thêm một tin nhắn mới vào
+			<em>đầu</em> danh sách trong dữ liệu mẫu và chạy lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> danh sách giữ nguyên vị trí cuộn và trạng thái ô nhập, thay vì
+			nhảy về đầu. Sau đó xoá dòng <code>key</code>, chạy lại, và xem nó nhảy.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> không có <code>key</code>, Compose nhận diện item bằng <strong>vị
+			trí</strong>. Chèn một item lên đầu là mọi item cũ bị coi như item mới.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Ba chỗ dưới đây là những chỗ người mới hay mất thời gian nhất ở phần Modifier &amp; danh sách.

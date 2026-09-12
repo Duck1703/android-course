@@ -536,6 +536,61 @@ res/mipmap-xxxhdpi/          ← icon cho màn hình mật độ rất cao</pre>
 		thành một file app cài được — cùng bốn con số phiên bản định vị project, và tấm bản đồ dẫn sang phần còn lại của khoá học.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — làm một chuỗi resource đi qua cả ba tầng</h2>
+
+	<p>Ba việc, làm trên project mẫu. Việc 1 và 2 rất nhanh; việc 3 là chỗ dễ sai nhất.</p>
+
+	<div class="chal">
+		<h3>1. Đổi tên app mà không sửa một dòng Kotlin</h3>
+		<p>
+			Mở <code>app/src/main/res/values/strings.xml</code>, tìm entry <code>app_name</code>, đổi giá trị
+			thành tên bạn muốn. Build và cài lại app.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> tên app đổi trên launcher, còn toàn bộ code Kotlin không đổi một
+			ký tự. Nếu bạn phải sửa Kotlin để đổi tên app, nghĩa là tên đang bị hard-code ở đâu đó.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> resource là một lớp <strong>gián tiếp có chủ đích</strong>. Bạn trả giá
+			một lần bằng việc tra cứu, để đổi được mọi thứ hiển thị mà không đụng vào logic.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Xoá một resource đang được trỏ tới, rồi đọc lỗi</h3>
+		<p>
+			Xoá hẳn entry <code>app_name</code> khỏi <code>strings.xml</code>. Build lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lỗi biên dịch chỉ đích danh nơi đang dùng nó, kèm tên resource
+			bị thiếu. Đọc kỹ thông báo đó trước khi sửa — đây là dạng lỗi bạn sẽ gặp hàng trăm lần.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> lớp <code>R</code> là một <strong>bảng tra cứu do máy sinh</strong>. Nhờ
+			nó, việc gõ sai tên resource trở thành lỗi lúc build chứ không phải lỗi lúc chạy — đó là toàn bộ
+			lý do lớp này tồn tại.
+		</p>
+		</div>
+
+	<div class="chal">
+		<h3>3. Thêm một chuỗi mới và dùng nó từ Compose</h3>
+		<p>
+			Thêm vào <code>strings.xml</code> một entry mới, ví dụ <code>man_hinh_chao</code> với nội dung
+			tuỳ bạn. Trong file Compose đang vẽ màn hình đầu tiên, thay chuỗi đang hard-code bằng
+			<code>stringResource(R.string.man_hinh_chao)</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app hiển thị đúng chuỗi mới, và khi bạn sửa <code>strings.xml</code>
+			rồi build lại thì chữ trên màn hình đổi theo. Nếu bạn phải import sai tên, lỗi sẽ hiện ngay ở
+			dòng đó.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> chuỗi hard-code chạy được, nên nó không tự báo lỗi. Chỉ khi bạn cần dịch
+			sang ngôn ngữ khác — hoặc đổi giọng văn hàng loạt — bạn mới thấy cái giá của việc viết thẳng chữ
+			vào code.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Hai chủ đề của bài này — manifest và resource — là nơi tài liệu Android cũ còn sót lại nhiều nhất. Ba điểm dưới đây đáng đọc

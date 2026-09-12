@@ -374,6 +374,60 @@ const buttonTextCode = `Text(text = stringResource(id = R.string.send_button))`;
 		</p>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — làm một chuỗi đi qua ba tầng rồi dịch nó</h2>
+
+	<p>Ba việc, làm trên project của bạn. Việc 3 là chỗ bạn thấy được giá trị thật của resource.</p>
+
+	<div class="chal">
+		<h3>1. Thêm một chuỗi mới và dùng nó từ Compose</h3>
+		<p>
+			Mở <code>app/src/main/res/values/strings.xml</code>, thêm một entry mới — ví dụ
+			<code>nut_gui</code> với nội dung "Gửi". Trong file Compose đang vẽ nút, thay chữ đang hard-code
+			bằng <code>stringResource(R.string.nut_gui)</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> nút hiển thị đúng chữ "Gửi". Nếu IDE báo không tìm thấy
+			<code>R.string.nut_gui</code>, chạy <em>Build ▸ Make Project</em> để lớp <code>R</code> sinh lại.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> lớp <code>R</code> là <strong>cầu nối</strong> giữa XML và Kotlin. Nó chỉ
+			được sinh ra lúc build, nên đôi khi bạn phải build trước khi dùng được tên resource mới.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Xoá chuỗi đó rồi đọc kỹ thông báo lỗi</h3>
+		<p>
+			Xoá entry <code>nut_gui</code> khỏi <code>strings.xml</code>. Build.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> lỗi biên dịch nêu đúng tên <code>nut_gui</code> và đúng file Kotlin
+			đang dùng nó. Đọc to thông báo đó một lần trước khi sửa.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> lỗi <strong>lúc build</strong> tốt hơn lỗi lúc chạy, vì bạn biết ngay và
+			biết chính xác ở đâu. Đây là lý do resource được đưa vào một lớp có kiểu thay vì để dạng chuỗi tự do.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Thêm bản dịch tiếng Anh và đổi ngôn ngữ máy ảo</h3>
+		<p>
+			Tạo file <code>app/src/main/res/values-en/strings.xml</code> và đặt lại entry <code>nut_gui</code>
+			với nội dung tiếng Anh ("Send"). Trên máy ảo: <em>Settings ▸ System ▸ Languages ▸ Add a language</em>,
+			thêm English và đưa lên đầu. Mở lại app.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> nút đổi thành "Send" mà bạn <strong>không sửa một dòng code Kotlin
+			nào</strong>. Đổi ngôn ngữ máy về tiếng Việt, nút trở lại "Gửi".
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là toàn bộ lý do tồn tại của resource. Chuỗi hard-code chạy được ở
+			một ngôn ngữ; chuỗi resource chạy được ở mọi ngôn ngữ bạn dịch — và bạn vừa chứng minh điều đó
+			bằng tay.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Chỗ dưới đây là nơi người mới mất nhiều thời gian nhất trong phạm vi bài này: phần tài liệu phổ thông trình bày

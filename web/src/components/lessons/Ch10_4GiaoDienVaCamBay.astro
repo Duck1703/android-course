@@ -776,6 +776,69 @@ GHI — sự kiện quay lại (đường ngược):
 		được Room bản mới ngay.
 	</p>
 
+	<h2 id="luyen-tap">Luyện tập — quẹt để xoá, và một <code>LaunchedEffect</code> sống chết thế nào</h2>
+
+	<p>
+		Ba việc. Việc 2 là việc bạn nên làm một lần cho mọi composable có
+		<code>LaunchedEffect</code>.
+	</p>
+
+	<div class="chal">
+		<h3>1. Quẹt để xoá, và kiểm tra nó xoá thật</h3>
+		<p>
+			Trên màn hình bookmarks, nối hành động quẹt với
+			<code>viewModel.deleteBookmark(currentItem)</code>. Chạy app, quẹt xoá một mục. Rồi
+			<em>thoát app hoàn toàn</em> và mở lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> mục đó biến mất khỏi danh sách <em>và vẫn biến mất</em> sau
+			khi mở lại app. Nếu nó quay về, bạn mới chỉ xoá khỏi state chứ chưa xoá khỏi database.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> state chỉ là <strong>bản chụp</strong>. Xoá state là xoá cái đang
+			hiện; xoá dữ liệu mới là xoá thật. Hai việc này phải đi cùng nhau, và chỉ có cách mở lại app
+			mới kiểm chứng được.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Hai <code>LaunchedEffect</code>, hai vòng đời khác nhau</h3>
+		<p>
+			Trong một màn hình, đặt hai effect cạnh nhau: một cái khoá bằng
+			<code>LaunchedEffect(Unit) &#123; … &#125;</code> và một cái khoá bằng giá trị đang đổi —
+			<code>LaunchedEffect(recipe) &#123; … &#125;</code>. Trong mỗi cái, in một dòng log có kèm
+			giá trị khoá. Điều hướng sang màn hình khác rồi quay lại vài lần.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> effect khoá <code>Unit</code> chạy lại mỗi lần quay lại màn
+			hình, còn effect khoá theo giá trị chỉ chạy lại khi giá trị đó <em>đổi</em>. Đếm số dòng của
+			mỗi loại và so sánh.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>LaunchedEffect</code> <strong>sống theo khoá</strong>. Khoá
+			đổi thì effect cũ bị huỷ và effect mới bắt đầu. Chọn khoá sai là hoặc chạy thừa, hoặc không
+			bao giờ chạy lại.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Kiểm chứng một dòng trong bảng "lý thuyết và code mẫu không khớp"</h3>
+		<p>
+			Mở <a href="#lech">mục 20</a> và chọn <em>một</em> dòng bất kỳ trong bảng. Mở đúng file mà dòng đó nói tới,
+			đọc đúng đoạn code, rồi tự phán: bảng đúng, code mẫu sai, hay cả hai đều đúng nhưng khác
+			ngữ cảnh?
+		</p>
+		<p>
+			<strong>Bạn phải kết luận được</strong> và ghi lại căn cứ — số dòng, tên hàm, hoặc câu
+			log bạn tự chạy để kiểm. Không chấp nhận kết luận không kèm bằng chứng.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> một bảng "chỗ nào lệch" chỉ có giá trị khi bạn <strong>kiểm
+			chứng được</strong> nó. Đây là kỹ năng bạn sẽ dùng cho mọi code mẫu về sau, kể cả code do
+			chính bạn viết sáu tháng trước.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p>
 		Hai mục lớn phía trên đã là nội dung dạng cảnh báo: <a href="#lech">mục 20</a> gom 7 chỗ lý thuyết và code mẫu không khớp, <a href="#version">mục 21</a> gom

@@ -310,6 +310,65 @@ val tracker = WindowInfoTracker.getOrCreate(context)
 		</p>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — chạy trên hai cỡ màn hình, rồi phóng to chữ</h2>
+
+	<p>
+		Ba việc. Bạn cần ít nhất hai cấu hình máy ảo: một điện thoại và một tablet (hoặc máy gập).
+	</p>
+
+	<div class="chal">
+		<h3>1. In ra hạng cỡ cửa sổ trên hai máy</h3>
+		<p>
+			Thêm một dòng log in hạng cỡ cửa sổ hiện tại — dùng
+			<code>currentWindowAdaptiveInfo()</code> hoặc <code>calculateWindowSizeClass(...)</code>.
+			Chạy app trên máy ảo điện thoại, đọc log. Rồi chạy trên tablet, đọc lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> hai giá trị <em>khác nhau</em> — thường là
+			<code>Compact</code> trên điện thoại và <code>Expanded</code> trên tablet. Xoay tablet sang
+			ngang và xem giá trị có thể đổi tiếp.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> size class là <strong>hạng cỡ</strong>, không phải số pixel. Nó
+			tồn tại để bạn viết một nhánh <code>when</code> thay vì hàng trăm phép so sánh độ rộng.
+		</p>
+		</div>
+
+	<div class="chal">
+		<h3>2. Dựng bố cục list/detail</h3>
+		<p>
+			Trong màn hình ghi chú, dùng hạng cỡ vừa đọc được: nếu rộng thì hiện danh sách và chi tiết
+			<em>cạnh nhau</em>; nếu hẹp thì chỉ hiện danh sách rồi điều hướng sang màn chi tiết. State
+			<code>selectedNoteId</code> phải nằm ở chỗ sống được qua thay đổi cấu hình.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> trên tablet, danh sách và nội dung ghi chú cùng hiện một lúc,
+			và chọn mục khác thì nội dung đổi ngay. Trên điện thoại, hành vi vẫn như cũ.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> phần khó của adaptive không phải bố cục — mà là
+			<strong>state thuộc sở hữu đúng chỗ</strong>. Đặt sai là xoay máy mất lựa chọn.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Phóng to chữ hết cỡ rồi tìm chỗ bị cắt</h3>
+		<p>
+			Trên máy ảo, vào <em>Settings ▸ Display ▸ Font size</em> và kéo lên mức lớn nhất. Mở lại
+			app và đi qua từng màn hình.
+		</p>
+		<p>
+			<strong>Bạn phải tìm được</strong> ít nhất một chỗ chữ bị cắt, tràn, hoặc đè lên thành phần
+			khác. Chụp lại. Rồi sửa chỗ đó — thường bằng cách cho phép xuống dòng hoặc bỏ chiều cao
+			cứng.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đây là mặt <strong>trợ năng</strong> của adaptive: không chỉ thiết
+			bị to nhỏ, mà cả người cần chữ to. Một giao diện chỉ đẹp ở cỡ chữ mặc định là giao diện
+			chưa xong.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 
 	<div class="callout diff">

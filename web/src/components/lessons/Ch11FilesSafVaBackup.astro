@@ -816,6 +816,66 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 		</details>
 	</div>
 
+	<h2 id="luyen-tap">Luyện tập — nhìn thấy file bằng mắt, rồi tự trả lời ba câu hỏi</h2>
+
+	<p>
+		Ba việc. Việc 3 là việc tổng kết của cả bài: ba câu hỏi ở <a href="#ba-cau-hoi">mục 1</a>, trả lời bằng code.
+	</p>
+
+	<div class="chal">
+		<h3>1. Ghi một file rồi tìm nó trong Device Explorer</h3>
+		<p>
+			Viết một đoạn ghi chuỗi vào <code>File(filesDir, "test.txt")</code>. Chạy app. Rồi mở
+			<em>Device Explorer</em> và đi tới <code>/data/data/&lt;package&gt;/files/</code>.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> đúng file <code>test.txt</code> với nội dung bạn ghi. Mở nó
+			ra và đối chiếu từng ký tự. Rồi ghi cùng nội dung vào <code>cacheDir</code> và xác nhận nó
+			nằm ở thư mục <em>khác</em>.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> <code>filesDir</code> và <code>cacheDir</code> chỉ khác nhau ở
+			<strong>hợp đồng</strong>: một cái hệ thống có quyền xoá, một cái không. Nhìn thấy chúng
+			trong Device Explorer là cách kiểm chứng nhanh nhất.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Dời lời gọi ghi file khỏi luồng giao diện</h3>
+		<p>
+			Thêm một dòng in tên thread ngay trước chỗ ghi file, chạy app, và đọc Logcat. Rồi bọc lời
+			gọi đó trong <code>withContext(Dispatchers.IO)</code> và chạy lại.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> tên thread đổi từ <code>main</code> sang một thread nền.
+			Nếu lần đầu bạn thấy một cảnh báo về việc đọc/ghi file trên main thread, ghi lại nguyên văn
+			cảnh báo đó.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> đọc ghi file là thao tác <strong>chặn</strong>. Trên luồng giao
+			diện, nó làm khung hình đứng. Chuyển sang IO là việc bắt buộc, không phải tối ưu.
+		</p>
+		</div>
+
+	<div class="chal">
+		<h3>3. Dùng SAF để tạo file, rồi chứng minh đường dẫn không dùng được</h3>
+		<p>
+			Dùng <code>ACTION_CREATE_DOCUMENT</code> để người dùng chọn nơi lưu và tạo một file mới
+			trong Downloads. Ghi một chuỗi vào file đó qua <code>ContentResolver</code>. Sau đó thử
+			tạo một đối tượng <code>File</code> từ đường dẫn hiển thị của file và đọc nó.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> cách viết qua <code>ContentResolver</code> thành công, còn
+			cách dùng <code>File</code> với đường dẫn đó thì <em>không</em> — hoặc đọc ra rỗng. Đó là
+			bằng chứng cho ranh giới ở <a href="#saf-uri">mục 7.1</a>.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> SAF trả cho bạn một <strong>Uri</strong>, không phải đường dẫn.
+			Đường dẫn là chuyện của hệ thống file; Uri là một lời hứa truy cập do người dùng cấp. Trộn
+			hai thứ này là lỗi phổ biến nhất khi mới dùng SAF.
+		</p>
+	</div>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 
 	<div class="callout warn">
