@@ -304,7 +304,7 @@ Unchanged from v1: **Model B-lite** recommended.
 - Completion = explicit learner confirmation **and** ≥1 quiz attempt (local flag, no threshold).
 - Copy: "Đánh dấu đã học khi bạn đã đọc hết bài và thử làm quiz (không cần đúng hết)."
 - Subtle "chưa làm quiz" hint on lesson/home card (low-key).
-- Local-only storage retained; `SCHEMA_VERSION` v5 with full slug audit covering every renamed/merged slug from the split (SPLIT_MAP extended).
+- Local-only storage retained; `SCHEMA_VERSION` v5 (historical design-stage expectation) with full slug audit covering every renamed/merged slug from the split (SPLIT_MAP extended). Current product truth: `SCHEMA_VERSION` = **13** (see FINAL VERIFIED COUNTS in §21).
 - Optional stretch (P2, not part of the gate): best quiz score stored locally per lesson.
 
 Model A rejected (ambiguous), Model C rejected (punitive for self-study).
@@ -416,7 +416,7 @@ All §20 rows reconcile with §6 and §23.
 
 | Measure | Current verified value | Nguồn |
 |---|---|---|
-| Core lessons | **39** (F1–F2 + A×14 + C×5 + S×5 + N×2 + W×3 + D×6 + R×4 + X×2) | registry + check_counts PASS |
+| Core lessons | **39** (F×2 + A×14 + C×5 + S×5 + N×2 + W×3 + D×2 + R×4 + X×2 = 39) | registry + check_counts PASS |
 | Optional lessons | **6** (O1–O6, "Mở rộng", không bắt buộc) | registry + check_counts PASS |
 | Appendix | **3** (AP1–AP3, reference, zero-quiz) | registry + check_counts PASS |
 | Total units | **48** · 45 quiz · **8 redirects** | registry + check_counts PASS |
