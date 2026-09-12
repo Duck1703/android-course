@@ -187,7 +187,7 @@ ditto.store.execute(
 
 	<ul>
 		<li><code>.findAll()</code> <strong>không phải lệnh đọc</strong> — nó là <em>mô tả truy vấn</em>; nối
-		<code>.subscribe()</code> (đăng ký nhận từ mesh), <code>.observeLocal {}</code> (quan sát local), hoặc
+		<code>.subscribe()</code> (đăng ký nhận từ mesh), <code>.observeLocal &#123;&#125;</code> (quan sát local), hoặc
 		<code>.exec()</code> (đọc một lần, trả nullable).</li>
 		<li><code>observeLocal</code> nhận <strong>toàn bộ</strong> danh sách hiện tại mỗi lần reo (không phải
 		phần delta); tham số thứ hai là chi tiết thay đổi — project bỏ bằng <code>_</code>.</li>
@@ -285,7 +285,7 @@ ditto.store.execute(
 			<tr><td>Tin nhắn hiện đúng nhưng tên người gửi rỗng</td><td>Document user chưa sync về (bình thường trong P2P, sẽ tự đúng); hoặc gõ sai tên key → <code>.stringValue</code> trả chuỗi rỗng</td></tr>
 			<tr><td>Tin nhắn ngược thứ tự</td><td>Bỏ <code>.asReversed()</code> mà vẫn để <code>reverseLayout = true</code> (hoặc ngược lại)</td></tr>
 			<tr><td>Bấm gửi ảnh, không có gì xảy ra</td><td>Project mẫu lặng lẽ vứt tin nhắn có ảnh (<code>if (message.photoUri == null)</code> trong ViewModel) — thử thách số 1 của O1</td></tr>
-			<tr><td><code>StackOverflowError</code> mỗi khi có tin nhắn</td><td>Import <code>kotlinx.datetime.toInstant</code> trong <code>DateExtensions.kt</code> đã bị xoá — mục 6</td></tr>
+			<tr><td><code>StackOverflowError</code> mỗi khi có tin nhắn</td><td>Import <code>kotlinx.datetime.toInstant</code> trong <code>DateExtensions.kt</code> đã bị xoá — <a href="#date-extensions">mục 6</a></td></tr>
 			<tr><td>Tin nhắn hai phòng lẫn vào nhau</td><td>Gọi <code>getAllMessagesForRoom()</code> cho nhiều phòng — getter có tác dụng phụ ghi đè cùng một StateFlow (O1 mục 5.2)</td></tr>
 		</tbody>
 	</table>
@@ -301,6 +301,98 @@ ditto.store.execute(
 		(bảng Ch06 của AP3 cũng ghi cùng dòng này).</li>
 		<li><strong>kotlinx-datetime 0.4.0 → 0.8.0:</strong> mục 6.</li>
 	</ul>
+
+	<h2 id="luyen-tap">Luyện tập — bắt một máy thứ hai sync được</h2>
+
+	<p>Ba việc, xếp theo độ khó. Việc 1 cần hai máy ảo chạy song song; việc 2 và 3 chỉ cần đọc code.</p>
+
+	<div class="chal">
+		<h3>1. Hai máy ảo, một cuộc trò chuyện</h3>
+		<p>
+			Bật hai máy ảo Android trong Device Manager (dùng chung một API level cho dễ so sánh). Cài app lên
+			cả hai. Trên máy A: gửi một tin. Trên máy B: mở app, vào cùng phòng.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> tin của máy A hiện trên máy B trong vài giây, <em>kể cả khi bật chế độ
+			máy bay trên một máy</em> (P2P local). Nếu không thấy: kiểm theo thứ tự — <code>startSync()</code> đã
+			gọi chưa, quyền Bluetooth đã cấp chưa, hai máy có cùng App ID không.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> Ditto cần <strong>ít nhất hai peer</strong>. Chạy một máy rồi tự hỏi "sao không
+			thấy gì" là chỗ tốn thời gian phổ biến nhất khi mới làm quen SDK này.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>2. Tìm dấu vết của query builder đã bị deprecate</h3>
+		<p>
+			Mở project Ch07 (<code>07-advanced-architecture/projects/final</code>) và tìm trong
+			<code>data/repository/RepositoryImpl.kt</code> những chỗ còn dùng API query builder kiểu cũ
+			(<code>ditto.store.collection(...).find(...)</code>) thay vì DQL
+			(<code>ditto.store.execute("SELECT * FROM ...")</code>).
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> cả hai kiểu cùng tồn tại trong một file — đó là dấu hiệu code được viết
+			qua nhiều đợt nâng SDK. Đối chiếu với release notes: query builder bị deprecate từ 4.12.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> khi một API bị deprecate, nó vẫn chạy. Code cũ không báo lỗi — nó chỉ âm thầm
+			chờ tới lúc bạn nâng SDK tiếp theo mới vỡ.
+		</p>
+	</div>
+
+	<div class="chal">
+		<h3>3. Tái tạo <code>StackOverflowError</code> rồi sửa nó</h3>
+		<p>
+			Trong <code>data/model/DateExtensions.kt</code>, thêm lại dòng import
+			<code>kotlinx.datetime.toInstant</code> ở đầu file. Build, chạy, gửi một tin.
+		</p>
+		<p>
+			<strong>Bạn phải thấy</strong> app crash với <code>StackOverflowError</code> mỗi khi có tin nhắn.
+			Xoá dòng import đó đi thì hết. Đọc lại thân hàm extension để hiểu vì sao: extension tự gọi chính nó
+			thay vì gọi hàm thư viện.
+		</p>
+		<p>
+			<em>Bài học đi kèm:</em> một dòng import "vô hại" có thể đổi hẳn hàm mà code của bạn gọi tới. Đây là
+			lý do overload resolution của Kotlin đáng đọc một lần trong đời — và cũng là lý do lỗi này không xuất
+			hiện ở bước compile.
+		</p>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+
+	<p>Năm chỗ dưới đây gây tốn thời gian nhất khi làm việc với Ditto trong khoá này.</p>
+
+	<p>
+		<strong>1. Một máy thì không bao giờ sync.</strong> Không có lỗi, không có cảnh báo — chỉ là không có gì
+		xảy ra. Ditto là P2P, cần ≥ 2 peer. Trước khi đi tìm bug trong code, hãy chắc chắn có máy thứ hai.
+	</p>
+
+	<p>
+		<strong>2. Thiếu <code>keys.properties</code> làm Gradle lỗi trước cả khi compile.</strong> Cả project Ch07
+		lẫn Ch04 đều đọc file này ở bước configure, nên triệu chứng là "mở project lên đã đỏ" chứ không phải lỗi
+		Kotlin. Đây là chỗ dễ tưởng nhầm là hỏng môi trường.
+	</p>
+
+	<p>
+		<strong>3. Subscription bị thu hồi bộ nhớ thì live query im lặng ngừng cập nhật.</strong> Nếu bạn không
+		giữ tham chiếu tới subscription, GC có thể thu hồi nó và dữ liệu thôi về — nhưng UI vẫn hiển thị dữ liệu
+		cũ nên trông như app vẫn ổn. Bug loại này chỉ lộ ra khi bạn để app chạy đủ lâu.
+	</p>
+
+	<p>
+		<strong>4. Getter có tác dụng phụ.</strong> <code>getAllMessagesForRoom()</code> trong project mẫu ghi đè
+		cùng một <code>StateFlow</code> mỗi lần được gọi. Gọi nó cho nhiều phòng thì tin của các phòng lẫn vào
+		nhau. Một hàm tên là <code>get…</code> mà lại <em>ghi</em> là dấu hiệu thiết kế sai, không phải lỗi dùng sai.
+	</p>
+
+	<p>
+		<strong>5. Tài liệu lỗi thời:</strong> phần lớn ví dụ Ditto trên mạng viết cho SDK 4.x. Từ 4.12 query
+		builder bị deprecate (dùng DQL), và 5.x đổi cách quản lý foreground service. Nếu bạn copy một đoạn
+		code 4.x vào project 5.x, nó có thể vẫn compile nhưng hành vi sync khác hẳn.
+	</p>
+
+	<h2 id="nguon">Nguồn tham khảo</h2>
 
 	<p class="src">
 		<strong>Tài liệu chính thức:</strong> Ditto release notes Kotlin

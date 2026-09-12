@@ -242,7 +242,7 @@ fun chatScreen() {
 		<strong><code>val</code> cấm gán lại chỗ nhớ đó. Nó không hứa "giá trị bên trong sẽ không bao giờ đổi".</strong>
 		<p>
 			Ví dụ: một <code>val</code> trỏ tới một danh sách thì bạn vẫn có thể <em>thay đổi nội dung</em> danh sách đó
-			(mục 4 sẽ quay lại). Điều bị cấm chỉ là viết <code>name = &lt;giá trị khác&gt;</code> lần thứ hai. Vì vậy đừng
+			(<a href="#collections">mục 4</a> sẽ quay lại). Điều bị cấm chỉ là viết <code>name = &lt;giá trị khác&gt;</code> lần thứ hai. Vì vậy đừng
 			dịch <code>val</code> thành "hằng số" kiểu <code>const</code> của ngôn ngữ khác — dịch sát nghĩa hơn là
 			<strong>"gán một lần, rồi chỉ đọc"</strong> (read-only). <code>var</code> thì tự do gán lại bao nhiêu lần cũng
 			được.
@@ -373,7 +373,7 @@ fun chatScreen() {
 		nó là một <em>kiểu thật</em> có đúng một giá trị (cũng tên là <code>Unit</code>), vì vậy mọi hàm Kotlin đều trả về
 		<em>thứ gì đó</em>; với hàm không cần kết quả thì thứ đó là <code>Unit</code> và bạn gần như không bao giờ phải dùng
 		giá trị đó. Cách dịch bàng bản thân: <strong>"hàm làm việc xong là xong, không có gì để nhận lại"</strong>. Từ khoá
-		này bạn sẽ gặp lại sắp tới trong kiểu hàm <code>() -&gt; Unit</code> (mục 6) — vì thế đừng bỏ qua.
+		này bạn sẽ gặp lại sắp tới trong kiểu hàm <code>() -&gt; Unit</code> (<a href="#function-type">mục 6</a>) — vì thế đừng bỏ qua.
 	</p>
 	<h3>Expression body: hàm một dòng viết kiểu một dòng</h3>
 	<p>
@@ -558,7 +558,7 @@ fun chatScreen() {
 	<p>
 		Cách nói an toàn: <strong>List là danh sách có thứ tự, đọc được theo index, và "chỉ đọc" từ phía bạn cầm — muốn thay
 		đổi nội dung thì tạo danh sách mới.</strong> Tư duy "tạo bản mới thay vì sửa bản cũ" sẽ quay lại liên tục trong
-		Android (mục 5 và các bài Compose sau).
+		Android (<a href="#lambda">mục 5</a> và các bài Compose sau).
 	</p>
 	<h3>Ba việc làm với List suốt khoá: <code>map</code>, <code>filter</code>, <code>joinToString</code></h3>
 	<p>Toàn bộ phần này xoay quanh một List mẫu:</p>
@@ -637,7 +637,7 @@ fun chatScreen() {
 		người khác gọi sau) — cặp khái niệm này nắm vững thì mọi callback/sự kiện về sau đều dễ.
 	</p>
 	<h3>Lambda trong <code>map</code>/<code>filter</code>: khối code nhận phần tử vào</h3>
-	<p>Quay lại mục 4 với ánh mắt mới:</p>
+	<p>Quay lại <a href="#collections">mục 4</a> với ánh mắt mới:</p>
 	<Code code={lambdaNamedCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Giờ bạn biết <code>&#123; name -&gt; ... &#125;</code> là một lambda với tham số đặt tên <code>name</code>.
@@ -714,7 +714,7 @@ fun chatScreen() {
 	<Code code={functionTypeCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Đọc <code>() -&gt; Unit</code> là: <strong>"một hàm không nhận tham số nào và không trả về kết quả đáng kể"</strong>
-		— ngoặc rỗng là danh sách tham số, <code>Unit</code> (mục 2) là "không có kết quả". Đây đúng là kiểu mà một nút bấm
+		— ngoặc rỗng là danh sách tham số, <code>Unit</code> (<a href="#ham">mục 2</a>) là "không có kết quả". Đây đúng là kiểu mà một nút bấm
 		cần: việc cần làm khi bấm — không cần dữ liệu vào, không cần kết quả ra.
 	</p>
 	<p>Ba hình dạng bạn sẽ gặp nhiều nhất:</p>
@@ -737,7 +737,7 @@ fun chatScreen() {
 		Đọc <code>fun runApp(onStart: () -&gt; Unit)</code>: tham số <code>onStart</code> có <em>kiểu hàm</em>
 		<code>() -&gt; Unit</code> — tức "một khối code không tham số, không kết quả". Trong thân hàm, gọi
 		<code>onStart()</code> là <em>thực thi</em> khối code đó. Đây là chỗ hai khái niệm "truyền hàm" và "gọi hàm"
-		(mục 5) gặp nhau.
+		(<a href="#lambda">mục 5</a>) gặp nhau.
 	</p>
 	<p>
 		Đây là mức bạn cần: <strong>nhận diện hình dạng</strong> khi gặp <code>() -&gt; Unit</code>,
@@ -817,7 +817,7 @@ fun chatScreen() {
 	</ul>
 	<p>
 		Nếu bạn đọc đoạn trên và thấy <em>cú pháp Kotlin không còn làm bạn giật mình</em> — dù chưa hiểu Compose làm gì —
-		thì bài này đã xong việc của nó. Còn một kiểu khai báo bạn chỉ mới đọc lời mô tả ở mục 1, chưa gặp trong code:
+		thì bài này đã xong việc của nó. Còn một kiểu khai báo bạn chỉ mới đọc lời mô tả ở <a href="#val-var">mục 1</a>, chưa gặp trong code:
 		biến chưa có giá trị ngay (<code>val x: Int</code>) — và <code>class</code>/<code>data class</code> — F2 sẽ nối tiếp.
 	</p>
 
@@ -902,7 +902,7 @@ fun chatScreen() {
 		</li>
 		<li>
 			<strong>Đoạn code minh hoạ:</strong> toàn bộ code trong bài do khoá học tự viết cho mục đích dạy Kotlin nền —
-			không trích từ project mẫu aaf-materials; hình dạng đoạn "kiểu Compose" ở mục 7 cố ý giống code bạn sẽ viết ở
+			không trích từ project mẫu aaf-materials; hình dạng đoạn "kiểu Compose" ở <a href="#doc-compose">mục 7</a> cố ý giống code bạn sẽ viết ở
 			giai đoạn Jetpack Compose.
 		</li>
 	</ul>

@@ -211,7 +211,7 @@ const recipeDetailsCollect = `if (recipeId != null) {
 		<strong>dựng thêm tầng trên</strong> những cái đó, không dạy lại. Chưa từng chạy project mẫu? Mở
 		<code>aaf-materials/08-networking/projects/starter/</code> chạy trước khi đọc tiếp — mọi mục của giai đoạn Mạng
 		đọc code thật trong app này, và phần chạy lần đầu (ba thứ cần chuẩn bị) nằm ở
-		<strong>W2 mục 14.1</strong>.
+		<strong>W2 <a href="/chapters/ch08-retrofit-moshi-json/#goi-lan-dau">mục 14.1</a></strong>.
 	</div>
 
 	<h2 id="dispatcher-thuc-te">1. Bản đồ S1, và ba con số S1 cố tình để lại</h2>
@@ -247,7 +247,7 @@ const recipeDetailsCollect = `if (recipeId != null) {
 	<p>
 		Hai con số đó (64 và số core) là lý do vật lý của quy ước S1: <strong>việc chờ và việc tính không cùng một loại tài
 		nguyên, nên không cùng một bể thread.</strong> Trong app này sẽ có một lời gọi mạng được viết
-		<code>viewModelScope.launch(Dispatchers.Default)</code> (mục 7) — nhớ bảng này để khi tới đó bạn tự phán được chuyện
+		<code>viewModelScope.launch(Dispatchers.Default)</code> (<a href="#hai-ham">mục 7</a>) — nhớ bảng này để khi tới đó bạn tự phán được chuyện
 		đang xảy ra.
 	</p>
 	<p class="hint">
@@ -297,7 +297,7 @@ const recipeDetailsCollect = `if (recipeId != null) {
 			chạy trên <strong>UI thread</strong>. Thoạt nghe ngược với "đừng làm việc nặng trên UI thread", nhưng không
 			mâu thuẫn: <code>launch</code> trên UI thread rồi bên trong gọi một hàm <code>suspend</code> tự chuyển chỗ chạy thì
 			UI thread không bị chặn — nó chỉ "đăng ký chờ" rồi đi làm việc khác. Chính cơ chế đó, áp vào Retrofit, là nội
-			dung của mục 4.
+			dung của <a href="#main-safe">mục 4</a>.
 		</li>
 		<li>
 			<code>SupervisorJob</code> — một loại job mà <strong>một coroutine con thất bại không kéo cả scope chết theo</strong>.
@@ -330,7 +330,7 @@ const recipeDetailsCollect = `if (recipeId != null) {
 	<Code code={launchUsage} lang="kotlin" theme="github-dark" />
 	<p>
 		thực chất là <code>launch(EmptyCoroutineContext, CoroutineStart.DEFAULT, &#123; ... &#125;)</code> — kế thừa
-		<code>SupervisorJob</code> và <code>Main.immediate</code> của <code>viewModelScope</code>, đúng như mục 2 vừa đọc.
+		<code>SupervisorJob</code> và <code>Main.immediate</code> của <code>viewModelScope</code>, đúng như <a href="#viewmodelscope">mục 2</a> vừa đọc.
 	</p>
 	<p>
 		Và đây là quy tắc mà người mới hay thiếu nhất khi đọc code coroutine — <strong>code trong một coroutine là tuần tự
@@ -344,7 +344,7 @@ const recipeDetailsCollect = `if (recipeId != null) {
 	<ul>
 		<li>
 			Đọc code <code>try &#123; gọi mạng; ghi state; ghi state thứ hai &#125;</code> — bạn biết chắc chúng chạy đúng thứ
-			tự viết, không ai chen ngang (mục 14 sẽ đọc đúng đoạn đó — trong W2).
+			tự viết, không ai chen ngang (<a href="/chapters/ch08-retrofit-moshi-json/#goi-lan-dau">mục 14</a> sẽ đọc đúng đoạn đó — trong W2).
 		</li>
 		<li>
 			<strong>Đừng thêm <code>async</code>/<code>await</code> chỉ vì "nghĩ rằng cần nhanh hơn".</strong> Muốn chạy
@@ -428,7 +428,7 @@ const recipeDetailsCollect = `if (recipeId != null) {
 				<li>Gọi thẳng như hàm thường, kết quả là giá trị trả về</li>
 				<li>Kiểu trả về không nullable — Retrofit ném exception nếu HTTP lỗi</li>
 				<li><strong>Một khối <code>try/catch</code> duy nhất</strong> bắt cả lỗi mạng, lỗi HTTP và lỗi parse</li>
-				<li>Gọi 2 API liên tiếp: viết hai dòng nối nhau, đọc như code tuần tự — đúng quy tắc mục 3</li>
+				<li>Gọi 2 API liên tiếp: viết hai dòng nối nhau, đọc như code tuần tự — đúng quy tắc <a href="#launch-tuan-tu">mục 3</a></li>
 				<li><code>viewModelScope</code> tự cancel khi ViewModel bị huỷ — không phải nhớ gì</li>
 			</ul>
 		</div>
@@ -603,9 +603,9 @@ const recipeDetailsCollect = `if (recipeId != null) {
 		bạn tự viết.
 	</p>
 	<p>
-		<strong>Hai — <code>Dispatchers.Default</code> cho một lời gọi mạng.</strong> Đối chiếu bảng mục 1:
+		<strong>Hai — <code>Dispatchers.Default</code> cho một lời gọi mạng.</strong> Đối chiếu bảng <a href="#dispatcher-thuc-te">mục 1</a>:
 		<code>Default</code> là bể thread <em>tính toán</em>, còn chờ mạng là việc <em>chờ</em>. Thực tế ở đây
-		<strong>vẫn chạy đúng</strong> — theo đúng cơ chế mục 4, Retrofit tự chuyển việc gửi request sang thread pool của
+		<strong>vẫn chạy đúng</strong> — theo đúng cơ chế <a href="#main-safe">mục 4</a>, Retrofit tự chuyển việc gửi request sang thread pool của
 		OkHttp, nên tham số dispatcher này gần như không thay đổi hành vi gì. Nhưng nó dựng <strong>thói quen sai</strong>:
 		nếu sau này bạn đặt code <em>thật sự chặn thread</em> vào <code>Default</code>, bạn chiếm chỗ của các tác vụ tính
 		toán. Quy ước vẫn là: code tự chặn thread để chờ I/O → <code>Dispatchers.IO</code>. Và chú ý sự bất đối xứng:
@@ -613,7 +613,7 @@ const recipeDetailsCollect = `if (recipeId != null) {
 		hai hàm gọi cùng một API, khác dispatcher, không có lý do kỹ thuật nào giải thích.
 	</p>
 	<p>
-		Phía giao diện, màn hình chi tiết lặp đúng quy tắc mục 6 — <strong>hai <code>scope.launch</code> song song</strong>:
+		Phía giao diện, màn hình chi tiết lặp đúng quy tắc <a href="#collect-hai-luong">mục 6</a> — <strong>hai <code>scope.launch</code> song song</strong>:
 		một để <code>collect</code> (lắng nghe mãi mãi), một để <em>khởi động</em> lời gọi mạng. Viết nối tiếp trong một
 		<code>launch</code> thì lệnh gọi sẽ không bao giờ chạy, vì <code>collect</code> chặn ở trên:
 	</p>
@@ -653,16 +653,16 @@ const recipeDetailsCollect = `if (recipeId != null) {
 			<summary>Xem đáp án</summary>
 			<p>
 				<strong>(a)</strong> Retrofit suspend call tự main-safe: phần chờ HTTP chạy trên thread pool của OkHttp, không nằm
-				trên dispatcher nào của bạn (mục 4). Bọc thêm <code>withContext(Dispatchers.IO)</code> chỉ thêm một lần chuyển ngữ
+				trên dispatcher nào của bạn (<a href="#main-safe">mục 4</a>). Bọc thêm <code>withContext(Dispatchers.IO)</code> chỉ thêm một lần chuyển ngữ
 				cảnh. Quy tắc đúng: <code>withContext(IO)</code> dành cho code <em>tự bạn viết mà nó chặn thread</em>.
 			</p>
 			<p>
 				<strong>(b)</strong> Khi code <em>chặn thread</em> để chờ I/O — đọc file, database không hỗ trợ suspend, SDK cũ — thì
-				<code>Dispatchers.IO</code> đúng: nó mở được tới 64 thread vì các thread đó phần lớn thời gian chỉ ngồi chờ (mục 1).
+				<code>Dispatchers.IO</code> đúng: nó mở được tới 64 thread vì các thread đó phần lớn thời gian chỉ ngồi chờ (<a href="#dispatcher-thuc-te">mục 1</a>).
 			</p>
 			<p>
 				<strong>(c)</strong> Không bao giờ chạy. <code>collect</code> trên một dòng trạng thái không có điểm kết thúc, nên
-				code sau nó trong cùng <code>launch</code> không bao giờ được tới — mỗi việc cần một <code>launch</code> riêng (mục 6).
+				code sau nó trong cùng <code>launch</code> không bao giờ được tới — mỗi việc cần một <code>launch</code> riêng (<a href="#collect-hai-luong">mục 6</a>).
 			</p>
 		</details>
 	</div>
@@ -676,26 +676,26 @@ const recipeDetailsCollect = `if (recipeId != null) {
 		<li>
 			<strong>Tưởng "code mạng thì phải <code>Dispatchers.IO</code>", bọc <code>withContext(IO)</code> quanh Retrofit.</strong>
 			Retrofit suspend call tự main-safe — phần chờ HTTP nằm trên thread pool của OkHttp, không nằm trên dispatcher nào
-			của bạn (mục 1, 4). <code>withContext(IO)</code> dành cho code <em>tự bạn viết mà nó chặn thread</em>.
+			của bạn (<a href="#dispatcher-thuc-te">mục 1</a>, 4). <code>withContext(IO)</code> dành cho code <em>tự bạn viết mà nó chặn thread</em>.
 		</li>
 		<li>
 			<strong>Tưởng <code>suspend</code> nghĩa là "chạy nền".</strong> S1 đã chặn: <code>suspend</code> chỉ cho phép
 			tạm dừng; ai quyết định chỗ chạy là dispatcher. <code>suspend</code> + <code>launch</code> trong cùng một hàm
-			(mục 7) còn là lớp dư: hàm trả về ngay, người gọi không chờ được gì.
+			(<a href="#hai-ham">mục 7</a>) còn là lớp dư: hàm trả về ngay, người gọi không chờ được gì.
 		</li>
 		<li>
-			<strong>Tưởng code trong coroutine tự chạy song song.</strong> Tuần-tự-theo-mặc-định (mục 3): dòng sau chỉ chạy
+			<strong>Tưởng code trong coroutine tự chạy song song.</strong> Tuần-tự-theo-mặc-định (<a href="#launch-tuan-tu">mục 3</a>): dòng sau chỉ chạy
 			khi dòng trước xong, trừ khi ai đó cố ý mở thêm coroutine. App này không cần <code>async</code>/<code>await</code>.
 		</li>
 		<li>
 			<strong>Đặt <code>collect</code> nối tiếp trong một <code>launch</code>.</strong> <code>collect</code> trên dòng
 			trạng thái không bao giờ trả về — flow thứ hai sẽ không bao giờ được lắng nghe. Hai luồng, hai
-			<code>scope.launch</code> (mục 6).
+			<code>scope.launch</code> (<a href="#collect-hai-luong">mục 6</a>).
 		</li>
 		<li>
 			<strong>Lẫn <code>Flow</code> với <code>StateFlow</code> khi đọc code.</strong> StateFlow luôn có giá trị hiện
 			tại và gộp giá trị trùng (conflation); Flow thường không. Hợp với UI state; không hợp với sự kiện một-lần
-			(mục 5).
+			(<a href="#doc-viewmodel">mục 5</a>).
 		</li>
 	</ul>
 
@@ -743,8 +743,8 @@ const recipeDetailsCollect = `if (recipeId != null) {
 			<code>popBackStack</code> ở <code>RecipeDetails</code>).
 		</li>
 		<li>
-			<strong>Ví dụ tối giản do khoá dựng:</strong> <code>loadA/loadB</code> (mục 3), bảng Before/after callback ↔
-			<code>suspend</code> (mục 4, viết lại từ giáo trình gốc) — không trích project mẫu.
+			<strong>Ví dụ tối giản do khoá dựng:</strong> <code>loadA/loadB</code> (<a href="#launch-tuan-tu">mục 3</a>), bảng Before/after callback ↔
+			<code>suspend</code> (<a href="#main-safe">mục 4</a>, viết lại từ giáo trình gốc) — không trích project mẫu.
 		</li>
 	</ul>
 </section>

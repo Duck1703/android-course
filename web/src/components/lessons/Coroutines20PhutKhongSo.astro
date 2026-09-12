@@ -196,7 +196,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 		</details>
 	</div>
 	<p>
-		Cách gọi cần tránh, ngay từ bây giờ: <strong>đừng đọc "coroutine" thành "thread nhẹ"</strong> hay "mini-thread". Cách gọi đó nghe tiện nhưng dẫn tới đúng câu hỏi sai — "vậy coroutine của tôi chạy trên thread nào, và nó có phải là thread nền không?" Câu hỏi đúng, như bạn sẽ thấy ở mục 6 và mục 7, là <strong>"ai làm chủ công việc này"</strong> và <strong>"việc này được xếp chạy ở đâu"</strong> — hai câu hỏi tách biệt, và cả hai đều <em>không</em> trả lời được bằng từ "coroutine".
+		Cách gọi cần tránh, ngay từ bây giờ: <strong>đừng đọc "coroutine" thành "thread nhẹ"</strong> hay "mini-thread". Cách gọi đó nghe tiện nhưng dẫn tới đúng câu hỏi sai — "vậy coroutine của tôi chạy trên thread nào, và nó có phải là thread nền không?" Câu hỏi đúng, như bạn sẽ thấy ở <a href="#scope">mục 6</a> và <a href="#dispatcher">mục 7</a>, là <strong>"ai làm chủ công việc này"</strong> và <strong>"việc này được xếp chạy ở đâu"</strong> — hai câu hỏi tách biệt, và cả hai đều <em>không</em> trả lời được bằng từ "coroutine".
 	</p>
 	<p>
 		Cơ chế bên dưới việc xếp lịch (scheduler làm gì, một coroutine được lưu và khôi phục ra sao) <strong>không thuộc bài này</strong> — bạn không cần nó để đọc code đúng.
@@ -215,7 +215,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 		<strong>Ghi chú quan trọng — <code>suspend</code> KHÔNG có nghĩa "chạy ở thread nền", và cũng không chọn dispatcher</strong>
 		<p>Đây là điểm chính xác quan trọng nhất của cả bài, nên nói thẳng cả hai chiều:</p>
 		<ul>
-			<li><code>suspend</code> <strong>không</strong> tự chuyển hàm sang thread nền và <strong>không</strong> tự chọn dispatcher. Một hàm <code>suspend</code> chạy trong <strong>ngữ cảnh coroutine mà nó được gọi từ đó</strong> — trừ khi chính hàm đó, hoặc một API mà nó gọi bên trong, <strong>chủ động đổi ngữ cảnh</strong> (thường là bằng <code>withContext(...)</code> — mục 8).</li>
+			<li><code>suspend</code> <strong>không</strong> tự chuyển hàm sang thread nền và <strong>không</strong> tự chọn dispatcher. Một hàm <code>suspend</code> chạy trong <strong>ngữ cảnh coroutine mà nó được gọi từ đó</strong> — trừ khi chính hàm đó, hoặc một API mà nó gọi bên trong, <strong>chủ động đổi ngữ cảnh</strong> (thường là bằng <code>withContext(...)</code> — <a href="#with-context">mục 8</a>).</li>
 			<li><code>suspend</code> <strong>không</strong> có nghĩa "hàm này chậm". Một hàm <code>suspend</code> có thể trả về ngay lập tức. Từ khoá này nói về <em>khả năng tạm dừng</em>, không nói về thời gian.</li>
 		</ul>
 		<p>Cách nhớ theo <em>trách nhiệm</em> — và phải đọc cả hai nửa, vì thiếu nửa nào cũng thành sai:</p>
@@ -223,12 +223,12 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 			<li><strong>Người gọi chọn coroutine/ngữ cảnh mà nó gọi từ đó.</strong></li>
 			<li><strong>Hàm được gọi không tự động nhảy sang thread khác — nhưng phần cài đặt bên trong nó <em>được phép</em> đổi ngữ cảnh khi việc của nó cần.</strong></li>
 		</ul>
-		<p>Nói cách khác: người gọi <strong>không</strong> nắm quyền tuyệt đối về chỗ chạy, và cũng không cần nắm. Rất nhiều hàm <code>suspend</code> của thư viện đã tự lo phần đó bên trong nên <strong>gọi được an toàn từ main thread</strong> — đó là chuyện tốt, và là lý do đừng bọc <code>Dispatchers.IO</code> quanh chúng (mục 9).</p>
+		<p>Nói cách khác: người gọi <strong>không</strong> nắm quyền tuyệt đối về chỗ chạy, và cũng không cần nắm. Rất nhiều hàm <code>suspend</code> của thư viện đã tự lo phần đó bên trong nên <strong>gọi được an toàn từ main thread</strong> — đó là chuyện tốt, và là lý do đừng bọc <code>Dispatchers.IO</code> quanh chúng (<a href="#main-safety">mục 9</a>).</p>
 	</div>
 	<h3>Ví dụ nhỏ nhất: <code>delay</code></h3>
 	<Code code={delayExampleCode} lang="kotlin" theme="github-dark" />
 	<p>
-		<code>delay(1000)</code> chờ 1000 milisecond (1 giây). Nó là hàm <code>suspend</code>, và nó làm <strong>đúng</strong> việc mà mục 1 gọi là "tạm dừng": coroutine dừng lại tại dòng đó <strong>mà không chặn thread</strong>, và một giây sau nó được tiếp tục ở dòng <code>println</code>.
+		<code>delay(1000)</code> chờ 1000 milisecond (1 giây). Nó là hàm <code>suspend</code>, và nó làm <strong>đúng</strong> việc mà <a href="#van-de">mục 1</a> gọi là "tạm dừng": coroutine dừng lại tại dòng đó <strong>mà không chặn thread</strong>, và một giây sau nó được tiếp tục ở dòng <code>println</code>.
 	</p>
 	<p>Đối chiếu với hàm chờ kiểu cũ của Java, <code>Thread.sleep(1000)</code>:</p>
 	<table class="api">
@@ -286,8 +286,8 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 	<p>Ba câu hỏi cần đặt mỗi lần thấy <code>launch</code> — và cả bài còn lại là để trả lời chúng:</p>
 	<ol>
 		<li><strong>Việc gì được khởi động?</strong> → khối <code>&#123; &#125;</code>.</li>
-		<li><strong>Ai làm chủ việc đó?</strong> → <code>scope</code> (mục 6).</li>
-		<li><strong>Việc đó chạy ở đâu?</strong> → dispatcher (mục 7).</li>
+		<li><strong>Ai làm chủ việc đó?</strong> → <code>scope</code> (<a href="#scope">mục 6</a>).</li>
+		<li><strong>Việc đó chạy ở đâu?</strong> → dispatcher (<a href="#dispatcher">mục 7</a>).</li>
 	</ol>
 	<p>
 		<code>launch</code> trả về một <code>Job</code> — một "tay cầm" của công việc vừa khởi động. Ở bài này chỉ cần <strong>nhận diện</strong> cái tên đó khi gặp; các việc làm được với nó (đợi, huỷ, ghép cha–con) thuộc <strong>W1</strong>.
@@ -308,7 +308,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 		<strong>Ghi chú quan trọng — scope là chủ sở hữu, không phải chỗ chạy</strong>
 		<p><strong>Một scope là ranh giới sở hữu/vòng đời của các coroutine được khởi động trong nó.</strong> Nó trả lời đúng một câu hỏi:</p>
 		<p><em>"Khi người chủ này không còn nữa, công việc kia còn nên tồn tại không?"</em></p>
-		<p>Đừng lẫn scope với dispatcher. <strong>Scope = ai làm chủ (khi nào dừng)</strong>; <strong>dispatcher = chạy ở đâu</strong> (mục 7). Một scope <em>có mang theo</em> một dispatcher mặc định, nhưng đó là hai câu hỏi khác nhau và lẫn chúng là nguồn của rất nhiều nhầm lẫn.</p>
+		<p>Đừng lẫn scope với dispatcher. <strong>Scope = ai làm chủ (khi nào dừng)</strong>; <strong>dispatcher = chạy ở đâu</strong> (<a href="#dispatcher">mục 7</a>). Một scope <em>có mang theo</em> một dispatcher mặc định, nhưng đó là hai câu hỏi khác nhau và lẫn chúng là nguồn của rất nhiều nhầm lẫn.</p>
 	</div>
 	<p>
 		Vì <code>launch</code> là một hàm <em>của</em> scope (<code>scope.launch &#123; &#125;</code>), bạn <strong>không thể</strong> khởi động một coroutine mà không trả lời câu hỏi "ai làm chủ". Đây là thiết kế có chủ ý của Kotlin, không phải thủ tục rườm rà.
@@ -320,7 +320,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 		Coroutine khởi động ở đây <strong>thuộc vòng đời của ViewModel</strong>: khi ViewModel bị dọn đi, mọi coroutine trong scope đó <strong>tự động bị huỷ</strong>. Bạn không phải viết một dòng dọn dẹp nào. (ViewModel là gì và vì sao nó tồn tại: bài <strong>S4</strong>. Ở đây chỉ cần biết nó là một người chủ có vòng đời dài hơn một lần vẽ màn hình.)
 	</p>
 	<p>
-		Một điểm chính xác nhỏ, để chặn trước một hiểu lầm rất phổ biến: <strong><code>viewModelScope</code> không có nghĩa là "thread nền"</strong>. Trên Android, coroutine khởi động trong <code>viewModelScope</code> mặc định bắt đầu chạy trên <strong>main thread</strong>. Nghe ngược, nhưng không hề mâu thuẫn: chạy <em>bắt đầu</em> trên main thread là chuyện tốt (bạn cập nhật state giao diện ở đó được), và nếu bên trong có hàm <code>suspend</code> nào tạm dừng để chờ, thì main thread <strong>không bị chặn</strong> trong lúc chờ. Cái làm treo giao diện không phải chữ <code>launch</code>, mà là <strong>một việc chặn thread hoặc tính toán nặng đặt sai chỗ</strong> (mục 7–9).
+		Một điểm chính xác nhỏ, để chặn trước một hiểu lầm rất phổ biến: <strong><code>viewModelScope</code> không có nghĩa là "thread nền"</strong>. Trên Android, coroutine khởi động trong <code>viewModelScope</code> mặc định bắt đầu chạy trên <strong>main thread</strong>. Nghe ngược, nhưng không hề mâu thuẫn: chạy <em>bắt đầu</em> trên main thread là chuyện tốt (bạn cập nhật state giao diện ở đó được), và nếu bên trong có hàm <code>suspend</code> nào tạm dừng để chờ, thì main thread <strong>không bị chặn</strong> trong lúc chờ. Cái làm treo giao diện không phải chữ <code>launch</code>, mà là <strong>một việc chặn thread hoặc tính toán nặng đặt sai chỗ</strong> (<a href="#dispatcher">mục 7</a>–9).
 	</p>
 	<p><strong><code>rememberCoroutineScope()</code></strong> — mức nhận diện.</p>
 	<p>
@@ -366,7 +366,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 		Sự phân biệt <code>IO</code> ↔ <code>Default</code> không phải chuyện thẩm mỹ. <code>Default</code> được thiết kế cho việc <em>tính</em> — số thread của nó ít, đủ để các core làm việc thật. Nếu bạn đặt việc <em>nằm chờ</em> vào đó, thread bị chiếm trong lúc không làm gì cả, và các việc tính toán thật phải xếp hàng sau. <code>IO</code> ngược lại được phép mở nhiều thread hơn, vì nó biết phần lớn thời gian các thread đó chỉ đang chờ.
 	</p>
 	<p>
-		<strong>Đừng chọn dispatcher theo <em>cái tên</em> của việc — hãy chọn theo <em>bản chất</em> của việc.</strong> Cụ thể: "gọi mạng" không tự động nghĩa là <code>withContext(Dispatchers.IO)</code>. Câu hỏi đúng là <em>"đoạn code này có thật sự chặn thread hay không?"</em> Rất nhiều thư viện hiện đại cung cấp hàm <code>suspend</code> đã tự lo phần chuyển chỗ chạy bên trong — ví dụ Retrofit khi bạn khai <code>suspend fun</code> sẽ tự đưa việc gửi request sang nhóm thread riêng của nó (bạn sẽ học ở bài <strong>W2</strong>). Với những hàm như vậy, bọc thêm <code>Dispatchers.IO</code> không giúp gì và chỉ làm code khó đọc hơn. Tương tự, đừng đọc <code>suspend</code> thành "tự động IO" — hai chuyện đó không liên quan (mục 3).
+		<strong>Đừng chọn dispatcher theo <em>cái tên</em> của việc — hãy chọn theo <em>bản chất</em> của việc.</strong> Cụ thể: "gọi mạng" không tự động nghĩa là <code>withContext(Dispatchers.IO)</code>. Câu hỏi đúng là <em>"đoạn code này có thật sự chặn thread hay không?"</em> Rất nhiều thư viện hiện đại cung cấp hàm <code>suspend</code> đã tự lo phần chuyển chỗ chạy bên trong — ví dụ Retrofit khi bạn khai <code>suspend fun</code> sẽ tự đưa việc gửi request sang nhóm thread riêng của nó (bạn sẽ học ở bài <strong>W2</strong>). Với những hàm như vậy, bọc thêm <code>Dispatchers.IO</code> không giúp gì và chỉ làm code khó đọc hơn. Tương tự, đừng đọc <code>suspend</code> thành "tự động IO" — hai chuyện đó không liên quan (<a href="#suspend">mục 3</a>).
 	</p>
 	<p>
 		Cơ chế bên dưới (dispatcher cài đặt thế nào, <code>CoroutineContext</code> gồm những gì, dấu <code>+</code> khi ghép context, <code>SupervisorJob</code>) <strong>không thuộc bài này</strong> — chúng thuộc <strong>W1</strong>.
@@ -400,7 +400,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 	<p>
 		Thêm một chi tiết đọc code, vì nó xuất hiện ngay ở ví dụ trên: <code>withContext(...)</code> <strong>trả về giá trị</strong> — cụ thể là giá trị của dòng cuối trong khối <code>&#123; &#125;</code>, đúng cơ chế bạn đã dùng với <code>map</code>/<code>filter</code> ở F1. Nhờ vậy <code>readLegacyFile</code> viết được bằng expression body (<code>=</code>) và trả thẳng <code>String</code> ra ngoài.
 	</p>
-	<p>Và đây là chỗ trả nợ mục 3, bằng đúng một cặp câu:</p>
+	<p>Và đây là chỗ trả nợ <a href="#suspend">mục 3</a>, bằng đúng một cặp câu:</p>
 	<ul>
 		<li><code>suspend</code> (một mình) = <strong>"tôi được phép tạm dừng; tôi không tự nhảy sang thread khác"</strong> — nên hàm chạy trong ngữ cảnh nó được gọi từ đó.</li>
 		<li><code>suspend</code> + <code>withContext(...)</code> bên trong = <strong>"tôi tự bảo đảm phần này chạy ở đúng chỗ nó cần"</strong> — người gọi không phải biết, và cũng không cần biết.</li>
@@ -468,7 +468,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 		<code>collect</code> nhận một lambda (F1) và <strong>gọi lambda đó cho mỗi giá trị</strong> mà Flow phát ra. Ở đây <code>message</code> là tên bạn đặt cho giá trị vừa đến.
 	</p>
 	<p>
-		Một điều quan trọng nối lại mục 4: <strong><code>collect</code> là một hàm <code>suspend</code></strong> — nên nó chỉ chạy được trong một coroutine. Đó là lý do trong code của khoá này bạn sẽ thấy <code>collect</code> nằm bên trong <code>launch &#123; &#125;</code> hoặc <code>LaunchedEffect &#123; &#125;</code>, không đứng trơ trong một hàm thường.
+		Một điều quan trọng nối lại <a href="#goi-ham-suspend">mục 4</a>: <strong><code>collect</code> là một hàm <code>suspend</code></strong> — nên nó chỉ chạy được trong một coroutine. Đó là lý do trong code của khoá này bạn sẽ thấy <code>collect</code> nằm bên trong <code>launch &#123; &#125;</code> hoặc <code>LaunchedEffect &#123; &#125;</code>, không đứng trơ trong một hàm thường.
 	</p>
 	<h3><code>collect</code> có "chạy xong" không? — có, tuỳ dòng giá trị</h3>
 	<p>
@@ -479,7 +479,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 		Gọi <code>collect</code> trên dòng giá trị đó thì lambda được chạy ba lần, sau đó <code>collect</code> <strong>xong việc</strong> và coroutine đi tiếp xuống dòng dưới.
 	</p>
 	<p>
-		Cái <em>thật sự</em> chạy mãi là dòng <strong>trạng thái</strong> — <code>StateFlow</code> ở mục 11. Một dòng trạng thái mô tả "trạng thái hiện tại của một thứ đang tồn tại", nên nó không có khái niệm "hết trạng thái": việc nhận một <code>StateFlow</code> theo cách thông thường <strong>không tự kết thúc</strong>. Hệ quả thực dụng, gây bug thật: dòng code viết <em>sau</em> một <code>collect</code> trên <code>StateFlow</code>, trong <strong>cùng một</strong> coroutine, sẽ không chạy tới. Cần lắng nghe hai dòng trạng thái thì mở hai coroutine, đừng nối tiếp hai <code>collect</code>.
+		Cái <em>thật sự</em> chạy mãi là dòng <strong>trạng thái</strong> — <code>StateFlow</code> ở <a href="#stateflow">mục 11</a>. Một dòng trạng thái mô tả "trạng thái hiện tại của một thứ đang tồn tại", nên nó không có khái niệm "hết trạng thái": việc nhận một <code>StateFlow</code> theo cách thông thường <strong>không tự kết thúc</strong>. Hệ quả thực dụng, gây bug thật: dòng code viết <em>sau</em> một <code>collect</code> trên <code>StateFlow</code>, trong <strong>cùng một</strong> coroutine, sẽ không chạy tới. Cần lắng nghe hai dòng trạng thái thì mở hai coroutine, đừng nối tiếp hai <code>collect</code>.
 	</p>
 	<p>
 		Rút một câu cho gọn: <strong>"<code>collect</code> chạy tới khi nào" là tính chất của <em>dòng giá trị</em>, không phải tính chất của chữ <code>collect</code>.</strong> Cơ chế đầy đủ (Flow kết thúc thế nào, huỷ ra sao): <strong>W1</strong>.
@@ -509,7 +509,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 		Kèm một tính chất chỉ cần <em>nhận biết</em>, không phải mục tiêu học của bài: vì đây là <em>trạng thái</em> chứ không phải chuỗi sự kiện, gán lại đúng giá trị đang có thì người lắng nghe không nhận thêm thông báo nào. Thuật ngữ và các hệ quả của hành vi này thuộc <strong>W1</strong>.
 	</p>
 	<p>
-		Nối lại mục 10 cho trọn: một dòng trạng thái <strong>không có điểm kết thúc tự nhiên</strong> — nó mô tả "hiện giờ thế nào", nên việc nhận nó theo cách thông thường không tự xong. Đó là lý do <code>collect</code> trên một <code>StateFlow</code> trong code thật trông như chạy mãi; nhưng đúng như mục 10 đã nói, đó là tính chất của <em>dòng trạng thái</em>, không phải của chữ <code>collect</code>.
+		Nối lại <a href="#flow">mục 10</a> cho trọn: một dòng trạng thái <strong>không có điểm kết thúc tự nhiên</strong> — nó mô tả "hiện giờ thế nào", nên việc nhận nó theo cách thông thường không tự xong. Đó là lý do <code>collect</code> trên một <code>StateFlow</code> trong code thật trông như chạy mãi; nhưng đúng như <a href="#flow">mục 10</a> đã nói, đó là tính chất của <em>dòng trạng thái</em>, không phải của chữ <code>collect</code>.
 	</p>
 	<p>
 		Và đúng một điều <code>StateFlow</code> <strong>không</strong> làm, vì đây là câu folklore hay gặp nhất: <strong><code>StateFlow</code> không tự "biết vòng đời" của màn hình.</strong> Nó không tự dừng khi màn hình bị ẩn. Việc lắng nghe <em>theo vòng đời</em> là một công cụ <strong>riêng</strong>, và đó là nội dung của bài <strong>S4</strong>.
@@ -561,7 +561,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 			<tr><td><code>viewModelScope</code></td><td><strong>Người chủ</strong> của công việc: coroutine trong đó bị huỷ tự động khi ViewModel bị dọn đi.</td></tr>
 			<tr><td><code>.launch &#123; &#125;</code></td><td><strong>Khởi động một coroutine</strong> trong scope đó; khối <code>&#123; &#125;</code> là công việc của nó (lambda đuôi — F1).</td></tr>
 			<tr><td><code>loadMessages()</code> là <code>suspend</code></td><td>Lời gọi này <strong>được phép tạm dừng</strong> để chờ, và trong lúc chờ nó <strong>không chặn</strong> thread.</td></tr>
-			<tr><td>Không thấy <code>withContext</code> ở đâu</td><td>Đúng — và đó <em>không</em> phải thiếu sót. Chỉ cần <code>withContext</code> khi có việc thật sự chặn thread hoặc tính toán nặng (mục 9).</td></tr>
+			<tr><td>Không thấy <code>withContext</code> ở đâu</td><td>Đúng — và đó <em>không</em> phải thiếu sót. Chỉ cần <code>withContext</code> khi có việc thật sự chặn thread hoặc tính toán nặng (<a href="#main-safety">mục 9</a>).</td></tr>
 		</tbody>
 	</table>
 	<p>
@@ -577,7 +577,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 	<p>Điều bài này <strong>thêm</strong> vào là phần cơ chế mà C4 cố tình để dành:</p>
 	<ul>
 		<li>Khối <code>&#123; &#125;</code> đó là <strong>thân một coroutine</strong>.</li>
-		<li><strong>Compose là người chủ</strong> của coroutine đó — nó khởi động, và nó huỷ (khi rời composition, hoặc khi key đổi). Đây chính là ý "scope" của mục 6, chỉ khác người chủ.</li>
+		<li><strong>Compose là người chủ</strong> của coroutine đó — nó khởi động, và nó huỷ (khi rời composition, hoặc khi key đổi). Đây chính là ý "scope" của <a href="#scope">mục 6</a>, chỉ khác người chủ.</li>
 		<li>Vì là thân coroutine, bên trong <strong>gọi được hàm <code>suspend</code></strong> — chính vì vậy <code>loadMessage(messageId)</code> đặt được ở đó mà không cần thêm gì.</li>
 		<li>Và vì Compose huỷ nó khi key đổi, chuyển sang tin nhắn khác thì việc tải tin cũ <strong>được dừng lại</strong>, không chạy tiếp vô ích.</li>
 	</ul>
@@ -595,6 +595,25 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 	<p>
 		Nội dung đầy đủ về các effect của Compose (<code>DisposableEffect</code>, <code>SideEffect</code>, và <code>LaunchedEffect</code> ở mức sâu) <strong>không</strong> thuộc bài này — chúng có nơi dạy riêng ở giai đoạn sau. Ở đây chỉ là củng cố.
 	</p>
+
+	<h2 id="luyen-tap">Luyện tập — chú thích một đoạn code</h2>
+	<p>
+		Đoạn dưới đây là <strong>lược đồ để đọc</strong>, không phải file compile được. Nhiệm vụ: chỉ ra <strong>mọi</strong> khái niệm coroutine/Flow trong đó và nói bạn biết gì về từng cái. Bạn <strong>không</strong> cần biết ViewModel, repository hay bất cứ thứ gì của các bài sau. Lời giải nằm ngay dưới.
+	</p>
+	<Code code={profileViewModelSchemaCode} lang="kotlin" theme="github-dark" />
+	<details>
+		<summary>Xem lời giải</summary>
+		<ul>
+			<li><strong>①</strong> <code>StateFlow&lt;UiState&gt;</code> — một dòng <strong>trạng thái</strong>: luôn có một trạng thái hiện tại, cộng các cập nhật sau đó. <code>UiState</code> là <strong>sealed state</strong> của F2; dấu ngoặc nhọn là generic recognition của F2. Cách <em>dựng</em> giá trị này là việc của S4.</li>
+			<li><strong>②</strong> <code>viewModelScope.launch &#123; &#125;</code> — khởi động <strong>một coroutine</strong>; <strong>người chủ</strong> là ViewModel, nên công việc bị huỷ tự động khi ViewModel bị dọn đi. Khối <code>&#123; &#125;</code> là <strong>lambda đuôi</strong> (F1). Coroutine này bắt đầu chạy trên main thread — và đó không phải vấn đề, xem ⑦.</li>
+			<li><strong>③ ④</strong> Hai lời gọi <code>suspend</code>, <strong>chạy lần lượt</strong>: mỗi lời gọi có thể tạm dừng để chờ, và trong lúc chờ <strong>thread không bị chặn</strong>. Vì cả hai nằm trong cùng một coroutine, ④ chỉ chạy khi ③ đã xong.</li>
+			<li><strong>⑤</strong> Không thuộc S1 — đây là chỗ S4 dạy.</li>
+			<li><strong>⑥</strong> Hàm <code>suspend</code> có expression body (F1). Bản thân từ khoá <code>suspend</code> <strong>không</strong> nói hàm này chạy ở đâu…</li>
+			<li><strong>⑦</strong> …chỗ chạy được nói ra ở đây: <code>withContext(Dispatchers.IO)</code> chuyển <strong>khối <code>&#123; &#125;</code></strong> sang dispatcher <code>IO</code>, và khi khối xong thì việc chạy tiếp <strong>trở về ngữ cảnh của người gọi</strong> (ở ② là main thread). Đây là ví dụ cụ thể cho toàn bộ mô hình của bài: ② <em>bắt đầu</em> trên main thread, nhưng phần thật sự chặn thread đã được đưa sang <code>IO</code>, nên giao diện không bị treo. Chú ý <strong>ai</strong> làm việc đó: chính hàm ⑥ tự đổi ngữ cảnh bên trong — người gọi ở ② không phải biết, và cũng không cần biết.</li>
+			<li><strong>⑧</strong> Lý do <code>withContext</code> tồn tại ở ví dụ này: <code>blockingReadFile</code> <strong>chặn thread</strong> — nó không phải hàm <code>suspend</code>. Nếu ⑧ đã là một hàm <code>suspend</code> main-safe của thư viện, thì ⑦ là lớp dư (Cạm bẫy 4).</li>
+		</ul>
+		<p><strong>Tự chấm:</strong> bạn nói được ① ② ③ ⑦ ⑧ mà không phải tra lại → bài này đã xong việc của nó. Câu duy nhất được phép trả lời "chưa học" là ⑤.</p>
+	</details>
 
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<ol>
@@ -642,25 +661,6 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 		</ol>
 	</div>
 
-	<h2 id="luyen-tap">Luyện tập — chú thích một đoạn code</h2>
-	<p>
-		Đoạn dưới đây là <strong>lược đồ để đọc</strong>, không phải file compile được. Nhiệm vụ: chỉ ra <strong>mọi</strong> khái niệm coroutine/Flow trong đó và nói bạn biết gì về từng cái. Bạn <strong>không</strong> cần biết ViewModel, repository hay bất cứ thứ gì của các bài sau. Lời giải nằm ngay dưới.
-	</p>
-	<Code code={profileViewModelSchemaCode} lang="kotlin" theme="github-dark" />
-	<details>
-		<summary>Xem lời giải</summary>
-		<ul>
-			<li><strong>①</strong> <code>StateFlow&lt;UiState&gt;</code> — một dòng <strong>trạng thái</strong>: luôn có một trạng thái hiện tại, cộng các cập nhật sau đó. <code>UiState</code> là <strong>sealed state</strong> của F2; dấu ngoặc nhọn là generic recognition của F2. Cách <em>dựng</em> giá trị này là việc của S4.</li>
-			<li><strong>②</strong> <code>viewModelScope.launch &#123; &#125;</code> — khởi động <strong>một coroutine</strong>; <strong>người chủ</strong> là ViewModel, nên công việc bị huỷ tự động khi ViewModel bị dọn đi. Khối <code>&#123; &#125;</code> là <strong>lambda đuôi</strong> (F1). Coroutine này bắt đầu chạy trên main thread — và đó không phải vấn đề, xem ⑦.</li>
-			<li><strong>③ ④</strong> Hai lời gọi <code>suspend</code>, <strong>chạy lần lượt</strong>: mỗi lời gọi có thể tạm dừng để chờ, và trong lúc chờ <strong>thread không bị chặn</strong>. Vì cả hai nằm trong cùng một coroutine, ④ chỉ chạy khi ③ đã xong.</li>
-			<li><strong>⑤</strong> Không thuộc S1 — đây là chỗ S4 dạy.</li>
-			<li><strong>⑥</strong> Hàm <code>suspend</code> có expression body (F1). Bản thân từ khoá <code>suspend</code> <strong>không</strong> nói hàm này chạy ở đâu…</li>
-			<li><strong>⑦</strong> …chỗ chạy được nói ra ở đây: <code>withContext(Dispatchers.IO)</code> chuyển <strong>khối <code>&#123; &#125;</code></strong> sang dispatcher <code>IO</code>, và khi khối xong thì việc chạy tiếp <strong>trở về ngữ cảnh của người gọi</strong> (ở ② là main thread). Đây là ví dụ cụ thể cho toàn bộ mô hình của bài: ② <em>bắt đầu</em> trên main thread, nhưng phần thật sự chặn thread đã được đưa sang <code>IO</code>, nên giao diện không bị treo. Chú ý <strong>ai</strong> làm việc đó: chính hàm ⑥ tự đổi ngữ cảnh bên trong — người gọi ở ② không phải biết, và cũng không cần biết.</li>
-			<li><strong>⑧</strong> Lý do <code>withContext</code> tồn tại ở ví dụ này: <code>blockingReadFile</code> <strong>chặn thread</strong> — nó không phải hàm <code>suspend</code>. Nếu ⑧ đã là một hàm <code>suspend</code> main-safe của thư viện, thì ⑦ là lớp dư (Cạm bẫy 4).</li>
-		</ul>
-		<p><strong>Tự chấm:</strong> bạn nói được ① ② ③ ⑦ ⑧ mà không phải tra lại → bài này đã xong việc của nó. Câu duy nhất được phép trả lời "chưa học" là ⑤.</p>
-	</details>
-
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<h3>Tài liệu chính thức Kotlin</h3>
 	<ul>
@@ -681,7 +681,7 @@ suspend fun readThemeFromDisk(): String =           // ⑥
 		<li><strong>Chương 8</strong> — phần thread / dispatcher / <code>suspend</code> / Flow: vật liệu sư phạm được thu hoạch để dựng bài này.</li>
 		<li><strong>Chương 10.3</strong> — precision <code>suspend</code> ↔ <code>launch</code> và khuôn <code>suspend</code> + <code>withContext(Dispatchers.IO)</code>.</li>
 		<li><strong>Chương 6</strong> — bảng đối chiếu <code>suspend</code> / <code>Flow</code> / <code>StateFlow</code>.</li>
-		<li><strong>C4</strong> (trong <code>Ch05PreviewVaVongDoi.astro</code>, mục 18) — bốn điều chính xác về thời điểm <code>LaunchedEffect</code> chạy, và lời hẹn forward-reference mà bài này trả nợ.</li>
+		<li><strong>C4</strong> (trong <code>Ch05PreviewVaVongDoi.astro</code>, <a href="/chapters/ch05-preview-va-vong-doi/#launched-effect">mục 18</a>) — bốn điều chính xác về thời điểm <code>LaunchedEffect</code> chạy, và lời hẹn forward-reference mà bài này trả nợ.</li>
 		<li><strong>Về code trong bài:</strong> mọi đoạn code là ví dụ tối giản do khoá dựng, không trích <code>aaf-materials/</code>.</li>
 	</ul>
 </section>

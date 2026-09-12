@@ -86,7 +86,7 @@ const logcatCode = `Button(onClick = {
 	</p>
 	<h3 id="tai-sao-loi">12.1. Vì sao lỗi — giải thích cho người mới</h3>
 	<p>
-		Lý do gốc nằm ở chỗ đã nói ở <strong>Chương 3.1, mục 2</strong>: <strong><code>stringResource()</code> tự nó là
+		Lý do gốc nằm ở chỗ đã nói ở <strong>Chương 3.1, <a href="/chapters/ch03-1-activity-va-giao-dien/#doc-starter">mục 2</a></strong>: <strong><code>stringResource()</code> tự nó là
 		một Composable function</strong>, nên chỉ gọi được từ trong một Composable function khác. Nó không phải hàm
 		Kotlin bình thường trả về chuỗi — nó là một mảnh của hệ thống Compose.
 	</p>
@@ -234,7 +234,7 @@ const logcatCode = `Button(onClick = {
 
 	<h2 id="debug">13. Debug: chạy app theo cách khác để nhìn thấy bên trong</h2>
 	<p>
-		Ở mục 12 bạn đã gặp một lỗi và sửa được nó. Nhưng loại lỗi đó là loại <em>dễ</em>: nó hiện ngay khi
+		Ở <a href="#loi-bien-dich">mục 12</a> bạn đã gặp một lỗi và sửa được nó. Nhưng loại lỗi đó là loại <em>dễ</em>: nó hiện ngay khi
 		bạn gõ, ở đúng dòng gây ra nó, kèm một câu giải thích. Còn loại lỗi thứ hai thì không tự giới thiệu — app vẫn
 		build, vẫn chạy, chỉ làm sai. Phân biệt hai loại này là phân biệt nền tảng nhất khi học lập trình, nên nó đáng
 		một bảng riêng:
@@ -244,7 +244,7 @@ const logcatCode = `Button(onClick = {
 		<tbody>
 			<tr><td>Xảy ra khi nào</td><td>Ngay khi bạn gõ code, trước cả khi app chạy</td><td>Khi app đang chạy trên máy thật hoặc máy ảo</td></tr>
 			<tr><td>Ai báo cho bạn</td><td>Android Studio gạch đỏ ngay lập tức</td><td>Không ai — app crash, hoặc chạy sai âm thầm</td></tr>
-			<tr><td>Ví dụ trong chương này</td><td>Gọi <code>stringResource</code> trong <code>remember</code> (mục 12)</td><td>Chữ hiển thị bị trống vì đảo 2 dòng trong <code>onClick</code></td></tr>
+			<tr><td>Ví dụ trong chương này</td><td>Gọi <code>stringResource</code> trong <code>remember</code> (<a href="#loi-bien-dich">mục 12</a>)</td><td>Chữ hiển thị bị trống vì đảo 2 dòng trong <code>onClick</code></td></tr>
 			<tr><td>Nhìn thấy bằng cách nào</td><td>Panel Problems, vạch đỏ ở lề phải</td><td>Phải <em>debug</em>: đặt breakpoint hoặc đọc Logcat</td></tr>
 		</tbody>
 	</table>
@@ -428,7 +428,7 @@ const logcatCode = `Button(onClick = {
 		Rất nhiều tutorial nhập môn dạy cách tìm lỗi bằng <code>println()</code>: chèn một dòng in giá trị biến vào chỗ
 		nghi vấn, chạy lại, đọc kết quả, xong thì xoá dòng đó đi. Cách này có vẻ nhanh, nhưng nó có ba vấn đề thật. Thứ
 		nhất, trên Android <code>println()</code> gần như vô dụng — nó không đi vào Logcat theo cách bạn lọc được, đúng
-		cách là <code>Log.d("thẻ", "nội dung")</code> hoặc Timber (mục 13.4). Thứ hai, mỗi lần muốn xem một biến khác là
+		cách là <code>Log.d("thẻ", "nội dung")</code> hoặc Timber (<a href="#logcat">mục 13.4</a>). Thứ hai, mỗi lần muốn xem một biến khác là
 		bạn phải sửa code, build lại, chạy lại, bấm lại đúng chuỗi thao tác — trong khi một breakpoint cho bạn xem
 		<em>mọi</em> biến trong phạm vi cùng lúc, không cần build lại lần nào. Thứ ba, dòng log tạm rất hay bị bỏ quên
 		trong code và trôi vào bản phát hành, làm lộ dữ liệu nội bộ ra Logcat của máy người dùng. Đặt lại cho đúng:
@@ -457,23 +457,23 @@ const logcatCode = `Button(onClick = {
 		</li>
 		<li>
 			<strong>Code thật đã đối chiếu:</strong> <code>{KT_FINAL}</code> — tổng 80 dòng: import
-			<code>LocalContext</code> dòng 47 và import <code>stringResource</code> dòng 48 (mục 12.3) ·
+			<code>LocalContext</code> dòng 47 và import <code>stringResource</code> dòng 48 (<a href="#cach-sua">mục 12.3</a>) ·
 			<code>val context = LocalContext.current</code> dòng 55 · hai <code>remember</code> với
-			<code>context.getString(...)</code> dòng 56–57 (mục 12.3) · khối <code>Button(onClick = ...)</code> dòng
+			<code>context.getString(...)</code> dòng 56–57 (<a href="#cach-sua">mục 12.3</a>) · khối <code>Button(onClick = ...)</code> dòng
 			68–71, trong đó dòng 69 là <code>chatOutputText = chatInputText</code> và dòng 70 là
-			<code>chatInputText = ""</code> — dòng đặt breakpoint (mục 13.2–13.3) ·
-			<code>Text(text = stringResource(id = R.string.send_button))</code> dòng 72 (đối chiếu vị trí trong mục 12).
-			Số lời gọi Timber ở mục 13.4 lấy từ <code>aaf-materials/08-networking/projects/final/app/src/main/java/</code>
+			<code>chatInputText = ""</code> — dòng đặt breakpoint (<a href="#breakpoint">mục 13.2</a>–13.3) ·
+			<code>Text(text = stringResource(id = R.string.send_button))</code> dòng 72 (đối chiếu vị trí trong <a href="#loi-bien-dich">mục 12</a>).
+			Số lời gọi Timber ở <a href="#logcat">mục 13.4</a> lấy từ <code>aaf-materials/08-networking/projects/final/app/src/main/java/</code>
 			— 13 kết quả ở 5 file (<code>RecipeApp.kt</code>, <code>viewmodels/RecipeViewModel.kt</code>,
 			<code>ui/RecipeDetails.kt</code>, <code>ui/widgets/BookmarkCard.kt</code>, <code>ui/widgets/RecipeCard.kt</code>).
 		</li>
 		<li>
 			<strong>Phần bổ sung ngoài giáo trình:</strong> bảng hai vùng được/không được gọi Composable cùng quy tắc
-			"giao diện hay việc cần làm" ở mục 12.1 · giải thích <code>LocalContext</code> là CompositionLocal ở mục 12.4 ·
+			"giao diện hay việc cần làm" ở <a href="#tai-sao-loi">mục 12.1</a> · giải thích <code>LocalContext</code> là CompositionLocal ở <a href="#context">mục 12.4</a> ·
 			đính chính <code>Context</code> là abstract class chứ không phải interface, và <code>getString()</code> thuộc
 			<code>Context</code> chứ không phải riêng <code>Activity</code> · cách sửa thứ hai và biến thể
-			<code>remember(key)</code> ở mục 12.5 · phân tích bảng ba thời điểm giá trị biến quanh breakpoint ở mục 13.3 ·
-			ba nút Step Over / Step Into / Resume · toàn bộ mục 13.4 về Logcat, <code>Log.d()</code> và stack trace ·
+			<code>remember(key)</code> ở <a href="#cach-sua-2">mục 12.5</a> · phân tích bảng ba thời điểm giá trị biến quanh breakpoint ở <a href="#tai-sao-dong-nay">mục 13.3</a> ·
+			ba nút Step Over / Step Into / Resume · toàn bộ <a href="#logcat">mục 13.4</a> về Logcat, <code>Log.d()</code> và stack trace ·
 			cạm bẫy 2 (rải <code>println</code> thay cho breakpoint).
 		</li>
 	</ul>

@@ -320,7 +320,7 @@ fun PreviewChipRow() {
 		<code>viewModel(...)</code> mặc định chỉ gọi được constructor rỗng — bài này dạy cách "dạy" nó tạo ViewModel
 		có tham số. <strong>S3</strong> — truyền giá trị xuống qua tham số, gửi sự kiện lên qua callback.
 		<strong>S2</strong> — <code>remember</code>/<code>rememberSaveable</code> giữ state ở mức nào (bảng "bốn thứ
-		được giữ lại" ở mục 18 xây trên nền đó). <strong>C3</strong> — bạn đã từng <em>nghe tên</em>
+		được giữ lại" ở <a href="#trace-tab">mục 18</a> xây trên nền đó). <strong>C3</strong> — bạn đã từng <em>nghe tên</em>
 		<code>CompositionLocal</code> (mục theme); bài này dạy <em>cơ chế</em> thật của nó.
 		<strong>C4</strong> — <code>LaunchedEffect</code> ở mức nhận diện.
 	</div>
@@ -333,7 +333,7 @@ fun PreviewChipRow() {
 	</p>
 	<ul>
 		<li>
-			<strong>Sở hữu trùng.</strong> Mỗi instance <code>Prefs</code> giữ một instance DataStore riêng (D1 mục 5) — tạo
+			<strong>Sở hữu trùng.</strong> Mỗi instance <code>Prefs</code> giữ một instance DataStore riêng (D1 <a href="/chapters/ch09-data-store-va-sharedpreferences/#khai-store">mục 5</a>) — tạo
 			2 <code>Prefs</code> là có 2 store trỏ cùng file. Đúng cảnh báo "Important".
 		</li>
 		<li>
@@ -441,7 +441,7 @@ fun PreviewChipRow() {
 			là mặc định <code>null</code>, khi đó mọi chỗ dùng đều phải kiểm tra null cho một tình huống <em>không bao giờ
 			được phép xảy ra</em>. Chọn "crash sớm, kèm thông báo dễ hiểu" — bạn phát hiện thiếu provider ngay lần chạy
 			đầu, ở đúng chỗ, thay vì gặp lỗi mơ hồ về sau. (Chính vì vậy, một <code>@Preview</code> đứng ngoài provider
-			sẽ không render được — xem mục 19.)
+			sẽ không render được — xem <a href="#preview">mục 19</a>.)
 		</p>
 	</div>
 	<p><strong>Bước 2 — cấp giá trị</strong>, bên trong <code>setContent</code> của <code>MainActivity</code>:</p>
@@ -453,7 +453,7 @@ fun PreviewChipRow() {
 	<p>
 		Chú ý <code>(application as RecipeApp).prefs</code>: trong một Activity, <code>application</code> có kiểu chung
 		<code>Application</code>, nên phải <em>ép kiểu</em> (<code>as</code>) về <code>RecipeApp</code> mới thấy được
-		thuộc tính <code>prefs</code> tự thêm ở mục 12. Ép kiểu này an toàn vì manifest dòng 12 đã bảo đảm class
+		thuộc tính <code>prefs</code> tự thêm ở <a href="#application">mục 12</a>. Ép kiểu này an toàn vì manifest dòng 12 đã bảo đảm class
 		<code>Application</code> thật sự là <code>RecipeApp</code>.
 	</p>
 	<p>
@@ -580,8 +580,8 @@ fun PreviewChipRow() {
 	</div>
 	<p>
 		Cùng khuôn đó lặp lại ở <code>ui/recipes/RecipeList.kt</code> (dòng <strong>26–28</strong>) và
-		<code>ui/groceries/GroceryList.kt</code> — file cuối chính là bài tập (mục 19). Còn bốn chỗ nữa là các
-		<code>@Preview</code> — một bài toán riêng, mục 19.
+		<code>ui/groceries/GroceryList.kt</code> — file cuối chính là bài tập (<a href="#preview">mục 19</a>). Còn bốn chỗ nữa là các
+		<code>@Preview</code> — một bài toán riêng, <a href="#preview">mục 19</a>.
 	</p>
 
 	<h2 id="trace-tu-khoa">16. Trace 1 — một từ khoá tìm kiếm: ghi xuống và đọc lại</h2>
@@ -636,7 +636,7 @@ fun PreviewChipRow() {
 			<code>joinToString(",")</code> (F1) — DataStore Preferences chỉ lưu giá trị nguyên thuỷ, không
 			lưu <code>List</code>. Nên danh sách bị <strong>ép thành một chuỗi</strong>:
 			<code>["chicken","beef"]</code> → <code>"chicken,beef"</code>. Đơn giản, chạy được — và có một cái bẫy mổ riêng
-			ở mục 17.
+			ở <a href="#bug-dau-phay">mục 17</a>.
 		</li>
 	</ul>
 	<p><strong>Nửa đọc — chạy một lần lúc ViewModel được tạo</strong> (khối <code>init</code>):</p>
@@ -655,7 +655,7 @@ fun PreviewChipRow() {
 			đó đúng là điều đang xảy ra.
 		</li>
 		<li>
-			<strong><code>isNullOrEmpty()</code></strong> — xử lý key-chưa-có đúng như D1 mục 9: <code>null</code> (chưa từng
+			<strong><code>isNullOrEmpty()</code></strong> — xử lý key-chưa-có đúng như D1 <a href="/chapters/ch09-data-store-va-sharedpreferences/#mac-dinh">mục 9</a>: <code>null</code> (chưa từng
 			lưu) và <code>""</code> (đã lưu chuỗi rỗng) đều bị loại. Nếu bỏ kiểm tra này,
 			<code>"".split(",")</code> trả về <code>[""]</code> — một danh sách chứa đúng một mục rỗng, và menu gợi ý sẽ có
 			một dòng trống bấm được. (JIT: <code>split(",")</code> cắt chuỗi theo ký tự phân cách, ngược với
@@ -793,7 +793,7 @@ fun PreviewChipRow() {
 	</div>
 	<p>
 		Để ý chi tiết thiết kế: <code>selectedIndex.intValue = 0</code> chạy <strong>đồng bộ</strong> nên tab đổi ngay,
-		còn <code>saveInt</code> chạy trong coroutine — cùng nguyên tắc "UI trước, ổ đĩa sau" như mục 16.
+		còn <code>saveInt</code> chạy trong coroutine — cùng nguyên tắc "UI trước, ổ đĩa sau" như <a href="#trace-tu-khoa">mục 16</a>.
 	</p>
 	<div class="callout note">
 		<strong>Phân biệt ba "thứ được giữ lại" — đây là chốt của cả chương</strong>
@@ -817,7 +817,7 @@ fun PreviewChipRow() {
 				<tr>
 					<td>DataStore (đĩa)</td>
 					<td>Mọi kiểu tắt app — kể cả khi người dùng tự tắt; khởi động lại máy</td>
-					<td>Người dùng xoá app / xoá dữ liệu app (D1 mục 1)</td>
+					<td>Người dùng xoá app / xoá dữ liệu app (D1 <a href="/chapters/ch09-data-store-va-sharedpreferences/#luu-gi-vao-dau">mục 1</a>)</td>
 				</tr>
 			</tbody>
 		</table>
@@ -867,7 +867,7 @@ fun PreviewChipRow() {
 		<p>
 			Preview <em>không</em> đi qua <code>MainActivity</code>, tức không có
 			<code>CompositionLocalProvider</code> bọc ngoài — nên đọc <code>LocalPrefsProvider.current</code> trong preview
-			sẽ chạm giá trị mặc định <code>error("No prefs provided")</code> (mục 13) và preview không render được. Có hai
+			sẽ chạm giá trị mặc định <code>error("No prefs provided")</code> (<a href="#compositionlocal">mục 13</a>) và preview không render được. Có hai
 			hướng xử lý trong tự nhiên:
 		</p>
 		<div class="ba">
@@ -875,7 +875,7 @@ fun PreviewChipRow() {
 				<div class="ba-head">Tự tạo <code>Prefs</code> trong preview</div>
 				<Code code={previewBookWayCode} lang="kotlin" theme="github-dark" />
 				<p>Preview render được — nhưng mỗi <code>Prefs(context)</code> mới là một instance DataStore mới trỏ vào cùng
-					file <code>recipes</code>, đúng điều D1 mục 5 cấm. Trong preview gần như vô hại (chỉ chạy trong Android
+					file <code>recipes</code>, đúng điều D1 <a href="/chapters/ch09-data-store-va-sharedpreferences/#khai-store">mục 5</a> cấm. Trong preview gần như vô hại (chỉ chạy trong Android
 					Studio), nhưng nó dạy sai thói quen.</p>
 			</div>
 			<div class="ba-col">
@@ -944,6 +944,41 @@ fun PreviewChipRow() {
 		một vai).
 	</p>
 
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng
+		phía trên. Bảng lệch phiên bản và bảng đối chiếu "văn bản gốc ↔ project" đầy đủ nằm ở phần tra cứu phiên bản
+		của khoá (AP3, mục Ch09).
+	</p>
+	<ul>
+		<li>
+			<strong>Tưởng CompositionLocal là persistence, hoặc là máy tạo object.</strong> Nó <em>vận chuyển</em> giá trị
+			đã được tạo ở provider; instance thật nằm ở <code>RecipeApp</code>, dữ liệu thật nằm ở DataStore (<a href="#compositionlocal">mục 13</a>, 20).
+		</li>
+		<li>
+			<strong>Đổ mọi dependency vào CompositionLocal.</strong> Đường mặc định cho dữ liệu/sự kiện màn hình là tham số
+			tường minh (S3); CompositionLocal dành cho ngữ cảnh của cả cây con — theme, <code>prefs</code>, navigator
+			(mục 14).
+		</li>
+		<li>
+			<strong>Đọc <code>.current</code> bên trong lambda factory.</strong> Lambda không còn là vùng Composable — lấy
+			giá trị ra trước rồi closure mới bắt được (<a href="#viewmodel-factory">mục 15</a>). Lỗi biên dịch kinh điển.
+		</li>
+		<li>
+			<strong>Tự <code>RecipeViewModel(prefs)</code> rồi giữ trong biến.</strong> ViewModel phải do
+			<code>viewModel()</code> tạo qua factory để sống qua xoay máy (mục 15, S4).
+		</li>
+		<li>
+			<strong>Ghi đĩa trong thân Composable hoặc trong <code>onclick</code> không bọc coroutine.</strong> Đọc/ghi là
+			<code>suspend</code>: đọc lúc mở màn hình → <code>LaunchedEffect</code>; ghi lúc bấm →
+			<code>rememberCoroutineScope</code> (<a href="#trace-tab">mục 18</a>).
+		</li>
+		<li>
+			<strong>Dùng <code>hasKey</code> trước <code>getString</code>.</strong> Đọc file hai lần cho một câu hỏi — và
+			<code>hasKey</code> không tìm thấy key kiểu <code>Int</code> vì luôn tạo key dạng string (D1 <a href="/chapters/ch09-data-store-va-sharedpreferences/#prefs-class">mục 10</a>).
+		</li>
+	</ul>
+
 	<h2 id="tom-tat">21. Tóm tắt, luyện tập và đi tiếp</h2>
 	<div class="callout journey">
 		<ol>
@@ -981,19 +1016,19 @@ fun PreviewChipRow() {
 			<summary>Xem đáp án</summary>
 			<p>
 				<strong>(a)</strong> Mỗi lần vẽ lại là một <code>Prefs</code> mới → một instance DataStore mới trỏ cùng file
-				(vi phạm "một instance", D1 mục 5); và <code>LocalContext.current</code> là Context của màn hình — một object
-				sống lâu cầm Context ngắn hạn là khuôn rò rỉ (mục 12).
+				(vi phạm "một instance", D1 <a href="/chapters/ch09-data-store-va-sharedpreferences/#khai-store">mục 5</a>); và <code>LocalContext.current</code> là Context của màn hình — một object
+				sống lâu cầm Context ngắn hạn là khuôn rò rỉ (<a href="#application">mục 12</a>).
 			</p>
 			<p>
 				<strong>(b)</strong> <code>RecipeApp</code> tạo <code>prefs = Prefs(this)</code> một lần trong
 				<code>onCreate()</code>; <code>MainActivity</code> cấp
 				<code>LocalPrefsProvider provides (application as RecipeApp).prefs</code> quanh <code>NavHost</code>;
 				Composable tiêu thụ <code>val prefs = LocalPrefsProvider.current</code> rồi phóng coroutine qua
-				<code>rememberCoroutineScope</code> để ghi (mục 12–13, 18).
+				<code>rememberCoroutineScope</code> để ghi (<a href="#application">mục 12</a>–13, 18).
 			</p>
 			<p>
 				<strong>(c)</strong> Vì bên trong lambda factory không còn là vùng Composable — nó là code thường chạy sau,
-				không đọc được CompositionLocal. Phải lấy giá trị ra biến trước, lambda closure bắt biến đó (mục 15).
+				không đọc được CompositionLocal. Phải lấy giá trị ra biến trước, lambda closure bắt biến đó (<a href="#viewmodel-factory">mục 15</a>).
 			</p>
 		</details>
 	</div>
@@ -1001,7 +1036,7 @@ fun PreviewChipRow() {
 		<strong>Ba việc nên tự làm trước khi qua Chương 10</strong>
 		<ol>
 			<li>
-				<strong>Sửa bug dấu phẩy.</strong> Chọn một trong ba cách ở mục 17 và làm thật. Cách nhanh nhất để kiểm tra:
+				<strong>Sửa bug dấu phẩy.</strong> Chọn một trong ba cách ở <a href="#bug-dau-phay">mục 17</a> và làm thật. Cách nhanh nhất để kiểm tra:
 				gõ tìm "chicken, rice", tắt app, mở lại, xem menu 3 chấm.
 			</li>
 			<li>
@@ -1010,52 +1045,17 @@ fun PreviewChipRow() {
 				thành thứ nó thật sự là — có thể làm được ngay, thoải mái hơn sau khi học W1.
 			</li>
 			<li>
-				<strong>Dời delegate ra top-level</strong> (D1 mục 5) rồi thử tạo <code>Prefs</code> hai lần. Bạn sẽ thấy vấn
+				<strong>Dời delegate ra top-level</strong> (D1 <a href="/chapters/ch09-data-store-va-sharedpreferences/#khai-store">mục 5</a>) rồi thử tạo <code>Prefs</code> hai lần. Bạn sẽ thấy vấn
 				đề "một instance" đổi từ chuyện phải ghi nhớ thành chuyện trình biên dịch lo.
 			</li>
 		</ol>
 	</div>
 	<p>
-		<strong>Chương 10 — Room.</strong> Bạn sẽ gặp lại đúng bài toán đã đụng ở mục 17: khi dữ liệu là một
+		<strong>Chương 10 — Room.</strong> Bạn sẽ gặp lại đúng bài toán đã đụng ở <a href="#bug-dau-phay">mục 17</a>: khi dữ liệu là một
 		<em>tập hợp bản ghi có cấu trúc</em> (danh sách công thức đã bookmark, mỗi cái có id, tên, ảnh, nguyên liệu),
-		key-value hết đường. Room là database SQLite — "hướng thứ ba" mà D1 mục 1 đã kể tên nhưng chưa dùng. Và lúc đó
+		key-value hết đường. Room là database SQLite — "hướng thứ ba" mà D1 <a href="/chapters/ch09-data-store-va-sharedpreferences/#luu-gi-vao-dau">mục 1</a> đã kể tên nhưng chưa dùng. Và lúc đó
 		bookmark ở đầu chương mới thật sự được làm.
 	</p>
-
-	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
-	<p>
-		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng
-		phía trên. Bảng lệch phiên bản và bảng đối chiếu "văn bản gốc ↔ project" đầy đủ nằm ở phần tra cứu phiên bản
-		của khoá (AP3, mục Ch09).
-	</p>
-	<ul>
-		<li>
-			<strong>Tưởng CompositionLocal là persistence, hoặc là máy tạo object.</strong> Nó <em>vận chuyển</em> giá trị
-			đã được tạo ở provider; instance thật nằm ở <code>RecipeApp</code>, dữ liệu thật nằm ở DataStore (mục 13, 20).
-		</li>
-		<li>
-			<strong>Đổ mọi dependency vào CompositionLocal.</strong> Đường mặc định cho dữ liệu/sự kiện màn hình là tham số
-			tường minh (S3); CompositionLocal dành cho ngữ cảnh của cả cây con — theme, <code>prefs</code>, navigator
-			(mục 14).
-		</li>
-		<li>
-			<strong>Đọc <code>.current</code> bên trong lambda factory.</strong> Lambda không còn là vùng Composable — lấy
-			giá trị ra trước rồi closure mới bắt được (mục 15). Lỗi biên dịch kinh điển.
-		</li>
-		<li>
-			<strong>Tự <code>RecipeViewModel(prefs)</code> rồi giữ trong biến.</strong> ViewModel phải do
-			<code>viewModel()</code> tạo qua factory để sống qua xoay máy (mục 15, S4).
-		</li>
-		<li>
-			<strong>Ghi đĩa trong thân Composable hoặc trong <code>onclick</code> không bọc coroutine.</strong> Đọc/ghi là
-			<code>suspend</code>: đọc lúc mở màn hình → <code>LaunchedEffect</code>; ghi lúc bấm →
-			<code>rememberCoroutineScope</code> (mục 18).
-		</li>
-		<li>
-			<strong>Dùng <code>hasKey</code> trước <code>getString</code>.</strong> Đọc file hai lần cho một câu hỏi — và
-			<code>hasKey</code> không tìm thấy key kiểu <code>Int</code> vì luôn tạo key dạng string (D1 mục 10).
-		</li>
-	</ul>
 
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<ul>
@@ -1085,14 +1085,14 @@ fun PreviewChipRow() {
 		<li>
 			<strong>Đối chiếu nền tảng:</strong> D1 (kho lưu trữ <code>Prefs</code>, key có kiểu, một-instance) · S3 (tham số tường minh vs ngữ cảnh cây con — mục 14) · S4
 			(<code>viewModel()</code>, vòng đời ViewModel — mục 15) · S2 (<code>remember</code>/<code>rememberSaveable</code>
-			— mục 18) · C3 (ghi nhận tên CompositionLocal — trả nợ ở mục 13) · C4 (<code>LaunchedEffect</code> chạm lần
-			đầu; chiều sâu đầy đủ ở R4 — mục 18) · <code>docs/drafts/s5-app-architecture-repository.md</code> (Hilt/DI để
-			ngoài, seam note ở mục 12; ngôn ngữ data source ở mục 20) · Chương 8 (Moshi đã có sẵn — mục 17).
+			— mục 18) · C3 (ghi nhận tên CompositionLocal — trả nợ ở <a href="#compositionlocal">mục 13</a>) · C4 (<code>LaunchedEffect</code> chạm lần
+			đầu; chiều sâu đầy đủ ở R4 — <a href="#trace-tab">mục 18</a>) · <code>docs/drafts/s5-app-architecture-repository.md</code> (Hilt/DI để
+			ngoài, seam note ở <a href="#application">mục 12</a>; ngôn ngữ data source ở <a href="#bang-trach-nhiem">mục 20</a>) · Chương 8 (Moshi đã có sẵn — <a href="#bug-dau-phay">mục 17</a>).
 		</li>
 		<li>
-			<strong>Ví dụ tối giản do khoá dựng:</strong> bảng bốn vấn đề của "mỗi màn hình tự dựng" (mục 11), sơ đồ cây
-			provider (mục 13 — dựng từ số dòng thật của <code>MainActivity</code>), bảng "ba thứ được giữ lại" (mục 18),
-			bảng trách nhiệm (mục 20), khuôn kiểm tra nhanh.
+			<strong>Ví dụ tối giản do khoá dựng:</strong> bảng bốn vấn đề của "mỗi màn hình tự dựng" (<a href="#noi-day">mục 11</a>), sơ đồ cây
+			provider (<a href="#compositionlocal">mục 13</a> — dựng từ số dòng thật của <code>MainActivity</code>), bảng "ba thứ được giữ lại" (<a href="#trace-tab">mục 18</a>),
+			bảng trách nhiệm (<a href="#bang-trach-nhiem">mục 20</a>), khuôn kiểm tra nhanh.
 		</li>
 	</ul>
 	<p class="hint">

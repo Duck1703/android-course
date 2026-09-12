@@ -234,7 +234,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 				<td>2</td>
 				<td><code>@Entity(tableName = "recipes")</code></td>
 				<td>Khai đây là một entity — tức một bảng. <code>tableName</code> đặt tên bảng là <code>recipes</code>;
-					không đặt thì mặc định lấy tên class. <strong>Nhớ tên này</strong>: các câu <code>@Query</code> ở mục 9
+					không đặt thì mặc định lấy tên class. <strong>Nhớ tên này</strong>: các câu <code>@Query</code> ở <a href="#daos">mục 9</a>
 					phải viết đúng nó, và Room sẽ bắt lỗi ngay lúc build nếu không khớp.</td>
 			</tr>
 			<tr>
@@ -243,7 +243,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 				<td>Constructor nhận đối số cho <em>tất cả</em> property, và hầu hết property có <strong>giá trị mặc
 					định</strong> (riêng <code>id</code> và <code>title</code> thì không). Lợi ích rất cụ thể: nhờ có mặc
 					định, bạn tạo được một recipe chỉ với <em>một phần</em>
-					danh sách property. Chương 10.3, mục 11 sẽ cho thấy chỗ này được khai thác thật.</td>
+					danh sách property. Chương 10.3, <a href="/chapters/ch10-3-repository-viewmodel/#repository">mục 11</a> sẽ cho thấy chỗ này được khai thác thật.</td>
 			</tr>
 			<tr>
 				<td>4</td>
@@ -280,8 +280,8 @@ suspend fun getAllRecipes(): List<RecipeDb>
 	<p>
 		Điểm khác đó là property <code>recipeId: Int?</code>. Đây là cách bảng <code>ingredients</code> ghi nhớ <em>nguyên
 		liệu này thuộc công thức nào</em> — và nó là toàn bộ cơ chế cho phép câu truy vấn
-		<code>findIngredientsByRecipe(id)</code> ở mục 9 hoạt động, cũng là cơ chế đứng sau danh sách đi chợ ở Chương 10.4,
-		mục 18.3.
+		<code>findIngredientsByRecipe(id)</code> ở <a href="#daos">mục 9</a> hoạt động, cũng là cơ chế đứng sau danh sách đi chợ ở Chương 10.4,
+		<a href="/chapters/ch10-4-giao-dien-va-cam-bay/#updating-refs">mục 18.3</a>.
 	</p>
 	<div class="callout">
 		<strong>Quan hệ 1-nhiều, và vì sao ở đây nó "làm bằng tay"</strong>
@@ -295,7 +295,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 			<code>@Entity</code> buộc một cột phải trỏ tới một dòng tồn tại ở bảng khác. Nghĩa là database <em>không tự
 			kiểm tra</em> rằng <code>recipeId</code> có trỏ tới một công thức thật hay không, và <em>không tự xoá</em> nguyên
 			liệu khi công thức bị xoá. Chính vì vậy Repository phải có hàm <code>deleteRecipeIngredients(recipeId)</code>
-			và ViewModel phải gọi nó <em>bằng tay</em> mỗi lần xoá bookmark (xem Chương 10.3, mục 11). Nếu có khai
+			và ViewModel phải gọi nó <em>bằng tay</em> mỗi lần xoá bookmark (xem Chương 10.3, <a href="/chapters/ch10-3-repository-viewmodel/#repository">mục 11</a>). Nếu có khai
 			<code>foreignKeys</code> kèm <code>onDelete = CASCADE</code>, database sẽ tự dọn.
 		</p>
 		<p>
@@ -413,7 +413,7 @@ suspend fun getAllRecipes(): List<RecipeDb>
 suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		<p>
 			Đọc câu SQL: <code>SELECT</code> — đọc; <code>*</code> — lấy tất cả các cột; <code>FROM recipes</code> — từ bảng
-			<code>recipes</code> (tên đã khai bằng <code>tableName</code> ở mục 8); <code>WHERE id = :id</code> — chỉ những
+			<code>recipes</code> (tên đã khai bằng <code>tableName</code> ở <a href="#entities">mục 8</a>); <code>WHERE id = :id</code> — chỉ những
 			dòng mà cột <code>id</code> khớp điều kiện. Còn <code>:id</code> là gì? <strong>Nó không phải biến Kotlin bị nội
 			suy vào chuỗi.</strong> Nó là một <strong>chỗ giữ tham số</strong> (parameter placeholder) mà Room nối với đối số
 			<em>cùng tên</em> của hàm lúc chạy. Đổi tên đối số thành <code>recipeId</code> mà không sửa câu query thì build
@@ -450,7 +450,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 
 	<h3>9.2. <code>onConflict</code> — một quyết định chính sách, không phải trang trí</h3>
 	<p>
-		<code>@Insert(onConflict = OnConflictStrategy.IGNORE)</code> trả lời câu hỏi từ kiểm tra nhanh ở mục 8: khi lệnh
+		<code>@Insert(onConflict = OnConflictStrategy.IGNORE)</code> trả lời câu hỏi từ kiểm tra nhanh ở <a href="#entities">mục 8</a>: khi lệnh
 		insert va vào ràng buộc khoá chính (đã có dòng cùng <code>id</code>), app <em>phải</em> làm gì? Đó là một
 		<strong>quyết định chính sách</strong> — không có đáp án đúng tuyệt đối, chỉ có lựa chọn phù hợp với hành vi app mong
 		muốn:
@@ -507,7 +507,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 	</ul>
 	<p>
 		Đó là quy tắc chung để đọc bất kỳ DAO nào: kiểu trả về cho bạn biết ngay truy vấn khớp một dòng hay nhiều dòng, và một
-		tí nữa (mục 10, phần c) bạn sẽ thấy Room còn kiểm tra chính điều này lúc build.
+		tí nữa (<a href="#database-class">mục 10</a>, phần c) bạn sẽ thấy Room còn kiểm tra chính điều này lúc build.
 	</p>
 
 	<h2 id="database-class">10. Database — mảnh cuối, nối mọi thứ thành một cửa vào</h2>
@@ -537,7 +537,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 				<td>Room <strong>yêu cầu</strong> class database phải <code>abstract</code> và kế thừa
 					<code>RoomDatabase</code>. Hai hàm abstract <code>recipeDao()</code> và <code>ingredientDao()</code> trả về
 					interface DAO — khai <code>abstract</code> vì <strong>Room tự cài đặt</strong> chúng, dựa trên các interface
-					đã viết ở mục 9. Muốn bao nhiêu DAO cũng được; mỗi DAO phụ trách một nhóm thao tác.</td>
+					đã viết ở <a href="#daos">mục 9</a>. Muốn bao nhiêu DAO cũng được; mỗi DAO phụ trách một nhóm thao tác.</td>
 			</tr>
 			<tr>
 				<td>—</td>
@@ -619,7 +619,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 	</ul>
 	<p>
 		Một lưu ý về <em>chỗ dùng</em>: <code>getInstance()</code> được <strong>khai báo</strong> ở đây, nhưng nơi database thật
-		sự được tạo ra và đưa vào app lại nằm ở <strong>Chương 10.3, mục 14</strong>. Khi tới đó bạn sẽ thấy một chuyện đáng chú
+		sự được tạo ra và đưa vào app lại nằm ở <strong>Chương 10.3, <a href="/chapters/ch10-3-repository-viewmodel/#instantiating">mục 14</a></strong>. Khi tới đó bạn sẽ thấy một chuyện đáng chú
 		ý về khối singleton này — chi tiết ở mục "Cạm bẫy &amp; tài liệu lỗi thời" cuối chương.
 	</p>
 	<h3>c) Tính năng đáng giá nhất của Room: kiểm SQL ngay lúc biên dịch</h3>
@@ -680,7 +680,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 			là "chạy ở thread nền".
 		</p>
 		<p>
-			Phần thưởng của cả cơ chế này là điều bạn vừa thử ở mục 10, phần c: <strong>nhiều lỗi SQL/schema bị bắt lúc biên
+			Phần thưởng của cả cơ chế này là điều bạn vừa thử ở <a href="#database-class">mục 10</a>, phần c: <strong>nhiều lỗi SQL/schema bị bắt lúc biên
 			dịch</strong>. Bạn khai bằng Kotlin có kiểu, Room đọc phần khai đó lúc build, nên một tên bảng gõ sai hay một kiểu
 			trả về lệch sẽ làm build đỏ trên máy bạn — thay vì làm app crash trên máy người dùng.
 		</p>
@@ -700,8 +700,8 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 	<div class="callout diff">
 		<strong>(a) Điểm lệch #1 — cái tên database được khai trong <code>getInstance()</code> không bao giờ được dùng thật</strong>
 		<p>
-			Trong <code>Room.databaseBuilder(...)</code> ở mục 10, tên file database được khai là
-			<code>"recipe_database"</code>. Nhưng ở Chương 10.3, mục 14, nơi database thật sự được tạo ra lại dùng
+			Trong <code>Room.databaseBuilder(...)</code> ở <a href="#database-class">mục 10</a>, tên file database được khai là
+			<code>"recipe_database"</code>. Nhưng ở Chương 10.3, <a href="/chapters/ch10-3-repository-viewmodel/#instantiating">mục 14</a>, nơi database thật sự được tạo ra lại dùng
 			<code>Room.databaseBuilder(this, RecipeDatabase::class.java, <strong>"Recipes"</strong>).build()</code>.
 		</p>
 		<p>
@@ -747,7 +747,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 	<div class="callout note">
 		<strong>(c) <code>fallbackToDestructiveMigration()</code> — đọc kỹ trước khi mang sang app thật</strong>
 		<p>
-			Dòng này nằm trong <code>Room.databaseBuilder(...)</code> ở mục 10 và thường không được bình luận gì. Khi bạn
+			Dòng này nằm trong <code>Room.databaseBuilder(...)</code> ở <a href="#database-class">mục 10</a> và thường không được bình luận gì. Khi bạn
 			<strong>đổi cấu trúc bảng</strong> ở bản cập nhật app — thêm cột, đổi tên cột, xoá cột — và tăng <code>version</code>
 			trong <code>@Database</code>, Room cần biết cách chuyển dữ liệu cũ sang cấu trúc mới; việc đó gọi là
 			<strong>migration</strong>. Dòng này nói với Room: <strong>nếu không tìm được đường migrate, hãy xoá sạch database và
@@ -763,8 +763,8 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 	<div class="callout diff">
 		<strong>(d) Điểm lệch #2 — cả khối <code>getInstance()</code> là code không bao giờ chạy</strong>
 		<p>
-			Đây là điểm lệch đáng chú ý nhất về mặt code. Trong bảy điểm giải thích ở mục 10 phần a, có tới <strong>5 điểm (#3–#7)
-			dành cho khối singleton này</strong> — tức phần lớn công sức giải thích đổ vào đó. Nhưng ở Chương 10.3, mục 14, hướng dẫn
+			Đây là điểm lệch đáng chú ý nhất về mặt code. Trong bảy điểm giải thích ở <a href="#database-class">mục 10</a> phần a, có tới <strong>5 điểm (#3–#7)
+			dành cho khối singleton này</strong> — tức phần lớn công sức giải thích đổ vào đó. Nhưng ở Chương 10.3, <a href="/chapters/ch10-3-repository-viewmodel/#instantiating">mục 14</a>, hướng dẫn
 			lại bảo <code>RecipeApp</code> tự gọi <code>Room.databaseBuilder(...)</code> trực tiếp, <em>không</em> qua
 			<code>getInstance()</code>.
 		</p>
@@ -813,7 +813,7 @@ suspend fun findRecipeById(<strong>id</strong>: Int): RecipeDb</pre>
 		</p>
 		<p>
 			<strong>Phần bổ sung ngoài giáo trình:</strong> khung "quyết định chính sách" cho
-			<code>onConflict</code> (theo tài liệu <code>androidx.room.OnConflictStrategy</code>) · ví dụ kiểm tra nhanh mục 8 ·
+			<code>onConflict</code> (theo tài liệu <code>androidx.room.OnConflictStrategy</code>) · ví dụ kiểm tra nhanh <a href="#entities">mục 8</a> ·
 			giải thích "vì sao" cho khối singleton · giới hạn phạm vi "Room bắt được gì lúc biên dịch".
 		</p>
 	</div>

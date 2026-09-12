@@ -172,7 +172,7 @@ fun Counter() {
 	<p>
 		Vì Compose không có cách nào biết chuyện gì vừa xảy ra. <code>count</code> chỉ là một ô nhớ Kotlin bình thường; không
 		ai báo cho Compose rằng giá trị vừa đổi, nên Compose không có lý do gì để hỏi lại câu <em>"giao diện nên trông thế
-		nào?"</em>. Chưa kể một vấn đề thứ hai sẽ nói ở mục 3: mỗi lần Compose chạy lại thân hàm, dòng
+		nào?"</em>. Chưa kể một vấn đề thứ hai sẽ nói ở <a href="#remember">mục 3</a>: mỗi lần Compose chạy lại thân hàm, dòng
 		<code>var count = 0</code> lại chạy lại và đặt nó về 0.
 	</p>
 	<p>Chỗ thiếu là một loại giá trị mà Compose <em>quan sát được</em>. Đó là việc của <code>mutableStateOf</code>:</p>
@@ -197,13 +197,13 @@ fun Counter() {
 	<p class="notice">
 		<strong>Hai cách nói sai rất phổ biến, tránh ngay từ đầu.</strong> Thứ nhất: <em>"đổi <code>mutableStateOf</code> là vẽ
 		lại cả màn hình"</em> — không đúng; Compose xếp lịch chạy lại <em>những phần đã đọc state đó</em>, và nó còn được phép
-		bỏ qua phần nào không cần (mục 3). Thứ hai: <em>"Compose tự theo dõi mọi biến trong composable"</em> — cũng không đúng,
+		bỏ qua phần nào không cần (<a href="#remember">mục 3</a>). Thứ hai: <em>"Compose tự theo dõi mọi biến trong composable"</em> — cũng không đúng,
 		và nếu tin điều đó thì bạn sẽ không hiểu vì sao đoạn code đầu mục này không chạy.
 	</p>
 
 	<h2 id="remember">3. <code>remember</code>: giữ giá trị qua các lần vẽ lại</h2>
 	<p>
-		Đoạn code ở mục 2 có <code>remember</code> mà chưa được giải thích. Đây là lúc tách nó ra, vì nó trả lời một câu hỏi
+		Đoạn code ở <a href="#mutable-state-of">mục 2</a> có <code>remember</code> mà chưa được giải thích. Đây là lúc tách nó ra, vì nó trả lời một câu hỏi
 		khác hẳn <code>mutableStateOf</code>.
 	</p>
 	<p>
@@ -492,16 +492,16 @@ fun Counter() {
 	<ul>
 		<li>
 			<strong>Tưởng một <code>var</code> thường là state Compose.</strong> Compose chỉ theo dõi state nó thấy composable đọc.
-			Một biến Kotlin thường đổi giá trị thì không có thông báo nào, và còn bị tạo lại mỗi lần thân hàm chạy lại (mục 2–3).
+			Một biến Kotlin thường đổi giá trị thì không có thông báo nào, và còn bị tạo lại mỗi lần thân hàm chạy lại (<a href="#mutable-state-of">mục 2</a>–3).
 		</li>
 		<li>
 			<strong>Tưởng <code>remember</code> là "lưu lại".</strong> Nó giữ giá trị qua các lần vẽ lại, chừng nào vị trí đó còn
 			trong giao diện — không ra đĩa, không qua Activity bị tạo lại, không qua tắt app. <code>rememberSaveable</code> thêm
-			khả năng <em>phục hồi</em> khi Activity bị tạo lại, vẫn <strong>không</strong> phải nơi lưu lâu dài (mục 3).
+			khả năng <em>phục hồi</em> khi Activity bị tạo lại, vẫn <strong>không</strong> phải nơi lưu lâu dài (<a href="#remember">mục 3</a>).
 		</li>
 		<li>
 			<strong>Tưởng đổi một state là vẽ lại cả app.</strong> Compose chạy lại phần đã đọc state đó, và còn được phép bỏ qua
-			phần không cần. Recomposition cũng <em>không</em> phải Activity bị tạo lại, và không phải "vẽ pixel ngay" (mục 4).
+			phần không cần. Recomposition cũng <em>không</em> phải Activity bị tạo lại, và không phải "vẽ pixel ngay" (<a href="#recomposition">mục 4</a>).
 		</li>
 		<li>
 			<strong>Đặt việc phụ thẳng vào thân composable.</strong> Ghi log, gọi mạng, lưu file trong thân hàm sẽ bị lặp theo số
@@ -519,6 +519,6 @@ fun Counter() {
 			<code>mutableStateOf</code> · stateful ↔ stateless).</li>
 		<li><strong>Code thật:</strong> <code>{FINAL}/conversation/UserInput.kt</code> (dòng 132–155 — bốn state cục bộ; dòng
 			427–451 — ô nhập và <code>onValueChange</code>).</li>
-		<li><strong>Ví dụ tối giản do khoá dựng:</strong> bộ đếm ở mục 2 (không trích project mẫu).</li>
+		<li><strong>Ví dụ tối giản do khoá dựng:</strong> bộ đếm ở <a href="#mutable-state-of">mục 2</a> (không trích project mẫu).</li>
 	</ul>
 </section>

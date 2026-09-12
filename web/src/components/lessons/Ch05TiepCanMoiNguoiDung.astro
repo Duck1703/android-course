@@ -36,9 +36,9 @@ import { Code } from "astro:components";
 	<p>Trong Compose, bản chú thích đó có tên: <strong>semantics</strong> (ngữ nghĩa). Khi bạn viết một composable, Compose dựng song song hai thứ: phần vẽ ra màn hình, và một mô tả kèm theo về <strong>nghĩa</strong>, <strong>hành động</strong> và <strong>trạng thái</strong> của từng phần. Các dịch vụ hỗ trợ đọc mô tả đó.</p>
 	<p>Tin tốt: với các component Material bạn đã dùng từ chương 5.1 tới 5.3, phần mô tả <strong>phần lớn đã có sẵn</strong>. <code>Text</code> tự mang nội dung chữ của nó. <code>Button</code> tự nói "đây là một nút, bấm được". <code>Checkbox</code> tự nói nó đang được tích hay chưa. Việc của bạn trong bài này chỉ là ba nhóm nhỏ:</p>
 	<ol>
-		<li><strong>Điền phần Compose không thể tự đoán</strong> — nghĩa của một hình ảnh, icon (mục 20–21).</li>
-		<li><strong>Đừng phá phần đã có sẵn</strong> — vùng chạm quá nhỏ, hộp cao cứng, màu ghi cứng (mục 22–24).</li>
-		<li><strong>Gom hoặc mô tả lại đúng chỗ cần</strong> — khi cấu trúc hình ảnh không diễn đạt đúng ý nghĩa (mục 25–26).</li>
+		<li><strong>Điền phần Compose không thể tự đoán</strong> — nghĩa của một hình ảnh, icon (<a href="#content-description">mục 20</a>–21).</li>
+		<li><strong>Đừng phá phần đã có sẵn</strong> — vùng chạm quá nhỏ, hộp cao cứng, màu ghi cứng (<a href="#vung-cham">mục 22</a>–24).</li>
+		<li><strong>Gom hoặc mô tả lại đúng chỗ cần</strong> — khi cấu trúc hình ảnh không diễn đạt đúng ý nghĩa (<a href="#semantics">mục 25</a>–26).</li>
 	</ol>
 	<p>Ba nhóm việc đó là <strong>nguyên lý, không phải cú pháp</strong>: "mọi thứ bấm được phải có tên gọi có nghĩa", "vùng chạm phải đủ lớn", "chữ phải sống được khi to lên" sẽ còn đúng lâu hơn Compose — còn tên API cụ thể (<code>contentDescription</code>, <code>Modifier.semantics</code>) thì có thể đổi. Học nguyên lý trước, API sau.</p>
 
@@ -99,7 +99,7 @@ Button(onClick = onSend) &#123;
 			<ol>
 				<li><strong>Chữ</strong> — icon-only, không có gì khác nói nó làm gì: <code>"Tìm kiếm"</code>.</li>
 				<li><strong><code>null</code></strong> — không mang thông tin, và nếu đọc lên thì chỉ thêm tiếng ồn trước phần chữ thật.</li>
-				<li><strong>Chữ.</strong> Đây là bẫy: ảnh <em>nhìn</em> có vẻ trang trí, nhưng nó <strong>bấm được</strong> — mọi thứ bấm được đều phải có tên gọi, nếu không người dùng nghe được đúng "bấm được" mà không biết bấm ra cái gì. Mô tả tốt: <code>"Ảnh đại diện của Ada, mở trang cá nhân"</code>. (Ở mục 28 bạn sẽ gặp đúng tình huống này trong code thật của project.)</li>
+				<li><strong>Chữ.</strong> Đây là bẫy: ảnh <em>nhìn</em> có vẻ trang trí, nhưng nó <strong>bấm được</strong> — mọi thứ bấm được đều phải có tên gọi, nếu không người dùng nghe được đúng "bấm được" mà không biết bấm ra cái gì. Mô tả tốt: <code>"Ảnh đại diện của Ada, mở trang cá nhân"</code>. (Ở <a href="#doc-code-that">mục 28</a> bạn sẽ gặp đúng tình huống này trong code thật của project.)</li>
 			</ol>
 		</details>
 	</div>
@@ -122,11 +122,11 @@ Button(onClick = onSend) &#123;
 	<ul>
 		<li><strong>Đừng nhồi loại thành phần vào mô tả.</strong> Viết <code>"Nút gửi"</code> là dư: dịch vụ hỗ trợ <strong>tự</strong> thông báo phần "nút" cho một <code>Button</code> — người dùng sẽ nghe "nút gửi, nút". Chỉ viết <code>"Gửi"</code>.</li>
 		<li><strong>Đừng nhồi màu sắc hay hình dáng vào mô tả.</strong> <code>"Nút loa màu xám"</code> nói hai thứ mà đúng người cần mô tả nhất đều không dùng được. Với một icon loa mà bấm vào thì tắt tiếng cuộc gọi, mô tả đúng chỉ gồm hành động: <code>"Tắt tiếng"</code>.</li>
-		<li><strong>Mô tả là chữ người dùng nghe được ⇒ nó là chuỗi hiển thị.</strong> Nên nó thuộc <code>strings.xml</code> như mọi chữ khác trong app (Chương 3), không phải chuỗi gõ thẳng trong code: <code>contentDescription = stringResource(id = R.string.info)</code>. Đây là điều project mẫu làm đúng ở mọi chỗ có mô tả (mục 28) — và là điều kiện để app dịch được sang ngôn ngữ khác.</li>
+		<li><strong>Mô tả là chữ người dùng nghe được ⇒ nó là chuỗi hiển thị.</strong> Nên nó thuộc <code>strings.xml</code> như mọi chữ khác trong app (Chương 3), không phải chuỗi gõ thẳng trong code: <code>contentDescription = stringResource(id = R.string.info)</code>. Đây là điều project mẫu làm đúng ở mọi chỗ có mô tả (<a href="#doc-code-that">mục 28</a>) — và là điều kiện để app dịch được sang ngôn ngữ khác.</li>
 	</ul>
 
 	<h2 id="vung-cham">22. Kích thước nhìn thấy <strong>khác</strong> vùng chạm</h2>
-	<p>Ở chương 5.2, mục 6 bạn đã học: thứ tự nối <code>Modifier</code> quyết định kết quả, và <code>clickable</code> đặt sau <code>padding</code> thì vùng bấm co lại. Bây giờ là lý do <em>vì sao chuyện đó đáng quan tâm</em>.</p>
+	<p>Ở chương 5.2, <a href="/chapters/ch05-modifier-va-danh-sach/#thu-tu-modifier">mục 6</a> bạn đã học: thứ tự nối <code>Modifier</code> quyết định kết quả, và <code>clickable</code> đặt sau <code>padding</code> thì vùng bấm co lại. Bây giờ là lý do <em>vì sao chuyện đó đáng quan tâm</em>.</p>
 	<p>Một icon chuẩn Material là <strong>24dp</strong> — vừa đủ để nhìn rõ. Nhưng đầu ngón tay không chạm chính xác được vào một ô 24dp, nhất là khi đang đi bộ, tay ướt, hoặc khi người dùng bị hạn chế vận động. Hướng dẫn accessibility của Android nêu con số cụ thể: <strong>mỗi thành phần tương tác nên có vùng chạm tối thiểu 48dp × 48dp — lớn hơn thì càng tốt.</strong></p>
 
 	<div class="callout mental">
@@ -171,7 +171,7 @@ IconButton(onClick = onDismiss) &#123;
 		</p>
 		<details>
 			<summary>Xem đáp án</summary>
-			<p>Vùng chạm chỉ khoảng <strong>24dp</strong>: <code>padding</code> đã chèn 12dp <em>trước khi</em> <code>clickable</code> được đăng ký, nên phần đệm nằm ngoài vùng bấm (chương 5.2, mục 6). Đổi thành <code>Modifier.clickable &#123; … &#125;.padding(12.dp).size(24.dp)</code> thì vùng bấm bao trọn cả phần đệm ⇒ 24 + 12 × 2 = <strong>48dp</strong>, mà hình icon không to lên. Đây là cùng một quy tắc thứ tự bạn đã học, lần này với hậu quả accessibility.</p>
+			<p>Vùng chạm chỉ khoảng <strong>24dp</strong>: <code>padding</code> đã chèn 12dp <em>trước khi</em> <code>clickable</code> được đăng ký, nên phần đệm nằm ngoài vùng bấm (chương 5.2, <a href="/chapters/ch05-modifier-va-danh-sach/#thu-tu-modifier">mục 6</a>). Đổi thành <code>Modifier.clickable &#123; … &#125;.padding(12.dp).size(24.dp)</code> thì vùng bấm bao trọn cả phần đệm ⇒ 24 + 12 × 2 = <strong>48dp</strong>, mà hình icon không to lên. Đây là cùng một quy tắc thứ tự bạn đã học, lần này với hậu quả accessibility.</p>
 		</details>
 	</div>
 
@@ -210,12 +210,12 @@ Row(modifier = Modifier.padding(vertical = 8.dp)) &#123;
     )
 &#125;`} lang="kotlin" theme="github-dark" />
 	<p>Điểm khác biệt cốt lõi: bản TỐT <strong>không nói trước chiều cao</strong>. Nó nói "đệm 8dp trên dưới" và để nội dung tự quyết định phần còn lại. Chữ to lên thì hàng cao lên — đúng như người dùng muốn.</p>
-	<p>Chỗ này nối thẳng vào chương 5.4: bảng "ba việc <code>@Preview</code> không chứng minh được" đã nói bản xem trước dùng một cấu hình cố định, còn cỡ chữ hệ thống của người dùng thì có thể khác — giờ phần đó có tên và có cách kiểm tra (mục 27). Phạm vi ở đây chỉ là <strong>cỡ chữ</strong>; bố cục cho tablet/màn hình gập là chủ đề khác nằm ở track Mở rộng.</p>
+	<p>Chỗ này nối thẳng vào chương 5.4: bảng "ba việc <code>@Preview</code> không chứng minh được" đã nói bản xem trước dùng một cấu hình cố định, còn cỡ chữ hệ thống của người dùng thì có thể khác — giờ phần đó có tên và có cách kiểm tra (<a href="#tu-kiem-bang-tay">mục 27</a>). Phạm vi ở đây chỉ là <strong>cỡ chữ</strong>; bố cục cho tablet/màn hình gập là chủ đề khác nằm ở track Mở rộng.</p>
 
 	<h2 id="mau-tuong-phan">24. Màu: "hiện ra được" chưa phải "đọc được"</h2>
 	<p>Một dòng chữ có thể được vẽ hoàn toàn đúng mà vẫn không đọc nổi — chữ xám nhạt trên nền trắng là ví dụ kinh điển. Trình biên dịch không báo gì, bản xem trước trông "ổn" trên màn hình sáng của bạn, và lỗi chỉ xuất hiện với người dùng thật ngoài trời hoặc mắt kém hơn bạn.</p>
 	<h3>Vai trò màu làm sẵn phần lớn việc — nhưng không phải tất cả</h3>
-	<p>Chương 5.3, mục 11 đã dạy <code>MaterialTheme.colorScheme</code> theo <strong>vai trò</strong>, và chỗ này là lý do thứ hai để dùng nó. Các tên màu của Material 3 đi thành <strong>cặp nền / chữ-trên-nền</strong>:</p>
+	<p>Chương 5.3, <a href="/chapters/ch05-material-3-va-theming/#material-theme">mục 11</a> đã dạy <code>MaterialTheme.colorScheme</code> theo <strong>vai trò</strong>, và chỗ này là lý do thứ hai để dùng nó. Các tên màu của Material 3 đi thành <strong>cặp nền / chữ-trên-nền</strong>:</p>
 	<Code code={`Surface(color = MaterialTheme.colorScheme.surface) &#123;
     Text(
         text = title,
@@ -224,7 +224,7 @@ Row(modifier = Modifier.padding(vertical = 8.dp)) &#123;
 &#125;`} lang="kotlin" theme="github-dark" />
 	<p><code>surface</code> là màu nền; <code>onSurface</code> là màu dành cho nội dung <strong>nằm trên</strong> nền đó. Cặp <code>primary</code> / <code>onPrimary</code>, <code>errorContainer</code> / <code>onErrorContainer</code> cũng vậy. Bộ màu của Material 3 được thiết kế sao cho mỗi cặp <code>X</code> / <code>onX</code> giữ được độ tương phản ở cả chế độ sáng và tối. Dùng đúng cặp ⇒ bạn được thừa hưởng phần việc đó mà không phải tính gì.</p>
 	<p>⚠ <strong>Đừng hiểu quá lời hứa này.</strong> MaterialTheme <strong>không</strong> tự làm mọi giao diện trở nên tương phản đủ. Nó chỉ bảo đảm cho các cặp vai trò <em>khi bạn dùng đúng cặp</em>. Ghép <code>onSurface</code> lên nền <code>primary</code>, đặt chữ lên một tấm ảnh, hay giảm <code>alpha</code> của chữ cho "đẹp" — cả ba đều đưa bạn ra ngoài vùng bảo đảm và phải tự kiểm tra.</p>
-	<p>Thứ đáng mang ra khỏi bài là <strong>kỹ năng quyết định</strong>, không phải con số: chữ và nền phải còn đọc được, nên hãy ưu tiên cặp vai trò của theme và tự soi lại mọi chỗ bạn tự chọn màu. <em>(Mức tham khảo, không cần học thuộc: hướng dẫn accessibility đặt ngưỡng tương phản tối thiểu 4.5:1 cho chữ thường và 3:1 cho chữ lớn, và có công cụ quét màn hình đo giúp bạn — mục 27.)</em></p>
+	<p>Thứ đáng mang ra khỏi bài là <strong>kỹ năng quyết định</strong>, không phải con số: chữ và nền phải còn đọc được, nên hãy ưu tiên cặp vai trò của theme và tự soi lại mọi chỗ bạn tự chọn màu. <em>(Mức tham khảo, không cần học thuộc: hướng dẫn accessibility đặt ngưỡng tương phản tối thiểu 4.5:1 cho chữ thường và 3:1 cho chữ lớn, và có công cụ quét màn hình đo giúp bạn — <a href="#tu-kiem-bang-tay">mục 27</a>.)</em></p>
 	<p>Ba chỗ hay vỡ:</p>
 	<ul>
 		<li><strong>Chữ xám nhạt trên nền trắng</strong> — thường sinh ra từ "chữ phụ thì cho nhạt đi cho dịu mắt". Dùng vai trò <code>onSurfaceVariant</code> thay vì tự chọn một mã xám.</li>
@@ -276,13 +276,13 @@ Row(modifier = Modifier.semantics(mergeDescendants = true) &#123;&#125;) &#123;
 	<ul>
 		<li><code>mergeDescendants = true</code> nói: <em>coi cả nhóm này là một thành phần, và gom mô tả của các con lại</em>. TalkBack dừng một lần ở cả hàng và đọc <code>"Ada Lovelace, 5 phút trước"</code> thay vì hai lần.</li>
 		<li>Khối <code>&#123;&#125;</code> <strong>để trống</strong> là bình thường: bạn không thêm thuộc tính nào, chỉ bật việc gộp.</li>
-		<li>Bạn <strong>không phải</strong> viết nó cho <code>Button</code> hay bất cứ thứ gì <code>clickable</code>: những cái đó đã tự gộp (mục 20). Chỉ nhóm <em>không</em> bấm được mới cần bật tay.</li>
+		<li>Bạn <strong>không phải</strong> viết nó cho <code>Button</code> hay bất cứ thứ gì <code>clickable</code>: những cái đó đã tự gộp (<a href="#content-description">mục 20</a>). Chỉ nhóm <em>không</em> bấm được mới cần bật tay.</li>
 	</ul>
 	<p>Cách quyết định: <strong>gộp khi các mảnh chỉ có nghĩa khi đi cùng nhau, và không mảnh nào cần bấm riêng.</strong> Đừng gộp một khối lớn gồm nhiều hành động khác nhau — lúc đó bạn tạo ra một câu thông báo rất dài mà người dùng không tách được thao tác nào ra.</p>
 	<h3>Trạng thái cũng là một phần của nghĩa (mức nhận biết)</h3>
 	<p>Dịch vụ hỗ trợ cần biết cả <strong>trạng thái</strong>, không chỉ tên gọi: đã tích / chưa tích, đang chọn / không chọn, bật / tắt được. Một <code>Checkbox</code> mà chỉ đọc lên <code>"Nhận thông báo"</code> là chưa đủ — người dùng còn cần biết nó <strong>đang</strong> được tích hay không.</p>
 	<p>Tin tốt: các component Material đã làm việc này. <code>Checkbox</code>, <code>Switch</code>, <code>RadioButton</code> tự thông báo trạng thái của chúng; một control bị <code>enabled = false</code> cũng tự được thông báo là đang tắt. Nên bài học ở đây gọn đúng một câu: <strong>nếu component Material đã thể hiện đúng trạng thái thì dùng nó, đừng dựng lại bằng <code>Box</code> + <code>clickable</code>.</strong></p>
-	<p>Bài này dừng ở mức đó. Bên trong Compose còn cả một cây semantics với các thuộc tính tự định nghĩa và API kiểm thử riêng, nhưng bạn <em>không</em> cần chúng để làm app của khoá — gặp một cái tên lạ trong code thật (mục 28) thì nhận ra rồi đi tiếp là đủ.</p>
+	<p>Bài này dừng ở mức đó. Bên trong Compose còn cả một cây semantics với các thuộc tính tự định nghĩa và API kiểm thử riêng, nhưng bạn <em>không</em> cần chúng để làm app của khoá — gặp một cái tên lạ trong code thật (<a href="#doc-code-that">mục 28</a>) thì nhận ra rồi đi tiếp là đủ.</p>
 
 	<h2 id="dung-lam-dung-semantics">26. Đừng lạm dụng semantics</h2>
 	<p>Kết luận sai phổ biến nhất sau khi học accessibility lần đầu là: <em>"vậy mình phải thêm mô tả cho mọi thứ."</em> Không.</p>
@@ -347,7 +347,7 @@ fun KodecoChatIcon(contentDescription: String?, modifier: Modifier = Modifier) &
 &#125;`} lang="kotlin" theme="github-dark" />
 	<p>Bốn điều làm đúng, cả bốn đều là điều bài này vừa dạy:</p>
 	<ol>
-		<li><strong>Vùng chạm 64dp cho một logo vẽ ở khoảng 32dp.</strong> <code>size(64.dp)</code> đứng trước <code>clickable</code> nên vùng bấm là cả 64dp — vượt mức 48dp một cách thoải mái (chương 5.4, mục 15 đã cho bạn <em>nhìn thấy</em> con số này khi đổi <code>padding</code> từ 16dp xuống 3dp).</li>
+		<li><strong>Vùng chạm 64dp cho một logo vẽ ở khoảng 32dp.</strong> <code>size(64.dp)</code> đứng trước <code>clickable</code> nên vùng bấm là cả 64dp — vượt mức 48dp một cách thoải mái (chương 5.4, <a href="/chapters/ch05-preview-va-vong-doi/#preview">mục 15</a> đã cho bạn <em>nhìn thấy</em> con số này khi đổi <code>padding</code> từ 16dp xuống 3dp).</li>
 		<li><strong>Mô tả là hành động, không phải hình:</strong> chuỗi <code>navigation_drawer_open</code> = <em>"Open navigation drawer"</em> — không phải "logo Kodeco".</li>
 		<li><strong>Mô tả lấy từ <code>strings.xml</code>,</strong> không gõ thẳng vào code ⇒ dịch được.</li>
 		<li><strong>Hai <code>Icon</code> bên trong đều <code>contentDescription = null</code>.</strong> Chúng là hai <em>lớp vẽ</em> của cùng một hình: nếu cả hai có mô tả, người dùng sẽ nghe hai lần. Mô tả duy nhất được đặt ở <strong>hộp bọc ngoài</strong>. Đây đúng là mẫu "phần bọc mang nghĩa, phần bên trong là trang trí".</li>
@@ -361,7 +361,7 @@ Row(modifier = Modifier.semantics(mergeDescendants = true) &#123;&#125;) &#123;
     Spacer(modifier = Modifier.width(8.dp))
     Text(text = msg.message.createdOn.toString().isoToTimeAgo(), …)
 &#125;`} lang="kotlin" theme="github-dark" />
-	<p>Đây chính là ví dụ <code>mergeDescendants</code> của mục 25, có thật trong project — kể cả dòng comment giải thích ý định ngay trên đầu. "Ada Lovelace" và "5 phút trước" là hai <code>Text</code> riêng vì cần hai kiểu chữ khác nhau, nhưng với dịch vụ hỗ trợ thì chúng là <strong>một</strong> thông tin: <em>ai gửi, lúc nào</em>.</p>
+	<p>Đây chính là ví dụ <code>mergeDescendants</code> của <a href="#semantics">mục 25</a>, có thật trong project — kể cả dòng comment giải thích ý định ngay trên đầu. "Ada Lovelace" và "5 phút trước" là hai <code>Text</code> riêng vì cần hai kiểu chữ khác nhau, nhưng với dịch vụ hỗ trợ thì chúng là <strong>một</strong> thông tin: <em>ai gửi, lúc nào</em>.</p>
 	<h3>Chỗ đáng đặt câu hỏi 1 — avatar bấm được nhưng không có tên (dòng 207–219)</h3>
 	<Code code={`Image(
     modifier = Modifier
@@ -378,7 +378,7 @@ Row(modifier = Modifier.semantics(mergeDescendants = true) &#123;&#125;) &#123;
 		<li>Ở <strong>trạng thái hiện tại của chương</strong>, lời gọi <code>onAuthorClick</code> được truyền vào là một lambda <strong>rỗng</strong> (<code>Conversation.kt</code> dòng 171: <code>MessageUi(onAuthorClick = &#123; &#125;, …)</code>) — bấm vào không xảy ra gì. Toàn chương chỉ làm tầng giao diện. Với một ảnh <em>không</em> thật sự tương tác thì <code>null</code> là đúng.</li>
 		<li>Nhưng <code>Modifier.clickable</code> <strong>vẫn</strong> đăng ký thành phần đó là bấm được với dịch vụ hỗ trợ, dù việc bấm không làm gì. Nên hai cách sửa hợp lý: <strong>bỏ <code>clickable</code></strong> trong khi chức năng chưa có, <strong>hoặc</strong> cấp cho nó mô tả hành động thật (<code>"Ảnh đại diện của Ada, mở trang cá nhân"</code>) ngay lúc nối chức năng vào.</li>
 	</ul>
-	<p>Còn một chi tiết kích thước ở cùng chuỗi đó: <code>clickable</code> đứng đầu nên vùng chạm bao trọn phần đệm, ra <code>42 + 16 × 2 = 74dp</code> <strong>chiều ngang</strong> — nhưng <strong>chiều dọc vẫn chỉ 42dp</strong>, dưới mức 48dp. (Con số 74 này chính là con số của <code>Spacer(Modifier.width(74.dp))</code> ở dòng 222 mà chương 5.2, mục 8 đã tính.) Sửa nhỏ: thêm <code>sizeIn(minHeight = 48.dp)</code>, hoặc dùng đệm dọc thay vì chỉ đệm ngang.</p>
+	<p>Còn một chi tiết kích thước ở cùng chuỗi đó: <code>clickable</code> đứng đầu nên vùng chạm bao trọn phần đệm, ra <code>42 + 16 × 2 = 74dp</code> <strong>chiều ngang</strong> — nhưng <strong>chiều dọc vẫn chỉ 42dp</strong>, dưới mức 48dp. (Con số 74 này chính là con số của <code>Spacer(Modifier.width(74.dp))</code> ở dòng 222 mà chương 5.2, <a href="/chapters/ch05-modifier-va-danh-sach/#bug-weight">mục 8</a> đã tính.) Sửa nhỏ: thêm <code>sizeIn(minHeight = 48.dp)</code>, hoặc dùng đệm dọc thay vì chỉ đệm ngang.</p>
 	<h3>Chỗ đáng đặt câu hỏi 2 — mô tả đặt tên đồ vật thay vì việc làm (dòng 366–376)</h3>
 	<Code code={`Icon(
     imageVector = Icons.Outlined.Info,
@@ -391,12 +391,12 @@ Row(modifier = Modifier.semantics(mergeDescendants = true) &#123;&#125;) &#123;
 	<p>Phần <strong>vùng chạm ở đây làm đúng</strong>, và đúng theo cách bạn vừa học: <code>clickable</code> đứng <strong>trước</strong> <code>padding</code>, nên vùng bấm bao cả phần đệm — khoảng <code>24 + 12 × 2 = 48dp</code> ngang và <code>24 + 16 × 2 = 56dp</code> dọc. Hãy so với cạm bẫy (d) ở chương 5.2: cùng ba modifier, đổi thứ tự thì còn 24dp.</p>
 	<p>Phần đáng bàn là <strong>lời mô tả</strong>: <code>"Information"</code> đặt tên <em>đồ vật</em> ("thông tin"), không nói <em>việc</em> bấm vào thì gì xảy ra. Người dùng nghe "Information, bấm hai lần để mở" và vẫn không biết mở ra cái gì. Bản tốt hơn: <code>"Xem thông tin kênh"</code>. (Cũng như avatar, <code>onClick = &#123; &#125;</code> ở đây còn để trống — tầng giao diện chưa được nối.)</p>
 	<h3>Chỗ đáng đặt câu hỏi 3 — ô nhập tự dựng phải tự gắn mô tả (<code>UserInput.kt</code> dòng 371–441)</h3>
-	<p>Ô nhập chữ ở đây không dùng <code>OutlinedTextField</code> như chương 5.2, mục 4, mà dùng <code>BasicTextField</code> — thành phần thô nhất, chỉ vẽ chữ và nhận gõ, <strong>không có</strong> <code>label</code> hay <code>placeholder</code>. Không có <code>label</code> nghĩa là không có tên gọi nào để dịch vụ hỗ trợ đọc, nên <code>Row</code> bọc ngoài phải tự gắn <code>contentDescription</code> bằng <code>Modifier.semantics</code> (dòng 386–389, nhãn lấy từ <code>strings.xml</code>). Đây là nguyên tắc của mục 26 nhìn từ chiều ngược lại: <strong>chọn thành phần thô thì bạn nhận luôn phần việc semantics mà component Material đã làm sẵn</strong> — code này không sai, nó chỉ đang trả giá cho lựa chọn đó. (Trong cùng khối còn một thuộc tính semantics tự định nghĩa ở dòng 366–367: ngoài phạm vi bài này, nhận ra tên rồi đi tiếp.)</p>
+	<p>Ô nhập chữ ở đây không dùng <code>OutlinedTextField</code> như chương 5.2, <a href="/chapters/ch05-modifier-va-danh-sach/#o-nhap-ux">mục 4</a>, mà dùng <code>BasicTextField</code> — thành phần thô nhất, chỉ vẽ chữ và nhận gõ, <strong>không có</strong> <code>label</code> hay <code>placeholder</code>. Không có <code>label</code> nghĩa là không có tên gọi nào để dịch vụ hỗ trợ đọc, nên <code>Row</code> bọc ngoài phải tự gắn <code>contentDescription</code> bằng <code>Modifier.semantics</code> (dòng 386–389, nhãn lấy từ <code>strings.xml</code>). Đây là nguyên tắc của <a href="#dung-lam-dung-semantics">mục 26</a> nhìn từ chiều ngược lại: <strong>chọn thành phần thô thì bạn nhận luôn phần việc semantics mà component Material đã làm sẵn</strong> — code này không sai, nó chỉ đang trả giá cho lựa chọn đó. (Trong cùng khối còn một thuộc tính semantics tự định nghĩa ở dòng 366–367: ngoài phạm vi bài này, nhận ra tên rồi đi tiếp.)</p>
 	<h3>Nhận diện vấn đề — chưa sửa ở bài này: liên kết nằm trong chuỗi chữ (dòng 322–352)</h3>
 	<p><code>ClickableMessage</code> làm cho @mention và đường link <em>bên trong</em> một đoạn chữ bấm được. Với mắt thì rõ ràng; với dịch vụ hỗ trợ thì những liên kết đó <strong>không</strong> hiện ra thành thành phần thao tác riêng — người dùng TalkBack nghe được cả đoạn chữ nhưng không có cách nào lướt tới từng liên kết.</p>
 	<p><strong>Nhận diện vấn đề — chưa sửa ở bài này.</strong> Cách sửa đúng cần API liên kết trong <code>AnnotatedString</code> của bản Compose mới hơn, vượt phạm vi bài này. Ghi nhận rồi đi tiếp vẫn tốt hơn là dạy nửa vời một giải pháp nâng cao — và bản thân việc <em>nhìn ra</em> được vấn đề này đã là kỹ năng bài này muốn bạn có.</p>
 	<h3>Tổng kết đợt đọc</h3>
-	<p>Hai mẫu tốt nữa không cần đoạn riêng: bộ kiểu chữ của project (<code>theme/Typography.kt</code>) khai <strong>toàn bộ bằng <code>sp</code></strong>, nên chữ phóng được theo thiết lập của người dùng; và mọi mô tả trong app đều nằm trong <code>strings.xml</code>. Còn một chỗ đáng sửa cùng họ với mục 22: nút Send bị ép <code>Modifier.height(36.dp)</code> (<code>conversation/UserInput.kt</code> dòng 311) — chiều cao dưới mức tối thiểu, đúng lỗi "ép cứng kích thước một control".</p>
+	<p>Hai mẫu tốt nữa không cần đoạn riêng: bộ kiểu chữ của project (<code>theme/Typography.kt</code>) khai <strong>toàn bộ bằng <code>sp</code></strong>, nên chữ phóng được theo thiết lập của người dùng; và mọi mô tả trong app đều nằm trong <code>strings.xml</code>. Còn một chỗ đáng sửa cùng họ với <a href="#vung-cham">mục 22</a>: nút Send bị ép <code>Modifier.height(36.dp)</code> (<code>conversation/UserInput.kt</code> dòng 311) — chiều cao dưới mức tối thiểu, đúng lỗi "ép cứng kích thước một control".</p>
 	<table class="cmp">
 		<thead>
 			<tr><th>Chỗ</th><th>Đọc ra gì</th></tr>
@@ -415,7 +415,7 @@ Row(modifier = Modifier.semantics(mergeDescendants = true) &#123;&#125;) &#123;
 		</tbody>
 	</table>
 
-	<h2 id="luyen-tap">29. Luyện tập — soi một thanh thông báo nhỏ</h2>
+	<h2 id="luyen-tap">Luyện tập — soi một thanh thông báo nhỏ</h2>
 	<p>Dưới đây là một thanh thông báo "chưa gửi được tin" mà một người mới có thể viết. Nó <strong>compile được, chạy được, và trông tạm ổn</strong> trên máy của người viết. Tìm càng nhiều vấn đề accessibility càng tốt trước khi mở đáp án — mỗi vấn đề đều thuộc một mục bạn vừa đọc.</p>
 	<Code code={`@Composable
 fun ThongBaoLoi(soTin: Int, onDismiss: () -> Unit) &#123;
@@ -450,12 +450,12 @@ fun ThongBaoLoi(soTin: Int, onDismiss: () -> Unit) &#123;
 	<details>
 		<summary><strong>Sáu vấn đề — mở sau khi đã tự tìm</strong></summary>
 	<ol>
-		<li><strong>Mô tả tả hình, không tả nghĩa</strong> (mục 21). <code>"Hình tam giác màu đỏ"</code> không nói cho ai biết chuyện gì xảy ra. Ở đây icon cảnh báo thật ra là <strong>trang trí</strong> — nếu dòng chữ nói rõ vấn đề thì mô tả đúng là <code>null</code>.</li>
-		<li><strong>Nút đóng không có tên gọi</strong> (mục 20). <code>contentDescription = null</code> trên một thành phần <strong>bấm được</strong> để lại một nút vô danh: người dùng nghe "bấm được" mà không biết bấm ra gì. Phải là <code>"Đóng thông báo"</code>.</li>
-		<li><strong>Vùng chạm của nút đóng chỉ 24dp</strong> (mục 22). <code>padding</code> đứng trước <code>clickable</code> nên phần đệm không nhận thao tác bấm. Sửa bằng cách đổi thứ tự, hoặc gọn hơn: dùng <code>IconButton</code>.</li>
-		<li><strong>Chiều cao cứng 40dp</strong> (mục 23). Ở cỡ chữ lớn, dòng chữ bị cắt hoặc mất hẳn. Bỏ <code>height</code>, dùng đệm.</li>
-		<li><strong>Chữ xám nhạt trên nền gần trắng + màu ghi cứng</strong> (mục 24). <code>0xFFBDBDBD</code> trên <code>0xFFFFF3F3</code> là xám nhạt trên gần-trắng: tương phản quá thấp để đọc được ngoài trời hoặc với mắt kém hơn bạn — và vì cả hai màu đều ghi cứng, chế độ tối sẽ vỡ. Dùng cặp vai trò <code>errorContainer</code> / <code>onErrorContainer</code>. <code>fontSize = 13.sp</code> cũng nên thay bằng kiểu chữ của theme.</li>
-		<li><strong>Thông tin "có lỗi" chỉ được truyền bằng màu</strong> (mục 24). Dòng chữ chỉ nói <code>"3 tin nhắn"</code> — hoàn toàn trung tính. Người dùng TalkBack không nhận được sắc đỏ, nên với họ màn hình này <strong>không có lỗi nào</strong>. Chữ phải nói ra vấn đề.</li>
+		<li><strong>Mô tả tả hình, không tả nghĩa</strong> (<a href="#mo-ta-y-nghia">mục 21</a>). <code>"Hình tam giác màu đỏ"</code> không nói cho ai biết chuyện gì xảy ra. Ở đây icon cảnh báo thật ra là <strong>trang trí</strong> — nếu dòng chữ nói rõ vấn đề thì mô tả đúng là <code>null</code>.</li>
+		<li><strong>Nút đóng không có tên gọi</strong> (<a href="#content-description">mục 20</a>). <code>contentDescription = null</code> trên một thành phần <strong>bấm được</strong> để lại một nút vô danh: người dùng nghe "bấm được" mà không biết bấm ra gì. Phải là <code>"Đóng thông báo"</code>.</li>
+		<li><strong>Vùng chạm của nút đóng chỉ 24dp</strong> (<a href="#vung-cham">mục 22</a>). <code>padding</code> đứng trước <code>clickable</code> nên phần đệm không nhận thao tác bấm. Sửa bằng cách đổi thứ tự, hoặc gọn hơn: dùng <code>IconButton</code>.</li>
+		<li><strong>Chiều cao cứng 40dp</strong> (<a href="#co-chu">mục 23</a>). Ở cỡ chữ lớn, dòng chữ bị cắt hoặc mất hẳn. Bỏ <code>height</code>, dùng đệm.</li>
+		<li><strong>Chữ xám nhạt trên nền gần trắng + màu ghi cứng</strong> (<a href="#mau-tuong-phan">mục 24</a>). <code>0xFFBDBDBD</code> trên <code>0xFFFFF3F3</code> là xám nhạt trên gần-trắng: tương phản quá thấp để đọc được ngoài trời hoặc với mắt kém hơn bạn — và vì cả hai màu đều ghi cứng, chế độ tối sẽ vỡ. Dùng cặp vai trò <code>errorContainer</code> / <code>onErrorContainer</code>. <code>fontSize = 13.sp</code> cũng nên thay bằng kiểu chữ của theme.</li>
+		<li><strong>Thông tin "có lỗi" chỉ được truyền bằng màu</strong> (<a href="#mau-tuong-phan">mục 24</a>). Dòng chữ chỉ nói <code>"3 tin nhắn"</code> — hoàn toàn trung tính. Người dùng TalkBack không nhận được sắc đỏ, nên với họ màn hình này <strong>không có lỗi nào</strong>. Chữ phải nói ra vấn đề.</li>
 	</ol>
 	<p>Bản đã sửa:</p>
 	<Code code={`@Composable
@@ -492,11 +492,11 @@ fun ThongBaoLoi(soTinChuaGui: Int, onDismiss: () -> Unit) &#123;
 	<p>Bốn thay đổi đáng nói:</p>
 	<ol>
 		<li>Icon cảnh báo thành <strong>trang trí</strong> (<code>null</code>) — vì dòng chữ đã nói hết. Người dùng nghe <em>một</em> câu có nghĩa thay vì một câu vô nghĩa rồi mới tới câu có nghĩa. (<code>verticalAlignment = Alignment.CenterVertically</code> là tham số của <code>Row</code> — căn các con theo chiều dọc.)</li>
-		<li>Dòng chữ <strong>nói ra vấn đề</strong>, nên thông tin không còn phụ thuộc vào màu; <code>weight(1f)</code> (chương 5.2, mục 8) cho nó nhận phần chỗ còn lại và tự xuống dòng khi chữ to lên — thay cho <code>height</code> cứng.</li>
-		<li><code>IconButton</code> thay cho <code>Box</code> + <code>clickable</code>: <strong>ngắn hơn và đã có vùng chạm tối thiểu</strong> — đúng nguyên tắc mục 26, đừng tự dựng lại thứ Material đã làm.</li>
+		<li>Dòng chữ <strong>nói ra vấn đề</strong>, nên thông tin không còn phụ thuộc vào màu; <code>weight(1f)</code> (chương 5.2, <a href="/chapters/ch05-modifier-va-danh-sach/#bug-weight">mục 8</a>) cho nó nhận phần chỗ còn lại và tự xuống dòng khi chữ to lên — thay cho <code>height</code> cứng.</li>
+		<li><code>IconButton</code> thay cho <code>Box</code> + <code>clickable</code>: <strong>ngắn hơn và đã có vùng chạm tối thiểu</strong> — đúng nguyên tắc <a href="#dung-lam-dung-semantics">mục 26</a>, đừng tự dựng lại thứ Material đã làm.</li>
 		<li>Mọi màu là <strong>vai trò</strong>, nên bản này đúng ở cả chế độ sáng và tối, và cặp <code>errorContainer</code> / <code>onErrorContainer</code> giữ phần tương phản.</li>
 	</ol>
-	<p><strong>Kiểm lại bằng tay</strong> (mục 27): bật TalkBack, lướt qua thanh này — phải nghe đúng hai thành phần: câu "Không thể kết nối — 3 tin nhắn chưa gửi", và nút "Đóng thông báo". Rồi tăng cỡ chữ lên mức lớn nhất: hàng phải cao lên, chữ không bị cắt, nút đóng vẫn bấm được.</p>
+	<p><strong>Kiểm lại bằng tay</strong> (<a href="#tu-kiem-bang-tay">mục 27</a>): bật TalkBack, lướt qua thanh này — phải nghe đúng hai thành phần: câu "Không thể kết nối — 3 tin nhắn chưa gửi", và nút "Đóng thông báo". Rồi tăng cỡ chữ lên mức lớn nhất: hàng phải cao lên, chữ không bị cắt, nút đóng vẫn bấm được.</p>
 	</details>
 
 	<div class="callout journey">
@@ -507,7 +507,7 @@ fun ThongBaoLoi(soTinChuaGui: Int, onDismiss: () -> Unit) &#123;
 		<li><strong><code>contentDescription</code> là để nói nghĩa, không phải để điền cho có.</strong> Mang thông tin ⇒ một câu chữ mô tả <strong>việc làm được</strong> (<code>"Xoá tin nhắn"</code>, không phải <code>"Icon thùng rác"</code>; và vì người dùng nghe được nó, nó thuộc <code>strings.xml</code>). Trang trí ⇒ <code>null</code>. Bấm được ⇒ <strong>luôn</strong> phải có tên gọi.</li>
 		<li><strong>Kích thước nhìn thấy ≠ vùng chạm.</strong> Icon 24dp, vùng chạm ít nhất <strong>48dp × 48dp</strong>. Component Material tương tác đã giữ mức đó; control tự dựng bằng <code>Box</code> + <code>clickable</code> thì bạn tự đặt.</li>
 		<li><strong>Giao diện phải sống được khi chữ to lên, và không được nói bằng màu.</strong> Cỡ chữ ghi bằng <code>sp</code>, mọi thứ khác bằng <code>dp</code>; đừng ép chiều cao hộp chứa chữ, đừng giả định chữ luôn một dòng; dùng cặp vai trò màu (<code>surface</code> / <code>onSurface</code>) để giữ phần tương phản; và mọi thông tin đang truyền bằng màu phải có thêm chữ hoặc hình đi kèm.</li>
-		<li><strong>Ưu tiên component có nghĩa sẵn, rồi tự kiểm bằng tay.</strong> Component Material trước → điền phần Compose không đoán được → chỉ tự viết semantics (ví dụ <code>mergeDescendants = true</code> cho một nhóm mảnh rời chỉ có nghĩa khi đi cùng nhau) khi cấu trúc hình ảnh không diễn đạt đúng ý nghĩa. Sau đó bật TalkBack + cỡ chữ lớn nhất và soi lại màn hình theo checklist mục 27 — <code>@Preview</code> không chứng minh được phần này.</li>
+		<li><strong>Ưu tiên component có nghĩa sẵn, rồi tự kiểm bằng tay.</strong> Component Material trước → điền phần Compose không đoán được → chỉ tự viết semantics (ví dụ <code>mergeDescendants = true</code> cho một nhóm mảnh rời chỉ có nghĩa khi đi cùng nhau) khi cấu trúc hình ảnh không diễn đạt đúng ý nghĩa. Sau đó bật TalkBack + cỡ chữ lớn nhất và soi lại màn hình theo checklist <a href="#tu-kiem-bang-tay">mục 27</a> — <code>@Preview</code> không chứng minh được phần này.</li>
 	</ol>
 	</div>
 
@@ -515,7 +515,7 @@ fun ThongBaoLoi(soTinChuaGui: Int, onDismiss: () -> Unit) &#123;
 	<p class="notice">
 		<strong>(l) "Cứ thêm mô tả cho mọi thứ là an toàn."</strong> Đây là kết luận sai phổ biến nhất sau khi học accessibility lần đầu, và nó tạo ra ba lỗi một lúc. Ảnh nền trang trí có mô tả ⇒ mỗi lần lướt tới nội dung thật, người dùng phải nghe trước một câu vô nghĩa. Một <code>Button</code> đã có chữ "Gửi" mà icon bên trong cũng mô tả <code>"Gửi"</code> ⇒ nghe thành "Gửi Gửi", vì nút tự gộp mô tả của các con. Gắn thêm <code>Modifier.semantics &#123; &#125;</code> lên một <code>Checkbox</code> hay <code>Switch</code> là công vô ích — chúng đã tự thông báo đúng loại và trạng thái, còn mô tả bạn tự viết sẽ là thứ đầu tiên lạc hậu khi chức năng đổi. Trong khi đó thứ <strong>luôn</strong> phải có mô tả lại thường bị quên: mọi thành phần <strong>bấm được</strong> mà không có chữ hiển thị nào bên cạnh. Quy tắc gọn: điền phần Compose không thể tự đoán, đừng điền phần đã có người làm sẵn.</p>
 	<p class="notice">
-		<strong>(m) "Icon 24dp thì vùng bấm 24dp, và UI nhìn ổn trên máy mình là ổn."</strong> Hai nửa của cùng một thói quen: nói trước một con số mà đáng ra phải để ngón tay và nội dung quyết định. <code>Modifier.padding(12.dp).clickable &#123; … &#125;</code> để lại vùng bấm đúng 24dp cho một icon 24dp (đổi thứ tự là xong — chương 5.2, mục 6). Truyền <code>Modifier.height(36.dp)</code> vào một <code>Button</code> là <strong>lấy lại</strong> mức tối thiểu mà Material vừa cho bạn. <code>Modifier.height(40.dp)</code> quanh một dòng <code>Text</code> trông ổn trên máy bạn rồi cắt mất chữ ở cỡ chữ lớn nhất. Cả ba <strong>không hiện ra trong <code>@Preview</code></strong>, và cũng không hiện ra trên điện thoại đang để thiết lập mặc định của bạn — chỉ hiện khi có ngón tay thật và thiết lập thật (mục 27).</p>
+		<strong>(m) "Icon 24dp thì vùng bấm 24dp, và UI nhìn ổn trên máy mình là ổn."</strong> Hai nửa của cùng một thói quen: nói trước một con số mà đáng ra phải để ngón tay và nội dung quyết định. <code>Modifier.padding(12.dp).clickable &#123; … &#125;</code> để lại vùng bấm đúng 24dp cho một icon 24dp (đổi thứ tự là xong — chương 5.2, <a href="/chapters/ch05-modifier-va-danh-sach/#thu-tu-modifier">mục 6</a>). Truyền <code>Modifier.height(36.dp)</code> vào một <code>Button</code> là <strong>lấy lại</strong> mức tối thiểu mà Material vừa cho bạn. <code>Modifier.height(40.dp)</code> quanh một dòng <code>Text</code> trông ổn trên máy bạn rồi cắt mất chữ ở cỡ chữ lớn nhất. Cả ba <strong>không hiện ra trong <code>@Preview</code></strong>, và cũng không hiện ra trên điện thoại đang để thiết lập mặc định của bạn — chỉ hiện khi có ngón tay thật và thiết lập thật (<a href="#tu-kiem-bang-tay">mục 27</a>).</p>
 	<p class="notice">
 		<strong>(n) "Đổi sang màu đỏ là đủ để báo lỗi."</strong> Màu <strong>không</strong> nằm trong phần mô tả mà dịch vụ hỗ trợ đọc, nên nếu tín hiệu duy nhất của "có lỗi" là viền đỏ thì với người dùng TalkBack thông tin đó <strong>không tồn tại</strong> — chưa kể người khó phân biệt màu và người đang để màn hình ở chế độ đơn sắc. Cách sửa rẻ nhất là thêm một dòng chữ nói thẳng vấn đề: chữ phục vụ cả người thấy màu <strong>và</strong> dịch vụ hỗ trợ, nên bạn không phải làm hai lần.</p>
 

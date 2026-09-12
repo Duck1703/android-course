@@ -228,7 +228,7 @@ GHI — sự kiện quay lại (đường ngược):
 	<p>
 		C4 đã chạm <code>LaunchedEffect</code> lần đầu với một nguyên tắc: thân hàm composable là chỗ trả lời
 		<em>"giao diện nên trông thế nào"</em>, còn việc có tác dụng ra ngoài (gọi mạng, ghi database, log) là
-		<em>hành động</em> — phải có chỗ riêng. Bốn quy tắc vòng đời của effect đã có ở C4 mục 18 — ở đây nhắc lại tên,
+		<em>hành động</em> — phải có chỗ riêng. Bốn quy tắc vòng đời của effect đã có ở C4 <a href="#updating-refs">mục 18</a> — ở đây nhắc lại tên,
 		không giảng lại, vì từ đây trở đi bạn sẽ
 		gặp nó trong code thật thay vì ví dụ dựng sẵn.
 	</p>
@@ -272,7 +272,7 @@ GHI — sự kiện quay lại (đường ngược):
 		nào. <code>Unit</code> (không bao giờ đổi) là lựa chọn đúng ở đây.
 	</p>
 	<p>
-		So sánh với màn hình chi tiết ở mục 17: cũng <code>LaunchedEffect(Unit)</code>, và cũng đúng — vì mỗi lần điều hướng
+		So sánh với màn hình chi tiết ở <a href="#recipe-details">mục 17</a>: cũng <code>LaunchedEffect(Unit)</code>, và cũng đúng — vì mỗi lần điều hướng
 		sang một công thức khác, Compose tạo một <em>instance màn hình mới</em> (destination mới trong NavHost), nên
 		"vào composition" đã diễn ra lại. <code>recipeId</code> của một màn hình đang sống không bao giờ đổi.
 	</p>
@@ -403,7 +403,7 @@ GHI — sự kiện quay lại (đường ngược):
 		quanh <code>viewModel.deleteBookmark(currentItem)</code>. Nhưng bạn không thể kết luận "dư" chỉ bằng nhìn file này —
 		phải đọc xuống <strong>thân của hai hàm được gọi</strong> trong <code>RecipeViewModel.kt</code>: cả
 		<code>getBookmarks()</code> lẫn <code>deleteBookmark()</code> <em>đã</em> tự mở đầu bằng
-		<code>withContext(Dispatchers.IO)</code> bên trong (Chương 10.3, mục 13). Coroutine của UI chuyển sang luồng IO, rồi
+		<code>withContext(Dispatchers.IO)</code> bên trong (Chương 10.3, <a href="/chapters/ch10-3-repository-viewmodel/#viewmodels">mục 13</a>). Coroutine của UI chuyển sang luồng IO, rồi
 		vào hàm và chuyển sang IO lần nữa.
 	</p>
 	<p class="notice">
@@ -458,7 +458,7 @@ GHI — sự kiện quay lại (đường ngược):
 		<p>
 			Và điểm đáng chú ý nhất: <strong>phần còn lại của màn hình không hề biết dữ liệu tới từ đâu.</strong> Cả hai đường
 			đều kết thúc bằng việc gán vào <code>_recipeState</code>, nên phần vẽ giao diện chỉ đọc một state duy nhất. Đây là
-			ví dụ cụ thể nhất trong cả Chương 10 cho lợi ích của kiến trúc ở Chương 10.1, mục 4: hai nguồn dữ liệu hoàn toàn
+			ví dụ cụ thể nhất trong cả Chương 10 cho lợi ích của kiến trúc ở Chương 10.1, <a href="/chapters/ch10-room-la-gi-va-sqlite/#room-trong-kien-truc">mục 4</a>: hai nguồn dữ liệu hoàn toàn
 			khác nhau, một đoạn UI.
 		</p>
 		<p>
@@ -473,7 +473,7 @@ GHI — sự kiện quay lại (đường ngược):
 			search</strong> cho dữ liệu chưa có trên máy, <strong>Room</strong> cho dữ liệu đã lưu — cùng sống sau một
 			repository, cùng kết thúc tại các StateFlow mà UI đọc. Cũng nhớ giới hạn của phát biểu này: đó là <em>bố cục của
 			app này</em>, không phải luật "mọi repository đều có nhiều nguồn" hay "Room luôn là nguồn chính" — app chỉ cần
-			Room là nguồn đáng tin cho đúng loại dữ liệu nó lưu bền (Chương 10.3, mục 14 đã chốt phạm vi đó). Ở mức cần nhớ:
+			Room là nguồn đáng tin cho đúng loại dữ liệu nó lưu bền (Chương 10.3, <a href="/chapters/ch10-3-repository-viewmodel/#instantiating">mục 14</a> đã chốt phạm vi đó). Ở mức cần nhớ:
 			màn hình bookmark của app này mở được khi không có mạng — đó là dấu hiệu nhận biết một phần dữ liệu đã thật sự
 			hiện diện cục bộ.
 		</p>
@@ -540,12 +540,12 @@ GHI — sự kiện quay lại (đường ngược):
 		<p>
 			Vì sao không nhập làm một ViewModel: <code>RecipeViewModel</code> thuộc về dữ liệu công thức và là thứ được dùng
 			chung ở nhiều màn hình; trạng thái tick/lọc chỉ có ý nghĩa với trang Groceries. Tách ra giúp mỗi ViewModel giữ một
-			trách nhiệm — đúng tinh thần "phân tách trách nhiệm" ở Chương 10.1, mục 4, áp dụng ở tầng ViewModel.
+			trách nhiệm — đúng tinh thần "phân tách trách nhiệm" ở Chương 10.1, <a href="/chapters/ch10-room-la-gi-va-sqlite/#room-trong-kien-truc">mục 4</a>, áp dụng ở tầng ViewModel.
 		</p>
 		<p>
 			Cũng lưu ý <code>getIngredients()</code> lấy <strong>tất cả</strong> ingredient trong bảng
 			(<code>getAllIngredients()</code>), không lọc theo công thức. Đúng ý muốn: danh sách đi chợ là <em>gộp</em> nguyên
-			liệu của mọi công thức đã bookmark. Đây cũng là lý do việc xoá nguyên liệu khi xoá bookmark (Chương 10.3, mục 11)
+			liệu của mọi công thức đã bookmark. Đây cũng là lý do việc xoá nguyên liệu khi xoá bookmark (Chương 10.3, <a href="/chapters/ch10-3-repository-viewmodel/#repository">mục 11</a>)
 			rất quan trọng — quên là danh sách đi chợ còn món của công thức đã xoá.
 		</p>
 	</div>
@@ -677,7 +677,7 @@ GHI — sự kiện quay lại (đường ngược):
 						gọi nào</td>
 					<td><strong>Biết là dư.</strong> Repository được viết rộng hơn nhu cầu thật. Không có hại, nhưng khi đọc code
 						bạn đừng mất thời gian tìm ý nghĩa khác nhau giữa hai hàm giống nhau — không có.</td>
-					<td><strong>REDUNDANT</strong> — API dự phòng, kiểm được bằng Find in Files (10.3, mục 15)</td>
+					<td><strong>REDUNDANT</strong> — API dự phòng, kiểm được bằng Find in Files (10.3, <a href="/chapters/ch10-3-repository-viewmodel/#doc-lai">mục 15</a>)</td>
 				</tr>
 			</tbody>
 		</table>
@@ -743,7 +743,7 @@ GHI — sự kiện quay lại (đường ngược):
 				<td>Không dùng — mọi hàm DAO là <code>suspend</code> trả về giá trị một lần</td>
 				<td>Room hỗ trợ khai báo <code>fun getAllRecipes(): Flow&lt;List&lt;RecipeDb&gt;&gt;</code>: database tự đẩy
 					dữ liệu mới mỗi khi bảng thay đổi, UI không cần gọi lại. Đây là cách làm phổ biến nhất hôm nay, và nó sẽ xoá
-					luôn nhu cầu "gọi <code>getBookmarks()</code> lại sau khi xoá" mà bạn thấy ở mục 16.</td>
+					luôn nhu cầu "gọi <code>getBookmarks()</code> lại sau khi xoá" mà bạn thấy ở <a href="#bookmarks">mục 16</a>.</td>
 			</tr>
 			<tr>
 				<td><code>SwipeToDismiss</code></td>
@@ -766,7 +766,7 @@ GHI — sự kiện quay lại (đường ngược):
 				<td>Chương 10.1</td>
 				<td>Bộ ba được giới thiệu là Lifecycle · LiveData · ViewModel</td>
 				<td><code>LiveData</code> gần như đã được thay hoàn toàn bằng <code>StateFlow</code> trong code Compose — và
-					chính project mẫu cũng dùng <code>StateFlow</code>, không dùng <code>LiveData</code> (Chương 10.1, mục 3).</td>
+					chính project mẫu cũng dùng <code>StateFlow</code>, không dùng <code>LiveData</code> (Chương 10.1, <a href="/chapters/ch10-room-la-gi-va-sqlite/#room">mục 3</a>).</td>
 			</tr>
 		</tbody>
 	</table>
@@ -775,6 +775,50 @@ GHI — sự kiện quay lại (đường ngược):
 		hai thứ ở ngoài rìa (API quẹt của Material 3, và chuyển DAO sang trả <code>Flow</code>). Học xong chương này bạn dùng
 		được Room bản mới ngay.
 	</p>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Hai mục lớn phía trên đã là nội dung dạng cảnh báo: <a href="#lech">mục 20</a> gom 7 chỗ lý thuyết và code mẫu không khớp, <a href="#version">mục 21</a> gom
+		những gì đã thay đổi so với hôm nay. Phần này thu thêm hai cảnh báo rời rạc nằm trong mạch giảng ở trên — cả hai đều
+		là chỗ người mới dễ mất thời gian nhất khi làm theo từng bước mà không biết trước.
+	</p>
+	<div class="callout warn">
+		<strong>1. API quẹt để xoá đã đổi tên: <code>SwipeToDismiss</code> → <code>SwipeToDismissBox</code></strong>
+		<p>
+			<code>SwipeToDismiss</code>, <code>rememberDismissState</code> và <code>DismissDirection</code> là API Material 3
+			<em>ở thời điểm project mẫu được viết</em>. Trong các bản Compose Material 3 mới hơn, cả ba đã bị đánh dấu
+			<strong>deprecated</strong> và được thay bằng <code>SwipeToDismissBox</code>, <code>rememberSwipeToDismissBoxState</code>,
+			<code>SwipeToDismissBoxValue</code>.
+		</p>
+		<p>
+			Hệ quả thực tế: code ở <a href="#bookmarks">mục 16</a> <strong>vẫn chạy đúng</strong> với version Compose mà project ghim, nên nếu bạn mở
+			project mẫu và build thì không có gì xảy ra. Nhưng ngay khi bạn nâng Compose lên bản mới hơn — hoặc gõ lại đoạn này
+			trong một project mới — Android Studio sẽ gạch ngang tên hàm và hiện cảnh báo deprecated. Đó không phải bạn gõ sai:
+			đó là API cũ. Ý tưởng và cấu trúc không đổi (vẫn là một state giữ hướng quẹt, một lambda xác nhận, một phần nền vẽ
+			icon), chỉ đổi tên hàm và tên kiểu dữ liệu. Deprecated ≠ removed: API cũ còn đó, còn chạy, chỉ không còn là khuyến
+			nghị cho code mới.
+		</p>
+	</div>
+	<div class="callout warn">
+		<strong>2. <code>@Preview</code> chết vì CompositionLocal — và cách chữa</strong>
+		<p>
+			Sau khi bạn sửa bốn hàm <code>@Preview</code> ở mục 18.2 cho project build được, sẽ có một chuyện không ai báo
+			trước: <strong>preview trong Android Studio hiện lỗi thay vì hiện giao diện.</strong>
+		</p>
+		<p>
+			Lý do: preview cũng đọc <code>LocalRepositoryProvider.current</code>, nhưng preview <em>không</em> chạy qua
+			<code>MainActivity</code>, nên nó không nằm dưới <code>CompositionLocalProvider</code> nào cả. Giá trị mặc định của
+			CompositionLocal đó là <code>error("No repository provided")</code> — và nó được kích hoạt ngay, làm preview crash
+			hoặc không render được gì.
+		</p>
+		<p>
+			Đây là cái giá của việc dùng CompositionLocal để phát dependency: mỗi nơi hiển thị Composable đó, kể cả preview,
+			phải tự cung cấp giá trị. Cách chữa gọn nhất là bọc nội dung preview trong một provider với một repository giả:
+			<code>CompositionLocalProvider(LocalRepositoryProvider provides fakeRepository) &#123; ... &#125;</code>. Hướng dẫn
+			từng bước chỉ đủ để project compile, không đủ để preview hoạt động — biết trước điều này giúp bạn không đi tìm lỗi
+			ở chỗ không có lỗi.
+		</p>
+	</div>
 
 	<h2 id="key-points">22. Tổng kết cả Chương 10 (10.1 → 10.4)</h2>
 	<p>
@@ -824,7 +868,7 @@ GHI — sự kiện quay lại (đường ngược):
 		<li><strong><code>CompositionLocal</code> đưa repository xuống cả cây UI</strong> mà không phải truyền tham số xuyên
 			tầng — cùng cơ chế đã dùng cho navigation (Chương 8) và Prefs (Chương 9). Và mọi nơi hiển thị composable đó — kể cả
 			<code>@Preview</code> — đều phải cung cấp giá trị.</li>
-		<li><strong>Đọc code mẫu bằng đầu phê phán.</strong> Chương 10 có 7 chỗ lý thuyết và code không khớp (mục 20) — và
+		<li><strong>Đọc code mẫu bằng đầu phê phán.</strong> Chương 10 có 7 chỗ lý thuyết và code không khớp (<a href="#lech">mục 20</a>) — và
 			phân loại quan trọng hơn đếm số: code chết, dư thừa, mô tả lệch, lệch phiên bản, hay cách làm hợp lệ khác, mỗi loại
 			một cách ứng xử. Biết chỗ nào là "code chết", chỗ nào là dư thừa, chỗ nào phần mô tả sai — đó là kỹ năng đọc
 			codebase thật, không chỉ là học Room.</li>
@@ -854,50 +898,6 @@ GHI — sự kiện quay lại (đường ngược):
 		</p>
 	</div>
 
-	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
-	<p>
-		Hai mục lớn phía trên đã là nội dung dạng cảnh báo: mục 20 gom 7 chỗ lý thuyết và code mẫu không khớp, mục 21 gom
-		những gì đã thay đổi so với hôm nay. Phần này thu thêm hai cảnh báo rời rạc nằm trong mạch giảng ở trên — cả hai đều
-		là chỗ người mới dễ mất thời gian nhất khi làm theo từng bước mà không biết trước.
-	</p>
-	<div class="callout warn">
-		<strong>1. API quẹt để xoá đã đổi tên: <code>SwipeToDismiss</code> → <code>SwipeToDismissBox</code></strong>
-		<p>
-			<code>SwipeToDismiss</code>, <code>rememberDismissState</code> và <code>DismissDirection</code> là API Material 3
-			<em>ở thời điểm project mẫu được viết</em>. Trong các bản Compose Material 3 mới hơn, cả ba đã bị đánh dấu
-			<strong>deprecated</strong> và được thay bằng <code>SwipeToDismissBox</code>, <code>rememberSwipeToDismissBoxState</code>,
-			<code>SwipeToDismissBoxValue</code>.
-		</p>
-		<p>
-			Hệ quả thực tế: code ở mục 16 <strong>vẫn chạy đúng</strong> với version Compose mà project ghim, nên nếu bạn mở
-			project mẫu và build thì không có gì xảy ra. Nhưng ngay khi bạn nâng Compose lên bản mới hơn — hoặc gõ lại đoạn này
-			trong một project mới — Android Studio sẽ gạch ngang tên hàm và hiện cảnh báo deprecated. Đó không phải bạn gõ sai:
-			đó là API cũ. Ý tưởng và cấu trúc không đổi (vẫn là một state giữ hướng quẹt, một lambda xác nhận, một phần nền vẽ
-			icon), chỉ đổi tên hàm và tên kiểu dữ liệu. Deprecated ≠ removed: API cũ còn đó, còn chạy, chỉ không còn là khuyến
-			nghị cho code mới.
-		</p>
-	</div>
-	<div class="callout warn">
-		<strong>2. <code>@Preview</code> chết vì CompositionLocal — và cách chữa</strong>
-		<p>
-			Sau khi bạn sửa bốn hàm <code>@Preview</code> ở mục 18.2 cho project build được, sẽ có một chuyện không ai báo
-			trước: <strong>preview trong Android Studio hiện lỗi thay vì hiện giao diện.</strong>
-		</p>
-		<p>
-			Lý do: preview cũng đọc <code>LocalRepositoryProvider.current</code>, nhưng preview <em>không</em> chạy qua
-			<code>MainActivity</code>, nên nó không nằm dưới <code>CompositionLocalProvider</code> nào cả. Giá trị mặc định của
-			CompositionLocal đó là <code>error("No repository provided")</code> — và nó được kích hoạt ngay, làm preview crash
-			hoặc không render được gì.
-		</p>
-		<p>
-			Đây là cái giá của việc dùng CompositionLocal để phát dependency: mỗi nơi hiển thị Composable đó, kể cả preview,
-			phải tự cung cấp giá trị. Cách chữa gọn nhất là bọc nội dung preview trong một provider với một repository giả:
-			<code>CompositionLocalProvider(LocalRepositoryProvider provides fakeRepository) &#123; ... &#125;</code>. Hướng dẫn
-			từng bước chỉ đủ để project compile, không đủ để preview hoạt động — biết trước điều này giúp bạn không đi tìm lỗi
-			ở chỗ không có lỗi.
-		</p>
-	</div>
-
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<div class="callout note">
 		<p class="src">
@@ -921,11 +921,11 @@ GHI — sự kiện quay lại (đường ngược):
 			<code>{AAF_GRADLE}/app/build.gradle.kts</code> (dòng 83–85).
 		</p>
 		<p class="src">
-			<strong>Phần bổ sung ngoài giáo trình:</strong> bảng 7 điểm lệch ở mục 20 (dựng bằng cách đọc từng file và
+			<strong>Phần bổ sung ngoài giáo trình:</strong> bảng 7 điểm lệch ở <a href="#lech">mục 20</a> (dựng bằng cách đọc từng file và
 			<code>diff</code> giữa <code>starter</code> và <code>final</code>, kèm cột phân loại) · cột "Hiện tại" của bảng
-			phiên bản ở mục 21 (đối chiếu release notes chính thức của AndroidX Room và Compose Material 3, lẫn nguồn Room
+			phiên bản ở <a href="#version">mục 21</a> (đối chiếu release notes chính thức của AndroidX Room và Compose Material 3, lẫn nguồn Room
 			2.8.4) · mô hình vòng đời <code>LaunchedEffect</code> và bảng <code>rememberCoroutineScope</code> ở mục 16.2–16.4 ·
-			phân tích chỗ bọc IO dư ở mục 16.6 · phân biệt local storage vs remote storage ở mục 19 · hai cảnh báo về
+			phân tích chỗ bọc IO dư ở mục 16.6 · phân biệt local storage vs remote storage ở <a href="#alternatives">mục 19</a> · hai cảnh báo về
 			<code>@Preview</code> và <code>SwipeToDismiss</code> deprecated ở mục Cạm bẫy.
 		</p>
 	</div>

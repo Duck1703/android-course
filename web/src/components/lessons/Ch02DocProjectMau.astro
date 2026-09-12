@@ -554,7 +554,7 @@ val Pink40 = Color(0xFF7D5260)`;
 		<tbody>
 			<tr><td><code>namespace = "com.kodeco.chat"</code></td><td>Package gốc của code — thứ khiến <code>.MainActivity</code> trong Manifest hiểu được, và cũng là package của lớp <code>R</code> chứa mọi tài nguyên.</td></tr>
 			<tr><td><code>compileSdk = 34</code></td><td>Bản SDK dùng để <em>biên dịch</em>. Nó quyết định bạn được phép gọi API tới mức nào — ở đây là tới API 34. Đặt cao không làm app cần máy mới hơn.</td></tr>
-			<tr><td><code>applicationId = "com.kodeco.chat"</code></td><td>Danh tính app khi <em>cài lên máy</em> — chính là ô "Package name" bạn điền ở Chương 2.1, mục 3. Hai app cùng <code>applicationId</code> không thể cùng tồn tại trên một thiết bị.</td></tr>
+			<tr><td><code>applicationId = "com.kodeco.chat"</code></td><td>Danh tính app khi <em>cài lên máy</em> — chính là ô "Package name" bạn điền ở Chương 2.1, <a href="/chapters/ch02-1-cai-dat-va-tao-project/#tao-project">mục 3</a>. Hai app cùng <code>applicationId</code> không thể cùng tồn tại trên một thiết bị.</td></tr>
 			<tr><td><code>minSdk = 30</code></td><td>Bản Android thấp nhất cài được app. Máy cũ hơn mức này sẽ không thấy app trên Play Store. <strong>Con số này có một điểm lệch đáng biết — xem mục cạm bẫy.</strong></td></tr>
 			<tr><td><code>targetSdk = 34</code></td><td>Bản Android mà app <em>đã được test và nhắm tới</em>. Nó quyết định app phải tuân theo quy tắc hành vi mới của bản nào — nâng số này lên là cam kết đã kiểm app chạy đúng với các thay đổi của bản đó.</td></tr>
 		</tbody>
@@ -571,7 +571,7 @@ val Pink40 = Color(0xFF7D5260)`;
 		<code>dependencies</code> liệt kê các thư viện app dùng — trong project này là Compose, Material 3 và vài thư viện lõi
 		AndroidX, cộng ba thư viện chỉ dùng cho test. Có một dòng trong danh sách đó đáng chỉ mặt sớm:
 		<code>implementation(platform("androidx.compose:compose-bom:2023.10.00"))</code>. Đó là một <em>BOM</em> — một bảng
-		phiên bản gộp: nhờ nó mà các dòng Compose ngay dưới không cần ghi số phiên bản, tất cả lấy theo bảng. Chương 4, mục 6
+		phiên bản gộp: nhờ nó mà các dòng Compose ngay dưới không cần ghi số phiên bản, tất cả lấy theo bảng. Chương 4, <a href="/chapters/ch02-2-may-ao-may-that-doc-project/#may-that">mục 6</a>
 		sẽ mở lại đúng dòng này.
 	</p>
 	<p>File Gradle ở gốc project ngắn hơn nhiều, và nó cho biết project mẫu được viết trong "thời đại" nào:</p>
@@ -603,7 +603,7 @@ val Pink40 = Color(0xFF7D5260)`;
 	<Code code={stringsCode} lang="xml" theme="github-dark" />
 	<p>
 		Đây chính là đích đến của <code>@string/app_name</code> trong Manifest, và là nơi chữ <em>"Kodeco Chat"</em> bạn gõ ở ô
-		<strong>Name</strong> (Chương 2.1, mục 3) thực sự được lưu. Muốn đổi tên app hiển thị trên máy: sửa ở đây, không sửa
+		<strong>Name</strong> (Chương 2.1, <a href="/chapters/ch02-1-cai-dat-va-tao-project/#tao-project">mục 3</a>) thực sự được lưu. Muốn đổi tên app hiển thị trên máy: sửa ở đây, không sửa
 		trong Manifest. Cách làm này còn có một lợi ích lớn hơn về sau: muốn app hỗ trợ tiếng Việt, bạn thêm thư mục
 		<code>res/values-vi/</code> với một <code>strings.xml</code> khác, và Android tự chọn file đúng theo ngôn ngữ máy — không
 		sửa một dòng code nào.
@@ -638,10 +638,10 @@ val Pink40 = Color(0xFF7D5260)`;
 		ý dòng <code>repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)</code>: nó buộc mọi module dùng chung
 		danh sách kho đã khai ở đây và <em>báo lỗi</em> nếu module nào tự khai thêm kho riêng. Nghe khó tính, nhưng đó là một
 		biện pháp bảo mật thật: một kho lạ được thêm vào ở một module có thể tráo thư viện của bạn bằng bản đã bị sửa. Chương 4,
-		mục 2 sẽ mở lại đúng file này.
+		<a href="/chapters/ch02-1-cai-dat-va-tao-project/#cau-hinh">mục 2</a> sẽ mở lại đúng file này.
 	</p>
 	<p>
-		Ba file trên đóng lại vòng tròn của toàn bộ mục 7: <code>MainActivity.kt</code> có code,
+		Ba file trên đóng lại vòng tròn của toàn bộ <a href="#doc-project">mục 7</a>: <code>MainActivity.kt</code> có code,
 		<code>AndroidManifest.xml</code> khai app với hệ điều hành và trỏ tới <code>strings.xml</code> cùng
 		<code>themes.xml</code>, <code>ui/theme/</code> giữ diện mạo cho phần Compose, và ba file Gradle dựng tất cả những thứ
 		đó thành một app cài được. Chín file, không file nào là dư.
@@ -724,7 +724,7 @@ val Pink40 = Color(0xFF7D5260)`;
 		<li>
 			<strong>Giáo trình gốc:</strong> <code>{BOOK}</code> — dòng 89 (yêu cầu <code>Minimum SDK = API 28</code>, dùng để
 			đối chiếu với <code>minSdk = 30</code> trong code thật, xem cạm bẫy 1) · dòng 113 (lời khuyên "chưa cần lo về các
-			file này" mà mục 7 lấy làm điểm nhảy vào). Các sơ đồ và ảnh chụp màn hình gốc không được kèm theo — khoá học này
+			file này" mà <a href="#doc-project">mục 7</a> lấy làm điểm nhảy vào). Các sơ đồ và ảnh chụp màn hình gốc không được kèm theo — khoá học này
 			diễn giải lại bằng chữ, bảng và cây thư mục.
 		</li>
 		<li>
@@ -752,7 +752,7 @@ val Pink40 = Color(0xFF7D5260)`;
 			3 <code>@Preview</code> trong toàn project Chương 5.
 		</li>
 		<li>
-			<strong>Phần bổ sung ngoài giáo trình:</strong> toàn bộ mục 7 (đọc từng file của project vừa sinh ra) — giáo trình
+			<strong>Phần bổ sung ngoài giáo trình:</strong> toàn bộ <a href="#doc-project">mục 7</a> (đọc từng file của project vừa sinh ra) — giáo trình
 			chỉ khuyên "chưa cần lo về các file này" · phân biệt ba con số <code>compileSdk</code> / <code>minSdk</code> /
 			<code>targetSdk</code> · giải thích BOM của Compose, Gradle wrapper, <code>FAIL_ON_PROJECT_REPOS</code>,
 			<code>NoActionBar</code>, đơn vị <code>sp</code>, hệ tone 40/80 của Material 3, slot API và <code>SideEffect</code> ·

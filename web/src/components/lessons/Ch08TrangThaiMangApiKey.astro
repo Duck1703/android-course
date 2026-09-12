@@ -102,7 +102,7 @@ LaunchedEffect(loadMore) {
 
 	<h2 id="bon-trang-thai">16. Một request không chỉ có "thành công"</h2>
 	<p>
-		Nhìn lại khối <code>catch</code> của <code>queryRecipes</code> (W2 mục 14): có lỗi thì
+		Nhìn lại khối <code>catch</code> của <code>queryRecipes</code> (W2 <a href="/chapters/ch08-retrofit-moshi-json/#goi-lan-dau">mục 14</a>): có lỗi thì
 		<code>_recipeListState.value = listOf()</code> — danh sách rỗng. Giờ là lúc gọi đúng tên vấn đề. Một vùng dữ liệu
 		mạng có <strong>bốn</strong> tình huống, không phải hai:
 	</p>
@@ -129,7 +129,7 @@ LaunchedEffect(loadMore) {
 	<p>
 		S4 đã dựng khuôn: ViewModel sở hữu <em>một</em> UI state, mọi quyết định vẽ của màn hình đều đọc từ đó. Với dữ liệu
 		mạng, câu hỏi mà state phải trả lời được là: <strong>"tại thời điểm này, màn hình nên hiện gì?"</strong> — và để
-		trả lời được cả bốn tình huống ở mục 16, state phải mang đủ thông tin để phân biệt chúng. Khuôn tối giản:
+		trả lời được cả bốn tình huống ở <a href="#bon-trang-thai">mục 16</a>, state phải mang đủ thông tin để phân biệt chúng. Khuôn tối giản:
 	</p>
 	<Code code={searchUiStateExample} lang="kotlin" theme="github-dark" />
 	<p>Và các chuyển trạng thái điển hình của một lần tìm kiếm:</p>
@@ -204,13 +204,13 @@ LaunchedEffect(loadMore) {
 		mất loại lỗi — code của bạn không thể phân biệt "mất mạng" với "bug thật của mình", và bug thật bị ngụy trang thành
 		lỗi mạng suốt cả đời project. Mức hợp lý của bài này: <strong>bắt rộng ở biên giới (ViewModel, chỗ quy lỗi thành
 		state), bắt hẹp nơi bạn có thể xử lý cụ thể một loại lỗi.</strong> Code mẫu làm đúng mức biên giới; điều khiến nó
-		chưa trung thực không phải chỗ bắt, mà là chỗ <em>xử lý sau khi bắt</em> (mục 16–18).
+		chưa trung thực không phải chỗ bắt, mà là chỗ <em>xử lý sau khi bắt</em> (<a href="#bon-trang-thai">mục 16</a>–18).
 	</p>
 	<p class="notice">
 		<strong>Một cái bẫy riêng của coroutine — đừng nuốt huỷ.</strong> Trong một coroutine, việc bị huỷ cũng được giao
 		tiếp qua exception (<code>CancellationException</code>). Khối <code>catch (e: Exception)</code> bắt được cả nó:
 		coroutine đã bị huỷ (màn hình đóng, ViewModel xoá) nhưng code trong <code>catch</code> vẫn chạy — đúng thứ bạn muốn
-		<em>tránh</em> ở W1 mục 6. Thói quen an toàn: ở khối bắt rộng, <strong>cho huỷ đi tiếp</strong> thay vì xử lý như lỗi
+		<em>tránh</em> ở W1 <a href="/chapters/ch08-coroutines-va-flow/#collect-hai-luong">mục 6</a>. Thói quen an toàn: ở khối bắt rộng, <strong>cho huỷ đi tiếp</strong> thay vì xử lý như lỗi
 		thường (ném lại <code>CancellationException</code>, hoặc kiểm tra <code>isActive</code> trước khi đặt state). Cơ
 		chế chi tiết của huỷ thuộc phần sâu hơn của coroutine; ở mức bài này chỉ cần quy tắc: <strong>đừng để khối catch xử
 		lý "lỗi" cho một việc mà người dùng đã cố tình bỏ đi.</strong> Code mẫu không làm bước này — một trong những chỗ
@@ -228,7 +228,7 @@ LaunchedEffect(loadMore) {
 		</thead>
 		<tbody>
 			<tr><td><code>HTTP 401</code></td><td>API key sai, hoặc chưa dán key — server không nhận bạn</td></tr>
-			<tr><td><code>HTTP 402</code> / 429</td><td>đã hết hạn mức miễn phí trong ngày (rate limit — W2 mục 14.1)</td></tr>
+			<tr><td><code>HTTP 402</code> / 429</td><td>đã hết hạn mức miễn phí trong ngày (rate limit — W2 <a href="/chapters/ch08-retrofit-moshi-json/#goi-lan-dau">mục 14.1</a>)</td></tr>
 			<tr><td><code>UnknownHostException</code></td><td>không phân giải được tên server — máy/emulator không có mạng</td></tr>
 		</tbody>
 	</table>
@@ -333,7 +333,7 @@ LaunchedEffect(loadMore) {
 		<code>_recipeListState.value = response.recipes</code> — <strong>thay hẳn</strong> danh sách, không nối thêm
 		(<em>appending</em>). Nghĩa là lưới không thật sự dài ra: cuộn tới đáy, 20 item cũ biến mất và 20 item mới thay vào
 		— người dùng bị mất chỗ đang xem. Kết hợp với việc kích hoạt theo <em>vị trí cuộn</em>, còn có nguy cơ gọi API nhiều
-		lần liên tiếp — điều đáng lo với API bị rate limit (W2 mục 14.1). Một bản "infinite scroll" đúng nghĩa phải nối:
+		lần liên tiếp — điều đáng lo với API bị rate limit (W2 <a href="/chapters/ch08-retrofit-moshi-json/#goi-lan-dau">mục 14.1</a>). Một bản "infinite scroll" đúng nghĩa phải nối:
 		<code>_recipeListState.value = _recipeListState.value + response.recipes</code>, kèm khoá chặn để không gọi trùng
 		khi đang tải. Trong project thật, việc này thường giao hẳn cho thư viện chuyên trách — <strong>Paging 3</strong> của
 		Jetpack; khoá này không dạy nó, chỉ cần biết tên để khi gặp không ngỡ ngàng.
@@ -352,19 +352,19 @@ LaunchedEffect(loadMore) {
 			<tr>
 				<td><strong>(a) Sai thật — phải sửa</strong></td>
 				<td>Kết quả sai hoặc dữ liệu lộ</td>
-				<td>key nằm trong code committed (mục 21); lỗi bị gộp thành "rỗng" (mục 16–18)</td>
+				<td>key nằm trong code committed (<a href="#api-key">mục 21</a>); lỗi bị gộp thành "rỗng" (<a href="#bon-trang-thai">mục 16</a>–18)</td>
 			</tr>
 			<tr>
 				<td><strong>(b) Chạy được nhưng dạy thói quen xấu</strong></td>
 				<td>Kết quả đúng; quy tắc bị vi phạm sẽ nổ ở chỗ khác</td>
-				<td><code>suspend</code> + <code>launch</code> dư, <code>Default</code> cho lời gọi mạng (W1 mục 7); trang mới
-					ghi đè trang cũ (mục 22); bắt Exception mà không trả huỷ (mục 19)</td>
+				<td><code>suspend</code> + <code>launch</code> dư, <code>Default</code> cho lời gọi mạng (W1 <a href="/chapters/ch08-coroutines-va-flow/#hai-ham">mục 7</a>); trang mới
+					ghi đè trang cũ (<a href="#phan-trang">mục 22</a>); bắt Exception mà không trả huỷ (<a href="#try-catch">mục 19</a>)</td>
 			</tr>
 			<tr>
 				<td><strong>(c) Lựa chọn khác — không sai</strong></td>
 				<td>Chạy đúng, có cái giá riêng, hoặc chỉ là cách viết thời điểm đó</td>
-				<td><code>collect</code> thủ công thay <code>collectAsState</code> (W1 mục 6); state cục bộ trùng tên flow
-					(W1 mục 6); hàm helper đặt ở file khác (W2 mục 14)</td>
+				<td><code>collect</code> thủ công thay <code>collectAsState</code> (W1 <a href="/chapters/ch08-coroutines-va-flow/#collect-hai-luong">mục 6</a>); state cục bộ trùng tên flow
+					(W1 <a href="/chapters/ch08-coroutines-va-flow/#collect-hai-luong">mục 6</a>); hàm helper đặt ở file khác (W2 <a href="/chapters/ch08-retrofit-moshi-json/#goi-lan-dau">mục 14</a>)</td>
 			</tr>
 		</tbody>
 	</table>
@@ -375,7 +375,7 @@ LaunchedEffect(loadMore) {
 	<p>Ba bài tập mở rộng, xếp theo độ khó tăng dần — cả ba đều bạn đủ công cụ làm ngay:</p>
 	<ol>
 		<li>
-			<strong>Tách trạng thái lỗi khỏi trạng thái rỗng.</strong> Áp khuôn mục 17 vào <code>RecipeViewModel</code>: thêm
+			<strong>Tách trạng thái lỗi khỏi trạng thái rỗng.</strong> Áp khuôn <a href="#uistate-trung-thuc">mục 17</a> vào <code>RecipeViewModel</code>: thêm
 			<code>errorMessage</code> vào state (hoặc đổi <code>recipeListState</code> thành sealed class
 			<code>Loading / Success / Error</code>), sửa khối <code>catch</code> đặt thông báo vào state, và thêm một dòng
 			hiện thông báo trong <code>RecipeList</code>. Thử bằng cách bật chế độ máy bay rồi tìm kiếm.
@@ -385,7 +385,7 @@ LaunchedEffect(loadMore) {
 			nghĩ xem đặt "đang tải thêm" vào đâu để không gọi trùng.
 		</li>
 		<li>
-			<strong>Đưa API key ra khỏi source code.</strong> Làm đủ khuôn bốn bước ở mục 21, rồi kiểm chứng: xoá key khỏi
+			<strong>Đưa API key ra khỏi source code.</strong> Làm đủ khuôn bốn bước ở <a href="#api-key">mục 21</a>, rồi kiểm chứng: xoá key khỏi
 			<code>SpoonacularService.kt</code>, commit thử (Git phải bỏ qua keys.properties), app vẫn chạy.
 		</li>
 	</ol>
@@ -412,12 +412,12 @@ LaunchedEffect(loadMore) {
 			<summary>Xem đáp án</summary>
 			<p>
 				<strong>(a)</strong> Vệ sinh mã nguồn: key không còn rơi vào Git, không nằm trong lịch sử commit, không phát tán
-				cho ai đọc được repo (mục 21).
+				cho ai đọc được repo (<a href="#api-key">mục 21</a>).
 			</p>
 			<p>
 				<strong>(b)</strong> Giá trị vẫn được build vào app: <code>buildConfigField</code> nhúng key vào APK, và APK nằm
 				trên máy người dùng ở dạng có thể dịch ngược. "Không ai lấy được" chỉ đúng với người không đọc APK. Bí mật thật
-				phải nằm ngoài app — backend/proxy của bạn giữ key (mục 21, bảng ranh giới).
+				phải nằm ngoài app — backend/proxy của bạn giữ key (<a href="#api-key">mục 21</a>, bảng ranh giới).
 			</p>
 			<p>
 				<strong>(c)</strong> Không đủ — và đó là lúc chuyển sang kiến trúc: app gọi server của bạn, server giữ key và gọi
@@ -435,25 +435,25 @@ LaunchedEffect(loadMore) {
 	<ul>
 		<li>
 			<strong>Gộp "rỗng" với "lỗi".</strong> <code>catch &#123; emptyList() &#125;</code> không phải "không có kết quả"
-			— nó là lỗi cải trang; người dùng mất mạng sẽ đọc thành "món này không có công thức" (mục 16). State phải có ô
-			cho errorMessage (mục 17).
+			— nó là lỗi cải trang; người dùng mất mạng sẽ đọc thành "món này không có công thức" (<a href="#bon-trang-thai">mục 16</a>). State phải có ô
+			cho errorMessage (<a href="#uistate-trung-thuc">mục 17</a>).
 		</li>
 		<li>
 			<strong>Tưởng log = xử lý lỗi.</strong> Timber ghi cho developer qua logcat; người dùng cần một câu hành động
-			trên màn hình, do ViewModel đặt vào state (mục 18). Cũng đừng cho người dùng xem raw exception message
-			(mục 18).
+			trên màn hình, do ViewModel đặt vào state (<a href="#log-va-loi">mục 18</a>). Cũng đừng cho người dùng xem raw exception message
+			(<a href="#log-va-loi">mục 18</a>).
 		</li>
 		<li>
 			<strong>Nuốt huỷ trong khối <code>catch (e: Exception)</code>.</strong> Huỷ coroutine đi qua exception riêng;
-			bắt rộng bắt được cả nó và xử lý như lỗi thường — đúng thứ người dùng đã bỏ đi. Cho huỷ đi tiếp (mục 19).
+			bắt rộng bắt được cả nó và xử lý như lỗi thường — đúng thứ người dùng đã bỏ đi. Cho huỷ đi tiếp (<a href="#try-catch">mục 19</a>).
 		</li>
 		<li>
 			<strong>Tưởng keys.properties/BuildConfig là két sắt.</strong> Khuôn này chống commit — không chống đọc APK. Key
-			nhúng vào app là key có thể bị lấy. Bí mật thật nằm ở backend/proxy (mục 21).
+			nhúng vào app là key có thể bị lấy. Bí mật thật nằm ở backend/proxy (<a href="#api-key">mục 21</a>).
 		</li>
 		<li>
 			<strong>Tưởng cuộn-hết-dân là "app tự nối danh sách".</strong> Bản phân trang của project ghi đè trang cũ thay vì
-			nối; gọi thêm còn có nguy cơ lặp khi đang tải. Hiểu cơ chế trước khi tin vào cảm giác "infinite scroll" (mục 22).
+			nối; gọi thêm còn có nguy cơ lặp khi đang tải. Hiểu cơ chế trước khi tin vào cảm giác "infinite scroll" (<a href="#phan-trang">mục 22</a>).
 		</li>
 	</ul>
 
@@ -500,9 +500,9 @@ LaunchedEffect(loadMore) {
 			· A14 (Gradle: khuôn keys.properties của bài này dựng trên nền version catalog/build.gradle.kts đã dạy).
 		</li>
 		<li>
-			<strong>Ví dụ tối giản do khoá dựng:</strong> bảng bốn tình huống (mục 16), <code>SearchUiState</code> + chuỗi
-			chuyển trạng thái (mục 17), khối <code>catch</code> với <code>errorMessage</code> (mục 18), khuôn
-			keys.properties → Gradle → BuildConfig (mục 21), bảng ba mức đọc code (mục 23).
+			<strong>Ví dụ tối giản do khoá dựng:</strong> bảng bốn tình huống (<a href="#bon-trang-thai">mục 16</a>), <code>SearchUiState</code> + chuỗi
+			chuyển trạng thái (<a href="#uistate-trung-thuc">mục 17</a>), khối <code>catch</code> với <code>errorMessage</code> (<a href="#log-va-loi">mục 18</a>), khuôn
+			keys.properties → Gradle → BuildConfig (<a href="#api-key">mục 21</a>), bảng ba mức đọc code (<a href="#ba-muc">mục 23</a>).
 		</li>
 	</ul>
 </section>

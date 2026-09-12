@@ -226,7 +226,7 @@
 			<strong>Bốn bước đọc quy ước.</strong> Trong một app offline-first điển hình, khoá "nguồn đáng tin"
 			của dữ liệu vẫn là database cục bộ. Mọi dòng dữ liệu lên UI đều đi qua: <code>live query → model →
 			StateFlow → ViewModel → compose</code>. Bạn có thể tự vẽ sơ đồ này trước khi đọc tiếp — nếu trùng
-			với đường dây ở mục 6 thì bạn đã nắm mô hình.
+			với đường dây ở <a href="#duong-day">mục 6</a> thì bạn đã nắm mô hình.
 		</p>
 	</div>
 
@@ -312,7 +312,7 @@
 	<p> Hai hàm của project gán subscription
 	vào biến cục bộ rồi kết thúc — biến mất tham chiếu, garbage collector dọn mất đăng ký, và app
 	<strong>im lặng ngừng nhận dữ liệu</strong>. Đây là bản tổng quát của cái bẫy "đường ống và chuông" ở
-	mục 3: mọi thứ bạn đăng ký với một sync engine là <em>tài nguyên sống</em>, phải nằm trong một field
+	<a href="#repository-va-sync-engine">mục 3</a>: mọi thứ bạn đăng ký với một sync engine là <em>tài nguyên sống</em>, phải nằm trong một field
 	có vòng đời rõ ràng. Ở app Room/Retrofit của bạn không gặp bẫy này vì Room query và Retrofit call là
 	hàm vô trạng thái — một khác biệt nền tảng nữa giữa "gọi khi cần" và "đăng ký lâu dài".</p>
 
@@ -389,7 +389,7 @@
 		giản + Room đã đủ; thao tác ghi cần xác nhận server tức thời (thanh toán, tồn kho) — eventual
 		consistency là sai nghĩa; hay app chỉ chạy với một server duy nhất, không có khái niệm "nhiều peer".
 		Mang thêm cả một sync engine vào app dạng này nghĩa là bạn tự nhận thêm: quản lý vòng đời tài nguyên
-		đăng ký (mục 5.3), xung đột hợp nhất dữ liệu, một dependency lớn có vòng đời riêng. Không có gì sai
+		đăng ký (<a href="#doc-cu-3">mục 5.3</a>), xung đột hợp nhất dữ liệu, một dependency lớn có vòng đời riêng. Không có gì sai
 		với lựa chọn "repository + REST + Room" — đó vẫn là kiến trúc mặc định của phần lớn app Android, và
 		là cái mà toàn khoá đã dựng cho bạn.
 	</p>
@@ -430,11 +430,11 @@
 
 	<div class="callout diff">
 		<p>
-			<strong>3. "Vì app chạy được nên kiến trúc đúng."</strong> Bốn thoả hiệp ở mục 5 đều không crash,
+			<strong>3. "Vì app chạy được nên kiến trúc đúng."</strong> Bốn thoả hiệp ở <a href="#doc-code-cu-co-phe-phan">mục 5</a> đều không crash,
 			không log, không test đỏ: biến toàn cục phụ thuộc chuỗi điều kiện ngầm, getter đăng ký lặng lẽ,
 			subscription bị GC, interface rò rỉ kiểu SDK. Đơn vị kiểm chứng duy nhất của một quyết định kiến
 			trúc không phải "nó chạy" — mà là "nó vẫn đúng khi app to lên": thêm phòng thứ hai, thêm màn hình
-			thứ ba, đổi engine. Các quyết định ở mục 5 chết đúng ở những phép thử đó.
+			thứ ba, đổi engine. Các quyết định ở <a href="#doc-code-cu-co-phe-phan">mục 5</a> chết đúng ở những phép thử đó.
 		</p>
 	</div>
 
@@ -480,7 +480,7 @@
 		</li>
 		<li>
 			<strong>Nhiều phòng chat.</strong> Nguyên liệu đã có trong repository nhưng chưa ai dùng. Trước
-			khi làm, nhớ lỗi "getter có tác dụng phụ" ở mục 5.2: bạn sẽ phải huỷ live query cũ trước khi mở
+			khi làm, nhớ lỗi "getter có tác dụng phụ" ở <a href="#doc-cu-2">mục 5.2</a>: bạn sẽ phải huỷ live query cũ trước khi mở
 			query mới, nếu không tin nhắn hai phòng lẫn vào nhau.
 		</li>
 		<li>
@@ -500,7 +500,7 @@
 		(app Kodeco Chat, SDK Ditto 4.5.0) — <code>data/repository/RepositoryImpl.kt</code>,
 		<code>data/repository/Repository.kt</code>, <code>viewmodel/MainViewModel.kt</code>,
 		<code>data/Constants.kt</code>, <code>data/model/DateExtensions.kt</code>. Các nhận định phê phán
-		(mục 5) được đối chiếu trực tiếp trên code này; chi tiết API và bảng drift phiên bản đã chuyển sang
+		(<a href="#doc-code-cu-co-phe-phan">mục 5</a>) được đối chiếu trực tiếp trên code này; chi tiết API và bảng drift phiên bản đã chuyển sang
 		AP2 và AP3.
 	</p>
 	<p class="src">

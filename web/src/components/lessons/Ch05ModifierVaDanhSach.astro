@@ -375,7 +375,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 		một tệp quy tắc áp từ ngoài vào theo bộ chọn; <code>Modifier</code> là một tham số bạn truyền tay cho <em>đúng
 		một</em> composable. Thứ hai, với các thuộc tính khác nhau CSS không quan tâm thứ tự khai báo trong một khối
 		(riêng khi cùng ghi đè một thuộc tính thì bản sau thắng); <code>Modifier</code> thì
-		thứ tự quyết định kết quả — nội dung mục 6. Cứ giữ mô hình Compose thuần: một mô tả, truyền vào, áp lần lượt.
+		thứ tự quyết định kết quả — nội dung <a href="#thu-tu-modifier">mục 6</a>. Cứ giữ mô hình Compose thuần: một mô tả, truyền vào, áp lần lượt.
 	</p>
 	<h3><code>modifier</code> là tham số quy ước — và thường được truyền tiếp xuống</h3>
 	<p>
@@ -496,12 +496,12 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 			<tr>
 				<td><code>background(...)</code></td>
 				<td>Tô nền. Rất hữu ích cả khi <em>gỡ lỗi</em>: tô tạm một màu là thấy ngay thành phần đang chiếm vùng nào.</td>
-				<td>Dùng làm mẹo gỡ lỗi ở mục 8.</td>
+				<td>Dùng làm mẹo gỡ lỗi ở <a href="#bug-weight">mục 8</a>.</td>
 			</tr>
 			<tr>
 				<td><code>weight(...)</code></td>
 				<td>Chỉ dùng được <em>bên trong</em> <code>Column</code> hoặc <code>Row</code>: chia phần chỗ còn lại theo tỉ lệ.</td>
-				<td>Chìa khoá sửa bug ở mục 8, và cũng dùng lại trong mỗi dòng tin nhắn.</td>
+				<td>Chìa khoá sửa bug ở <a href="#bug-weight">mục 8</a>, và cũng dùng lại trong mỗi dòng tin nhắn.</td>
 			</tr>
 			<tr>
 				<td><code>clickable(...)</code></td>
@@ -515,7 +515,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 		code làm điều này: <code>val spaceBetweenAuthors = if (isLastMessageByAuthor) Modifier.padding(top = 8.dp) else
 		Modifier</code>. Nghĩa là "nếu đây là tin cuối của một người thì thêm 8dp phía trên, không thì không thêm gì" —
 		<code>Modifier</code> trơ (không có gì) là một giá trị hợp lệ, đúng như giá trị mặc định của tham số
-		<code>modifier</code> ở mục 5. Đây là cách viết layout có điều kiện mà không cần lặp lại cả khối code hai lần.
+		<code>modifier</code> ở <a href="#modifier">mục 5</a>. Đây là cách viết layout có điều kiện mà không cần lặp lại cả khối code hai lần.
 	</p>
 
 	<h2 id="bug-weight">8. Bug thật: app bar đè lên ô nhập — <code>fillMaxSize</code> và <code>weight</code></h2>
@@ -532,7 +532,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	<ol>
 		<li>
 			<strong>Thêm <code>Modifier.fillMaxSize()</code> cho <code>Box</code>.</strong> Chạy lại, thay đổi gần như không
-			thấy được. Đây là lúc dùng mẹo gỡ lỗi ở mục 7 — tô màu tạm cho <code>Box</code>:
+			thấy được. Đây là lúc dùng mẹo gỡ lỗi ở <a href="#modifier-thiet-yeu">mục 7</a> — tô màu tạm cho <code>Box</code>:
 			<Code code={boxDebugCode} lang="kotlin" theme="github-dark" />
 			Giờ thì rõ: trước đó <code>Box</code> chỉ vừa bằng nội dung của nó, bây giờ nó căng hết màn hình. Nhưng phần nhập
 			liệu <strong>vẫn bị che</strong> — vì <code>Box</code> to ra không đồng nghĩa với việc các con bên trong được chia
@@ -545,7 +545,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 		</li>
 		<li>
 			<strong>Cập nhật <code>Messages()</code></strong> để nó nhận và <em>dùng</em> modifier được truyền vào — đúng quy
-			ước ở mục 5. Phần nội dung để trống, mục 9 mới làm:
+			ước ở <a href="#modifier">mục 5</a>. Phần nội dung để trống, <a href="#danh-sach">mục 9</a> mới làm:
 			<Code code={messagesStubCode} lang="kotlin" theme="github-dark" />
 		</li>
 	</ol>
@@ -589,7 +589,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	<p>Ba chi tiết layout đáng học trong đoạn này:</p>
 	<ul>
 		<li>
-			<code>spaceBetweenAuthors</code> — <code>Modifier</code> chọn theo điều kiện rồi gán vào biến, đúng mẫu ở mục 7.
+			<code>spaceBetweenAuthors</code> — <code>Modifier</code> chọn theo điều kiện rồi gán vào biến, đúng mẫu ở <a href="#modifier-thiet-yeu">mục 7</a>.
 		</li>
 		<li>
 			Nhánh <code>else</code> dùng <code>Spacer(modifier = Modifier.width(74.dp))</code> thay vì hiện lại avatar. Con số
@@ -597,7 +597,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 			chỗ trống bằng avatar để các bong bóng của cùng một người vẫn thẳng hàng.
 		</li>
 		<li>
-			<code>Modifier.padding(end = 16.dp).weight(1f)</code> — lại là quy tắc thứ tự ở mục 6: trừ đệm trước, rồi phần nội
+			<code>Modifier.padding(end = 16.dp).weight(1f)</code> — lại là quy tắc thứ tự ở <a href="#thu-tu-modifier">mục 6</a>: trừ đệm trước, rồi phần nội
 			dung mới lấy hết chỗ ngang còn lại.
 		</li>
 	</ul>
@@ -642,7 +642,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	<p>Dựng cơ chế trước, có dữ liệu thật sau:</p>
 	<Code code={lazyColumnFirstCode} lang="kotlin" theme="github-dark" />
 	<p>
-		Bên trong ngoặc nhọn của <code>LazyColumn</code> bạn không viết composable trực tiếp, mà gọi <code>item { }</code> —
+		Bên trong ngoặc nhọn của <code>LazyColumn</code> bạn không viết composable trực tiếp, mà gọi <code>item &#123; &#125;</code> —
 		mỗi lời gọi khai một item của danh sách. Lý do: <code>LazyColumn</code> cần <em>biết trước có bao nhiêu item</em> để
 		tính vùng cuộn, mà không phải dựng hết chúng ra. (Tham số <code>messages</code> ở bản này chưa được dùng — ba item
 		vẫn ghi cứng; bản cuối ngay dưới đây mới đưa dữ liệu thật vào.)
@@ -676,7 +676,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	<p>Bốn điểm cần hiểu:</p>
 	<ul>
 		<li>
-			<strong><code>itemsIndexed</code> thay cho <code>item { }</code> viết tay.</strong> Nó nhận cả danh sách rồi tự lặp,
+			<strong><code>itemsIndexed</code> thay cho <code>item &#123; &#125;</code> viết tay.</strong> Nó nhận cả danh sách rồi tự lặp,
 			và cho bạn cả <code>index</code> lẫn phần tử. Có cả bản <code>items(danhSach) &#123; phanTu -&gt; ... &#125;</code>
 			khi bạn không cần chỉ số. Cần tách rõ hai tầng ở đây: <code>itemsIndexed</code> là <strong>API của
 			Compose</strong>, còn <code>&#123; index, content -&gt; ... &#125;</code> là <strong>lambda của Kotlin</strong> —
@@ -747,7 +747,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 			<p>
 				Đưa <code>clickable</code> lên <strong>trước</strong> <code>padding</code>:
 				<code>Modifier.clickable &#123; ... &#125;.padding(12.dp).size(24.dp)</code>. Lý do: mỗi modifier áp lên kết quả
-				của modifier trước nó (mục 6). Ở chuỗi ban đầu, <code>padding</code> đã chèn 12dp <em>trước khi</em> vùng bấm
+				của modifier trước nó (<a href="#thu-tu-modifier">mục 6</a>). Ở chuỗi ban đầu, <code>padding</code> đã chèn 12dp <em>trước khi</em> vùng bấm
 				được đăng ký, nên phần đệm đó không nhận thao tác bấm — vùng bấm chỉ còn đúng 24dp. Sau khi đổi, vùng bấm bao
 				trọn cả phần đệm, thành khoảng 48dp mỗi chiều: dễ bấm hơn nhiều mà hình icon không to lên (vì sao 48dp là con số đáng
 				nhớ — chương 5.5 trả lời). Đúng thứ tự này là thứ tự mà app bar của project dùng cho logo Kodeco.
@@ -785,7 +785,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 
 	<p class="notice">
 		<strong>(c) Dùng <code>label</code> và <code>placeholder</code> cùng lúc.</strong> Cả hai đều muốn hiện chữ trong vùng
-		ô nhập, nên chúng tranh chỗ và bạn thấy nhãn nằm lẫn vào đường viền — đúng bug ở mục 4. Nhớ theo hành vi:
+		ô nhập, nên chúng tranh chỗ và bạn thấy nhãn nằm lẫn vào đường viền — đúng bug ở <a href="#o-nhap-ux">mục 4</a>. Nhớ theo hành vi:
 		<code>label</code> là tên của ô và <strong>ở lại</strong>; <code>placeholder</code> là gợi ý bên trong ô và
 		<strong>biến mất</strong> khi có chữ. Còn cái sai nặng hơn là nhét chữ gợi ý vào <code>value</code>: khi đó nó là nội
 		dung thật, và người dùng phải xoá tay.

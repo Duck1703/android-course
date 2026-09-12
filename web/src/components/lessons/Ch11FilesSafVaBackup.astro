@@ -214,7 +214,7 @@ const manifestBackupCode = `<application
 		Bài này đi hết câu hỏi 1 và câu hỏi 3 (vị trí + backup), và để câu hỏi 2 (mã hoá) cho bài sau. Một ví dụ cho
 		thấy ba câu hỏi không suy ra nhau: file <code>test.txt</code> trong <code>filesDir</code> — nằm trong sandbox
 		(câu 1), plaintext (câu 2), và <strong>vẫn được backup lên cloud</strong> theo mặc định (câu 3, chứng minh ở
-		mục 8.5). Riêng tư không loại trừ backup, và backup không hàm ý mã hoá.
+		<a href="#backup">mục Backup</a>). Riêng tư không loại trừ backup, và backup không hàm ý mã hoá.
 	</p>
 
 	<p>
@@ -235,7 +235,7 @@ const manifestBackupCode = `<application
 			<tr>
 				<td>Backup / chuyển máy</td>
 				<td><code>allowBackup="true"</code> đưa file của app lên cloud hoặc sang máy mới</td>
-				<td>Một phần — xem mục 8.5; và với dữ liệu đã mã hoá, chỗ này mã hoá lại gây ra một vấn đề <em>mới</em> (bài sau, mục 15)</td>
+				<td>Một phần — xem <a href="#backup">mục Backup</a>; và với dữ liệu đã mã hoá, chỗ này mã hoá lại gây ra một vấn đề <em>mới</em> (bài sau, <a href="/chapters/ch11-keystore-sqlcipher-va-ma-hoa/#backup">mục 15</a>)</td>
 			</tr>
 			<tr>
 				<td>Máy mất / bị lấy khi đang mở khoá</td>
@@ -303,7 +303,7 @@ File do NGƯỜI DÙNG chọn — không cần quyền, vì chính họ vừa ch
 		khác biệt lớn nhất trong cả mục này. <code>getExternalFilesDir()</code> trả về thư mục riêng của app trên bộ nhớ
 		ngoài: <strong>không cần quyền gì cả</strong>, ở mọi phiên bản Android.
 		<code>getExternalStoragePublicDirectory()</code> trả về thư mục chung: <strong>cần quyền</strong>, và từ Android
-		10 thì gần như không dùng được nữa vì Scoped Storage (mục 6). Làm theo cách thứ hai rất dễ cho ra code chạy trên
+		10 thì gần như không dùng được nữa vì Scoped Storage (<a href="#external">mục 6</a>). Làm theo cách thứ hai rất dễ cho ra code chạy trên
 		emulator mà chết trên máy thật.
 	</p>
 
@@ -570,15 +570,15 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 	<ul>
 		<li><strong>Không ghép được</strong> một <code>content://...</code> thành đường dẫn bằng cách "decode chuỗi" — nó
 			<em>không</em> mã hoá một đường dẫn bên dưới. Việc đó có thể trông chạy được trên một thiết bị rồi hỏng trên thiết bị khác.</li>
-		<li><strong>Khi làm việc với Uri, app đi qua <code>ContentResolver</code></strong> (mục 7.4) — chứ không qua
+		<li><strong>Khi làm việc với Uri, app đi qua <code>ContentResolver</code></strong> (<a href="#saf-tree">mục 7.4</a>) — chứ không qua
 			<code>File</code>/<code>FileInputStream</code>.</li>
-		<li><strong>Quyền vào Uri là loại quyền riêng</strong>, không phải quyền filesystem (mục 7.4).</li>
+		<li><strong>Quyền vào Uri là loại quyền riêng</strong>, không phải quyền filesystem (<a href="#saf-tree">mục 7.4</a>).</li>
 	</ul>
 
 	<h3 id="saf-create">7.2. Tạo file mới — <code>ACTION_CREATE_DOCUMENT</code></h3>
 
 	<Code code={safCreateCode} lang="kotlin" theme="github-dark" />
-	<p class="src">Nguồn: giáo trình gốc chapter 11 (<code>{BOOK}</code> dòng 112–123) — dùng <code>startActivityForResult</code>, API đã deprecated; đọc để hiểu từng dòng, khuôn hiện tại ở mục 7.3.</p>
+	<p class="src">Nguồn: giáo trình gốc chapter 11 (<code>{BOOK}</code> dòng 112–123) — dùng <code>startActivityForResult</code>, API đã deprecated; đọc để hiểu từng dòng, khuôn hiện tại ở <a href="#saf-note">mục 7.3</a>.</p>
 
 	<p>Đọc từng dòng, vì mỗi dòng có một việc riêng:</p>
 
@@ -676,7 +676,7 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 	<h3 id="saf-stream">7.5. Đọc/ghi nội dung: <code>ContentResolver</code>, không phải đường dẫn giả</h3>
 
 	<p>
-		Đoạn code hiện đại ở mục 7.3 đã cho thấy cách đúng khi làm việc với một Uri của SAF:
+		Đoạn code hiện đại ở <a href="#saf-note">mục 7.3</a> đã cho thấy cách đúng khi làm việc với một Uri của SAF:
 		<code>contentResolver.openOutputStream(uri)</code>. Đó là khuôn chuẩn: <strong>với Uri, app làm việc qua
 		<code>ContentResolver</code></strong> — <code>openInputStream(uri)</code> để đọc, <code>openOutputStream(uri)</code> để
 		ghi. Không cố biến Uri thành đường dẫn file rồi mở bằng <code>FileInputStream</code>: content/provider có thể đứng
@@ -684,7 +684,7 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 	</p>
 
 	<p>
-		Trong code ở 7.3 bạn cũng thấy lại <code>use &#123; &#125;</code> (mục 3.1) — stream từ
+		Trong code ở 7.3 bạn cũng thấy lại <code>use &#123; &#125;</code> (<a href="#use-block">mục 3.1</a>) — stream từ
 		<code>openInputStream</code>/<code>openOutputStream</code> cũng là <code>Closeable</code>, và quy tắc "ai mở thì đóng,
 		cả khi có exception" áp dụng y như với file thường.
 	</p>
@@ -733,10 +733,10 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 		</p>
 	</div>
 
-	<h2 id="backup">8.5. Backup: chốt lại ba câu hỏi trước khi sang mã hoá</h2>
+	<h2 id="backup">Backup: chốt lại ba câu hỏi trước khi sang mã hoá</h2>
 
 	<p>
-		Trước khi sang bài sau, cần chốt lại khung ba câu hỏi ở mục 1 — vì phần còn lại của lộ trình sẽ dựa vào đó. Câu 3
+		Trước khi sang bài sau, cần chốt lại khung ba câu hỏi ở <a href="#ba-cau-hoi">mục 1</a> — vì phần còn lại của lộ trình sẽ dựa vào đó. Câu 3
 		(backup) đáng một mục riêng, vì trạng thái backup mặc định của app học này là một quả bom nổ chậm mà bạn cần nhìn thấy
 		ngay từ bây giờ.
 	</p>
@@ -746,7 +746,7 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 		Theo tài liệu Auto Backup, mặc định được backup gồm: shared preferences, file nội bộ (<code>getFilesDir()</code>), database
 		(<code>getDatabasePath()</code>) và file external riêng của app (<code>getExternalFilesDir()</code>) — tối đa 25 MB mỗi
 		app, lên Google Drive của người dùng. Riêng thư mục cache/code-cache/no-backup bị loại trừ <em>cứng</em> (kể cả cố tình
-		<code>&lt;include&gt;</code> cũng không đưa lại được). Riêng tư (mục 1) và được backup (mục này) là hai thuộc tính khác
+		<code>&lt;include&gt;</code> cũng không đưa lại được). Riêng tư (<a href="#ba-cau-hoi">mục 1</a>) và được backup (mục này) là hai thuộc tính khác
 		nhau — app học này đang bật cả hai cùng lúc.
 	</p>
 
@@ -783,7 +783,7 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 		<code>data_extraction_rules.xml</code> chỉ có khung <code>&lt;cloud-backup&gt;</code> rỗng kèm TODO,
 		<code>backup_rules.xml</code> chỉ có sample bị comment. Nghĩa là: với <code>allowBackup="true"</code>, <em>mọi thứ được
 		backup theo mặc định, không loại trừ gì</em>. Điều đó vô hại với preference thường, và là một quả bom nổ chậm với dữ
-		liệu mã hoá — vì sao, bài sau sẽ chứng minh từng bước (mục 15 của bài đó).
+		liệu mã hoá — vì sao, bài sau sẽ chứng minh từng bước (<a href="/chapters/ch11-keystore-sqlcipher-va-ma-hoa/#backup">mục 15</a> của bài đó).
 	</p>
 
 	<p class="notice">
@@ -798,7 +798,7 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 		<strong>Kiểm tra nhanh</strong>
 		<p>
 			Bốn thứ sau đây của app học này, hãy trả lời: nằm ở đâu, có được mã hoá không, có được backup mặc định không — và
-			<em>theo câu hỏi nào</em> trong ba câu ở mục 1? <strong>(1)</strong> file <code>test.txt</code> trong
+			<em>theo câu hỏi nào</em> trong ba câu ở <a href="#ba-cau-hoi">mục 1</a>? <strong>(1)</strong> file <code>test.txt</code> trong
 			<code>filesDir</code>; <strong>(2)</strong> database <code>recipe_database</code>; <strong>(3)</strong> ảnh thumbnail
 			tải về cho card công thức; <strong>(4)</strong> file <code>encrypted_preferences.xml</code>.
 		</p>
@@ -814,6 +814,37 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 				rules — ba câu, ba nguồn trả lời khác nhau.
 			</p>
 		</details>
+	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+
+	<div class="callout warn">
+		<strong>1. <code>getExternalStoragePublicDirectory()</code> — deprecated từ API 29, vẫn xuất hiện trong nhiều tài liệu cũ.</strong>
+		<p>
+			Code ghi thẳng vào thư mục dùng chung kiểu này chạy được trên emulator và chết (hoặc chỉ đọc được) trên máy thật, vì
+			Scoped Storage. Thay thế tuỳ mục đích: file riêng của app → <code>getExternalFilesDir()</code>; ảnh/video → MediaStore;
+			tài liệu người dùng chọn → SAF (<a href="#external">mục 6</a>). Đây là điểm lệch giữa tài liệu gốc và Android hiện tại lớn nhất của bài này.
+		</p>
+	</div>
+
+	<div class="callout warn">
+		<strong>2. "Persistable" trong <code>takePersistableUriPermission</code> không nghĩa là "mãi mãi".</strong>
+		<p>
+			Quyền persist sống qua restart nhưng vẫn có thể mất: người dùng thu hồi, tài liệu bị xoá/đổi tên, provider (kể cả
+			tài khoản cloud) biến mất, hoặc vượt hạn mức persisted grant mỗi app (512 ở các bản hiện tại, 128 ở bản cũ) khiến
+			cái cũ bị đẩy ra. App thật phải xử lý được tình huống "Uri đã lưu không còn hợp lệ" — nhờ người dùng chọn lại — thay
+			vì giả định quyền vĩnh viễn (<a href="#saf-tree">mục 7.4</a>).
+		</p>
+	</div>
+
+	<div class="callout warn">
+		<strong>3. "App-private nghĩa là an toàn" — nhầm hai tầng phòng thủ.</strong>
+		<p>
+			Sandbox là kiểm soát truy cập, không phải mã hoá: file trong <code>filesDir</code> là plaintext trên đĩa, và bản
+			build <code>debug</code> đọc được thư mục app bằng <code>run-as</code> không cần root. Mã hoá là tầng khác — bài sau.
+			Tương tự đừng lẫn: "được backup" không hàm ý "được mã hoá", và "riêng tư" không loại trừ việc dữ liệu được copy lên
+			cloud theo backup rule (<a href="#ba-cau-hoi">mục 1</a>, 8.5).
+		</p>
 	</div>
 
 	<h2 id="tom-tat">Tóm tắt</h2>
@@ -836,37 +867,6 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 				đọc <code>fullBackupContent</code> — hai thế hệ rule cùng tồn tại trong manifest của project này, và cả hai hiện
 				đang rỗng rule.</li>
 		</ul>
-	</div>
-
-	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
-
-	<div class="callout warn">
-		<strong>1. <code>getExternalStoragePublicDirectory()</code> — deprecated từ API 29, vẫn xuất hiện trong nhiều tài liệu cũ.</strong>
-		<p>
-			Code ghi thẳng vào thư mục dùng chung kiểu này chạy được trên emulator và chết (hoặc chỉ đọc được) trên máy thật, vì
-			Scoped Storage. Thay thế tuỳ mục đích: file riêng của app → <code>getExternalFilesDir()</code>; ảnh/video → MediaStore;
-			tài liệu người dùng chọn → SAF (mục 6). Đây là điểm lệch giữa tài liệu gốc và Android hiện tại lớn nhất của bài này.
-		</p>
-	</div>
-
-	<div class="callout warn">
-		<strong>2. "Persistable" trong <code>takePersistableUriPermission</code> không nghĩa là "mãi mãi".</strong>
-		<p>
-			Quyền persist sống qua restart nhưng vẫn có thể mất: người dùng thu hồi, tài liệu bị xoá/đổi tên, provider (kể cả
-			tài khoản cloud) biến mất, hoặc vượt hạn mức persisted grant mỗi app (512 ở các bản hiện tại, 128 ở bản cũ) khiến
-			cái cũ bị đẩy ra. App thật phải xử lý được tình huống "Uri đã lưu không còn hợp lệ" — nhờ người dùng chọn lại — thay
-			vì giả định quyền vĩnh viễn (mục 7.4).
-		</p>
-	</div>
-
-	<div class="callout warn">
-		<strong>3. "App-private nghĩa là an toàn" — nhầm hai tầng phòng thủ.</strong>
-		<p>
-			Sandbox là kiểm soát truy cập, không phải mã hoá: file trong <code>filesDir</code> là plaintext trên đĩa, và bản
-			build <code>debug</code> đọc được thư mục app bằng <code>run-as</code> không cần root. Mã hoá là tầng khác — bài sau.
-			Tương tự đừng lẫn: "được backup" không hàm ý "được mã hoá", và "riêng tư" không loại trừ việc dữ liệu được copy lên
-			cloud theo backup rule (mục 1, 8.5).
-		</p>
 	</div>
 
 	<h2 id="nguon">Nguồn tham khảo</h2>
@@ -903,8 +903,8 @@ content Uri:        content://com.android.externalstorage.documents/document/pri
 		</p>
 
 		<p class="src">
-			<strong>Phần bổ sung ngoài giáo trình:</strong> mục 1 (khung ba câu hỏi + phân biệt sandbox ≠ mã hoá) · mục 7.1
-			(file path vs Uri) · mục 7.3/7.5 (Activity Result API + ContentResolver streams) · mục 8.5 (hai thế hệ backup rules,
+			<strong>Phần bổ sung ngoài giáo trình:</strong> <a href="#ba-cau-hoi">mục 1</a> (khung ba câu hỏi + phân biệt sandbox ≠ mã hoá) · <a href="#saf-uri">mục 7.1</a>
+			(file path vs Uri) · <a href="#saf-note">mục 7.3</a>/7.5 (Activity Result API + ContentResolver streams) · <a href="#backup">mục Backup</a> (hai thế hệ backup rules,
 			đọc từ manifest/XML thật) · các ví dụ tự dựng đã liệt kê ở trên. Bảng drift chi tiết dài → AP3
 			(<code>docs/drafts/ap3-version-drift.md</code>).
 		</p>

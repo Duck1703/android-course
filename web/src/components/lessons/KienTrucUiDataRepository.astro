@@ -255,7 +255,7 @@ class ChatViewModel(
 				<li><strong>F1</strong> — hàm và tham số, <code>listOf</code>, <code>map</code> trên một danh sách.</li>
 			</ul>
 			<p>
-				<strong>Chưa cần biết:</strong> Room (bài <strong>R1–R4</strong>), Retrofit/JSON (bài <strong>W2</strong>), DataStore (bài <strong>D1–D2</strong>), Hilt/Dagger/Koin (chỉ được nêu tên ở mục 14; cách nối dây thật ở bài <strong>D2</strong>), toán tử Flow (bài <strong>W1</strong>), kiến trúc trạng thái mạng (bài <strong>W3</strong>), offline-first (bài <strong>O1</strong>), viết test (bài <strong>O2</strong>). Ở đây chúng chỉ xuất hiện dưới dạng <em>tên</em>, luôn kèm nhãn "sẽ học ở bài nào".
+				<strong>Chưa cần biết:</strong> Room (bài <strong>R1–R4</strong>), Retrofit/JSON (bài <strong>W2</strong>), DataStore (bài <strong>D1–D2</strong>), Hilt/Dagger/Koin (chỉ được nêu tên ở <a href="#dependency-tu-ngoai">mục 14</a>; cách nối dây thật ở bài <strong>D2</strong>), toán tử Flow (bài <strong>W1</strong>), kiến trúc trạng thái mạng (bài <strong>W3</strong>), offline-first (bài <strong>O1</strong>), viết test (bài <strong>O2</strong>). Ở đây chúng chỉ xuất hiện dưới dạng <em>tên</em>, luôn kèm nhãn "sẽ học ở bài nào".
 			</p>
 		</div>
 	</div>
@@ -298,7 +298,7 @@ class ChatViewModel(
 	<ul>
 		<li>Hướng dẫn kiến trúc chính thức của Android khuyến nghị <strong>tối thiểu hai tầng</strong> — UI và dữ liệu. Tầng domain là <em>tuỳ chọn</em>. (Là khuyến nghị, không phải luật bắt buộc — chính khối Nguồn của bài cũng ghi rõ điều đó.)</li>
 		<li>Trên đường từ composable xuống nguồn dữ liệu <strong>có thể</strong> có nhiều class: một ViewModel, một repository, một hay vài data source, có thể thêm một class dịch dữ liệu. Con số đó phụ thuộc app, không phụ thuộc một con số thánh.</li>
-		<li>Cái <em>bất biến</em> không phải số lớp, mà là <strong>chiều phụ thuộc</strong> và <strong>ai được biết về ai</strong> (mục 8).</li>
+		<li>Cái <em>bất biến</em> không phải số lớp, mà là <strong>chiều phụ thuộc</strong> và <strong>ai được biết về ai</strong> (<a href="#chieu-phu-thuoc">mục 8</a>).</li>
 	</ul>
 	<p>Một hệ quả thực dụng đi kèm: <strong>đừng dựng app theo từng lớp một.</strong> Cách nghe hợp lý nhất với người mới — viết xong <em>hết</em> tầng dữ liệu, rồi <em>hết</em> repository, rồi <em>hết</em> ViewModel, cuối cùng mới làm UI — cũng là cách khiến bạn viết hàng chục hàm mà không chạy thử được gì; đến lúc nối lại mới phát hiện sai và không biết sai ở đâu. Cách làm được khuyên: chọn <strong>một tính năng</strong> ("hiện danh sách tin nhắn"), làm xuyên qua đủ các vùng cho riêng nó, chạy thử, rồi mới sang tính năng sau.</p>
 	<div class="callout note">
@@ -323,7 +323,7 @@ class ChatViewModel(
 		<li><strong>Hiển thị state</strong> — composable đọc <code>ChatUiState</code> và vẽ ra màn hình (S2).</li>
 		<li><strong>Nhận sự kiện</strong> — người dùng chạm, gõ, quẹt; composable gọi hàm được truyền xuống (S3).</li>
 		<li><strong>Giữ state của màn hình</strong> — <code>ChatViewModel</code> sở hữu state, sống qua thay đổi cấu hình (S4).</li>
-		<li><strong>Biến dữ liệu thành thứ hiển thị được</strong> — từ dữ liệu thô ra <code>ChatUiState</code> mà giao diện dùng trực tiếp (mục 10).</li>
+		<li><strong>Biến dữ liệu thành thứ hiển thị được</strong> — từ dữ liệu thô ra <code>ChatUiState</code> mà giao diện dùng trực tiếp (<a href="#du-lieu-va-ui-state">mục 10</a>).</li>
 	</ol>
 	<p>Và nó <strong>không</strong> chịu trách nhiệm biết dữ liệu được lấy ra bằng cách nào: không biết có mạng hay không, không biết có database hay không, không biết dữ liệu có được lưu lại hay không.</p>
 	<p>Câu đó nghe như khẩu hiệu, nhưng có một cách <strong>kiểm được bằng mắt</strong>, và bạn nên dùng nó cả về sau: mở file ViewModel, đọc danh sách <code>import</code> ở đầu file. Nếu trong đó xuất hiện tên của một công cụ lưu trữ hay một thư viện mạng cụ thể, biên giới đã bị phá. ViewModel chỉ nên import: các model dữ liệu, hợp đồng repository, và những thứ thuộc chính nó. Cùng cách đó theo chiều ngược lại: mở file ở tầng dữ liệu, nếu thấy import một composable, một <code>Modifier</code>, hay một màu — biên giới cũng đã bị phá.</p>
@@ -333,7 +333,7 @@ class ChatViewModel(
 	<p>Trong tầng này có hai loại vai:</p>
 	<ul>
 		<li><strong>Data source</strong> — một chỗ dữ liệu thực sự nằm, và cách nói chuyện với chỗ đó. Về mặt khái niệm, một app có thể lấy dữ liệu từ: <strong>bộ nhớ</strong> (giữ tạm trong lúc app đang chạy) · <strong>file</strong> trên máy · <strong>database</strong> trên máy · <strong>mạng</strong>. Nguyên tắc đi kèm: mỗi data source chỉ nên lo <strong>một</strong> chỗ — một class vừa đọc mạng vừa đọc database là một class đã trộn hai việc.</li>
-		<li><strong>Repository</strong> — biên giới mà phần còn lại của app đi qua để hỏi tầng dữ liệu. Đây là nội dung chính của bài, từ mục 5.</li>
+		<li><strong>Repository</strong> — biên giới mà phần còn lại của app đi qua để hỏi tầng dữ liệu. Đây là nội dung chính của bài, từ <a href="#repository">mục 5</a>.</li>
 	</ul>
 	<p>Tầng dữ liệu cũng là chỗ đặt <strong>quy tắc nghiệp vụ</strong> (business logic) của app — kiểu "tin nhắn cũ hơn 30 ngày thì không tải nữa", "chưa đăng nhập thì danh sách trống". Bài này không đi sâu vào chủ đề đó; chỉ cần biết những quy tắc như vậy <em>không</em> thuộc composable.</p>
 	<p class="notice"><strong>Bài này cố tình không dạy:</strong> Room (thư viện database — bài <strong>R1–R4</strong>), Retrofit (thư viện gọi mạng — bài <strong>W2</strong>), DataStore (lưu thiết lập nhỏ — bài <strong>D1–D2</strong>). Đó là những <strong>bản cài đặt cụ thể</strong> của data source. Học chúng trước khi hiểu biên giới là học ngược: bạn sẽ nhớ cú pháp của một thư viện mà không biết nó nên nằm ở đâu trong app. Ở đây mọi data source đều là class Kotlin thường do khoá dựng, giữ dữ liệu trong bộ nhớ.</p>
@@ -371,7 +371,7 @@ class ChatViewModel(
 			<li>Repository <strong>không phải</strong> "một class database". Nó có thể chẳng liên quan gì tới database.</li>
 			<li>Repository <strong>không phải</strong> "một class gọi mạng".</li>
 			<li>Repository <strong>không phải</strong> "một lớp bọc mỏng quanh một API lưu trữ" — bọc mỏng chỉ là <em>hình dạng thường thấy</em>, không phải <em>định nghĩa</em>.</li>
-			<li>Repository <strong>không tự động</strong> là "nguồn đáng tin duy nhất" của dữ liệu (mục 6 nói riêng về chuyện này).</li>
+			<li>Repository <strong>không tự động</strong> là "nguồn đáng tin duy nhất" của dữ liệu (<a href="#nguon-dang-tin">mục 6</a> nói riêng về chuyện này).</li>
 			<li>Repository <strong>không phải</strong> một thành phần của Android. Không annotation, không vòng đời, không đăng ký ở đâu. Nó là một class Kotlin thường, tồn tại vì <em>bạn</em> quyết định đặt biên giới ở đó.</li>
 		</ul>
 		<p>Cách nhớ theo trách nhiệm: <strong>repository là một biên giới trong code của bạn, không phải một món đồ của framework.</strong></p>
@@ -408,7 +408,7 @@ class ChatViewModel(
 				<tr><td>"Có repository nghĩa là dữ liệu đã được lưu lại."</td><td>"Repository không nói gì về việc dữ liệu có được lưu bền hay không. <code>repository</code> ≠ <code>chỗ lưu trữ</code>."</td></tr>
 			</tbody>
 		</table>
-		<p>Dòng cuối là điều quan trọng nhất cần mang ra khỏi phần này: <strong>repository ≠ storage</strong>. Một repository giữ dữ liệu trong bộ nhớ là một repository hoàn toàn hợp lệ — và đó chính là repository bạn sẽ đọc ở mục 7.</p>
+		<p>Dòng cuối là điều quan trọng nhất cần mang ra khỏi phần này: <strong>repository ≠ storage</strong>. Một repository giữ dữ liệu trong bộ nhớ là một repository hoàn toàn hợp lệ — và đó chính là repository bạn sẽ đọc ở <a href="#vi-du-toi-gian">mục 7</a>.</p>
 	</div>
 	<p>Còn một trường hợp bạn sẽ nghe tên và nên biết trước, để khi gặp không hiểu sai: trong thiết kế <strong>offline-first</strong> (app dùng được cả khi mất mạng), người ta thường chọn <strong>database trên máy làm nguồn đáng tin</strong>, còn repository làm việc điều phối: lấy dữ liệu từ mạng về, ghi xuống database, và mọi màn hình đọc từ database. Chú ý điều đó <em>không</em> biến repository thành database — repository vẫn là biên giới, database là nguồn. Thiết kế offline-first có ràng buộc riêng và không thuộc bài này; nó là nội dung bài <strong>O1</strong>.</p>
 	<div class="callout note">
@@ -457,12 +457,12 @@ class ChatViewModel(
 			<tr><td><code>private val repository: MessageRepository</code> trong constructor</td><td><code>class X(val y: Y)</code> là F2; <code>private</code> vừa gloss ở trên; <em>ai truyền <code>repository</code> vào</em> là mục 14</td></tr>
 			<tr><td><code>: ViewModel()</code></td><td>S1 đã gloss dấu <code>:</code> ở đây ("class này <strong>là một</strong> ViewModel"); ViewModel là gì: S4</td></tr>
 			<tr><td>cặp <code>_uiState</code> / <code>uiState</code>, <code>copy(...)</code></td><td>S4 — ai được ghi, ai chỉ được đọc</td></tr>
-			<tr><td><code>viewModelScope.launch { }</code></td><td>S1 — công việc này thuộc ViewModel, ViewModel bị dọn thì nó bị huỷ</td></tr>
+			<tr><td><code>viewModelScope.launch &#123; &#125;</code></td><td>S1 — công việc này thuộc ViewModel, ViewModel bị dọn thì nó bị huỷ</td></tr>
 			<tr><td><code>repository.loadMessages()</code> gọi được vì đang ở trong <code>launch</code></td><td>S1 — hàm <code>suspend</code> phải được gọi từ trong một coroutine</td></tr>
-			<tr><td><code>toUiModels(messages)</code></td><td><strong>chưa học</strong> — một hàm dịch dữ liệu sang dạng giao diện cần; mục 12</td></tr>
+			<tr><td><code>toUiModels(messages)</code></td><td><strong>chưa học</strong> — một hàm dịch dữ liệu sang dạng giao diện cần; <a href="#hai-hinh-dang">mục 12</a></td></tr>
 		</tbody>
 	</table>
-	<p>Chú ý một chuyện nhỏ nhưng có ý nghĩa: bên trong <code>refresh()</code> <strong>không có</strong> <code>withContext(Dispatchers.IO)</code>. Đó không phải thiếu sót — mục 15 giải thích vì sao.</p>
+	<p>Chú ý một chuyện nhỏ nhưng có ý nghĩa: bên trong <code>refresh()</code> <strong>không có</strong> <code>withContext(Dispatchers.IO)</code>. Đó không phải thiếu sót — <a href="#suspend-o-bien-gioi">mục 15</a> giải thích vì sao.</p>
 
 	<h2 id="chieu-phu-thuoc">8. Chiều phụ thuộc: ai được biết về ai</h2>
 	<p>Đây là phần <em>bất biến</em> của kiến trúc — thứ bạn phải giữ, bất kể app có bao nhiêu class.</p>
@@ -493,10 +493,10 @@ class ChatViewModel(
 	<h2 id="khong-goi-thang">9. Vì sao không gọi thẳng nguồn dữ liệu từ ViewModel</h2>
 	<p>Đến đây bạn đã biết repository <em>là gì</em>. Phần này chứng minh nó <em>đáng giá</em> — bằng một tình huống thay đổi yêu cầu, loại tình huống xảy ra trong mọi project thật.</p>
 	<p>Kịch bản: cùng một màn hình chat, ba mốc thời gian.</p>
-	<p><strong>Mốc 1 — hôm nay.</strong> Tin nhắn lấy từ bộ nhớ (dữ liệu mẫu), đúng như mục 7.</p>
+	<p><strong>Mốc 1 — hôm nay.</strong> Tin nhắn lấy từ bộ nhớ (dữ liệu mẫu), đúng như <a href="#vi-du-toi-gian">mục 7</a>.</p>
 	<p><strong>Mốc 2 — một tháng sau.</strong> Có server thật, tin nhắn phải lấy qua mạng.</p>
 	<p><strong>Mốc 3 — ba tháng sau.</strong> Mạng chậm, cần giữ lại bản vừa tải để mở màn hình lần sau hiện ra ngay.</p>
-	<p>Bây giờ so hai cách tổ chức. <strong>Cách A</strong>: <code>ChatViewModel</code> tự gọi nguồn dữ liệu, như đoạn code sai ở mục 1. <strong>Cách B</strong>: có <code>MessageRepository</code> ở giữa, như mục 7.</p>
+	<p>Bây giờ so hai cách tổ chức. <strong>Cách A</strong>: <code>ChatViewModel</code> tự gọi nguồn dữ liệu, như đoạn code sai ở <a href="#cau-hoi-s4-de-lai">mục 1</a>. <strong>Cách B</strong>: có <code>MessageRepository</code> ở giữa, như <a href="#vi-du-toi-gian">mục 7</a>.</p>
 	<table class="api">
 		<thead>
 			<tr><th>Yêu cầu mới</th><th>Cách A — ViewModel tự lo</th><th>Cách B — có repository</th></tr>
@@ -557,12 +557,12 @@ class ChatViewModel(
 		</ol>
 		<details>
 			<summary>Xem đáp án</summary>
-			<p><strong>Đáp án: 2.</strong> Repository trả về "không có tin nhắn nào" ở dạng dữ liệu (một <code>List</code> rỗng). Biến sự thật đó thành chữ, thành hình, thành màu là việc của tầng UI. Nếu repository bắt đầu trả về chuỗi <code>"Chưa có tin nhắn nào"</code>, nó đã lấn sang tầng UI — mục 11.</p>
+			<p><strong>Đáp án: 2.</strong> Repository trả về "không có tin nhắn nào" ở dạng dữ liệu (một <code>List</code> rỗng). Biến sự thật đó thành chữ, thành hình, thành màu là việc của tầng UI. Nếu repository bắt đầu trả về chuỗi <code>"Chưa có tin nhắn nào"</code>, nó đã lấn sang tầng UI — <a href="#repository-khong-giu-state">mục 11</a>.</p>
 		</details>
 	</div>
 
 	<h2 id="repository-khong-giu-state">11. Repository không phải chỗ giữ state của giao diện</h2>
-	<p>Đây là cạm bẫy đối xứng với cạm bẫy ở mục 1. Ở mục 1, ViewModel lấn xuống tầng dữ liệu. Ở đây, tầng dữ liệu lấn lên tầng UI — và nó xảy ra rất tự nhiên, thường bắt đầu bằng một câu hợp lý: <em>"tiện thì để luôn ở repository cho các màn hình dùng chung"</em>.</p>
+	<p>Đây là cạm bẫy đối xứng với cạm bẫy ở <a href="#cau-hoi-s4-de-lai">mục 1</a>. Ở <a href="#cau-hoi-s4-de-lai">mục 1</a>, ViewModel lấn xuống tầng dữ liệu. Ở đây, tầng dữ liệu lấn lên tầng UI — và nó xảy ra rất tự nhiên, thường bắt đầu bằng một câu hợp lý: <em>"tiện thì để luôn ở repository cho các màn hình dùng chung"</em>.</p>
 	<p>Bảng phân loại nhanh:</p>
 	<table class="api">
 		<thead>
@@ -582,7 +582,7 @@ class ChatViewModel(
 	<p>Dấu hiệu nhận biết khi đọc code: nếu trong file repository xuất hiện chuỗi văn bản dành cho người dùng, tên màu, tên icon, hay một kiểu dữ liệu của Compose — nó đã lấn tầng.</p>
 
 	<h2 id="hai-hinh-dang">12. Cùng một thứ, hai hình dạng (chỉ ở mức nhận diện)</h2>
-	<p>Ở mục 7 có một hàm chưa giải thích: <code>toUiModels(messages)</code>. Giờ trả nợ.</p>
+	<p>Ở <a href="#vi-du-toi-gian">mục 7</a> có một hàm chưa giải thích: <code>toUiModels(messages)</code>. Giờ trả nợ.</p>
 	<p>Nguyên tắc, phát biểu một câu:</p>
 	<p class="notice"><strong>Hai biên giới khác nhau có thể cần hai cách biểu diễn khác nhau cho cùng một thứ.</strong></p>
 	<p>Cụ thể trong ví dụ của bài: tầng dữ liệu làm việc với <code>Message</code>, còn giao diện — như S4 đã định nghĩa — hiển thị <code>MessageUiModel</code> bên trong <code>ChatUiState</code>. Hai class cho "một tin nhắn", và đó không phải sự trùng lặp vô ích:</p>
@@ -599,7 +599,7 @@ class ChatViewModel(
 	<p>Một lời rào để bạn không suy diễn quá xa: nguyên tắc trên <strong>không</strong> phải "mỗi tầng luôn bắt buộc có model riêng". Nếu hình dạng dữ liệu ở hai tầng thật sự giống nhau và không có lý do nào để chúng khác nhau, dùng chung một class là hợp lý. Tách model là để <em>xử lý sự khác nhau có thật</em>, không phải để cho đủ tầng.</p>
 
 	<h2 id="hop-dong">13. Hợp đồng và bản cài đặt</h2>
-	<p>Ở mục 7, <code>MessageRepository</code> là một class cụ thể. Biên giới đã có ngay từ lúc đó: <code>ChatViewModel</code> chỉ biết <code>MessageRepository</code>, không biết dữ liệu nằm ở đâu. Phần này làm một bước nữa — biến biên giới đó thành một <strong>hợp đồng có tên riêng</strong>.</p>
+	<p>Ở <a href="#vi-du-toi-gian">mục 7</a>, <code>MessageRepository</code> là một class cụ thể. Biên giới đã có ngay từ lúc đó: <code>ChatViewModel</code> chỉ biết <code>MessageRepository</code>, không biết dữ liệu nằm ở đâu. Phần này làm một bước nữa — biến biên giới đó thành một <strong>hợp đồng có tên riêng</strong>.</p>
 	<Code code={interfaceVaInMemory} lang="kotlin" theme="github-dark" />
 	<div class="callout note">
 		<strong>Đọc cú pháp — <code>interface</code>, <code>:</code> và <code>override</code></strong>
@@ -612,7 +612,7 @@ class ChatViewModel(
 		<p>Mô hình để nhớ: <strong><code>interface</code> = hợp đồng, class = một cách hoàn thành hợp đồng đó.</strong> Một hợp đồng có thể có nhiều cách hoàn thành.</p>
 	</div>
 	<p>Cái tên cũng vừa đổi chỗ, và đây là chi tiết đáng để ý: <code>MessageRepository</code> — cái tên nói <em>phụ trách gì</em> — giờ thuộc về <strong>hợp đồng</strong>. Bản cài đặt phải tự nhận một cái tên mô tả <strong>cách nó làm</strong>: <code>InMemoryMessageRepository</code>. Khi có bản cài đặt thứ hai — chẳng hạn một bản giả để thử màn hình, <code>FakeMessageRepository</code> — nó cũng tự nhận tên riêng, còn hợp đồng vẫn nguyên tên cũ. (Trong nhiều project, bản cài đặt "mặc định, dùng thật" được đặt tên <code>DefaultMessageRepository</code> — gặp tên đó thì hiểu là quy ước này.)</p>
-	<p>Phần thưởng: <strong><code>ChatViewModel</code> không phải sửa một dòng nào.</strong> Nó vẫn khai đúng như ở mục 7:</p>
+	<p>Phần thưởng: <strong><code>ChatViewModel</code> không phải sửa một dòng nào.</strong> Nó vẫn khai đúng như ở <a href="#vi-du-toi-gian">mục 7</a>:</p>
 	<Code code={viewModelPhuThuocHopDong} lang="kotlin" theme="github-dark" />
 	<p>Ba lợi ích của việc tách hợp đồng ra, ở mức bạn dùng được ngay:</p>
 	<ol>
@@ -620,7 +620,7 @@ class ChatViewModel(
 		<li><strong>Bản cài đặt được phép đổi</strong>, kể cả đổi hoàn toàn, miễn giữ đúng hợp đồng.</li>
 		<li><strong>Có thể có một bản cài đặt "giả" (fake)</strong> để thử màn hình khi chưa có server hay database thật — và về sau là để viết test (bài <strong>O2</strong>).</li>
 	</ol>
-	<p>Và mặt còn lại, nói thẳng để bạn không cargo-cult: <strong>một <code>interface</code> chỉ có duy nhất một bản cài đặt, và không có bản thứ hai nào trong tầm nhìn, thì nó đang thêm một file và một lớp gián tiếp mà chưa mua được gì.</strong> Biên giới thật đã tồn tại từ mục 7 rồi — nó đến từ việc <em>ai phụ thuộc vào ai</em>, không đến từ từ khoá <code>interface</code>. Quy tắc thực dụng: tách hợp đồng khi bạn <em>thật sự</em> thấy có bản cài đặt thứ hai (một bản giả để thử, một nguồn dữ liệu khác đang tới), và đừng tách chỉ vì "kiến trúc nói thế".</p>
+	<p>Và mặt còn lại, nói thẳng để bạn không cargo-cult: <strong>một <code>interface</code> chỉ có duy nhất một bản cài đặt, và không có bản thứ hai nào trong tầm nhìn, thì nó đang thêm một file và một lớp gián tiếp mà chưa mua được gì.</strong> Biên giới thật đã tồn tại từ <a href="#vi-du-toi-gian">mục 7</a> rồi — nó đến từ việc <em>ai phụ thuộc vào ai</em>, không đến từ từ khoá <code>interface</code>. Quy tắc thực dụng: tách hợp đồng khi bạn <em>thật sự</em> thấy có bản cài đặt thứ hai (một bản giả để thử, một nguồn dữ liệu khác đang tới), và đừng tách chỉ vì "kiến trúc nói thế".</p>
 	<div class="callout note">
 		<strong>Kiểm tra nhanh 6</strong>
 		<p><code>ChatViewModel</code> khai <code>private val repository: MessageRepository</code>, và <code>MessageRepository</code> là một <code>interface</code>. Lúc app chạy thật, <code>repository</code> là cái gì?</p>
@@ -631,7 +631,7 @@ class ChatViewModel(
 		</ol>
 		<details>
 			<summary>Xem đáp án</summary>
-			<p><strong>Đáp án: 2.</strong> <code>interface</code> không tạo được object; luôn phải có một class cài đặt nó. Câu 3 sai vì Android không dính gì tới việc này — <strong>code của bạn</strong> chọn, và mục 14 nói chỗ chọn nằm ở đâu.</p>
+			<p><strong>Đáp án: 2.</strong> <code>interface</code> không tạo được object; luôn phải có một class cài đặt nó. Câu 3 sai vì Android không dính gì tới việc này — <strong>code của bạn</strong> chọn, và <a href="#dependency-tu-ngoai">mục 14</a> nói chỗ chọn nằm ở đâu.</p>
 		</details>
 	</div>
 
@@ -661,10 +661,10 @@ class ChatViewModel(
 		<tbody>
 			<tr><td>"<code>suspend</code> nghĩa là hàm này chạy ở thread nền."</td><td>Không. <code>suspend</code> <strong>không chọn thread và không chọn dispatcher</strong> (S1). Hàm chạy trong ngữ cảnh coroutine mà nó được gọi từ đó, trừ khi chính nó đổi ngữ cảnh.</td></tr>
 			<tr><td>"Repository tự lo chuyện chuyển việc sang thread nền."</td><td>Không tự động. Chỉ khi <strong>bản cài đặt cụ thể</strong> làm việc thật sự chặn thread thì chính nó mới có trách nhiệm chuyển đi.</td></tr>
-			<tr><td>"<code>suspend</code> nghĩa là hàm này chậm."</td><td>Không. Một hàm <code>suspend</code> có thể trả về ngay — như <code>InMemoryMessageRepository</code> ở mục 13.</td></tr>
+			<tr><td>"<code>suspend</code> nghĩa là hàm này chậm."</td><td>Không. Một hàm <code>suspend</code> có thể trả về ngay — như <code>InMemoryMessageRepository</code> ở <a href="#hop-dong">mục 13</a>.</td></tr>
 		</tbody>
 	</table>
-	<p>Từ đó suy ra được câu trả lời cho chi tiết đã treo ở mục 7: <strong>vì sao <code>refresh()</code> không có <code>withContext(Dispatchers.IO)</code>?</strong> Vì bản cài đặt hiện tại đọc một danh sách có sẵn trong bộ nhớ — nó không chặn thread, nên không có gì để chuyển đi. Thêm <code>Dispatchers.IO</code> vào đó là thêm một dòng không mua được gì, và tệ hơn: nó dạy sai cho chính bạn rằng "gọi repository thì phải bọc IO".</p>
+	<p>Từ đó suy ra được câu trả lời cho chi tiết đã treo ở <a href="#vi-du-toi-gian">mục 7</a>: <strong>vì sao <code>refresh()</code> không có <code>withContext(Dispatchers.IO)</code>?</strong> Vì bản cài đặt hiện tại đọc một danh sách có sẵn trong bộ nhớ — nó không chặn thread, nên không có gì để chuyển đi. Thêm <code>Dispatchers.IO</code> vào đó là thêm một dòng không mua được gì, và tệ hơn: nó dạy sai cho chính bạn rằng "gọi repository thì phải bọc IO".</p>
 	<p>Quy tắc trách nhiệm, đúng theo S1:</p>
 	<ul>
 		<li>Nếu <strong>bản cài đặt</strong> của bạn làm một việc thật sự chặn thread bên trong một hàm <code>suspend</code>, thì <strong>chính bản cài đặt đó</strong> dùng <code>withContext(...)</code> để chuyển việc đi — để người gọi không phải biết và không phải nhớ.</li>
@@ -681,8 +681,8 @@ class ChatViewModel(
 		<li>Muốn <strong>được thông báo mỗi khi dữ liệu đổi</strong> → trả về một <code>Flow</code>.</li>
 	</ul>
 	<p>Chú ý <code>observeMessages()</code> <strong>không</strong> có <code>suspend</code>: gọi nó chỉ là "cho tôi cái dòng đó", chưa phải chờ gì cả. Việc chờ xảy ra lúc có ai đó thu (<code>collect</code>) — và như S1 đã nói, <code>collect</code> mới là hàm <code>suspend</code>.</p>
-	<p>Và đây là chỗ trả nợ S4: trong ví dụ <code>stateIn</code> của S4 có một dòng nguồn tên <code>messageSource</code> với ghi chú "chỗ dữ liệu đến từ đâu là bài S5". <strong>Một hàm như <code>observeMessages()</code> của repository chính là dạng dòng nguồn đó</strong>: <code>Flow&lt;List&lt;…&gt;&gt;</code> do tầng dữ liệu cung cấp, và ViewModel biến nó thành <code>StateFlow&lt;ChatUiState&gt;</code> bằng <code>stateIn</code>. Kiểu phần tử cụ thể của dòng nguồn — dữ liệu thô hay đã dịch sẵn sang model UI — tuỳ cách tổ chức; nguyên tắc dịch model đã nói ở mục 12. Ghép lại, chuỗi đầy đủ là: repository phát ra <code>Flow&lt;List&lt;Message&gt;&gt;</code> → ViewModel biến nó thành <code>StateFlow&lt;ChatUiState&gt;</code> bằng <code>stateIn</code> → giao diện đọc bằng <code>collectAsStateWithLifecycle()</code>.</p>
-	<p class="notice">Cả hai hình dạng này sẽ gặp lại ở dạng thật: bài <strong>R3</strong> cài đặt biên giới của bài này trên Room — repository nhận DAO từ database, phơi các hàm <code>suspend</code> cho ViewModel — đúng hai vai "hợp đồng" và "bản cài đặt" vừa nói ở mục 13.</p>
+	<p>Và đây là chỗ trả nợ S4: trong ví dụ <code>stateIn</code> của S4 có một dòng nguồn tên <code>messageSource</code> với ghi chú "chỗ dữ liệu đến từ đâu là bài S5". <strong>Một hàm như <code>observeMessages()</code> của repository chính là dạng dòng nguồn đó</strong>: <code>Flow&lt;List&lt;…&gt;&gt;</code> do tầng dữ liệu cung cấp, và ViewModel biến nó thành <code>StateFlow&lt;ChatUiState&gt;</code> bằng <code>stateIn</code>. Kiểu phần tử cụ thể của dòng nguồn — dữ liệu thô hay đã dịch sẵn sang model UI — tuỳ cách tổ chức; nguyên tắc dịch model đã nói ở <a href="#hai-hinh-dang">mục 12</a>. Ghép lại, chuỗi đầy đủ là: repository phát ra <code>Flow&lt;List&lt;Message&gt;&gt;</code> → ViewModel biến nó thành <code>StateFlow&lt;ChatUiState&gt;</code> bằng <code>stateIn</code> → giao diện đọc bằng <code>collectAsStateWithLifecycle()</code>.</p>
+	<p class="notice">Cả hai hình dạng này sẽ gặp lại ở dạng thật: bài <strong>R3</strong> cài đặt biên giới của bài này trên Room — repository nhận DAO từ database, phơi các hàm <code>suspend</code> cho ViewModel — đúng hai vai "hợp đồng" và "bản cài đặt" vừa nói ở <a href="#hop-dong">mục 13</a>.</p>
 	<p>Toàn bộ chiều sâu của <code>Flow</code> — các toán tử, cold/hot, <code>SharedFlow</code>, ghép nhiều dòng, thử lại khi lỗi — là nội dung bài <strong>W1</strong>. Ở đây chỉ cần đọc được hình dạng của hàm.</p>
 
 	<h2 id="hai-chieu">17. Hai chiều: đường đọc và đường ghi</h2>
@@ -694,9 +694,9 @@ class ChatViewModel(
 	<Code code={onSendClick} lang="kotlin" theme="github-dark" />
 	<p>Ba điều đáng nhận ra trong đoạn trên:</p>
 	<ol>
-		<li><strong><code>isSending</code> do ViewModel tự đặt</strong>, không do repository trả về — nó là quyết định về màn hình (mục 10–11).</li>
+		<li><strong><code>isSending</code> do ViewModel tự đặt</strong>, không do repository trả về — nó là quyết định về màn hình (<a href="#du-lieu-va-ui-state">mục 10</a>–11).</li>
 		<li><strong>Sau khi ghi, dữ liệu mới quay về qua đường đọc.</strong> Ở đây là gọi <code>loadMessages()</code> lần nữa.</li>
-		<li>Nếu repository dùng hình dạng <code>Flow</code> của mục 16 thì bước 2 <strong>tự xảy ra</strong>: nguồn phát ra danh sách mới, ViewModel nhận được, state đổi, màn hình vẽ lại — không cần gọi lại tay. Chọn hình dạng nào tuỳ nguồn dữ liệu, và bạn sẽ thấy cả hai kiểu ở bài <strong>W2</strong> (mạng) và bài <strong>R3</strong> (database).</li>
+		<li>Nếu repository dùng hình dạng <code>Flow</code> của <a href="#dong-du-lieu">mục 16</a> thì bước 2 <strong>tự xảy ra</strong>: nguồn phát ra danh sách mới, ViewModel nhận được, state đổi, màn hình vẽ lại — không cần gọi lại tay. Chọn hình dạng nào tuỳ nguồn dữ liệu, và bạn sẽ thấy cả hai kiểu ở bài <strong>W2</strong> (mạng) và bài <strong>R3</strong> (database).</li>
 	</ol>
 	<p>Hai chiều này là thứ chuẩn bị trực tiếp cho hai giai đoạn sắp tới: gọi mạng cũng là đọc-ghi qua repository, lưu xuống máy cũng vậy.</p>
 
@@ -740,21 +740,40 @@ class ChatViewModel(
 	</table>
 	<p>Nếu có câu nào bạn trả lời khác, quay lại phần tương ứng: câu 1–2 → mục 2–3 · câu 3 → mục 5 · câu 4 → mục 6 · câu 5 → mục 2 · câu 6 → mục 9 · câu 7 → mục 4–5.</p>
 
+	<h2 id="luyen-tap">Luyện tập — đọc một tầng dữ liệu và chỉ ra từng mảnh</h2>
+	<p>Đoạn code dưới đây là toàn bộ những gì bài này dạy, gói lại. Với mỗi số khoanh tròn, tự trả lời hai câu: <em>mảnh này là gì?</em> và <em>nó được dạy ở bài nào?</em></p>
+	<Code code={luyenTapCode} lang="kotlin" theme="github-dark" />
+	<p>Câu hỏi cuối, quan trọng nhất: <strong>trong cả đoạn trên, chỗ nào cho biết dữ liệu đang được lấy từ bộ nhớ?</strong></p>
+	<details>
+		<summary>Xem lời giải</summary>
+		<ol>
+			<li><strong>①</strong> <code>interface MessageRepository</code> — <strong>hợp đồng</strong>, tức biên giới của tầng dữ liệu. Đây là thứ duy nhất tầng UI được biết về tầng dữ liệu. (<code>interface</code>/<code>override</code> được chú giải ở <a href="#hop-dong">mục 13</a>; Kotlin sâu hơn không thuộc khoá này.)</li>
+			<li><strong>②</strong> <code>suspend fun loadMessages(): List&lt;Message&gt;</code> — một hàm của hợp đồng. <code>suspend</code> (<strong>S1</strong>) nghĩa là việc này <em>có thể</em> tạm dừng chờ rồi tiếp tục; nó <strong>không</strong> nghĩa là "chạy ở thread nền" và <strong>không</strong> chọn dispatcher. <code>List&lt;Message&gt;</code> đọc theo khuôn <code>Hộp&lt;Loại-bên-trong&gt;</code> (<strong>F2</strong>).</li>
+			<li><strong>③</strong> <code>class InMemoryMessageRepository : MessageRepository</code> — <strong>bản cài đặt</strong>: một cách hoàn thành hợp đồng. Tên của nó nói <em>cách làm</em>, đúng quy ước ở <a href="#hop-dong">mục 13</a>.</li>
+			<li><strong>④</strong> <code>private val repository: MessageRepository</code> — <strong>dependency được đưa vào từ ngoài</strong> (<a href="#dependency-tu-ngoai">mục 14</a>). ViewModel chỉ biết hợp đồng ①, không biết ③ tồn tại.</li>
+			<li><strong>⑤</strong> <code>: ViewModel()</code> — "class này <em>là một</em> ViewModel" (dấu <code>:</code> đã gloss ở <strong>S1</strong>); ViewModel là gì và vì sao cần: <strong>S4</strong>.</li>
+			<li><strong>⑥</strong> cặp <code>_uiState</code> (ghi được, riêng tư) / <code>uiState</code> (chỉ đọc, công khai) — <strong>S4</strong>.</li>
+			<li><strong>⑦</strong> <code>viewModelScope.launch &#123; &#125;</code> — <strong>S1</strong>: công việc này thuộc ViewModel nên ViewModel bị dọn thì nó bị huỷ; và đây cũng là chỗ hợp lệ để gọi một hàm <code>suspend</code>.</li>
+			<li><strong>⑧</strong> <code>toUiModels(messages)</code> — <strong>ranh giới giữa dữ liệu và UI state</strong> (<a href="#du-lieu-va-ui-state">mục 10</a>, 12): repository trả về <code>List&lt;Message&gt;</code>, ViewModel dịch sang <code>List&lt;MessageUiModel&gt;</code> — thứ mà màn hình cần.</li>
+		</ol>
+		<p><strong>Câu hỏi cuối:</strong> chỉ ở <strong>③</strong> — trong tên class và trong thân hàm của nó. Cả <code>ChatViewModel</code> không có một dấu hiệu nào. Đó chính là kết quả mà cả bài này hướng tới: đổi ③ sang một bản đọc từ mạng hoặc từ database, phần còn lại của đoạn code không đổi một chữ.</p>
+	</details>
+
 	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
 	<p><strong>(a) "Repository là chỗ lưu dữ liệu."</strong> Đây là nhầm lẫn tốn kém nhất, và nó có hai biến thể.</p>
 	<ul>
 		<li><em>"Repository = database"</em> — sinh ra vì hầu hết ví dụ đầu tiên người ta gặp đều là repository bọc quanh một database. Đó là <em>một trường hợp</em>, không phải <em>định nghĩa</em>. Repository trong bài này giữ dữ liệu trong bộ nhớ và vẫn là repository đúng nghĩa. Hệ quả của nhầm lẫn: gặp app không có database thì kết luận "app này không cần repository", rồi cho ViewModel gọi thẳng mạng.</li>
-		<li><em>"Repository luôn là nguồn đáng tin duy nhất"</em> — nghe rất giống một nguyên tắc chuẩn, nhưng nói sai địa chỉ. Repository <em>xác định</em> nguồn đáng tin cho loại dữ liệu nó phụ trách và kiểm soát đường vào nguồn đó; bản dữ liệu đúng có thể nằm ở một data source hoặc ở một bộ nhớ tạm. Hai repository trong cùng một app có thể có hai nguồn đáng tin khác nhau. Hệ quả của nhầm lẫn: người học tưởng "cứ có repository là dữ liệu đã an toàn và đã đồng bộ", rồi không đặt câu hỏi <em>bản nào là bản đúng</em> — đúng câu hỏi phải trả lời (mục 6).</li>
+		<li><em>"Repository luôn là nguồn đáng tin duy nhất"</em> — nghe rất giống một nguyên tắc chuẩn, nhưng nói sai địa chỉ. Repository <em>xác định</em> nguồn đáng tin cho loại dữ liệu nó phụ trách và kiểm soát đường vào nguồn đó; bản dữ liệu đúng có thể nằm ở một data source hoặc ở một bộ nhớ tạm. Hai repository trong cùng một app có thể có hai nguồn đáng tin khác nhau. Hệ quả của nhầm lẫn: người học tưởng "cứ có repository là dữ liệu đã an toàn và đã đồng bộ", rồi không đặt câu hỏi <em>bản nào là bản đúng</em> — đúng câu hỏi phải trả lời (<a href="#nguon-dang-tin">mục 6</a>).</li>
 	</ul>
 	<p><strong>(b) Ranh giới đặt sai chỗ.</strong> Cũng hai biến thể, đối xứng nhau.</p>
 	<ul>
-		<li><em>ViewModel nói chuyện trực tiếp với mọi API dữ liệu.</em> Bắt đầu bằng "chỉ một lời gọi thôi mà", kết thúc bằng một file ViewModel vừa giữ state màn hình vừa chứa chiến lược lấy dữ liệu. Dấu hiệu sớm nhất: danh sách <code>import</code> của ViewModel bắt đầu có tên thư viện lưu trữ hoặc thư viện mạng (mục 3).</li>
-		<li><em>Repository giữ state của giao diện.</em> Bắt đầu bằng "để ở repository cho các màn hình dùng chung", kết thúc bằng một repository biết tab nào đang mở và câu chữ nào đang hiện. Dấu hiệu sớm nhất: trong file repository xuất hiện chuỗi văn bản dành cho người dùng, tên màu, hay một kiểu dữ liệu của Compose (mục 11).</li>
+		<li><em>ViewModel nói chuyện trực tiếp với mọi API dữ liệu.</em> Bắt đầu bằng "chỉ một lời gọi thôi mà", kết thúc bằng một file ViewModel vừa giữ state màn hình vừa chứa chiến lược lấy dữ liệu. Dấu hiệu sớm nhất: danh sách <code>import</code> của ViewModel bắt đầu có tên thư viện lưu trữ hoặc thư viện mạng (<a href="#tang-ui">mục 3</a>).</li>
+		<li><em>Repository giữ state của giao diện.</em> Bắt đầu bằng "để ở repository cho các màn hình dùng chung", kết thúc bằng một repository biết tab nào đang mở và câu chữ nào đang hiện. Dấu hiệu sớm nhất: trong file repository xuất hiện chuỗi văn bản dành cho người dùng, tên màu, hay một kiểu dữ liệu của Compose (<a href="#repository-khong-giu-state">mục 11</a>).</li>
 	</ul>
 	<p><strong>(c) "Càng nhiều lớp thì càng đúng kiến trúc."</strong> Phản ứng rất thường gặp sau khi học xong một bài như bài này: thêm lớp ở khắp nơi.</p>
 	<ul>
 		<li><em>Repository rỗng.</em> Một class repository chỉ chuyển tiếp lời gọi, trong khi ViewModel vẫn nắm mọi quyết định về dữ liệu và vẫn biết dữ liệu đến từ đâu. Nó có hình dạng của một biên giới mà không có biên giới nào — thêm một file, không mua được gì. Câu hỏi kiểm: <em>nếu mai đổi nguồn dữ liệu, ViewModel có phải sửa không?</em> Nếu có, biên giới chưa tồn tại.</li>
-		<li><em><code>interface</code> ở khắp nơi.</em> Một hợp đồng chỉ có một bản cài đặt và không có bản thứ hai nào trong tầm nhìn thì chưa mua được gì (mục 13). Tách hợp đồng khi có lý do thật: một bản giả để thử, một nguồn dữ liệu khác đang tới.</li>
+		<li><em><code>interface</code> ở khắp nơi.</em> Một hợp đồng chỉ có một bản cài đặt và không có bản thứ hai nào trong tầm nhìn thì chưa mua được gì (<a href="#hop-dong">mục 13</a>). Tách hợp đồng khi có lý do thật: một bản giả để thử, một nguồn dữ liệu khác đang tới.</li>
 	</ul>
 	<p>Câu để nhớ, và là câu nên mang ra khỏi cả bài này:</p>
 	<div class="callout note">
@@ -775,25 +794,6 @@ class ChatViewModel(
 		<p>Một dòng phụ, dùng khi đọc code: <strong>repository cung cấp dữ liệu, ViewModel biến dữ liệu thành UI state</strong> — thấy hai việc đó nằm chung một chỗ thì biết ranh giới đã lệch.</p>
 	</div>
 
-	<h2 id="luyen-tap">Luyện tập — đọc một tầng dữ liệu và chỉ ra từng mảnh</h2>
-	<p>Đoạn code dưới đây là toàn bộ những gì bài này dạy, gói lại. Với mỗi số khoanh tròn, tự trả lời hai câu: <em>mảnh này là gì?</em> và <em>nó được dạy ở bài nào?</em></p>
-	<Code code={luyenTapCode} lang="kotlin" theme="github-dark" />
-	<p>Câu hỏi cuối, quan trọng nhất: <strong>trong cả đoạn trên, chỗ nào cho biết dữ liệu đang được lấy từ bộ nhớ?</strong></p>
-	<details>
-		<summary>Xem lời giải</summary>
-		<ol>
-			<li><strong>①</strong> <code>interface MessageRepository</code> — <strong>hợp đồng</strong>, tức biên giới của tầng dữ liệu. Đây là thứ duy nhất tầng UI được biết về tầng dữ liệu. (<code>interface</code>/<code>override</code> được chú giải ở mục 13; Kotlin sâu hơn không thuộc khoá này.)</li>
-			<li><strong>②</strong> <code>suspend fun loadMessages(): List&lt;Message&gt;</code> — một hàm của hợp đồng. <code>suspend</code> (<strong>S1</strong>) nghĩa là việc này <em>có thể</em> tạm dừng chờ rồi tiếp tục; nó <strong>không</strong> nghĩa là "chạy ở thread nền" và <strong>không</strong> chọn dispatcher. <code>List&lt;Message&gt;</code> đọc theo khuôn <code>Hộp&lt;Loại-bên-trong&gt;</code> (<strong>F2</strong>).</li>
-			<li><strong>③</strong> <code>class InMemoryMessageRepository : MessageRepository</code> — <strong>bản cài đặt</strong>: một cách hoàn thành hợp đồng. Tên của nó nói <em>cách làm</em>, đúng quy ước ở mục 13.</li>
-			<li><strong>④</strong> <code>private val repository: MessageRepository</code> — <strong>dependency được đưa vào từ ngoài</strong> (mục 14). ViewModel chỉ biết hợp đồng ①, không biết ③ tồn tại.</li>
-			<li><strong>⑤</strong> <code>: ViewModel()</code> — "class này <em>là một</em> ViewModel" (dấu <code>:</code> đã gloss ở <strong>S1</strong>); ViewModel là gì và vì sao cần: <strong>S4</strong>.</li>
-			<li><strong>⑥</strong> cặp <code>_uiState</code> (ghi được, riêng tư) / <code>uiState</code> (chỉ đọc, công khai) — <strong>S4</strong>.</li>
-			<li><strong>⑦</strong> <code>viewModelScope.launch { }</code> — <strong>S1</strong>: công việc này thuộc ViewModel nên ViewModel bị dọn thì nó bị huỷ; và đây cũng là chỗ hợp lệ để gọi một hàm <code>suspend</code>.</li>
-			<li><strong>⑧</strong> <code>toUiModels(messages)</code> — <strong>ranh giới giữa dữ liệu và UI state</strong> (mục 10, 12): repository trả về <code>List&lt;Message&gt;</code>, ViewModel dịch sang <code>List&lt;MessageUiModel&gt;</code> — thứ mà màn hình cần.</li>
-		</ol>
-		<p><strong>Câu hỏi cuối:</strong> chỉ ở <strong>③</strong> — trong tên class và trong thân hàm của nó. Cả <code>ChatViewModel</code> không có một dấu hiệu nào. Đó chính là kết quả mà cả bài này hướng tới: đổi ③ sang một bản đọc từ mạng hoặc từ database, phần còn lại của đoạn code không đổi một chữ.</p>
-	</details>
-
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<h3>Tài liệu chính thức Android</h3>
 	<ul>
@@ -806,7 +806,7 @@ class ChatViewModel(
 	</ul>
 	<h3>Nội dung của chính khoá học</h3>
 	<ul>
-		<li><code>web/src/components/lessons/Ch10_1RoomLaGi.astro</code> mục 4–5 (dòng 270–401) · <code>web/src/components/lessons/Ch10_3RepositoryViewModel.astro</code> mục 11 và 13 (dòng 226–289, 382–431) — nguồn sư phạm và nguồn payoff cho phần kiến trúc của bài này.</li>
+		<li><code>web/src/components/lessons/Ch10_1RoomLaGi.astro</code> <a href="#tang-du-lieu">mục 4</a>–5 (dòng 270–401) · <code>web/src/components/lessons/Ch10_3RepositoryViewModel.astro</code> <a href="#repository-khong-giu-state">mục 11</a> và 13 (dòng 226–289, 382–431) — nguồn sư phạm và nguồn payoff cho phần kiến trúc của bài này.</li>
 		<li><code>docs/drafts/s1-coroutine-foundation.md</code> — mô hình chính xác của <code>suspend</code>, <code>viewModelScope</code>, <code>Flow</code> mà bài này dùng lại.</li>
 		<li>Three bài S2–S4 (<code>Ch06StateVaRecomposition.astro</code>, <code>Ch06StateHoistingVaUdf.astro</code>, <code>Ch06ViewModelVaUiState.astro</code>) — <code>ChatUiState</code>, <code>MessageUiModel</code>, cặp <code>MutableStateFlow</code>/<code>StateFlow</code>, <code>stateIn</code>, và câu hỏi mở "dữ liệu đến từ đâu" (S4, mục 15).</li>
 	</ul>

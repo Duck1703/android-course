@@ -365,7 +365,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	<div class="callout mental">
 		<strong>Đường đi của theme, đọc từ ngoài vào trong</strong>
 		<ol class="chain">
-			<li><code>setContent &#123; &#125;</code> — mở ra cây composable gốc (chương 5.1, mục 2).</li>
+			<li><code>setContent &#123; &#125;</code> — mở ra cây composable gốc (chương 5.1, <a href="/chapters/ch05-composable-va-layout/#composable">mục 2</a>).</li>
 			<li><code>KodecochatTheme &#123; &#125;</code> — hàm theme <em>của project này</em>: nó chọn bộ màu và bộ chữ.</li>
 			<li><code>MaterialTheme(...)</code> — bên trong hàm trên; <em>cấp</em> ba nhóm giá trị cho cây bên dưới.</li>
 			<li><code>ConversationContent</code> → … → <code>ChatItemBubble</code> — <em>đọc</em> giá trị qua
@@ -412,7 +412,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 	<Code code={colorSchemeCode} lang="kotlin" theme="github-dark" />
 	<p>
 		<code>darkColorScheme(...)</code> và <code>lightColorScheme(...)</code> là hai hàm của Material 3, mỗi hàm nhận các
-		<em>vai trò màu</em> ở mục 11 và trả về một bộ màu hoàn chỉnh (những vai trò bạn không truyền thì lấy giá trị mặc định
+		<em>vai trò màu</em> ở <a href="#material-theme">mục 11</a> và trả về một bộ màu hoàn chỉnh (những vai trò bạn không truyền thì lấy giá trị mặc định
 		của Material 3). Giá trị truyền vào là các màu cụ thể khai riêng trong một file màu của project —
 		<code>Blue40</code>, <code>Blue80</code>, <code>Grey90</code>… tổng cộng 35 màu, đặt tên theo kiểu
 		"tông màu + độ sáng".
@@ -434,7 +434,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 		<strong>Project này không truyền <code>shapes</code> cho <code>MaterialTheme</code>.</strong> Tìm cả project cũng không
 		có chỗ nào đọc <code>MaterialTheme.shapes</code>. Nghĩa là mọi component dùng bộ hình dáng <em>mặc định</em> của
 		Material 3, còn chỗ nào cần hình riêng thì viết trực tiếp — như <code>RoundedCornerShape(4.dp, 20.dp, 20.dp, 20.dp)</code>
-		của bong bóng chat ở mục 11. Đó là lựa chọn hợp lý cho một app nhỏ, nhưng biết ranh giới này thì bạn không đi tìm một
+		của bong bóng chat ở <a href="#material-theme">mục 11</a>. Đó là lựa chọn hợp lý cho một app nhỏ, nhưng biết ranh giới này thì bạn không đi tìm một
 		file "Shape.kt" không tồn tại.
 	</p>
 
@@ -472,7 +472,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 			<tr>
 				<td>Chế độ tối</td>
 				<td>Qua thư mục resource riêng (<code>values-night/</code>) — project này <strong>không có</strong></td>
-				<td>Qua <code>isSystemInDarkTheme()</code> trong hàm theme (mục 12)</td>
+				<td>Qua <code>isSystemInDarkTheme()</code> trong hàm theme (<a href="#theme-project">mục 12</a>)</td>
 			</tr>
 			<tr>
 				<td>Có từ bao giờ</td>
@@ -608,14 +608,14 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 		</p>
 	</div>
 	<p>
-		Bộ chữ hoàn chỉnh của project được ghép ở cuối file, và đây là chỗ hai họ font gặp bộ vai trò kiểu chữ ở mục 11:
+		Bộ chữ hoàn chỉnh của project được ghép ở cuối file, và đây là chỗ hai họ font gặp bộ vai trò kiểu chữ ở <a href="#material-theme">mục 11</a>:
 	</p>
 	<p class="src">Nguồn: <code>{KT}/theme/Typography.kt</code> (dòng 68–174, đã lược)</p>
 	<Code code={typographyUseCode} lang="kotlin" theme="github-dark" />
 	<p>
 		Cả 15 vai trò kiểu chữ của Material 3 đều được khai lại: 12 vai trò dùng họ Montserrat, còn
 		<code>titleSmall</code>, <code>bodyLarge</code>, <code>bodySmall</code> dùng họ Karla. Đây chính là giá trị mà
-		<code>MaterialTheme.typography.titleMedium</code> ở mục 11 đọc ra — và cũng là lý do bọc thêm một lớp theme làm cả app
+		<code>MaterialTheme.typography.titleMedium</code> ở <a href="#material-theme">mục 11</a> đọc ra — và cũng là lý do bọc thêm một lớp theme làm cả app
 		đổi font.
 	</p>
 
@@ -628,7 +628,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 		<details>
 			<summary>Xem đáp án</summary>
 			<p>
-				Đi ngược đường đi của theme ở mục 12. (1) Tìm xem file bạn vừa sửa được dùng ở đâu: các màu trong
+				Đi ngược đường đi của theme ở <a href="#theme-project">mục 12</a>. (1) Tìm xem file bạn vừa sửa được dùng ở đâu: các màu trong
 				<code>ui/theme/Color.kt</code> chỉ được dùng bởi <code>ui/theme/Theme.kt</code>. (2) Tìm hàm theme trong file đó —
 				<code>KodecoChatTheme</code> — trong toàn project: ra đúng một kết quả, chính dòng khai báo ⇒ không ai gọi nó.
 				(3) Kết luận: bạn sửa đúng cú pháp nhưng sai file. Hàm theme đang chạy là <code>KodecochatTheme</code> ở
@@ -674,7 +674,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 		<p>
 			Project mẫu có <strong>hai</strong> hệ theme Compose nằm cạnh nhau: <code>theme/</code> với
 			<code>KodecochatTheme</code>, và <code>ui/theme/</code> với <code>KodecoChatTheme</code> — khác nhau đúng một chữ
-			hoa. Chỉ cái thứ nhất được gọi; cả thư mục <code>ui/theme/</code> là code chết (mục 14). Sửa màu trong
+			hoa. Chỉ cái thứ nhất được gọi; cả thư mục <code>ui/theme/</code> là code chết (<a href="#truy-dau-theme">mục 14</a>). Sửa màu trong
 			<code>ui/theme/Color.kt</code> thì app không đổi gì, và không có cảnh báo nào.
 		</p>
 		<p>
@@ -688,7 +688,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 		<strong>(g) Ghi cứng màu thay vì dùng vai trò màu.</strong> <code>Modifier.background(Color.Blue)</code> chạy đúng ở
 		chế độ sáng rồi vỡ ở chế độ tối: chữ tối trên nền tối, không đọc được. Và không có cách sửa nào ngoài việc đi tìm từng
 		dòng. Dùng <code>MaterialTheme.colorScheme.*</code> thì cùng một dòng code đúng ở cả hai chế độ, vì bộ màu mới là chỗ
-		đổi (mục 12).
+		đổi (<a href="#theme-project">mục 12</a>).
 	</p>
 	<p class="notice">
 		<strong>(h) Đặt <code>Surface</code> ra <em>ngoài</em> hàm theme.</strong> Theme chỉ <em>cấp</em> giá trị cho cây
@@ -722,7 +722,7 @@ const KT = `${FINAL}/java/com/kodeco/chat`;
 				<tr>
 					<td>Thư viện font Google</td>
 					<td><code>ui-text-google-fonts</code> phiên bản 1.5.4</td>
-					<td>Dùng bản mới hơn được; cách dùng API không đổi. (Và như mục 14 đã chỉ ra, project này thật ra không dùng
+					<td>Dùng bản mới hơn được; cách dùng API không đổi. (Và như <a href="#truy-dau-theme">mục 14</a> đã chỉ ra, project này thật ra không dùng
 						tới nó.)</td>
 				</tr>
 			</tbody>

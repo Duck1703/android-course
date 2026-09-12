@@ -176,7 +176,7 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 				<code>Flow</code>, ghi <strong>nguyên khối</strong> — và vì sao nó <em>không</em> phải database hay "tự lưu
 				mọi object".</li>
 			<li>Tự viết được class <code>Prefs</code> 5 hàm: khai store bằng <code>by preferencesDataStore</code>, tạo
-				key có kiểu, đọc bằng <code>data.first()</code>, ghi bằng <code>edit { }</code>.</li>
+				key có kiểu, đọc bằng <code>data.first()</code>, ghi bằng <code>edit &#123; &#125;</code>.</li>
 			<li>Phân biệt <strong>key chưa hề được lưu</strong> với <strong>giá trị đã lưu</strong>, và quyết định giá trị
 				mặc định một cách có chủ ý.</li>
 		</ul>
@@ -250,7 +250,7 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 	</div>
 	<p>
 		Hai mục tiêu cụ thể của chương, đúng theo ranh giới trên: <strong>(1)</strong> menu các từ khoá đã tìm — một
-		<em>danh sách</em> bị nhét vào chỗ chỉ chứa giá trị đơn (vì sao và cái giá, ở mục 7 và D2 mục 17);
+		<em>danh sách</em> bị nhét vào chỗ chỉ chứa giá trị đơn (vì sao và cái giá, ở <a href="#doc-first">mục 7</a> và D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#bug-dau-phay">mục 17</a>);
 		<strong>(2)</strong> tab đang chọn — một <code>Int</code>, đúng sở trường của key/value.
 	</p>
 
@@ -299,7 +299,7 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 		</ul>
 		<p>
 			Cái giá của "biết chắc đã ghi xong" là nguy cơ treo UI — và API cho phép bạn tự bắn vào chân mình. DataStore
-			sẽ xử lý đúng nhức nhối này bằng cách <em>buộc</em> mọi phép ghi là <code>suspend</code> (mục 3).
+			sẽ xử lý đúng nhức nhối này bằng cách <em>buộc</em> mọi phép ghi là <code>suspend</code> (<a href="#vi-sao-datastore">mục 3</a>).
 		</p>
 	</div>
 	<p><strong>Một ví dụ đọc code cũ, từng dòng:</strong></p>
@@ -321,7 +321,7 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 		nên nhánh bên trong <em>chắc chắn</em> có key — giá trị mặc định <code>"MyDefault"</code> ở bước 3 sẽ không bao
 		giờ được dùng tới. Đây là ví dụ minh hoạ <em>cả hai</em> cơ chế cùng lúc nên hơi dư. Trong code thật bạn chọn
 		một trong hai: hoặc <code>contains()</code> rồi đọc, hoặc đọc luôn kèm giá trị mặc định. Cách thứ hai gọn hơn
-		và chỉ đọc file một lần — DataStore ở mục 9 chọn cách thứ hai.
+		và chỉ đọc file một lần — DataStore ở <a href="#mac-dinh">mục 9</a> chọn cách thứ hai.
 	</p>
 	<p>
 		Cuối cùng, giới hạn quan trọng nhất của cả cơ chế — chỉ lưu được <strong>giá trị nguyên thuỷ</strong>:
@@ -332,7 +332,7 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 		quen thuộc nhất với 5 kiểu trên, kèm thêm <code>Set&lt;String&gt;</code> qua <code>putStringSet</code>; DataStore
 		Preferences cũng có <code>Set&lt;String&gt;</code> và có thêm <code>Double</code>.) Giới hạn cốt lõi vẫn là:
 		không có kiểu nào "đựng" được object tự định nghĩa. Điều này quyết định một phần của chương: muốn lưu
-		<em>danh sách</em> từ khoá (mục tiêu 1), bạn phải tự mã hoá nó thành một <code>String</code> — và ở D2 mục 17
+		<em>danh sách</em> từ khoá (mục tiêu 1), bạn phải tự mã hoá nó thành một <code>String</code> — và ở D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#bug-dau-phay">mục 17</a>
 		sẽ thấy cái giá của phép mã hoá đó.
 	</p>
 	<p class="notice">
@@ -389,7 +389,7 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 	<p class="notice">
 		<strong>Hai điều DataStore <em>không</em> phải, để không rút ra quy tắc sai:</strong> (1) nó <strong>không phải
 		database</strong> — không truy vấn, không quan hệ, không "cho tôi mọi bản ghi có chữ X"; nó là một kho key/value
-		có kiểu, và database là Chương 10. (2) nó <strong>không tự lưu mọi object</strong> — như mục 2 đã chốt, chỉ lưu
+		có kiểu, và database là Chương 10. (2) nó <strong>không tự lưu mọi object</strong> — như <a href="#sharedpreferences">mục 2</a> đã chốt, chỉ lưu
 		giá trị nguyên thuỷ (ở biến thể Preferences), mọi thứ phức tạp hơn phải tự mã hoá.
 	</p>
 
@@ -441,7 +441,7 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 		</li>
 		<li>
 			<strong>Tầng DataStore — một store gắn với Context, có tên.</strong> Tham số <code>name = "settings"</code>
-			đặt tên file preference; trong project thật tên là <code>"recipes"</code> (mục 10). Một cái tên = một file =
+			đặt tên file preference; trong project thật tên là <code>"recipes"</code> (<a href="#prefs-class">mục 10</a>). Một cái tên = một file =
 			một store: <strong>không được tạo nhiều hơn một instance DataStore trỏ vào cùng một file</strong> — tài liệu
 			chính thức đặt cảnh báo này ở mục "Use DataStore correctly". Hai instance giữ cache riêng và tự ghi file:
 			chúng không biết về nhau, nên có khi ghi đè lẫn nhau hoặc trả giá trị cũ. Ở các phiên bản DataStore gần đây,
@@ -482,7 +482,7 @@ const prefsUsageCode = `suspend fun saveString(key: String, value: String) {
 		</table>
 		<p>
 			Project mẫu <em>thoát</em> được vì nó tạo <code>Prefs</code> đúng một lần trong <code>RecipeApp.onCreate()</code>
-			(bài D2, mục 12) rồi phát đi khắp app. Cấu trúc này hoạt động — nhưng phụ thuộc vào việc không ai bao giờ
+			(bài D2, <a href="/chapters/ch09-prefs-composition-local-va-wiring/#application">mục 12</a>) rồi phát đi khắp app. Cấu trúc này hoạt động — nhưng phụ thuộc vào việc không ai bao giờ
 			gõ <code>Prefs(context)</code> lần thứ hai. <strong>Khi tự dựng app, hãy đặt delegate ở top-level</strong>:
 			nó biến "chỉ một instance" từ quy ước bạn phải nhớ thành điều trình biên dịch tự bảo đảm. Trong khoá, giữ
 			theo project để code đối chiếu được; những chỗ dựng thêm <code>Prefs</code> gây rủi ro này được ghi ở
@@ -521,8 +521,8 @@ context.dataStore.data.first()[k]</pre>
 	</div>
 	<p>
 		Trong project, hai key thật được khai cạnh chỗ dùng của mỗi chủ sở hữu:
-		<code>PREVIOUS_SEARCH_KEY</code> — một <code>String</code> trong <code>RecipeViewModel</code> (D2 mục 16), và
-		<code>CURRENT_INDEX_KEY</code> — một <code>Int</code> trong <code>MainScreen</code> (D2 mục 18). Quy ước của
+		<code>PREVIOUS_SEARCH_KEY</code> — một <code>String</code> trong <code>RecipeViewModel</code> (D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#trace-tu-khoa">mục 16</a>), và
+		<code>CURRENT_INDEX_KEY</code> — một <code>Int</code> trong <code>MainScreen</code> (D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#trace-tab">mục 18</a>). Quy ước của
 		chương: kiểu của key phải khớp với kiểu của dữ liệu bạn định lưu; nếu tương lai cần <code>Boolean</code> thì
 		dùng <code>booleanPreferencesKey</code> — khoá này không catalogue hết các biến thể, chỉ dùng đúng loại project
 		cần.
@@ -541,7 +541,7 @@ context.dataStore.data.first()[k]</pre>
 	</p>
 	<p>
 		Project chọn cách đọc một lần: <code>context.dataStore.data.first()[prefKey]</code> — lấy snapshot đầu tiên,
-		tra giá trị theo key (tra key không có thì được <code>null</code>, xử lý ở mục 9). Cách này hợp lý cho một
+		tra giá trị theo key (tra key không có thì được <code>null</code>, xử lý ở <a href="#mac-dinh">mục 9</a>). Cách này hợp lý cho một
 		class tiện ích đơn giản, nhưng cần hiểu rõ <strong>cái đã bị bỏ lại</strong>:
 	</p>
 	<div class="callout note">
@@ -554,7 +554,7 @@ context.dataStore.data.first()[k]</pre>
 			<li>
 				Cái DataStore thật sự hơn ở mô hình <code>data</code>-là-Flow: UI có thể <em>tự cập nhật</em> khi preference
 				đổi. Muốn vậy, thay vì <code>first()</code>, giữ nguyên Flow và <code>collect</code> nó ở ViewModel — rồi
-				state màn hình tự theo kịp. Nâng cấp này là một trong ba việc nên tự làm ở cuối bài D2 (mục 21), và là
+				state màn hình tự theo kịp. Nâng cấp này là một trong ba việc nên tự làm ở cuối bài D2 (<a href="/chapters/ch09-prefs-composition-local-va-wiring/#tom-tat">mục 21</a>), và là
 				việc làm tự nhiên sau khi học W1.
 			</li>
 			<li>
@@ -566,10 +566,10 @@ context.dataStore.data.first()[k]</pre>
 	<p>
 		Chốt mô hình cho đúng: DataStore <strong>không phải</strong> "biến toàn cục đọc một lần rồi quên" — nó là một
 		dòng dữ liệu sống, và project đang chủ động lấy một giá trị từ dòng đó tại thời điểm cần. Khi dữ liệu của màn
-		hình <em>phụ thuộc liên tục</em> vào một preference, hãy chuyển sang collect (D2 mục 21).
+		hình <em>phụ thuộc liên tục</em> vào một preference, hãy chuyển sang collect (D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#tom-tat">mục 21</a>).
 	</p>
 
-	<h2 id="ghi-edit">8. Ghi: <code>edit { }</code> — suspend, nguyên khối, không cần chốt</h2>
+	<h2 id="ghi-edit">8. Ghi: <code>edit &#123; &#125;</code> — suspend, nguyên khối, không cần chốt</h2>
 	<p>Hàm ghi đầu tiên của class <code>Prefs</code>, đọc theo ba số:</p>
 	<Code code={prefsUsageCode} lang="kotlin" theme="github-dark" />
 	<ol class="chain">
@@ -615,11 +615,11 @@ context.dataStore.data.first()[k]</pre>
 	</p>
 	<ul>
 		<li>
-			<code>MainScreen</code> (D2 mục 18): <code>if (currentIndex != null) &#123; ... &#125;</code> — chưa từng lưu tab
+			<code>MainScreen</code> (D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#trace-tab">mục 18</a>): <code>if (currentIndex != null) &#123; ... &#125;</code> — chưa từng lưu tab
 			thì để nguyên tab mặc định <code>0</code> của <code>remember</code>.
 		</li>
 		<li>
-			<code>RecipeViewModel</code> (D2 mục 16): <code>if (!previousSearchString.isNullOrEmpty())</code> — chưa có gì
+			<code>RecipeViewModel</code> (D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#trace-tu-khoa">mục 16</a>): <code>if (!previousSearchString.isNullOrEmpty())</code> — chưa có gì
 			lưu thì không tạo danh sách rỗng giả.
 		</li>
 	</ul>
@@ -657,7 +657,7 @@ context.dataStore.data.first()[k]</pre>
 			<code>prefs.saveString("key", "value")</code>.
 		</li>
 		<li>
-			<strong>Giữ đúng một điểm khai báo <code>dataStore</code></strong> — nối với cảnh báo "một instance" ở mục 5.
+			<strong>Giữ đúng một điểm khai báo <code>dataStore</code></strong> — nối với cảnh báo "một instance" ở <a href="#khai-store">mục 5</a>.
 		</li>
 		<li>
 			<strong>Đổi nền tảng lưu trữ mà không sửa cả app.</strong> Muốn chuyển sang Proto DataStore hay lưu mã hoá,
@@ -678,22 +678,22 @@ context.dataStore.data.first()[k]</pre>
 			<tr>
 				<td><code>saveString</code></td>
 				<td>Lưu một chuỗi</td>
-				<td><code>RecipeViewModel.kt</code> dòng 88 — lưu danh sách từ khoá đã nối bằng dấu phẩy (D2 mục 16)</td>
+				<td><code>RecipeViewModel.kt</code> dòng 88 — lưu danh sách từ khoá đã nối bằng dấu phẩy (D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#trace-tu-khoa">mục 16</a>)</td>
 			</tr>
 			<tr>
 				<td><code>getString</code></td>
 				<td>Đọc một chuỗi, trả <code>null</code> nếu chưa có</td>
-				<td><code>RecipeViewModel.kt</code> dòng 59 — đọc lại danh sách trong <code>init</code> (D2 mục 16)</td>
+				<td><code>RecipeViewModel.kt</code> dòng 59 — đọc lại danh sách trong <code>init</code> (D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#trace-tu-khoa">mục 16</a>)</td>
 			</tr>
 			<tr>
 				<td><code>saveInt</code></td>
 				<td>Lưu một số nguyên</td>
-				<td><code>ui/MainScreen.kt</code> dòng 48 và 58 — lưu tab đang chọn (D2 mục 18)</td>
+				<td><code>ui/MainScreen.kt</code> dòng 48 và 58 — lưu tab đang chọn (D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#trace-tab">mục 18</a>)</td>
 			</tr>
 			<tr>
 				<td><code>getInt</code></td>
 				<td>Đọc một số nguyên</td>
-				<td><code>ui/MainScreen.kt</code> dòng 33 — đọc tab lúc mở app (D2 mục 18)</td>
+				<td><code>ui/MainScreen.kt</code> dòng 33 — đọc tab lúc mở app (D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#trace-tab">mục 18</a>)</td>
 			</tr>
 			<tr>
 				<td><code>hasKey</code></td>
@@ -706,7 +706,7 @@ context.dataStore.data.first()[k]</pre>
 		<strong>Đọc code mẫu phê phán: <code>hasKey</code> là code chết, và còn có một hố nhỏ</strong>
 		<p>
 			<code>hasKey</code> tồn tại như bản tương ứng của <code>contains()</code> trong <code>SharedPreferences</code>
-			(mục 2) — viết cho đủ bộ, nhưng app không gọi tới. Bạn không cần nó: <code>getString()</code> đã trả về
+			(<a href="#sharedpreferences">mục 2</a>) — viết cho đủ bộ, nhưng app không gọi tới. Bạn không cần nó: <code>getString()</code> đã trả về
 			<code>String?</code>, kiểm tra <code>null</code> là biết key có tồn tại không — và chỉ đọc file
 			<strong>một</strong> lần thay vì hai.
 		</p>
@@ -715,7 +715,7 @@ context.dataStore.data.first()[k]</pre>
 			<strong>không</strong> tìm được key kiểu <code>Int</code> — gọi <code>hasKey(CURRENT_INDEX_KEY)</code> sẽ luôn
 			trả <code>false</code> dù giá trị đã được lưu, vì <code>stringPreferencesKey("X")</code> và
 			<code>intPreferencesKey("X")</code> là hai key khác nhau với DataStore. Đây là hệ quả trực tiếp của "kiểu nằm
-			trong key" ở mục 6.
+			trong key" ở <a href="#keys">mục 6</a>.
 		</p>
 	</div>
 	<div class="callout note">
@@ -730,23 +730,71 @@ context.dataStore.data.first()[k]</pre>
 		<details>
 			<summary>Xem đáp án</summary>
 			<p>
-				<strong>(a)</strong> <code>first()</code> là hàm <code>suspend</code> (mục 7), nên hàm bọc nó phải là
+				<strong>(a)</strong> <code>first()</code> là hàm <code>suspend</code> (<a href="#doc-first">mục 7</a>), nên hàm bọc nó phải là
 				<code>suspend fun</code>; còn gọi trong <code>onClick</code> thì cần một coroutine scope
 				(<code>rememberCoroutineScope</code>/<code>LaunchedEffect</code>).
 			</p>
 			<p>
 				<strong>(b)</strong> Thiếu khai báo <code>private val Context.dataStore by preferencesDataStore(name = ...)</code>
-				— không có delegate thì <code>context.dataStore</code> không tồn tại (mục 5). Và hàm nên nằm trong class
-				<code>Prefs</code> để giữ đúng một điểm khai báo + che cơ chế (mục 10).
+				— không có delegate thì <code>context.dataStore</code> không tồn tại (<a href="#khai-store">mục 5</a>). Và hàm nên nằm trong class
+				<code>Prefs</code> để giữ đúng một điểm khai báo + che cơ chế (<a href="#prefs-class">mục 10</a>).
 			</p>
 			<p>
 				<strong>(c)</strong> Không compile. <code>intPreferencesKey("X")</code> có kiểu
 				<code>Preferences.Key&lt;Int&gt;</code>, không phải index của <code>Preferences</code> trả về
 				<code>String?</code> theo cách tra đó — đây là lỗi <em>lúc biên dịch</em>, đúng thiết kế "kiểu nằm trong key"
-				(mục 6).
+				(<a href="#keys">mục 6</a>).
 			</p>
 		</details>
 	</div>
+
+	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
+	<p>
+		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng
+		phía trên. Bảng lệch phiên bản và bảng đối chiếu "văn bản gốc ↔ project" đầy đủ nằm ở phần tra cứu phiên bản
+		của khoá (AP3, mục Ch09).
+	</p>
+	<ul>
+		<li>
+			<strong>Gọi <code>SharedPreferences</code> là "deprecated".</strong> Tài liệu chính thức không đánh dấu class
+			này <code>@Deprecated</code> — nó vẫn chạy và vẫn có trong SDK. Đúng: Google khuyến nghị DataStore cho code
+			mới (<a href="#sharedpreferences">mục 2</a>). Sai gốc rễ này sẽ khiến bạn "sửa" code cũ không cần sửa.
+		</li>
+		<li>
+			<strong>Tưởng DataStore là database, hoặc là "tự lưu mọi object".</strong> Không truy vấn, không quan hệ, không
+			lưu class — chỉ giá trị nguyên thuỷ (String/Boolean/Int/Long/Float, cộng thêm Set&lt;String&gt; và Double ở các
+			bản gần đây) ở biến thể Preferences (<a href="#sharedpreferences">mục 2</a>, 3). Tập hợp bản ghi có cấu trúc → Room, Chương 10.
+		</li>
+		<li>
+			<strong>Tưởng <code>rememberSaveable</code> là persistence.</strong> Nó sống qua xoay máy và qua cả trường hợp
+			hệ thống thu hồi process, nhưng chết khi <em>người dùng</em> tự tắt app — và không bao giờ ghi đĩa (bảng ba cơ
+			chế ở D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#trace-tab">mục 18</a>). Preference thật → DataStore.
+		</li>
+		<li>
+			<strong>Đọc <code>dataStore.data</code> mà không nghĩ tới IOException.</strong> Đọc có thể ném
+			<code>IOException</code> nếu file bị lỗi/đọc thất bại — và code mẫu của project không xử lý, app học chấp nhận
+			crash cho gọn. App thật nên bọc <code>.catch &#123; &#125;</code> quanh <code>data</code> (và phát hành lại giá trị mặc
+			định) thay vì để app chết khi file hỏng. Đây là mức "biết là có" — chi tiết xử lý Flow lỗi thuộc phần Mạng.
+		</li>
+		<li>
+			<strong>Đọc DataStore với mental model chặn.</strong> Mọi phép đọc là <code>suspend</code> + trả qua Flow —
+			không có lối tắt đồng bộ; và <code>first()</code> nghĩa là "một giá trị, không theo dòng chảy", không phải "đọc
+			ra giữ nguyên vĩnh viễn" (<a href="#doc-first">mục 7</a>).
+		</li>
+		<li>
+			<strong>Nhầm <code>null</code> (key chưa có) với giá trị đã lưu.</strong> Mặc định là quyết định của app, đặt
+			một chỗ rõ ràng — đừng để "sự thật do tai nạn" kiểu 0/false ngầm (<a href="#mac-dinh">mục 9</a>).
+		</li>
+		<li>
+			<strong>Rải preference khắp code UI.</strong> Tự dựng <code>Prefs(context)</code> mỗi nơi = nhiều instance
+			DataStore + Context sống lâu cầm Context ngắn hạn. Một chủ sở hữu, một điểm khai báo (<a href="#khai-store">mục 5</a>, 10; bài toán
+			nối dây được giải ở D2 <a href="/chapters/ch09-prefs-composition-local-va-wiring/#application">mục 12</a>).
+		</li>
+		<li>
+			<strong>Bọc thêm <code>Dispatchers.IO</code> quanh DataStore.</strong> Các API DataStore tự lo chuyển ngữ cảnh
+			của việc file; thêm IO là lớp dư (<a href="#ghi-edit">mục 8</a>).
+		</li>
+	</ul>
 
 	<h2 id="tom-tat">Tóm tắt</h2>
 	<div class="callout journey">
@@ -768,54 +816,6 @@ context.dataStore.data.first()[k]</pre>
 		</ol>
 	</div>
 
-	<h2 id="cam-bay">Cạm bẫy &amp; tài liệu lỗi thời</h2>
-	<p>
-		Gom lại các cảnh báo của bài này để tra nhanh — mỗi điểm đều đã được giải thích đầy đủ ở mục tương ứng
-		phía trên. Bảng lệch phiên bản và bảng đối chiếu "văn bản gốc ↔ project" đầy đủ nằm ở phần tra cứu phiên bản
-		của khoá (AP3, mục Ch09).
-	</p>
-	<ul>
-		<li>
-			<strong>Gọi <code>SharedPreferences</code> là "deprecated".</strong> Tài liệu chính thức không đánh dấu class
-			này <code>@Deprecated</code> — nó vẫn chạy và vẫn có trong SDK. Đúng: Google khuyến nghị DataStore cho code
-			mới (mục 2). Sai gốc rễ này sẽ khiến bạn "sửa" code cũ không cần sửa.
-		</li>
-		<li>
-			<strong>Tưởng DataStore là database, hoặc là "tự lưu mọi object".</strong> Không truy vấn, không quan hệ, không
-			lưu class — chỉ giá trị nguyên thuỷ (String/Boolean/Int/Long/Float, cộng thêm Set&lt;String&gt; và Double ở các
-			bản gần đây) ở biến thể Preferences (mục 2, 3). Tập hợp bản ghi có cấu trúc → Room, Chương 10.
-		</li>
-		<li>
-			<strong>Tưởng <code>rememberSaveable</code> là persistence.</strong> Nó sống qua xoay máy và qua cả trường hợp
-			hệ thống thu hồi process, nhưng chết khi <em>người dùng</em> tự tắt app — và không bao giờ ghi đĩa (bảng ba cơ
-			chế ở D2 mục 18). Preference thật → DataStore.
-		</li>
-		<li>
-			<strong>Đọc <code>dataStore.data</code> mà không nghĩ tới IOException.</strong> Đọc có thể ném
-			<code>IOException</code> nếu file bị lỗi/đọc thất bại — và code mẫu của project không xử lý, app học chấp nhận
-			crash cho gọn. App thật nên bọc <code>.catch { }</code> quanh <code>data</code> (và phát hành lại giá trị mặc
-			định) thay vì để app chết khi file hỏng. Đây là mức "biết là có" — chi tiết xử lý Flow lỗi thuộc phần Mạng.
-		</li>
-		<li>
-			<strong>Đọc DataStore với mental model chặn.</strong> Mọi phép đọc là <code>suspend</code> + trả qua Flow —
-			không có lối tắt đồng bộ; và <code>first()</code> nghĩa là "một giá trị, không theo dòng chảy", không phải "đọc
-			ra giữ nguyên vĩnh viễn" (mục 7).
-		</li>
-		<li>
-			<strong>Nhầm <code>null</code> (key chưa có) với giá trị đã lưu.</strong> Mặc định là quyết định của app, đặt
-			một chỗ rõ ràng — đừng để "sự thật do tai nạn" kiểu 0/false ngầm (mục 9).
-		</li>
-		<li>
-			<strong>Rải preference khắp code UI.</strong> Tự dựng <code>Prefs(context)</code> mỗi nơi = nhiều instance
-			DataStore + Context sống lâu cầm Context ngắn hạn. Một chủ sở hữu, một điểm khai báo (mục 5, 10; bài toán
-			nối dây được giải ở D2 mục 12).
-		</li>
-		<li>
-			<strong>Bọc thêm <code>Dispatchers.IO</code> quanh DataStore.</strong> Các API DataStore tự lo chuyển ngữ cảnh
-			của việc file; thêm IO là lớp dư (mục 8).
-		</li>
-	</ul>
-
 	<h2 id="nguon">Nguồn tham khảo</h2>
 	<ul>
 		<li>
@@ -834,13 +834,13 @@ context.dataStore.data.first()[k]</pre>
 		</li>
 		<li>
 			<strong>Đối chiếu nền tảng:</strong> <code>docs/drafts/f2-kotlin-foundation.md</code> (Phần 9 —
-			<code>by preferencesDataStore</code> ở mức delegate, trả nợ ở mục 5) · <code>docs/drafts/f1-kotlin-foundation.md</code>
+			<code>by preferencesDataStore</code> ở mức delegate, trả nợ ở <a href="#khai-store">mục 5</a>) · <code>docs/drafts/f1-kotlin-foundation.md</code>
 			(<code>joinToString</code>) · <code>docs/drafts/s1-coroutine-foundation.md</code> (suspend/scope/Flow) ·
-			<code>docs/drafts/s5-app-architecture-repository.md</code> (định nghĩa data source — mục 10) · A14 (version
+			<code>docs/drafts/s5-app-architecture-repository.md</code> (định nghĩa data source — <a href="#prefs-class">mục 10</a>) · A14 (version
 			catalog) · Chương 1 (sandbox, <code>MODE_PRIVATE</code>).
 		</li>
 		<li>
-			<strong>Ví dụ tối giản do khoá dựng:</strong> bảng "hình dạng dữ liệu" (mục 1 — viết lại từ danh sách ba cách
+			<strong>Ví dụ tối giản do khoá dựng:</strong> bảng "hình dạng dữ liệu" (<a href="#luu-gi-vao-dau">mục 1</a> — viết lại từ danh sách ba cách
 			của giáo trình), khuôn kiểm tra nhanh.
 		</li>
 	</ul>

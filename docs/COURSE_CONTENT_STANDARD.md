@@ -56,12 +56,20 @@ Flow ưu tiên (rút từ các bài đã tách tốt: Ch01/02/03/10). **Không �
 3. **Khái niệm cốt lõi** — định nghĩa + tại sao tồn tại.
 4. **Ví dụ nhỏ tối giản** — minh hoạ khái niệm ở mức nhỏ nhất chạy được.
 5. **Code thật trong project mẫu** — chỉ ra file → class/function/composable → vai trò → khái niệm được áp vào đâu.
-6. **`<h2 id="cam-bay">` Cạm bẫy & tài liệu lỗi thời** — bắt buộc (đặc sản của khoá).
-7. **Recap / Key takeaways** — bảng hoặc bullet ngắn.
-8. **`<h2 id="nguon">` Nguồn tham khảo** — bắt buộc, duy nhất 1 khối (mục 6).
-9. **Quiz** — theo chuẩn mục 10.
+6. **`<h2 id="luyen-tap">` Luyện tập** — **bắt buộc** (thêm 09/2026). 2–4 nhiệm vụ xếp theo độ khó, mỗi nhiệm vụ phải có đủ ba thứ: (a) thao tác thật ghi rõ **đường dẫn đích trong project của người học**; (b) **tiêu chí tự kiểm** — người học trả lời được "làm sao biết mình đúng?" mà không cần ai chấm; (c) **một bài học nhúng** nói vì sao việc vừa làm lại quan trọng. Dùng `<div class="chal">` (style đã có sẵn trong `web/src/styles/quiz.css`). Khuôn mẫu tốt: `Ch11KeystoreSqlcipherVaMaHoa.astro` §Thử thách.
+7. **`<h2 id="cam-bay">` Cạm bẫy & tài liệu lỗi thời** — bắt buộc (đặc sản của khoá).
+8. **Recap / Key takeaways** — bảng hoặc bullet ngắn.
+9. **`<h2 id="nguon">` Nguồn tham khảo** — bắt buộc, duy nhất 1 khối (mục 6).
+10. **Quiz** — theo chuẩn mục 10.
 
 Ràng buộc kỹ thuật (theo naming contract của khoá): mỗi file lesson có đúng 1 `<h2 id="cam-bay">` và đúng 1 `<h2 id="nguon">`; đánh số mục **liên tục** xuyên các bài con của cùng một chương lớn; mọi cross-ref viết "Chương N".
+
+**Bốn ràng buộc kỹ thuật bổ sung (thêm 09/2026):**
+
+- **Mục đặc biệt KHÔNG đánh số.** `#luyen-tap`, `#cam-bay`, `#nguon` không mang số ở tiêu đề. Lý do: số mục đánh liên tục xuyên các bài con của một chương, nên chèn một mục *có số* vào giữa chương buộc toàn bộ mục phía sau dịch +1 — kéo theo mọi tham chiếu `mục N` trong chương sai theo. Mục recap (`#tom-tat`, `#key-points`, `#ket`) **được phép** đánh số vì chúng là mục nội dung cuối chương bình thường.
+- **Tham chiếu ra ngoài bài phải ghi rõ đích:** viết `"bài X.Y, mục N"` (hoặc `"Chương X.Y, mục N"`), không viết trống `"mục N"`. Một số nhóm bài (navigation, kotlin, ditto) đánh số lại từ 1 ở mỗi bài, nên `"mục N"` trống là mơ hồ với người đọc.
+- **Tham chiếu phải là link, không phải chữ chết.** Trỏ trong cùng bài: `<a href="#anchor">mục N</a>`. Trỏ bài khác: `<a href="/chapters/<route>/#anchor">mục N</a>`. Kiểm bằng `python web/tools/link-xref.py`.
+- **Dấu ngoặc nhọn trong `<code>` phải escape:** viết `&#123;` / `&#125;`. Viết `{ }` trần thì Astro hiểu là biểu thức và **render ra chuỗi rỗng** — dấu ngoặc biến mất trên trang nhưng build vẫn xanh. Kiểm bằng `python web/tools/fix-unescaped-braces.py`.
 
 ---
 
@@ -245,6 +253,8 @@ Khuôn cụ thể:
 - [ ] Mọi khái niệm dùng trong bài đã được dạy trước, hoặc có mental model tối thiểu + callout forward-reference?
 - [ ] "Tại sao" đứng trước "làm thế nào" ở các khái niệm mới/phản trực giác?
 - [ ] Khoảng ≤ 3 khái niệm lớn; không quá tải nhận thức?
+- [ ] Có khối `<h2 id="luyen-tap">` với ≥ 2 nhiệm vụ, mỗi nhiệm vụ đủ ba thứ: đường dẫn đích + tiêu chí tự kiểm + bài học nhúng?
+- [ ] Làm thử ít nhất một nhiệm vụ trên project mẫu để chắc nó **làm được** và tiêu chí tự kiểm **kiểm được**?
 
 **Giọng văn / độc lập**
 - [ ] 0 lần "sách/chapter/tác giả/tôi đề nghị" ngoài khối Nguồn?
@@ -257,6 +267,10 @@ Khuôn cụ thể:
 - [ ] Cú pháp Kotlin lạ có chú giải tại điểm dùng đầu tiên?
 - [ ] Code thật được định vị (file → class → vai trò)?
 - [ ] Version drift gọn, có "nên dùng cái nào", không thành errata?
+- [ ] Mọi tham chiếu `mục N` đã là link (`<a href="#...">` hoặc `/chapters/<route>/#...`), trừ tham chiếu tới tài liệu nội bộ (X1/O1/AP2…)?
+- [ ] Mọi tham chiếu trỏ ra ngoài bài đã ghi rõ đích ("bài X.Y, mục N")?
+- [ ] Không còn `{ }` trần trong `<code>` (phải là `&#123; &#125;`)?
+- [ ] Mục đặc biệt (`#luyen-tap`, `#cam-bay`, `#nguon`) không mang số ở tiêu đề?
 
 **Đánh giá**
 - [ ] Quiz 8–12 câu, phủ hết mục tiêu bài?

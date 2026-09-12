@@ -461,7 +461,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		nhiều chỗ đọc, cần sống qua xoay màn hình, nên chủ của nó phải nằm <em>ngoài</em> UI. Bài này là chỗ đó. Đây cũng là
 		nơi mọi thứ bạn học từ đầu giai đoạn gặp nhau: coroutine và <code>StateFlow</code> từ S1, <code>data class</code> và
 		<code>by</code> từ F2, hoisting từ bài trước, recomposition từ bài State trong Compose — tất cả nằm trong một chuỗi
-		duy nhất ở mục 17.
+		duy nhất ở <a href="#chuoi-day-du">mục 17</a>.
 	</p>
 	<div class="callout">
 		<strong>Cần biết trước.</strong> Hai bài trước của giai đoạn này · <strong>S1</strong>: coroutine không phải thread,
@@ -617,7 +617,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		<strong>Code mẫu của chương này chưa gom UiState.</strong> Nó phơi ra hai flow rời (<code>messages</code> và
 		<code>currentUserId</code>) thay vì một <code>StateFlow&lt;ChatUiState&gt;</code>. Cách gom một ảnh chụp là hướng được
 		khuyến nghị hiện nay, và nó là bước tiến <em>tự nhiên</em> từ chính mô hình mà chương này dạy — không phủ định gì. Từ
-		mục 12 trở đi, các mục sẽ chỉ rõ chỗ nào là code mẫu và chỗ nào là khuôn nên viết hôm nay.
+		<a href="#stateflow-pair">mục 12</a> trở đi, các mục sẽ chỉ rõ chỗ nào là code mẫu và chỗ nào là khuôn nên viết hôm nay.
 	</p>
 
 	<h2 id="stateflow-pair">12. <code>MutableStateFlow</code> → <code>StateFlow</code>: ai được ghi, ai được đọc</h2>
@@ -666,7 +666,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 			trị hiện tại</strong> rồi nhận tiếp các cập nhật.
 		</p>
 		<p>
-			Việc "lắng nghe theo vòng đời" là chuyện của <strong>phía giao diện</strong>, bằng một API riêng — mục 14. Giữ hai thứ
+			Việc "lắng nghe theo vòng đời" là chuyện của <strong>phía giao diện</strong>, bằng một API riêng — <a href="#collect-lifecycle">mục 14</a>. Giữ hai thứ
 			tách bạch, vì trộn chúng lại sinh ra cả một lớp bug: bạn tưởng <code>StateFlow</code> tự lo, nên không dùng công cụ
 			thật sự lo việc đó.
 		</p>
@@ -683,10 +683,10 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		<li>
 			<code>var currentUserId = MutableStateFlow(userId)</code> — <strong>lệch khuôn</strong>: vừa public, vừa
 			<code>MutableStateFlow</code>, vừa <code>var</code>. Nghĩa là bất kỳ ai giữ được ViewModel này đều ghi được vào nó.
-			Đây là chỗ để tự đặt câu hỏi khi đọc code lạ, không phải khuôn để bắt chước — mục 18 quay lại nó.
+			Đây là chỗ để tự đặt câu hỏi khi đọc code lạ, không phải khuôn để bắt chước — <a href="#doc-state-chet">mục 18</a> quay lại nó.
 		</li>
 		<li>
-			Comment ngay đầu file nói thẳng giới hạn của mục 10: ID người dùng đang được sinh lại mỗi lần chạy, và "lý tưởng thì
+			Comment ngay đầu file nói thẳng giới hạn của <a href="#process-death">mục 10</a>: ID người dùng đang được sinh lại mỗi lần chạy, và "lý tưởng thì
 			nên lưu lại". Nghĩa là mỗi lần mở app, bạn là một người khác.
 		</li>
 	</ul>
@@ -714,7 +714,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		</li>
 		<li>
 			Sau khi có kết quả, một ảnh chụp mới nữa được gán vào — lần này cập nhật danh sách và tắt cờ "đang gửi"
-			<em>cùng một lúc</em>. Đó chính là lợi ích của việc gom UiState ở mục 11: giao diện không bao giờ thấy trạng thái
+			<em>cùng một lúc</em>. Đó chính là lợi ích của việc gom UiState ở <a href="#ui-state">mục 11</a>: giao diện không bao giờ thấy trạng thái
 			nửa vời.
 		</li>
 	</ol>
@@ -733,7 +733,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		chạy, nhưng vì một lý do khác — danh sách đó là một loại danh sách mà Compose tự theo dõi được từng thay đổi phần tử.
 		Tức là <em>hai cơ chế phản ứng chồng lên nhau</em>, và đó là lý do đoạn code này hoạt động nhưng khó giải thích. Cách
 		viết an toàn: phát ra một bản mới (<code>emit(_messages.toList())</code>), hoặc gom vào UiState rồi
-		<code>copy</code> như mục 11.
+		<code>copy</code> như <a href="#ui-state">mục 11</a>.
 	</p>
 	<p>Ba điểm nữa trong đoạn code thật này, mỗi điểm là một kỹ năng đọc:</p>
 	<ul>
@@ -767,7 +767,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		<tbody>
 			<tr>
 				<td><code>viewModel.uiState</code></td>
-				<td>ViewModel (mục 12)</td>
+				<td>ViewModel (<a href="#stateflow-pair">mục 12</a>)</td>
 				<td>Một <code>StateFlow</code> chỉ đọc: trạng thái hiện tại + các cập nhật.</td>
 			</tr>
 			<tr>
@@ -783,7 +783,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 				<td>Compose (bài State trong Compose)</td>
 				<td>
 				Chính là loại state Compose quan sát được. Composable nào đọc nó thì được chạy lại khi giá trị đổi — đúng cơ chế
-				recomposition của bài State trong Compose, mục 4.
+				recomposition của bài State trong Compose, <a href="/chapters/ch06-state-va-recomposition/#recomposition">mục 4</a>.
 				</td>
 			</tr>
 			<tr>
@@ -794,7 +794,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		</tbody>
 	</table>
 	<p>
-		Nối lại mục 12 cho rõ trách nhiệm: <strong><code>StateFlow</code> không biết vòng đời; hàm này chính là chỗ biết vòng
+		Nối lại <a href="#stateflow-pair">mục 12</a> cho rõ trách nhiệm: <strong><code>StateFlow</code> không biết vòng đời; hàm này chính là chỗ biết vòng
 		đời.</strong> Đây là câu trả lời cho "vậy ai lo việc dừng khi màn hình ẩn?" — và nó nằm ở phía giao diện, không nằm ở
 		ViewModel.
 	</p>
@@ -833,7 +833,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 			<code>private val viewModel: MainViewModel by viewModels()</code> — cách lấy ViewModel từ trong một Activity. Đây là
 			một <em>property delegate</em> của Kotlin (<code>by</code> — F2) do thư viện Android cung cấp; điểm quan trọng là nó
 			<strong>không tạo mới mỗi lần</strong> — có sẵn thì trả về cái cũ. Đó chính là cơ chế làm state sống qua xoay màn
-			hình ở mục 9.
+			hình ở <a href="#viewmodel-vi-sao">mục 9</a>.
 		</li>
 		<li>
 			<code>val messagesWithUsers by viewModel.messages.collectAsStateWithLifecycle()</code> — đúng khuôn vừa học, áp lên
@@ -905,7 +905,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 	<p>Hai khuôn, hai tình huống. Không có khuôn nào tốt hơn khuôn nào:</p>
 	<table class="api">
 		<thead>
-			<tr><th></th><th><code>MutableStateFlow</code> (mục 12–13)</th><th><code>stateIn</code> (mục 15)</th></tr>
+			<tr><th></th><th><code>MutableStateFlow</code> (<a href="#stateflow-pair">mục 12</a>–13)</th><th><code>stateIn</code> (<a href="#state-in">mục 15</a>)</th></tr>
 		</thead>
 		<tbody>
 			<tr>
@@ -939,11 +939,11 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 	<ol class="chain">
 		<li>
 			<strong>Người dùng bấm nút.</strong> Composable nút không tự làm gì cả — nó gọi lambda được truyền vào
-			(<code>() -&gt; Unit</code>). <em>Bài State hoisting &amp; UDF, mục 8.</em>
+			(<code>() -&gt; Unit</code>). <em>Bài State hoisting &amp; UDF, <a href="/chapters/ch06-state-hoisting-va-udf/#callback-su-kien">mục 8</a>.</em>
 		</li>
 		<li>
 			<strong>Sự kiện đi lên tới ViewModel.</strong> Lambda đó gọi một hàm public của ViewModel. Đây là "sự kiện đi lên" của
-			luồng một chiều, chỉ khác là chủ sở hữu giờ nằm ngoài UI. <em>Bài State hoisting &amp; UDF, mục 5.</em>
+			luồng một chiều, chỉ khác là chủ sở hữu giờ nằm ngoài UI. <em>Bài State hoisting &amp; UDF, <a href="/chapters/ch06-state-hoisting-va-udf/#mot-chieu">mục 5</a>.</em>
 		</li>
 		<li>
 			<strong>ViewModel khởi động công việc nếu cần.</strong> <code>viewModelScope.launch &#123; ... &#125;</code> — coroutine do
@@ -964,12 +964,12 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		</li>
 		<li>
 			<strong>Composable nào đã đọc state đó thì được chạy lại.</strong> Không phải cả màn hình, chỉ phần liên quan — và
-			giao diện mới xuất hiện. <em>Bài State trong Compose, mục 2 và 4.</em>
+			giao diện mới xuất hiện. <em>Bài State trong Compose, <a href="/chapters/ch06-state-va-recomposition/#mutable-state-of">mục 2</a> và 4.</em>
 		</li>
 	</ol>
 	<p>
 		Đọc lại danh sách trên và để ý một điều: <strong>không có bước nào "ra lệnh cho giao diện cập nhật"</strong>. Chỉ có
-		state đổi, và giao diện là hàm của state — đúng quan hệ ở bài State trong Compose, mục 1. Đây là toàn bộ nội dung của Giai đoạn 3 gói trong bảy
+		state đổi, và giao diện là hàm của state — đúng quan hệ ở bài State trong Compose, <a href="/chapters/ch06-state-va-recomposition/#state-la-gi">mục 1</a>. Đây là toàn bộ nội dung của Giai đoạn 3 gói trong bảy
 		bước.
 	</p>
 	<h3>17.1 Cùng chuỗi đó trong code mẫu: sửa lỗi "tin nhắn của tôi hiện như của người khác"</h3>
@@ -1006,7 +1006,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 				<td>3</td>
 				<td>Composable khung</td>
 				<td><code>collectAsStateWithLifecycle()</code> để lấy giá trị hiện tại</td>
-				<td>Cây cầu của mục 14</td>
+				<td>Cây cầu của <a href="#collect-lifecycle">mục 14</a></td>
 			</tr>
 			<tr>
 				<td>4</td>
@@ -1042,7 +1042,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 	<ul>
 		<li>
 			<code>uiState.addMessage(content, null)</code> — tham số thứ hai là <strong><code>null</code> cứng</strong>. Đây là
-			mắt xích làm tính năng ảnh không hoạt động; mục 18 nối đủ ba mắt xích.
+			mắt xích làm tính năng ảnh không hoạt động; <a href="#doc-state-chet">mục 18</a> nối đủ ba mắt xích.
 		</li>
 		<li>
 			<code>resetScroll</code> và <code>.navigationBarsPadding().imePadding()</code> — khi ô nhập được focus thì danh sách
@@ -1084,8 +1084,8 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 	<p class="src">Nguồn: <code>{FINAL}/conversation/UserInput.kt</code> (dòng 197–206)</p>
 	<p><strong>Nhưng bước 4 đứt, ở ba chỗ liên tiếp:</strong></p>
 	<ol class="chain">
-		<li>Giá trị ảnh không bao giờ ra khỏi khu vực nhập liệu — tầng gọi truyền <code>null</code> cứng (mục 17).</li>
-		<li>Và nếu bằng cách nào đó nó tới được ViewModel, điều kiện <code>if (message.photoUri == null)</code> chặn lại (mục 13).</li>
+		<li>Giá trị ảnh không bao giờ ra khỏi khu vực nhập liệu — tầng gọi truyền <code>null</code> cứng (<a href="#chuoi-day-du">mục 17</a>).</li>
+		<li>Và nếu bằng cách nào đó nó tới được ViewModel, điều kiện <code>if (message.photoUri == null)</code> chặn lại (<a href="#cap-nhat-state">mục 13</a>).</li>
 		<li>Khối code hiển thị ảnh thì <strong>bị comment toàn bộ</strong>, dù các import cho nó đã được thêm vào:</li>
 	</ol>
 	<Code code={coilCommentedCode} lang="kotlin" theme="github-dark" />
@@ -1102,7 +1102,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		<em>có</em> chỗ đọc (giao diện dùng để biết tin nào là của mình), <em>có</em> tác động giao diện. Nhưng bước 1 sai khuôn:
 		vì nó là <code>MutableStateFlow</code> public, <strong>giao diện có thể ghi vào nó</strong>. Không ai làm vậy trong
 		project — nhưng "không ai làm" là một lời hứa, còn <code>StateFlow</code> chỉ-đọc là một <em>bảo đảm</em>. Đây đúng là
-		lý do tồn tại của khuôn private/public ở mục 12.
+		lý do tồn tại của khuôn private/public ở <a href="#stateflow-pair">mục 12</a>.
 	</p>
 	<h3>18.3 Cùng một danh sách tồn tại ở hai nơi</h3>
 	<Code code={finalUiStateCode} lang="kotlin" theme="github-dark" />
@@ -1140,7 +1140,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 	<Code code={authorImageCode} lang="kotlin" theme="github-dark" />
 	<p class="src">Nguồn: <code>{FINAL}/conversation/ConversationUiState.kt</code> (dòng 66–74)</p>
 	<p>
-		Property này chọn ảnh dựa trên <code>userId == "me"</code> — đúng cái cách viết cứng mà mục 17 vừa đi sửa. Vì
+		Property này chọn ảnh dựa trên <code>userId == "me"</code> — đúng cái cách viết cứng mà <a href="#chuoi-day-du">mục 17</a> vừa đi sửa. Vì
 		<code>userId</code> giờ là một ID random, điều kiện gần như luôn sai. May là nó vô hại: composable một dòng tin nhắn
 		<em>không đọc</em> property này, nó tự tính từ <code>isUserMe</code>. Dấu vết còn lại của cách làm cũ — sửa ở nơi dùng mà
 		quên dọn nơi khai báo.
@@ -1160,19 +1160,19 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		<details>
 			<summary>Xem đáp án</summary>
 			<p>
-				<strong>Xoay màn hình:</strong> còn. Đó chính là việc ViewModel làm — nó không bị tạo lại cùng Activity (mục 9).
-				<strong>Tắt app rồi mở lại:</strong> mất. ViewModel không phải nơi lưu dữ liệu (mục 10); muốn lưu thật thì cần tới
+				<strong>Xoay màn hình:</strong> còn. Đó chính là việc ViewModel làm — nó không bị tạo lại cùng Activity (<a href="#viewmodel-vi-sao">mục 9</a>).
+				<strong>Tắt app rồi mở lại:</strong> mất. ViewModel không phải nơi lưu dữ liệu (<a href="#process-death">mục 10</a>); muốn lưu thật thì cần tới
 				giai đoạn Dữ liệu cục bộ.
 			</p>
 			<p>
 				<strong>Hai biến:</strong> để quyền ghi và quyền đọc khác nhau. Nếu chỉ để một biến public
 				<code>MutableStateFlow</code>, giao diện tự đổi state được và bạn mất khả năng biết ai đổi ở đâu — luồng một chiều
-				sụp ở đúng chỗ nó quan trọng nhất (mục 12). Với cặp private/public, giao diện <em>không có hàm nào</em> để ghi.
+				sụp ở đúng chỗ nó quan trọng nhất (<a href="#stateflow-pair">mục 12</a>). Với cặp private/public, giao diện <em>không có hàm nào</em> để ghi.
 			</p>
 		</details>
 	</div>
 
-	<h2 id="luyen-tap">19. Luyện tập: nút "Jump to bottom"</h2>
+	<h2 id="luyen-tap">Luyện tập: nút "Jump to bottom"</h2>
 	<p>
 		Bài luyện tập của bài này không giới thiệu khái niệm mới — nó bắt bạn <em>dùng</em> mọi thứ vừa học trên một tính năng
 		thật: một nút trượt vào khi bạn đã cuộn xa khỏi tin nhắn mới nhất, bấm vào thì cuộn về đáy.
@@ -1233,7 +1233,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 			đổi — tức 2 lần cho một lần cuộn dài, không phải 50 lần. Quy tắc để nhớ: <em>khi nhiều state đổi nhanh nhưng thứ bạn
 			cần chỉ đổi chậm, hãy bọc nó trong <code>derivedStateOf</code></em>. Cặp
 			<code>by remember &#123; derivedStateOf &#123; ... &#125; &#125;</code> gần như luôn đi cùng nhau — và để ý
-			<code>remember</code> ở đây làm đúng việc của bài State trong Compose, mục 3.
+			<code>remember</code> ở đây làm đúng việc của bài State trong Compose, <a href="/chapters/ch06-state-va-recomposition/#remember">mục 3</a>.
 		</p>
 	</div>
 	<h3>19.2 Ba thay đổi phải đi cùng nhau — chỗ dễ sai nhất</h3>
@@ -1292,7 +1292,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 			<summary>Gợi ý cho câu 2</summary>
 			<p>
 				App vẫn <em>đúng</em>, chỉ <em>tốn</em>: composable danh sách được chạy lại theo mỗi bước cuộn thay vì chỉ khi giá trị
-				<code>Boolean</code> đổi. Đây là ví dụ rất sát cho bài State trong Compose, mục 4: recomposition không miễn phí, nên "đúng" và "hợp lý" là hai
+				<code>Boolean</code> đổi. Đây là ví dụ rất sát cho bài State trong Compose, <a href="/chapters/ch06-state-va-recomposition/#recomposition">mục 4</a>: recomposition không miễn phí, nên "đúng" và "hợp lý" là hai
 				câu hỏi khác nhau.
 			</p>
 		</details>
@@ -1337,12 +1337,12 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		<li>
 			<strong>"<code>StateFlow</code> là <code>Flow</code> có sẵn lifecycle awareness" — SAI.</strong> <code>StateFlow</code>
 			không biết gì về vòng đời Android. Nó cho bạn trạng thái hiện tại + cập nhật. Lắng nghe theo vòng đời là việc của
-			<code>collectAsStateWithLifecycle()</code> ở phía giao diện (mục 12, 14).
+			<code>collectAsStateWithLifecycle()</code> ở phía giao diện (<a href="#stateflow-pair">mục 12</a>, 14).
 		</li>
 		<li>
 			<strong>Coi ViewModel là nơi lưu dữ liệu.</strong> Nó sống qua configuration change, <em>không</em> sống qua process
 			death và không sống qua tắt app. Nó cũng không phải tầng dữ liệu, và <code>viewModelScope</code>
-			<strong>không</strong> nghĩa là "thread nền" (mục 9–10).
+			<strong>không</strong> nghĩa là "thread nền" (<a href="#viewmodel-vi-sao">mục 9</a>–10).
 		</li>
 		<li>
 			<strong>Phơi <code>MutableStateFlow</code> ra public.</strong> Lúc đó giao diện ghi được vào state, và bạn mất khả năng
@@ -1350,7 +1350,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		</li>
 		<li>
 			<strong>Dùng <code>collectAsState()</code> làm mặc định trên Android.</strong> Nó không dừng khi app xuống nền. Hãy dùng
-			bản có <code>WithLifecycle</code>; bản không có chỉ để nhận ra khi đọc code cũ (mục 14).
+			bản có <code>WithLifecycle</code>; bản không có chỉ để nhận ra khi đọc code cũ (<a href="#collect-lifecycle">mục 14</a>).
 		</li>
 		<li>
 			<strong>Phát ra chính object đang giữ thay vì một bản mới.</strong> Dòng trạng thái không thông báo khi giá trị mới bằng
@@ -1363,11 +1363,11 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 		</li>
 		<li>
 			<strong>Sao chép <code>5_000</code> như một con số thần kỳ.</strong> Cửa sổ vài giây của
-			<code>WhileSubscribed</code> có mục đích cụ thể (vượt qua configuration change) — biết nó mua gì rồi hãy dùng (mục 15).
+			<code>WhileSubscribed</code> có mục đích cụ thể (vượt qua configuration change) — biết nó mua gì rồi hãy dùng (<a href="#state-in">mục 15</a>).
 		</li>
 		<li>
 			<strong>Kết luận một state/hàm "sai" trước khi tìm chỗ dùng.</strong> Trong project mẫu có một hàm đệ quy vô hạn và một
-			property tính sai — cả hai vô hại vì không ai gọi. Lần theo bốn bước trước khi sửa (mục 18).
+			property tính sai — cả hai vô hại vì không ai gọi. Lần theo bốn bước trước khi sửa (<a href="#doc-state-chet">mục 18</a>).
 		</li>
 	</ul>
 	<h3>Tài liệu lỗi thời — nơi tra</h3>
@@ -1398,7 +1398,7 @@ const stateInCode = `class ChatViewModel : ViewModel() {
 			<code>{FINAL_ROOT}/app/build.gradle.kts</code> (dòng 88–95).</li>
 		<li><strong>Ví dụ tối giản do khoá dựng:</strong> <code>ChatUiState</code>, cặp
 			<code>MutableStateFlow</code>/<code>StateFlow</code>, hàm cập nhật state, lời gọi
-			<code>collectAsStateWithLifecycle()</code>, và ví dụ <code>stateIn</code> ở mục 15 — dựng để dạy khuôn hiện hành, không
+			<code>collectAsStateWithLifecycle()</code>, và ví dụ <code>stateIn</code> ở <a href="#state-in">mục 15</a> — dựng để dạy khuôn hiện hành, không
 			trích project mẫu.</li>
 		<li><strong>Tài liệu chính thức:</strong> hướng dẫn về StateFlow/SharedFlow, về ViewModel &amp; coroutine
 			(<code>viewModelScope</code>), và về thu thập luồng dữ liệu theo vòng đời trên Android — dùng để đối chiếu khuôn được

@@ -195,7 +195,7 @@ const autoMigrationCode = `@Database(
 		<code>exportSchema = true</code> giờ phát huy tác dụng thật — lưu ý R2 để <code>exportSchema = false</code>
 		(vì project học chưa cần file schema); giờ đổi thành <code>true</code>. Room xuất file JSON của
 		mỗi version vào thư mục schema — đó là <em>bằng chứng lịch sử</em> để đối chiếu khi viết migration,
-		là đầu vào cho MigrationTestHelper, và cho phép auto-migration hoạt động (mục 5). Để Room biết ghi vào đâu, khai
+		là đầu vào cho MigrationTestHelper, và cho phép auto-migration hoạt động (<a href="#auto">mục 5</a>). Để Room biết ghi vào đâu, khai
 		vị trí schema bằng tham số KSP trong <code>app/build.gradle.kts</code> (khuôn khai plugin đã thấy ở A14, KSP ở W2):
 	</p>
 	<Code code={`ksp {
@@ -321,7 +321,7 @@ const autoMigrationCode = `@Database(
 		<p>
 			<strong>3. Migration là chỗ duy nhất viết SQL thuần.</strong> DAO (R2) kiểm SQL lúc compile;
 			<code>db.execSQL()</code> trong migration thì <strong>không</strong> — sai tên bảng/cột chỉ lộ khi
-			chạy. Đây là lý do test migration (mục 4) không phải "nice to have" mà là phần của công việc.
+			chạy. Đây là lý do test migration (<a href="#test">mục 4</a>) không phải "nice to have" mà là phần của công việc.
 		</p>
 	</div>
 

@@ -260,7 +260,7 @@ const catalogDependenciesCode = `dependencies {
 	<p>
 		Kết quả cuối của dây chuyền là một file cài được: <code>.apk</code> — app đã đóng gói hoàn chỉnh,
 		cài trực tiếp lên máy. Bản bạn chạy trên emulator bằng nút Run chính là một APK của bản debug —
-		cái này sẽ có ý nghĩa hơn ở mục 8.
+		cái này sẽ có ý nghĩa hơn ở <a href="#build-types">mục 8</a>.
 	</p>
 	<h3>Ba khối lệnh lặp lại suốt file build</h3>
 	<p>
@@ -322,7 +322,7 @@ const catalogDependenciesCode = `dependencies {
 			</tr>
 			<tr>
 				<td><code>gradle/libs.versions.toml</code></td>
-				<td>"Số version này của thư viện/plugin nằm ở đâu?" (Version Catalog — mục 7)</td>
+				<td>"Số version này của thư viện/plugin nằm ở đâu?" (Version Catalog — <a href="#version-catalog">mục 7</a>)</td>
 			</tr>
 			<tr>
 				<td><code>gradle/wrapper/gradle-wrapper.properties</code></td>
@@ -448,7 +448,7 @@ const catalogDependenciesCode = `dependencies {
 	<p>
 		<code>id("...") version "..."</code> được thay bằng <code>alias(libs.plugins.…)</code> — plugin
 		giờ được gọi theo tên từ Version Catalog, và số version biến mất khỏi file build. Đừng cố hiểu
-		<code>libs.…</code> vội: cuối bài (mục 7) bạn sẽ truy ngược được từng dòng này về khai báo gốc.
+		<code>libs.…</code> vội: cuối bài (<a href="#version-catalog">mục 7</a>) bạn sẽ truy ngược được từng dòng này về khai báo gốc.
 	</p>
 
 	<h2 id="android-block">4. Khối <code>android {'{ }'}</code>: app của bạn chạy được ở đâu</h2>
@@ -473,7 +473,7 @@ const catalogDependenciesCode = `dependencies {
 		<li>
 			<code>defaultConfig {'{ }'}</code> — chứa các thiết lập áp dụng <strong>mặc định cho mọi phiên
 			bản build</strong> (debug, release…). "Mặc định" là từ khoá: từng build type có thể ghi đè phần
-			nó muốn — bạn sẽ thấy đúng điều này ở mục 8.
+			nó muốn — bạn sẽ thấy đúng điều này ở <a href="#build-types">mục 8</a>.
 		</li>
 		<li>
 			<code>buildFeatures {'{ }'}</code> — bật/tắt từng tính năng của AGP. Ở đây
@@ -564,12 +564,12 @@ const catalogDependenciesCode = `dependencies {
 		<code>1.12.0</code> của binary tên <code>core-ktx</code> thuộc group <code>androidx.core</code>.
 		Dạng gọn và dạng dài tương đương nhau; thực tế gần như luôn dùng dạng gọn. Dạng thứ ba —
 		<code>project(":moduleName")</code> — là tham chiếu tới một module khác trong cùng project
-		(module đó phải được <code>include</code> trong <code>settings.gradle.kts</code> như mục 2 đã nói).
+		(module đó phải được <code>include</code> trong <code>settings.gradle.kts</code> như <a href="#ban-do-file">mục 2</a> đã nói).
 	</p>
 
 	<h2 id="bom">6. BOM: vì sao thư viện Compose không có số version</h2>
 	<p>
-		Quay lại khối dependency ở mục 5 và để ý một điều lạ: các dòng Compose như
+		Quay lại khối dependency ở <a href="#dependencies">mục 5</a> và để ý một điều lạ: các dòng Compose như
 		<code>implementation("androidx.compose.ui:ui")</code> <strong>không có số version</strong>.
 		Đó là hệ quả của một dòng duy nhất — xuất hiện <strong>hai lần</strong> trong file:
 	</p>
@@ -619,7 +619,7 @@ const catalogDependenciesCode = `dependencies {
 	</p>
 	<p>
 		File danh bạ đó là <code>gradle/libs.versions.toml</code> — đúng thư mục <code>gradle/</code> đã
-		thấy trong bản đồ file (mục 2). Tên <code>libs.versions.toml</code> là <strong>tên đặc biệt</strong>:
+		thấy trong bản đồ file (<a href="#ban-do-file">mục 2</a>). Tên <code>libs.versions.toml</code> là <strong>tên đặc biệt</strong>:
 		Gradle tự tìm file theo đúng tên đó trong thư mục <code>gradle/</code>, bạn không cần khai ở đâu
 		để trỏ tới nó. Trong project mẫu, file này xuất hiện ở bản <code>final</code> và có bốn section:
 	</p>
@@ -643,7 +643,7 @@ const catalogDependenciesCode = `dependencies {
 		<li>
 			Thư viện Compose <strong>không có</strong> <code>version.ref</code> (như
 			<code>androidx-compose-material3</code> chỉ có <code>group</code> + <code>name</code>) — vì BOM
-			cấp version cho chúng, đúng như mục 6.
+			cấp version cho chúng, đúng như <a href="#bom">mục 6</a>.
 		</li>
 	</ul>
 	<h3>Section 3 — <code>[plugins]</code>: khai plugin, dùng bằng <code>alias()</code></h3>
@@ -652,7 +652,7 @@ const catalogDependenciesCode = `dependencies {
 	<p>
 		Plugin ID (đúng hai ID đã gặp ở file gốc trong mục 3) kèm version. Sau khi có các section này,
 		file gốc chuyển sang gọi plugin qua catalog — chính là đoạn
-		<code>alias(libs.plugins.android.application) apply false</code> bạn đã thấy ở mục 3.
+		<code>alias(libs.plugins.android.application) apply false</code> bạn đã thấy ở <a href="#project-vs-module">mục 3</a>.
 	</p>
 	<h3>Truy ngược <code>libs.…</code> về TOML — quy tắc <code>-</code> thành <code>.</code></h3>
 	<p>
@@ -733,7 +733,7 @@ const catalogDependenciesCode = `dependencies {
 	<Code code={debugSuffixCode} lang="kotlin" theme="github-dark" />
 	<p>
 		<code>applicationIdSuffix</code> nối thêm <code>.debug</code> vào <code>applicationId</code>
-		(mục 4): bản debug có ID <code>com.kodeco.chat.debug</code>, bản release vẫn là
+		(<a href="#android-block">mục 4</a>): bản debug có ID <code>com.kodeco.chat.debug</code>, bản release vẫn là
 		<code>com.kodeco.chat</code>. Lợi ích rất thực tế: khi nộp lên Play Store thấy ID có
 		<code>.debug</code> ở cuối là biết ngay mình vừa build nhầm bản; và vì ID khác nhau, Android coi
 		đây là hai app khác nhau nên bản debug và bản release <strong>cùng tồn tại trên một máy</strong>
@@ -768,7 +768,7 @@ const catalogDependenciesCode = `dependencies {
 	</div>
 	<div class="notice">
 		<strong>Bẫy 3 — thêm <code>.debug</code> làm vỡ test có sẵn.</strong> Nếu thêm
-		<code>applicationIdSuffix = ".debug"</code> như mục 8, file test chạy-trên-thiết-bị có sẵn của
+		<code>applicationIdSuffix = ".debug"</code> như <a href="#build-types">mục 8</a>, file test chạy-trên-thiết-bị có sẵn của
 		project sẽ fail: nó so sánh package name với chuỗi cứng <code>"com.kodeco.chat"</code>, trong khi
 		package thực tế lúc chạy test là <code>com.kodeco.chat.debug</code>. Đây là ví dụ điển hình:
 		<em>một thay đổi ở tầng build có thể làm vỡ code test mà không ai sửa dòng code nào</em>. Khi gặp
@@ -793,7 +793,7 @@ const catalogDependenciesCode = `dependencies {
 		Kotlin 2.4.x, Compose
 		BOM mới hơn; Android Studio giờ tự tạo sẵn <code>libs.versions.toml</code> cho project mới.
 		<strong>Concept trong bài không đổi</strong> — chỉ con số và một ít cú pháp đổi: cứ học với đúng
-		bộ số của project mẫu, và khi mở project mới tạo, đối chiếu file nó sinh ra với bản đồ ở mục 2 —
+		bộ số của project mẫu, và khi mở project mới tạo, đối chiếu file nó sinh ra với bản đồ ở <a href="#ban-do-file">mục 2</a> —
 		bạn sẽ nhận ra từng khối.
 	</div>
 	<div class="notice">

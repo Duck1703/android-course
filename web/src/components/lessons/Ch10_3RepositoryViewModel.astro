@@ -267,7 +267,7 @@ const localProviderUseCode = `CompositionLocalProvider(
 			<tr>
 				<td>Trả dữ liệu ở dạng người gọi cần</td>
 				<td>Ở project này mỗi hàm trả thẳng model database; phần dịch sang model UI là việc của ViewModel qua
-					<code>Conversions.kt</code> (mục 12) — một lựa chọn bố trí trách nhiệm, không phải luật.</td>
+					<code>Conversions.kt</code> (<a href="#conversions">mục 12</a>) — một lựa chọn bố trí trách nhiệm, không phải luật.</td>
 			</tr>
 		</tbody>
 	</table>
@@ -316,9 +316,9 @@ const localProviderUseCode = `CompositionLocalProvider(
 			định phân biệt "bookmark" và "recipe" như hai khái niệm.</li>
 		<li><code>findBookmarkById()</code>, <code>deleteIngredient()</code>, <code>deleteIngredients()</code>
 			<strong>không được gọi ở bất kỳ đâu</strong> trong app. Chúng là API dự phòng, không phải code đang chạy — chi
-			tiết và cách tự kiểm ở mục 15.</li>
+			tiết và cách tự kiểm ở <a href="#doc-lai">mục 15</a>.</li>
 		<li>Việc "xoá công thức" thực tế luôn cần <strong>hai</strong> lời gọi repository — <code>deleteRecipe(...)</code> và
-			<code>deleteRecipeIngredients(...)</code> — vì như Chương 10.2, mục 8.2 đã nói, không có khoá ngoại nào tự dọn
+			<code>deleteRecipeIngredients(...)</code> — vì như Chương 10.2, <a href="/chapters/ch10-2-entity-dao-database/#entities">mục 8.2</a> đã nói, không có khoá ngoại nào tự dọn
 			hộ. Đây là chỗ dễ sinh bug: quên lời gọi thứ hai thì nguyên liệu "mồ côi" vẫn nằm trong bảng và vẫn hiện ở danh
 			sách đi chợ, dù công thức đã bị xoá.</li>
 	</ul>
@@ -383,8 +383,8 @@ const localProviderUseCode = `CompositionLocalProvider(
 	<p>
 		Nhìn <code>recipeToDb()</code> thật kỹ — nó chỉ điền <strong>ba</strong> field: <code>id</code>,
 		<code>title</code>, <code>image</code>. Bảy field còn lại của <code>RecipeDb</code> nhận giá trị mặc định — chính là
-		khai thác điểm đã nói ở Chương 10.2, mục 8.1: <em>nhờ có giá trị mặc định, bạn tạo được một recipe chỉ với một phần
-		property.</em> Đây là một hàm dịch <em>cố ý</em> cho ra object "thiếu dữ liệu" — một tình huống mà mục 13 sẽ quay
+		khai thác điểm đã nói ở Chương 10.2, <a href="/chapters/ch10-2-entity-dao-database/#entities">mục 8.1</a>: <em>nhờ có giá trị mặc định, bạn tạo được một recipe chỉ với một phần
+		property.</em> Đây là một hàm dịch <em>cố ý</em> cho ra object "thiếu dữ liệu" — một tình huống mà <a href="#viewmodels">mục 13</a> sẽ quay
 		lại với hậu quả cụ thể.
 	</p>
 	<p class="notice">
@@ -419,7 +419,7 @@ const localProviderUseCode = `CompositionLocalProvider(
 	<div class="callout note">
 		<strong>Điều đáng chú ý: một object <code>RecipeDb</code> "thiếu dữ liệu" được truyền vào lệnh xoá</strong>
 		<p>
-			Ở mục 13 bạn sẽ thấy <code>deleteBookmark(recipe: Recipe)</code> gọi <code>recipeToDb(recipe)</code> rồi truyền
+			Ở <a href="#viewmodels">mục 13</a> bạn sẽ thấy <code>deleteBookmark(recipe: Recipe)</code> gọi <code>recipeToDb(recipe)</code> rồi truyền
 			kết quả vào <code>repository.deleteRecipe(recipeDb)</code>. Nghĩa là object truyền xuống database có
 			<code>summary</code> rỗng, <code>instructions</code> rỗng, mọi thời gian nấu bằng 0 — <em>không giống</em> dòng
 			thật đang nằm trong bảng.
@@ -462,7 +462,7 @@ const localProviderUseCode = `CompositionLocalProvider(
 	<p>
 		Chú ý cách <code>prefs</code> (Chương 9) và <code>repository</code> (Chương 10) nằm cạnh nhau: cả hai là
 		<em>dependency được truyền vào từ bên ngoài</em>, không phải do ViewModel tự tạo. Cách truyền đã học ở Chương 9 với
-		<code>viewModelFactory</code>; chỗ nào tạo và chỗ nào phát xuống cây UI là mục 14. Lợi ích cụ thể của cách truyền
+		<code>viewModelFactory</code>; chỗ nào tạo và chỗ nào phát xuống cây UI là <a href="#instantiating">mục 14</a>. Lợi ích cụ thể của cách truyền
 		này: ViewModel không import một tên Room nào — nó chỉ biết repository, đúng biên giới S5.
 	</p>
 	<h3>13.1. Ba hàm đọc dữ liệu</h3>
@@ -491,7 +491,7 @@ const localProviderUseCode = `CompositionLocalProvider(
 		<p>
 			<code>_bookmarksState</code> là một <code>MutableStateFlow</code> — cơ chế bạn đã học ở S4: hễ <code>.value</code>
 			đổi thì mọi nơi đang lắng nghe đều nhận giá trị mới, Compose vẽ lại. Ở đây UI lắng nghe qua
-			<code>bookmarksState.collect</code> trong <code>ShowBookmarks</code> — code đó là nội dung Chương 10.4, mục 16.
+			<code>bookmarksState.collect</code> trong <code>ShowBookmarks</code> — code đó là nội dung Chương 10.4, <a href="/chapters/ch10-4-giao-dien-va-cam-bay/#bookmarks">mục 16</a>.
 			Không có dòng nào gọi "hãy làm mới màn hình".
 		</p>
 		<p>
@@ -531,7 +531,7 @@ const localProviderUseCode = `CompositionLocalProvider(
 		<code>findRecipeById(bookmarkId)</code> lấy công thức, rồi <code>findRecipeIngredients(bookmarkId)</code> lấy danh
 		sách nguyên liệu — rồi ghép cả hai thành một <code>RecipeInformationResponse</code> bằng
 		<code>recipeDbToRecipeInformation(recipe, ingredientDbsToExtendedIngredients(ingredients))</code>. Đó chính là chiều
-		"ghép hai bảng thành một khối" mà mục 12 đã hứa.
+		"ghép hai bảng thành một khối" mà <a href="#conversions">mục 12</a> đã hứa.
 	</p>
 	<h3>13.2. Hàm ghi bookmark</h3>
 	<Code code={vmWriteCode} lang="kotlin" theme="github-dark" />
@@ -541,7 +541,7 @@ const localProviderUseCode = `CompositionLocalProvider(
 		đọc thì ghép từ hai bảng, ghi thì tách ra hai bảng. Chú ý
 		<code>extendedIngredientsToIngredientDbs(recipe.id, recipe.extendedIngredients)</code> — <code>recipe.id</code>
 		được truyền vào để mỗi <code>IngredientDb</code> nhớ được nó thuộc công thức nào (chính cột
-		<code>recipeId</code> ở Chương 10.2, mục 8.2).
+		<code>recipeId</code> ở Chương 10.2, <a href="/chapters/ch10-2-entity-dao-database/#entities">mục 8.2</a>).
 	</p>
 	<h3>13.3. Hai hàm xoá bookmark — và cơ chế <code>@Delete</code> vs <code>@Update</code></h3>
 	<Code code={vmDeleteCode} lang="kotlin" theme="github-dark" />
@@ -654,7 +654,7 @@ const localProviderUseCode = `CompositionLocalProvider(
 
 	<h2 id="doc-lai">15. Đọc code phê phán: khai báo nhưng không được gọi</h2>
 	<p>
-		Ba phát hiện ở mục 11 không phải chuyện hiếm — đó là tình trạng bình thường của codebase thật. Đây là kỹ năng đọc,
+		Ba phát hiện ở <a href="#repository">mục 11</a> không phải chuyện hiếm — đó là tình trạng bình thường của codebase thật. Đây là kỹ năng đọc,
 		ghép với cách kiểm "tìm chỗ dùng" bạn đã luyện ở Chương 10.2 với <code>getInstance()</code>:
 	</p>
 	<ol class="chain">

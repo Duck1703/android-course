@@ -330,7 +330,7 @@ const uiTestCodeClean = `class NotesScreenTest {
 	<ul>
 		<li><code>createComposeRule()</code> — "máy Android nhỏ" dựng nội dung Compose cho test; hoạt động
 		trên thiết bị/emulator, nên file này nằm trong <code>androidTest/</code>.</li>
-		<li><code>setContent { }</code> — thay <code>setContent</code> của Activity: bạn tự quyết định ứng
+		<li><code>setContent &#123; &#125;</code> — thay <code>setContent</code> của Activity: bạn tự quyết định ứng
 		dụng nào được dựng, với dependency nào (lại là fake repository — seam tái sử dụng).</li>
 		<li><code>onNodeWithTag / onNodeWithText</code> — "node" là một composable trong cây; tìm nó bằng
 		tag hoặc bằng text hiển thị, rồi đặt hành động / khẳng định lên nó.</li>
@@ -411,7 +411,7 @@ const uiTestCodeClean = `class NotesScreenTest {
 			<code>someValue = 3</code> chỉ kiểm lại ngôn ngữ Kotlin.
 		</li>
 		<li>
-			<strong>Chi tiết cài đặt private.</strong> Đã nói ở mục 4 — test hợp đồng công khai, không test
+			<strong>Chi tiết cài đặt private.</strong> Đã nói ở <a href="#main-dispatcher">mục 4</a> — test hợp đồng công khai, không test
 			cấu trúc bên trong.
 		</li>
 		<li>
@@ -450,7 +450,7 @@ const uiTestCodeClean = `class NotesScreenTest {
 	<div class="callout diff">
 		<p>
 			<strong>2. Mock framework ngay từ đầu.</strong> mockk/Mockito phổ biến, nhưng với repository
-			nhỏ thì fake tự viết (mục 3) dễ đọc hơn, không thêm dependency, và bộc lộ đúng interface thật.
+			nhỏ thì fake tự viết (<a href="#fake-repository">mục 3</a>) dễ đọc hơn, không thêm dependency, và bộc lộ đúng interface thật.
 			Tài liệu chính thức của Android cũng hướng dẫn fake-first cho Compose/architecture codelab —
 			mock framework là công cụ cho chỗ phức tạp (static call, API đóng), không phải mặc định.
 		</p>
