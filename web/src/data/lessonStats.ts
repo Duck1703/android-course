@@ -125,6 +125,11 @@ function countMatches(src: string, re: RegExp): number {
 // theo slug quá trò trọc sẽ sai 2 slug này. Giải pháp: bảng GHIM key-file theo
 // slug — chỉ những slug lệch quy uoc mới được liệt kê; mọi slug còn lại suy ra
 // bằng chapterFileKey như cũ.
+//
+// 2026-09-12: 17 file bài NGỦ ĐÔNG (Ch07_*/Ch08_*/Ch09_*/Ch11_*, IMP-064) đã xoá
+// khỏi repo. Bảng ghim VẪN CẦN: lý do ghim không phải "file ngủ đông tranh bucket",
+// mà là tên file live không mang số đơn vị nên regex quét file chỉ cho key cấp
+// chương ("08", "09"…) — key không thuộc registry và bị bước lọc (b) loại.
 const FILE_KEY_PIN: Record<string, string> = {
   // A7 file Ch02DocProjectMau.astro không có số — key = tiền tố chương cha 02_2
   "ch02-doc-project-mau": "02_2",
@@ -132,20 +137,20 @@ const FILE_KEY_PIN: Record<string, string> = {
   "ch03-string-resource-va-lop-r": "03_2",
   "ch03-doc-loi-bien-dich-va-debug": "03_2",
   // Stage 2 (IMP-033/044): file Ch05* mới KHÔNG theo quy ước ChNN_số (tên theo
-  // registry §9 kebab→Pascal, không mang số đơn vị) — ghim key = "05_N" theo
-  // subNumber registry để glob "Ch(\d{2})_(\d+)" không khớp nhầm file ngủ đông.
+  // registry §9 kebab→Pascal, không mang số đơn vị) — không có số thì regex quét
+  // file chỉ cho key "05" (không thuộc registry) nên phải ghim key = "05_N".
   "ch05-composable-va-layout": "05_1",
   "ch05-modifier-va-danh-sach": "05_2",
   "ch05-material-3-va-theming": "05_3",
   "ch05-preview-va-vong-doi": "05_4",
   "ch05-tiep-can-moi-nguoi-dung": "05_5",
   // Stage 3 (IMP-035/042/043): S2–S4 giữ file Ch06<Name>.astro không mang số đơn vị
-  // (regex "Ch(\d{2})" khớp → key "06") — ghim key = "06_N" theo subNumber registry
-  // để key "06" (của file ngủ đông Ch06_*) không tranh bucket với các bài live.
-  // S1/S5 là bài NEW không theo quy ước ChNN (tên kebab→Pascal thuần) — file không
-  // khớp regex nên TỰ rơi vào nhánh foundationKey (key = slug bỏ gạch, như F1/F2);
-  // nhưng fileKeyOf phải trả về CÙNG key đó theo slug, nên vẫn cần hai dòng ghim
-  // (key = slug-bỏ-gạch, không phải "06_N") để vòng resolve khớp vòng quét file.
+  // (regex "Ch(\d{2})" khớp → key "06", không thuộc registry) — ghim key = "06_N"
+  // theo subNumber registry. S1/S5 là bài NEW không theo quy ước ChNN (tên
+  // kebab→Pascal thuần) — file không khớp regex nên TỰ rơi vào nhánh foundationKey
+  // (key = slug bỏ gạch, như F1/F2); nhưng fileKeyOf phải trả về CÙNG key đó theo
+  // slug, nên vẫn cần hai dòng ghim (key = slug-bỏ-gạch, không phải "06_N") để vòng
+  // resolve khớp vòng quét file.
   "coroutines-20-phut-khong-so": "coroutines20phutkhongso",
   "kien-truc-ui-data-repository": "kientrucuidatarepository",
   // Stage 4 (Giai đoạn 4 — Điều hướng): N1/N2 là bài NEW không theo quy ước ChNN
@@ -154,29 +159,25 @@ const FILE_KEY_PIN: Record<string, string> = {
   "navigation-back-stack-type-safe": "navigationbackstacktypesafe",
   // Stage 5 (Giai đoạn 5 — Mạng): W1–W3 là tách monolith Ch08Networking.astro —
   // file live KHÔNG mang số đơn vị (Ch08CoroutinesVaFlow…) nên regex "Ch(\d{2})"
-  // cho key "08" (không thuộc registry) → bị loại, trong khi file ngủ đông
-  // Ch08_1CoroutineVaFlow/Ch08_2RetrofitVaMoshi/Ch08_3LoiGoiMangDauTien thắng
-  // key 08_1/08_2/08_3 — đúng bug-class stats-pairing Stage 1/3. Ghim key =
-  // "08_N" theo subNumber registry để file live vào đúng bucket của mình.
+  // cho key "08" (không thuộc registry) → bị loại, đúng bug-class stats-pairing
+  // Stage 1/3. Ghim key = "08_N" theo subNumber registry để file live vào đúng
+  // bucket của mình.
   "ch08-coroutines-va-flow": "08_1",
   "ch08-retrofit-moshi-json": "08_2",
   "ch08-trang-thai-mang-api-key": "08_3",
   // Stage 6 (Giai đoạn 6 — Dữ liệu cục bộ): D1/D2 là tách monolith Ch09DataStore.astro —
   // file live KHÔNG mang số đơn vị (Ch09DataStoreVaSharedPreferences…, regex "Ch(\d{2})"
-  // cho key "09" — key của monolith đã retired) → bị loại, trong khi 4 file ngủ đông
-  // Ch09_1ViSaoDataStore/Ch09_2VietClassPrefs/Ch09_3PhatPrefsXuongApp/Ch09_4BugDauPhayVaLuuTab
-  // thắng key 09_1/09_2/09_3/09_4 — đúng bug-class stats-pairing Stage 1/3/5. Ghim key =
-  // "09_N" theo subNumber registry để file live vào đúng bucket của mình.
+  // cho key "09" — key của monolith đã retired) → bị loại, đúng bug-class stats-pairing
+  // Stage 1/3/5. Ghim key = "09_N" theo subNumber registry để file live vào đúng
+  // bucket của mình.
   "ch09-data-store-va-sharedpreferences": "09_1",
   "ch09-prefs-composition-local-va-wiring": "09_2",
   // Stage 7 (Giai đoạn 7 — Real-world): X1/X2 là tách monolith Ch11AdvancedStorage.astro —
   // file live KHÔNG mang số đơn vị (Ch11FilesSafVaBackup…, regex "Ch(\d{2})" cho key "11" —
-  // key của monolith đã retired) → bị loại, trong khi 5 file ngủ đông
-  // Ch11_1CacChoLuuFile/Ch11_2SafVaKeystore/Ch11_3SecurePrefsVaSqlCipher/
-  // Ch11_4NoiDayBackupPhienBan/Ch11_5NhinLaiCaKhoaHoc thắng key 11_1..11_5 —
-  // đúng bug-class stats-pairing Stage 1/3/5/6. Ghim key = "11_N" theo subNumber
-  // registry để file live vào đúng bucket của mình. Tên file khớp pascalOf(slug)
-  // (Files/Keystore/Sqlcipher đều hoa đúng chỗ) → KHÔNG cần ghim FILE_NAME_CASE.
+  // key của monolith đã retired) → bị loại, đúng bug-class stats-pairing
+  // Stage 1/3/5/6. Ghim key = "11_N" theo subNumber registry để file live vào đúng
+  // bucket của mình. Tên file khớp pascalOf(slug) (Files/Keystore/Sqlcipher đều hoa
+  // đúng chỗ) → KHÔNG cần ghim FILE_NAME_CASE.
   "ch11-files-saf-va-backup": "11_1",
   "ch11-keystore-sqlcipher-va-ma-hoa": "11_2",
   "ch06-state-va-recomposition": "06_2",
@@ -184,10 +185,8 @@ const FILE_KEY_PIN: Record<string, string> = {
   "ch06-viewmodel-va-ui-state": "06_4",
   // Workstream F (IMP-050): O1 kế nhiệm monolith Ch07 — file live DittoOfflineFirstCaseStudy*
   // KHÔNG mang số đơn vị (regex "Ch(\d{2})" không khớp → tự rơi vào nhánh foundationKey,
-  // key = "dittoofflinefirstcasestudy"). Nhưng 4 file ngủ đông Ch07_1..4 (IMP-064 giữ)
-  // thắng key 07_1..07_4 — key của monolith đã retired nên không thuộc registry, tự bị loại.
-  // O1 không va chạm bucket nào, NHƯNG fileKeyOf phải trả về CÙNG key với vòng quét file
-  // (slug-bỏ-gạch) → ghim tường minh như S1/S5/N1/N2.
+  // key = "dittoofflinefirstcasestudy"). fileKeyOf phải trả về CÙNG key với vòng quét
+  // file (slug-bỏ-gạch) → ghim tường minh như S1/S5/N1/N2.
   "ditto-offline-first-case-study": "dittoofflinefirstcasestudy",
   // Workstream F (IMP-051…055): O2–O6 — bài NEW không theo quy uoc ChNN (ten kebab→Pascal
   // thuan, nhu F1/F2/S1/S5/N1/N2/O1) — key = slug bo gach, cung co che.
@@ -208,9 +207,9 @@ const FILE_KEY_PIN: Record<string, string> = {
 // pascalOf → "Ch06ViewmodelVaUiState" nhưng tên file thật là "Ch06ViewModelVaUiState"
 // (registry §9: danh pháp API giữ nguyên casing). Nếu để pinByFile suy theo
 // pascalOf thì file live KHÔNG được ghim key 06_4 → rơi vào key "06" (không thuộc
-// registry) → bị loại, và file ngủ đông Ch06_4JumpToBottom* thắng key 06_4 — đúng
-// bug-class stats-pairing mà Stage 1 đã gặp. Bảng FILE_NAME_CASE ghim TÊN FILE THẬT
-// cho những slug như vậy; pinByFile ưu tiên nó trước pascalOf.
+// registry) → bị loại — đúng bug-class stats-pairing mà Stage 1 đã gặp. Bảng
+// FILE_NAME_CASE ghim TÊN FILE THẬT cho những slug như vậy; pinByFile ưu tiên nó
+// trước pascalOf.
 const FILE_NAME_CASE: Record<string, string> = {
   "ch06-viewmodel-va-ui-state": "Ch06ViewModelVaUiState",
   // Stage 6: "ch09-data-store-va-sharedpreferences" pascalOf → "Ch09DataStoreVaSharedpreferences"

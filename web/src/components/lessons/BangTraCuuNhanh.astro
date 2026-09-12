@@ -8,13 +8,11 @@
 // ngữ cảnh dạy concept, chỉ trỏ về đây. Không nhân đôi bảng trong core; thêm mục
 // mới theo chương, không sửa mục của chương khác.
 // Trước đó ghi chú khoá học có mốc "coroutines 1.11.x (08/2026)" — giữ đúng mốc.
-import { Code } from "astro:components";
-
-const composeOptionsCode = `// Khối Gradle bị ảnh hưởng (Ch06) — giữ nguyên văn để đối chiếu:
-composeOptions {
-  kotlinCompilerExtensionVersion = "1.5.3"
-}
-// Từ Kotlin 2.0: thay bằng plugin org.jetbrains.kotlin.plugin.compose`;
+//
+// 2026-09-12: xoá dead code — `import { Code }` và hằng `composeOptionsCode`
+// (thêm ở 37ccaaf, chưa từng dùng: trang không có thẻ <pre> nào, không render <Code>).
+// Số phiên bản "1.5.3" của khối composeOptions được gộp thẳng vào dòng bảng tương ứng
+// ở mục Ch06 để không mất thông tin.
 ---
 
 <article class="lesson">
@@ -45,7 +43,7 @@ composeOptions {
 		<thead><tr><th>Trong giáo trình gốc / code mẫu</th><th>Hiện tại</th><th>Nên theo cái nào</th></tr></thead>
 		<tbody>
 			<tr><td>Tên gọi "Android Architecture Components"</td><td>Đã gộp vào Jetpack; "Guide to app architecture" (UI/Domain/Data)</td><td>Tra theo tên mới; kỹ thuật không đổi</td></tr>
-			<tr><td><code>composeOptions &#123; kotlinCompilerExtensionVersion &#125;</code></td><td>Từ Kotlin 2.0: plugin <code>org.jetbrains.kotlin.plugin.compose</code></td><td>Plugin mới; project mới không còn khối composeOptions</td></tr>
+			<tr><td><code>composeOptions &#123; kotlinCompilerExtensionVersion = "1.5.3" &#125;</code></td><td>Từ Kotlin 2.0: plugin <code>org.jetbrains.kotlin.plugin.compose</code></td><td>Plugin mới; project mới không còn khối composeOptions</td></tr>
 			<tr><td><code>autoCorrect</code> trong <code>KeyboardOptions</code></td><td>Deprecated, đổi tên <code>autoCorrectEnabled</code></td><td>Code cũ vẫn build, chỉ bị gạch trong IDE</td></tr>
 			<tr><td><code>lifecycle-runtime-compose</code> 2.6.2</td><td>2.11.0 (17/06/2026)</td><td>Nâng số trong <code>[versions]</code>; artifact không đổi</td></tr>
 			<tr><td><code>collectAsStateWithLifecycle()</code></td><td>Vẫn là API khuyến nghị</td><td>Không cần làm gì</td></tr>
