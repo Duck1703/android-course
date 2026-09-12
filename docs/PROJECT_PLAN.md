@@ -2,7 +2,7 @@
 
 > Đây là **nguồn sự thật về tiến độ** của dự án. Đọc file này trước khi trả lời `review plan`, `đang tới đâu rồi?`, `tiếp tục`, v.v. — xem quy tắc xử lý trong `CLAUDE.md`.
 
-**Cập nhật lần cuối:** 2026-09-11 — **REDESIGN: COMPLETE. FINAL CONTENT REVIEW: PASS. FINAL TECHNICAL QA: PASS.**
+**Cập nhật lần cuối:** 2026-09-12 — **REDESIGN: COMPLETE. FINAL CONTENT REVIEW: PASS. FINAL TECHNICAL QA: PASS.** (Ngày 2026-09-12 có thêm một đợt gia cố hậu đóng dự án — xem mục ngay dưới.)
 
 ## TRẠNG THÁI CUỐI CÙNG (2026-09-11) — DỰ ÁN ĐÃ ĐÓNG
 
@@ -10,6 +10,34 @@
 - **Redesign 2026-09 (spec v2 + 63 task IMP) đã chạy xong toàn bộ workstream:** pilot Ch10 (R1–R4) → Stage 1–7 (tách monolith, F/S/N bài mới) → quiz sweep (40 quiz cũ, 0 orphan) → Workstream F (O1–O6 + AP1–AP3) → Workstream G (Model B-lite: hoàn thành = tự xác nhận ∧ đã nộp quiz ≥1 lần, không ngưỡng điểm) → Workstream H (homepage roadmap v2 + sidebar theo stage, bỏ đánh số 5.1 learner-facing) → final content review (GATE PASS @ a74802d, freshness reconcile @ d084eed/f24b63c: nav 2.10.1 / Nav3 1.1.7 / AGP 9.4.0, web-checked 2026-09-11) → **final technical QA (GATE PASS — xem `docs/QA_FINAL_REPORT.md`)**.
 - **Gate reports:** `docs/REVIEW_GATE_*.md` (mỗi workstream một file) + `docs/QA_FINAL_REPORT.md` (QA cuối). Quy tắc 30 phút cũ đã thay bằng chính sách quality-first — xem `docs/LESSON_TEMPLATE.md` đầu file.
 - **Còn lại (bảo trì tuỳ chọn, KHÔNG phải việc dở):** nếu Android phát hành version mới đáng kể → cập nhật các claim version-sensitive (AP3 là bảng tra cứu nhanh); không có task nào đang mở.
+
+---
+
+## Cập nhật 2026-09-12 — gia cố hậu đóng dự án (6 commit)
+
+Không nằm trong roadmap gốc; phát sinh từ một lượt review chất lượng phần trình
+bày. Không đổi kiến trúc, không đổi số liệu hiển thị (`check:counts`: 0 lệch).
+
+- **Bịt lỗ hổng luyện tập: 8/48 → 48/48 bài có khối luyện tập** (thêm 115 bài
+  tập nhỏ). Trước đó 40 bài không có phần thực hành nào.
+- **823 tham chiếu "mục N" được link hoá** (trước: 9). Trong đó 31 tham chiếu
+  từng bị coi là "không link được" hoá ra chỉ thiếu `id` trên `<h3>` — đã thêm
+  20 anchor.
+- **11 lỗi render im lặng do dấu `{ }`** trong template Astro (build vẫn xanh
+  nhưng chữ biến mất). Đã escape thành `&#123;`/`&#125;`.
+- **Chuẩn hoá cấu trúc:** 20 lỗi cứng → 0; thứ tự đuôi bài 10 biến thể → 1.
+- **Sửa lỗi thật** trong `scripts-maintenance/check_counts.mjs`: dùng
+  `URL.pathname` nên khi repo nằm trong thư mục có dấu cách thì mọi
+  `readFileSync` đều ENOENT — tức script **chưa từng** chạy đúng. Đổi sang
+  `fileURLToPath`.
+- **CI `.github/workflows/course-check.yml` (mới)** — 5 tầng:
+  structure → progress → build → counts → anchors.
+- **`web/tools/check-anchors.py` (mới)** — kiểm 1.409 link nội bộ có trỏ tới
+  `id` thật không; kết quả 0 hỏng. Checker đã được kiểm chứng biết báo đỏ bằng
+  cách tiêm anchor sai vào `dist/`.
+
+Đợt này **không** đụng tới quiz và **không** rút gọn các mục `#nguon` (độ dài ở
+đó là đặc tính — trích dẫn tới từng dòng file gốc).
 
 ---
 
@@ -323,7 +351,9 @@ Lý do mở phase này: Chapter 5 và 8 được viết ở Task 7/17, **trướ
 - **Ảnh minh hoạ trong sách chưa được copy ra ngoài.** `scripts/extract_epub.py` chỉ chèn link `graphics/imgNN.png` (đường dẫn tương đối bên trong EPUB) kèm comment ghi chú, chưa copy file ảnh thật ra `content/book/`. Lesson Chapter 5 (Task 7) hoá ra không cần ảnh (chỉ giải thích + code), nên chưa xử lý. Cần quyết định trước khi có lesson nào thật sự cần hiển thị ảnh/screenshot từ sách.
 
 
-- **Version công cụ trong sách cũ hơn hiện tại** (đã xác minh 2026-08-26): sách dùng Kotlin 1.9.10 / AGP 8.2.0 / Room 2.5.2; hiện tại bản ổn định là Kotlin 2.4.x / AGP 9.2.0 / Room 2.8.4. Khi viết lesson liên quan phải **ghi chú rõ chênh lệch**, không âm thầm đổi nội dung sách.
+- **Version công cụ trong sách cũ hơn hiện tại** (đã xác minh 2026-08-26; **số AGP đã sửa lại 2026-09-12**): sách dùng Kotlin 1.9.10 / AGP 8.2.0 / Room 2.5.2; hiện tại bản ổn định là Kotlin 2.4.x / **AGP 9.4.0** / Room 2.8.4. Khi viết lesson liên quan phải **ghi chú rõ chênh lệch**, không âm thầm đổi nội dung sách.
+
+  > **Vì sao sửa:** dòng này trước ghi "AGP 9.2.0", mâu thuẫn với chính mục "TRẠNG THÁI CUỐI CÙNG" ở đầu file (đã reconcile AGP **9.4.0** ngày 2026-09-11) và với bảng tra cứu AP3 trong bài học (`BangTraCuuNhanh.astro` dòng 74: "Dòng ổn định hiện hành **9.4.0** (09/2026)"). Đây là mục **đang theo dõi** nên phải khớp thực tế; các nhắc "AGP 9.3" ở Task 40/191 là ghi chép lịch sử tại thời điểm 2026-08-28 nên **giữ nguyên**.
 - **Sách dùng DI thủ công, không Hilt/Koin/Dagger** trong toàn bộ 11 chapter — là lựa chọn sư phạm có chủ đích (giảm phức tạp cho người mới), khác khuyến nghị chính thức của Android cho app production. Cần ghi chú khi dạy phần kiến trúc/DI.
 - ✅ **[Đã xử lý ở Task 33] Project gốc chưa có git ở cấp root** — đã `git init -b main` 2026-08-27, commit đầu `9e8800d` (50 file). `.gitignore` chặn `.epub` + `content/book/` (bản quyền) và `aaf-materials/` (repo riêng). **Không tạo remote, không push** — git ở đây chỉ để lưu lịch sử trên máy.
 - ✅ **[Đã xử lý ở Task 32] Source/artifact lồng và file tạm trong `web/`** (phát hiện khi audit 2026-08-27, xử lý 2026-08-27): `web/web/`, `test-minimal.astro`, 14 file log/script tạm, file 0 byte `',`, `dist`+`node_modules` lạc trong `web/src/components/lessons/` — đã xoá sau khi salvage phần nội dung thật sự tốt hơn (quiz Chapter 3, 4 câu) từ `web/web/`. Bài học giữ lại: **mô tả artifact trong file kế hoạch phải được kiểm lại bằng cách mở file ra xem trước khi xoá** — 2 mô tả cũ của chính task này đều sai (xem Task 32).
